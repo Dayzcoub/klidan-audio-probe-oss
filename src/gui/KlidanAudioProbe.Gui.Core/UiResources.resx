@@ -72,4 +72,34 @@
   <data name="SaveKlidanProfile" xml:space="preserve"><value>Save profile for KLIDAN</value></data>
   <data name="RepeatTest" xml:space="preserve"><value>Repeat this test</value></data>
   <data name="OtherTest" xml:space="preserve"><value>Another test on this device</value></data>
+  <data name="TestModeHeading" xml:space="preserve"><value>TEST MODE</value></data>
+  <data name="TestModeAccessible" xml:space="preserve"><value>Test mode</value></data>
+  <data name="TestModeDescription" xml:space="preserve"><value>Available: passive Exclusive IsFormatSupported and a separate Initialize-only test. Initialize may briefly occupy the endpoint; Start and PCM are not used.</value></data>
+  <data name="InitializeQueryPrerequisite" xml:space="preserve"><value>Initialize-only requires a current format query for the selected endpoint. Run it here, then select a supported format and DEFAULT/MINIMUM. Initialize does not start automatically.</value></data>
+  <data name="FutureCaptureMeter" xml:space="preserve"><value>Future · Live Capture Meter · unavailable</value></data>
+  <data name="FutureRenderTest" xml:space="preserve"><value>Future · Live Render Channel Test · unavailable</value></data>
+  <data name="RealDuplexTest" xml:space="preserve"><value>Real duplex test</value></data>
+  <data name="DuplexPairDescription" xml:space="preserve"><value>The exact selected Capture / Render pair. Each period requires separate, fresh confirmation.</value></data>
+  <data name="DuplexNewConfirmation" xml:space="preserve"><value>New confirmation · Duplex</value></data>
+  <data name="DuplexConsent" xml:space="preserve"><value>I authorize exactly this simultaneous Exclusive test</value></data>
+  <data name="DuplexRunning" xml:space="preserve"><value>RUNNING · awaiting structured report</value></data>
+  <data name="DuplexResultsAccessible" xml:space="preserve"><value>MINIMUM and DEFAULT duplex results</value></data>
+  <data name="DuplexBuffers" xml:space="preserve"><value>Buffers · Capture / Render</value></data>
+  <data name="DuplexFrames" xml:space="preserve"><value>Frames · Capture / Render</value></data>
+  <data name="DuplexCoverage" xml:space="preserve"><value>Coverage · Capture / Render</value></data>
+  <data name="DuplexQuality" xml:space="preserve"><value>Quality · Capture / Render / Duplex</value></data>
+  <data name="DuplexFaultDetails" xml:space="preserve"><value>Faults, Stop, cleanup and details</value></data>
+  <data name="ConcurrentTimeMs" xml:space="preserve"><value>Concurrent time, ms</value></data>
+  <data name="ReportLabel" xml:space="preserve"><value>Report</value></data>
+  <data name="QueryChannelCountsLabel" xml:space="preserve"><value>Channel counts (comma-separated, 1–64)</value></data>
+  <data name="QueryChannelCountsAccessible" xml:space="preserve"><value>Requested channel counts</value></data>
+  <data name="FormatResultsSummary" xml:space="preserve"><value>Format results summary</value></data>
+  <data name="UniqueFormatResults" xml:space="preserve"><value>Unique REAL_WASAPI_QUERY results</value></data>
+  <data name="FormatColumn" xml:space="preserve"><value>Format</value></data>
+  <data name="HertzColumn" xml:space="preserve"><value>Hz</value></data>
+  <data name="ChannelsColumn" xml:space="preserve"><value>Ch.</value></data>
+  <data name="QueryStatusColumn" xml:space="preserve"><value>Query status</value></data>
+  <data name="UniqueFormatDescription" xml:space="preserve"><value>Each row represents one unique format and one IsFormatSupported query. The period is selected only for Initialize-only.</value></data>
+  <data name="SelectSupportedFormat" xml:space="preserve"><value>Select a format with SUPPORTED_REPORTED for Initialize-only</value></data>
+  <data name="InitializePeriodAccessible" xml:space="preserve"><value>Initialize-only period</value></data>
 </root>

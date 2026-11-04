@@ -72,4 +72,34 @@
   <data name="SaveKlidanProfile" xml:space="preserve"><value>Сохранить профиль для KLIDAN</value></data>
   <data name="RepeatTest" xml:space="preserve"><value>Повторить этот тест</value></data>
   <data name="OtherTest" xml:space="preserve"><value>Другой тест на этом устройстве</value></data>
+  <data name="TestModeHeading" xml:space="preserve"><value>ТЕСТОВЫЙ РЕЖИМ</value></data>
+  <data name="TestModeAccessible" xml:space="preserve"><value>Режим проверки</value></data>
+  <data name="TestModeDescription" xml:space="preserve"><value>Доступно: пассивный Exclusive IsFormatSupported и отдельная Initialize-only проверка. Initialize может кратковременно занять endpoint; Start и PCM не используются.</value></data>
+  <data name="InitializeQueryPrerequisite" xml:space="preserve"><value>Для Initialize-only нужен актуальный запрос форматов именно для выбранного endpoint. Запустите его здесь; после результата выберите поддерживаемый формат и DEFAULT/MINIMUM. Initialize автоматически не запускается.</value></data>
+  <data name="FutureCaptureMeter" xml:space="preserve"><value>В будущем · Live Capture Meter · недоступно</value></data>
+  <data name="FutureRenderTest" xml:space="preserve"><value>В будущем · Live Render Channel Test · недоступно</value></data>
+  <data name="RealDuplexTest" xml:space="preserve"><value>Реальная проверка Duplex</value></data>
+  <data name="DuplexPairDescription" xml:space="preserve"><value>Точная выбранная пара Capture / Render. Каждый период требует отдельного свежего подтверждения.</value></data>
+  <data name="DuplexNewConfirmation" xml:space="preserve"><value>Новое подтверждение · Duplex</value></data>
+  <data name="DuplexConsent" xml:space="preserve"><value>Разрешаю ровно эту одновременную Exclusive проверку</value></data>
+  <data name="DuplexRunning" xml:space="preserve"><value>RUNNING · ожидается структурированный отчёт</value></data>
+  <data name="DuplexResultsAccessible" xml:space="preserve"><value>Итоги MINIMUM и DEFAULT Duplex</value></data>
+  <data name="DuplexBuffers" xml:space="preserve"><value>Буферы · Capture / Render</value></data>
+  <data name="DuplexFrames" xml:space="preserve"><value>Кадры · Capture / Render</value></data>
+  <data name="DuplexCoverage" xml:space="preserve"><value>Покрытие · Capture / Render</value></data>
+  <data name="DuplexQuality" xml:space="preserve"><value>Качество · Capture / Render / Duplex</value></data>
+  <data name="DuplexFaultDetails" xml:space="preserve"><value>Faults, Stop, cleanup и детали</value></data>
+  <data name="ConcurrentTimeMs" xml:space="preserve"><value>Одновременное время, мс</value></data>
+  <data name="ReportLabel" xml:space="preserve"><value>Отчёт</value></data>
+  <data name="QueryChannelCountsLabel" xml:space="preserve"><value>Количество каналов (через запятую, 1–64)</value></data>
+  <data name="QueryChannelCountsAccessible" xml:space="preserve"><value>Запрашиваемые количества каналов</value></data>
+  <data name="FormatResultsSummary" xml:space="preserve"><value>Сводка результатов форматов</value></data>
+  <data name="UniqueFormatResults" xml:space="preserve"><value>Уникальные результаты REAL_WASAPI_QUERY</value></data>
+  <data name="FormatColumn" xml:space="preserve"><value>Формат</value></data>
+  <data name="HertzColumn" xml:space="preserve"><value>Гц</value></data>
+  <data name="ChannelsColumn" xml:space="preserve"><value>Кан.</value></data>
+  <data name="QueryStatusColumn" xml:space="preserve"><value>Статус запроса</value></data>
+  <data name="UniqueFormatDescription" xml:space="preserve"><value>Каждая строка — один уникальный формат и один запрос IsFormatSupported. Период выбирается только для Initialize-only.</value></data>
+  <data name="SelectSupportedFormat" xml:space="preserve"><value>Выберите формат с SUPPORTED_REPORTED для Initialize-only</value></data>
+  <data name="InitializePeriodAccessible" xml:space="preserve"><value>Период Initialize-only</value></data>
 </root>
