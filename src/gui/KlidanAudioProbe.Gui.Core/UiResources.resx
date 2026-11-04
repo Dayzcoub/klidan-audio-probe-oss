@@ -372,4 +372,26 @@
   <data name="CaptureCoverageColumn" xml:space="preserve"><value>Capture coverage</value></data>
   <data name="RenderCoverageColumn" xml:space="preserve"><value>Render coverage</value></data>
   <data name="DeveloperToolsDescription" xml:space="preserve"><value>DEVELOPER TOOLS · real Windows diagnostics + synthetic fixtures</value></data>
+  <data name="InitializeCaptureRender" xml:space="preserve"><value>Initialize · Capture / Render</value></data>
+  <data name="StartCaptureRender" xml:space="preserve"><value>Start · Capture / Render</value></data>
+  <data name="FaultsLabel" xml:space="preserve"><value>Faults</value></data>
+  <data name="StopCleanupLabel" xml:space="preserve"><value>Stop / cleanup</value></data>
+  <data name="AudioHostNotCertifiedSuffix" xml:space="preserve"><value> · AudioHost: NOT_CERTIFIED</value></data>
+  <data name="WindowsRealWasapi" xml:space="preserve"><value>WINDOWS · REAL WASAPI</value></data>
+  <data name="FaultStopCleanup" xml:space="preserve"><value>Faults, Stop, cleanup</value></data>
+  <data name="InitializeLabel" xml:space="preserve"><value>Initialize</value></data>
+  <data name="EventColumn" xml:space="preserve"><value>Event</value></data>
+  <data name="CleanupTechnicalLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="StartLabel" xml:space="preserve"><value>Start</value></data>
+  <data name="StopLabel" xml:space="preserve"><value>Stop</value></data>
+  <data name="RealEvidencePhysicalRtl" xml:space="preserve"><value>Evidence: REAL · AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="CaptureEndpointLabel" xml:space="preserve"><value>Capture endpoint</value></data>
+  <data name="RenderEndpointLabel" xml:space="preserve"><value>Render endpoint</value></data>
+  <data name="DemoMeterLegend" xml:space="preserve"><value>Peak · RMS · Hold · LOCAL DEMO</value></data>
+  <data name="EvidenceLibraryTitle" xml:space="preserve"><value>Evidence Library</value></data>
+  <data name="FormatTableColumn" xml:space="preserve"><value>Format</value></data>
+  <data name="CaptureP99" xml:space="preserve"><value>Capture P99</value></data>
+  <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
+  <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
+  <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · fake only</value></data>
 </root>

@@ -372,4 +372,26 @@
   <data name="CaptureCoverageColumn" xml:space="preserve"><value>Покрытие Capture</value></data>
   <data name="RenderCoverageColumn" xml:space="preserve"><value>Покрытие Render</value></data>
   <data name="DeveloperToolsDescription" xml:space="preserve"><value>ИНСТРУМЕНТЫ РАЗРАБОТЧИКА · реальная диагностика Windows + синтетические данные</value></data>
+  <data name="InitializeCaptureRender" xml:space="preserve"><value>Initialize · Capture / Render</value></data>
+  <data name="StartCaptureRender" xml:space="preserve"><value>Start · Capture / Render</value></data>
+  <data name="FaultsLabel" xml:space="preserve"><value>Ошибки</value></data>
+  <data name="StopCleanupLabel" xml:space="preserve"><value>Остановка / очистка</value></data>
+  <data name="AudioHostNotCertifiedSuffix" xml:space="preserve"><value> · AudioHost: NOT_CERTIFIED</value></data>
+  <data name="WindowsRealWasapi" xml:space="preserve"><value>WINDOWS · РЕАЛЬНЫЙ WASAPI</value></data>
+  <data name="FaultStopCleanup" xml:space="preserve"><value>Ошибки, остановка, очистка</value></data>
+  <data name="InitializeLabel" xml:space="preserve"><value>Initialize</value></data>
+  <data name="EventColumn" xml:space="preserve"><value>Событие</value></data>
+  <data name="CleanupTechnicalLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="StartLabel" xml:space="preserve"><value>Start</value></data>
+  <data name="StopLabel" xml:space="preserve"><value>Stop</value></data>
+  <data name="RealEvidencePhysicalRtl" xml:space="preserve"><value>Свидетельства: REAL · AudioHost: NOT_CERTIFIED · Физический RTL: NOT_MEASURED</value></data>
+  <data name="CaptureEndpointLabel" xml:space="preserve"><value>Endpoint Capture</value></data>
+  <data name="RenderEndpointLabel" xml:space="preserve"><value>Endpoint Render</value></data>
+  <data name="DemoMeterLegend" xml:space="preserve"><value>Peak · RMS · Hold · ЛОКАЛЬНОЕ ДЕМО</value></data>
+  <data name="EvidenceLibraryTitle" xml:space="preserve"><value>Библиотека свидетельств</value></data>
+  <data name="FormatTableColumn" xml:space="preserve"><value>Формат</value></data>
+  <data name="CaptureP99" xml:space="preserve"><value>Capture P99</value></data>
+  <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
+  <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
+  <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · только fake</value></data>
 </root>
