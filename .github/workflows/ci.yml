@@ -1,0 +1,17 @@
+name: Build and CLI smoke (Windows)
+on:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -A x64
+      - name: Build Release
+        run: cmake --build build --config Release --parallel
+      - name: CLI smoke (no hardware)
+        run: ctest --test-dir build -C Release --output-on-failure

@@ -1,0 +1,41 @@
+# Graphify ignore file (gitignore-style).
+# Excludes build artifacts, tool output, IDE dirs, and temporary
+# binaries/logs. Kept separate from .gitignore so graphify stays
+# self-contained. src/probe/ and tests/ are deliberately NOT ignored.
+
+# Build and tool output
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+
+# IDE / project dirs
+.vs/
+.vscode/
+.idea/
+
+# Graphify output
+graphify-out/
+
+# Local reports and profiles
+reports/local/
+profiles/local/
+
+# Temporary binaries, logs and build intermediates
+*.log
+*.dmp
+*.etl
+*.jsonl
+*.user
+*.suo
+*.VC.db
+*.o
+*.obj
+*.exe
+*.pfx
+*.p12
+*.pem
+
+# Third-party source code
+/src/third_party/

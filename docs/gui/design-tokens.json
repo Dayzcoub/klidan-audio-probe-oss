@@ -1,0 +1,35 @@
+{
+  "kit": "KLIDAN Audio Probe GUI",
+  "status": "approved-baseline-v0.1",
+  "source": {
+    "inherited": "Approved upstream design-token reference; private repository path omitted",
+    "reviewedDate": "2026-10-30",
+    "notes": "Inherited color values match existing KLIDAN resources; added semantic meter/color roles and sizing are proposals."
+  },
+  "colors": {
+    "surfaceRoot": {"value": "#0B1020", "origin": "inherited"},
+    "surfaceOne": {"value": "#121A2D", "origin": "inherited"},
+    "surfaceTwo": {"value": "#19243B", "origin": "inherited"},
+    "surfaceThree": {"value": "#22304B", "origin": "inherited"},
+    "surfaceOverlay": {"value": "#182238", "origin": "inherited"},
+    "textPrimary": {"value": "#F4F7FC", "origin": "inherited"},
+    "textSecondary": {"value": "#B8C2D8", "origin": "inherited"},
+    "textMuted": {"value": "#8490A8", "origin": "inherited"},
+    "accentPrimary": {"value": "#FFB22C", "origin": "inherited"},
+    "accentFocus": {"value": "#5EC7FF", "origin": "inherited"},
+    "accentDanger": {"value": "#FF6B6B", "origin": "inherited"},
+    "statusSuccess": {"value": "#3FBF8F", "origin": "inherited"},
+    "statusWarning": {"value": "#FFB22C", "origin": "inherited"},
+    "statusError": {"value": "#FF6B6B", "origin": "inherited"},
+    "border": {"value": "#33425F", "origin": "inherited"},
+    "statusUnknown": {"value": "#8490A8", "origin": "proposed"},
+    "statusInfo": {"value": "#5EC7FF", "origin": "proposed"}
+  },
+  "spaceDip": {"xxs": 4, "xs": 8, "sm": 12, "md": 16, "lg": 24, "xl": 32, "xxl": 48},
+  "radiusDip": {"sm": 4, "md": 8, "lg": 12, "xl": 16},
+  "textDip": {"caption": 12, "body": 14, "heading2": 18, "heading1": 24, "metric": 28},
+  "controlsDip": {"compact": 40, "default": 48, "criticalStop": 56},
+  "layoutDip": {"referenceWidth": 1600, "referenceHeight": 900, "proposedMinWidth": 1024, "proposedMinHeight": 720, "sidebar": 224, "inspector": 336},
+  "meter": {"minDbfs": -60, "maxDbfs": 0, "defaultWindowMs": 100, "liveRedrawFpsMin": 10, "liveRedrawFpsMax": 20, "labels": ["windowPeakDbfs", "windowRmsDbfs", "sessionPeakHoldDbfs", "clipCount"]},
+  "motionMs": {"instant": 0, "fast": 100, "normal": 180, "slow": 280}
+}

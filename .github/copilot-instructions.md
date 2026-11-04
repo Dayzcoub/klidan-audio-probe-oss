@@ -1,0 +1,1 @@
+Before coding read the repository root AGENTS.md and docs/agent/CONTEXT_ROUTER.md. Preserve the separation between Windows WASAPI probes and portable JSON/profile contracts. Distinguish IsFormatSupported from successful Initialize/Start and physical QA. Do not start audio, write samples, change device settings, or merge/publish without the explicit task requiring it.

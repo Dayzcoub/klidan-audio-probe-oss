@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/gui/">
+    <Project Path="src/gui/KlidanAudioProbe.Gui.App/KlidanAudioProbe.Gui.App.csproj" />
+    <Project Path="src/gui/KlidanAudioProbe.Gui.Core/KlidanAudioProbe.Gui.Core.csproj" />
+    <Project Path="src/gui/KlidanAudioProbe.Gui.Worker/KlidanAudioProbe.Gui.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/gui/">
+    <Project Path="tests/gui/KlidanAudioProbe.Gui.Core.Tests/KlidanAudioProbe.Gui.Core.Tests.csproj" />
+    <Project Path="tests/gui/KlidanAudioProbe.Gui.Worker.Tests/KlidanAudioProbe.Gui.Worker.Tests.csproj" />
+  </Folder>
+</Solution>

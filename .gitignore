@@ -1,0 +1,34 @@
+# CMake / IDE
+build/
+build-debug/
+build-asan/
+build-gui-d2/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.VC.db
+**/bin/
+**/obj/
+# Generated diagnostics and media
+graphify-out/
+reports/local/
+profiles/local/
+*.wav
+*.flac
+*.log
+*.dmp
+*.etl
+*.jsonl
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem

@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:klidan-audio-probe:device-configuration-profile:v2",
+  "title": "KLIDAN Audio Probe Device Configuration Profile v2",
+  "description": "Machine-local, advisory device configuration evidence. A profile is not a certification or instruction to change AudioHost settings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profileId", "createdAtUtc", "probeVersion", "platform", "backend", "environment", "device", "endpointBindings", "capabilityEvidence", "evidence", "audioHostAssessments", "streamObservations", "recommendation", "privacy"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "profileId": { "type": "string", "format": "uuid" },
+    "createdAtUtc": { "type": "string", "format": "date-time" },
+    "probeVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "platform": { "const": "WINDOWS" },
+    "backend": { "const": "WASAPI" },
+    "environment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["osDescription", "processArchitecture"],
+      "properties": { "osDescription": { "type": ["string", "null"], "maxLength": 256 }, "processArchitecture": { "type": ["string", "null"], "maxLength": 32 } }
+    },
+    "device": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "manufacturer", "model", "driverVersion", "firmware", "hardwareClock", "usbMode"],
+      "properties": {
+        "name": { "type": ["string", "null"], "maxLength": 256 },
+        "manufacturer": { "type": ["string", "null"], "maxLength": 128 },
+        "model": { "type": ["string", "null"], "maxLength": 128 },
+        "driverVersion": { "type": ["string", "null"], "maxLength": 128 },
+        "firmware": { "type": ["string", "null"], "maxLength": 128 },
+        "hardwareClock": { "type": ["string", "null"], "maxLength": 128 },
+        "usbMode": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    },
+    "endpointBindings": {
+      "type": "object", "additionalProperties": false, "required": ["capture", "render"],
+      "properties": { "capture": { "$ref": "#/$defs/endpointBinding" }, "render": { "$ref": "#/$defs/endpointBinding" } }
+    },
+    "capabilityEvidence": {
+      "type": "object", "additionalProperties": false, "required": ["capture", "render", "duplex"],
+      "properties": { "capture": { "$ref": "#/$defs/uuidList" }, "render": { "$ref": "#/$defs/uuidList" }, "duplex": { "$ref": "#/$defs/uuidList" } }
+    },
+    "evidence": { "type": "array", "minItems": 1, "maxItems": 1024, "items": { "$ref": "#/$defs/evidence" } },
+    "streamObservations": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/streamObservation" } },
+    "audioHostAssessments": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/audioHostAssessment" } },
+    "recommendation": {
+      "type": "object", "additionalProperties": false, "required": ["preferred", "fallback", "unavailableReasons"],
+      "properties": { "preferred": { "$ref": "#/$defs/choice" }, "fallback": { "$ref": "#/$defs/choice" }, "unavailableReasons": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "type": "string", "minLength": 1, "maxLength": 512 } } }
+    },
+    "privacy": { "enum": ["LOCAL_MACHINE", "SANITIZED_PORTABLE"] }
+  },
+  "$defs": {
+    "uuidList": { "type": "array", "uniqueItems": true, "maxItems": 1024, "items": { "type": "string", "format": "uuid" } },
+    "hresult": { "type": ["string", "null"], "pattern": "^(S_OK|0[xX][0-9A-Fa-f]{8})$" },
+    "endpointBinding": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["endpointId", "direction", "state", "friendlyName", "binding"],
+      "properties": {
+        "endpointId": { "type": ["string", "null"], "maxLength": 2048 },
+        "direction": { "enum": ["CAPTURE", "RENDER"] },
+        "state": { "const": "ACTIVE" },
+        "friendlyName": { "type": ["string", "null"], "maxLength": 256 },
+        "binding": { "enum": ["LOCAL_EXACT", "SANITIZED_UNBOUND"] }
+      }
+    },
+    "format": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["encoding", "sampleRate", "channels", "containerBits", "validBits", "period"],
+      "properties": {
+        "encoding": { "enum": ["PCM16", "PCM24_IN_32", "FLOAT32"] },
+        "sampleRate": { "type": "integer", "minimum": 8000, "maximum": 384000 },
+        "channels": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "containerBits": { "type": "integer", "enum": [16, 32] },
+        "validBits": { "type": "integer", "enum": [16, 24, 32] },
+        "period": { "enum": ["DEFAULT", "MINIMUM", null] }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sourceProvenance", "sourceReference", "observedAtUtc", "endpointDirection", "format", "channelMaskEvidence", "formatSupport", "isFormatSupportedHresult", "initialize", "initializeAttempted", "firstInitializeHresult", "alignmentInitializeHresult", "finalInitializeHresult", "requestedPeriod100ns", "actualPeriod100ns", "bufferFrames", "eventReady", "cleanup", "streamStart", "pcmObservation", "stability", "duplex", "physicalQa", "routing", "operationStatus", "activationHresult", "devicePeriodHresult", "defaultDevicePeriod100ns", "minimumDevicePeriod100ns", "queryCleanup", "queryClientReleaseAttempts", "clientReleaseAttempts", "eventCreateHresult", "setEventHandleHresult", "eventHandleCloseHresult", "alignmentGetBufferSizeHresult", "alignmentFrames", "alignmentActivateHresult", "alignmentPeriod100ns"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "sourceProvenance": { "enum": ["REAL_WASAPI_QUERY", "REAL_WASAPI_INITIALIZE_ONLY", "OPERATOR_PROVIDED"] },
+        "sourceReference": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "observedAtUtc": { "type": "string", "format": "date-time" },
+        "endpointDirection": { "enum": ["CAPTURE", "RENDER", "DUPLEX"] },
+        "format": { "$ref": "#/$defs/format" },
+        "channelMaskEvidence": { "type": "string", "maxLength": 128 },
+        "formatSupport": { "$ref": "#/$defs/state" },
+        "isFormatSupportedHresult": { "$ref": "#/$defs/hresult" },
+        "initialize": { "$ref": "#/$defs/state" },
+        "initializeAttempted": { "type": "boolean" },
+        "firstInitializeHresult": { "$ref": "#/$defs/hresult" },
+        "alignmentInitializeHresult": { "$ref": "#/$defs/hresult" },
+        "finalInitializeHresult": { "$ref": "#/$defs/hresult" },
+        "requestedPeriod100ns": { "type": ["integer", "null"], "minimum": 1 },
+        "actualPeriod100ns": { "type": ["integer", "null"], "minimum": 1 },
+        "bufferFrames": { "type": ["integer", "null"], "minimum": 1, "maximum": 4294967295 },
+        "eventReady": { "type": ["boolean", "null"] },
+        "cleanup": { "enum": ["NOT_RUN", "NOT_ACQUIRED", "RELEASE_ATTEMPTED", "CLEANUP_CONFIRMED", "FAILED", "INCOMPLETE", "UNKNOWN"] },
+        "streamStart": { "$ref": "#/$defs/state" },
+        "pcmObservation": { "$ref": "#/$defs/state" },
+        "stability": { "$ref": "#/$defs/state" },
+        "duplex": { "$ref": "#/$defs/state" },
+        "physicalQa": { "$ref": "#/$defs/state" },
+        "routing": { "enum": ["UNKNOWN", "OBSERVED", "PHYSICALLY_VERIFIED"] },
+        "operationStatus": { "$ref": "#/$defs/state" },
+        "activationHresult": { "$ref": "#/$defs/hresult" },
+        "devicePeriodHresult": { "$ref": "#/$defs/hresult" },
+        "defaultDevicePeriod100ns": { "type": ["integer", "null"], "minimum": 1 },
+        "minimumDevicePeriod100ns": { "type": ["integer", "null"], "minimum": 1 },
+        "queryCleanup": { "enum": ["NOT_ACQUIRED", "RELEASE_ATTEMPTED", "FAILED", "INCOMPLETE"] },
+        "queryClientReleaseAttempts": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "clientReleaseAttempts": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "eventCreateHresult": { "$ref": "#/$defs/hresult" },
+        "setEventHandleHresult": { "$ref": "#/$defs/hresult" },
+        "eventHandleCloseHresult": { "$ref": "#/$defs/hresult" },
+        "alignmentGetBufferSizeHresult": { "$ref": "#/$defs/hresult" },
+        "alignmentFrames": { "type": ["integer", "null"], "minimum": 1, "maximum": 4294967295 },
+        "alignmentActivateHresult": { "$ref": "#/$defs/hresult" },
+        "alignmentPeriod100ns": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "state": { "enum": ["NOT_RUN", "SUPPORTED_REPORTED", "INITIALIZED", "STREAM_STARTED", "STREAM_OBSERVED", "STABILITY_QA", "DUPLEX_QA", "KLIDAN_PHYSICAL_QA", "UNSUPPORTED", "FAILED", "INCOMPLETE", "UNKNOWN", "READY"] },
+    "audioHostAssessment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "processingFormat", "physicalFormat", "evidence", "eligibleForRecommendation", "unverifiedRequirements", "knownIncompatibilities"],
+      "properties": {
+        "mode": { "enum": ["SHARED", "COORDINATED_EXCLUSIVE"] },
+        "processingFormat": { "$ref": "#/$defs/format" },
+        "physicalFormat": { "$ref": "#/$defs/format" },
+        "evidence": { "$ref": "#/$defs/uuidList" },
+        "eligibleForRecommendation": { "type": "boolean" },
+        "unverifiedRequirements": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+        "knownIncompatibilities": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 512 } }
+      }
+    },
+    "choice": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["mode", "format", "period", "evidence"],
+      "properties": { "mode": { "enum": ["SHARED", "COORDINATED_EXCLUSIVE"] }, "format": { "$ref": "#/$defs/format" }, "period": { "enum": ["DEFAULT", "MINIMUM", null] }, "evidence": { "$ref": "#/$defs/uuidList" } }
+    },
+    "streamObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["initializeEvidenceId", "operationId", "provenance", "observedAtUtc", "direction", "format", "durationSeconds", "activationHresult", "isFormatSupportedHresult", "initializeHresult", "startHresult", "startSucceeded", "events", "packets", "framesProcessed", "expectedFrames", "frameCoveragePercent", "elapsedMilliseconds", "durationReached", "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts", "streamQuality", "stopSucceeded", "stopHresult", "cleanup", "cleanupDetail", "physicalPlayback", "physicalRouting"],
+      "properties": {
+        "initializeEvidenceId": { "type": "string", "format": "uuid" }, "operationId": { "type": "string", "format": "uuid" },
+        "provenance": { "const": "REAL_WASAPI_STREAM_VALIDATION" }, "observedAtUtc": { "type": "string", "format": "date-time" },
+        "direction": { "enum": ["CAPTURE", "RENDER"] }, "format": { "$ref": "#/$defs/format" }, "durationSeconds": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "activationHresult": { "$ref": "#/$defs/hresult" }, "isFormatSupportedHresult": { "$ref": "#/$defs/hresult" }, "initializeHresult": { "$ref": "#/$defs/hresult" }, "startHresult": { "$ref": "#/$defs/hresult" }, "stopHresult": { "$ref": "#/$defs/hresult" },
+        "startSucceeded": { "type": ["boolean", "null"] }, "events": { "type": ["integer", "null"], "minimum": 0 }, "packets": { "type": ["integer", "null"], "minimum": 0 }, "framesProcessed": { "type": ["integer", "null"], "minimum": 0 }, "expectedFrames": { "type": ["integer", "null"], "minimum": 0 },
+        "frameCoveragePercent": { "type": ["number", "null"], "minimum": 0, "maximum": 1000 }, "elapsedMilliseconds": { "type": ["number", "null"], "minimum": 0 }, "durationReached": { "type": ["boolean", "null"] }, "discontinuities": { "type": ["integer", "null"], "minimum": 0 }, "timestampErrors": { "type": ["integer", "null"], "minimum": 0 }, "unavailableCaptureBuffers": { "type": ["integer", "null"], "minimum": 0 }, "bufferServiceFaults": { "type": ["integer", "null"], "minimum": 0 }, "eventWaitTimeouts": { "type": ["integer", "null"], "minimum": 0 },
+        "streamQuality": { "enum": ["CLEAN", "ANOMALIES_PRESENT", "INCOMPLETE", "UNKNOWN"] }, "stopSucceeded": { "type": ["boolean", "null"] }, "cleanup": { "enum": ["NOT_RUN", "NOT_ACQUIRED", "RELEASE_ATTEMPTED", "CLEANUP_CONFIRMED", "FAILED", "INCOMPLETE", "UNKNOWN"] }, "cleanupDetail": { "type": "string", "minLength": 1, "maxLength": 256 }, "physicalPlayback": { "const": "NOT_MEASURED" }, "physicalRouting": { "const": "UNKNOWN" }
+      }
+    }
+  }
+}

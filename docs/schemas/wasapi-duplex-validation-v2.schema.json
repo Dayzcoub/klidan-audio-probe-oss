@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://klidan-audio-probe.local/schemas/wasapi-duplex-validation-v2.schema.json",
+  "title": "Audio Probe WASAPI Duplex Validation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "reportType", "reportId", "operationId", "timestampUtc", "probeVersion", "provenance", "requested", "capture", "render", "duplex", "physicalRtl", "audioHostEligibility"],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "reportType": {"const": "wasapi-duplex-validation"},
+    "reportId": {"type": "string", "format": "uuid"},
+    "operationId": {"type": "string", "format": "uuid"},
+    "timestampUtc": {"type": "string", "format": "date-time"},
+    "probeVersion": {"type": "string", "minLength": 1, "maxLength": 64},
+    "provenance": {"const": "REAL_WASAPI_DUPLEX"},
+    "requested": {
+      "type": "object", "additionalProperties": false,
+      "required": ["captureEndpointId", "renderEndpointId", "sampleRateHz", "encoding", "channels", "period", "durationSeconds", "mmcss"],
+      "properties": {
+        "captureEndpointId": {"type": "string", "minLength": 1, "maxLength": 32768},
+        "renderEndpointId": {"type": "string", "minLength": 1, "maxLength": 32768},
+        "sampleRateHz": {"const": 48000}, "encoding": {"const": "PCM16"}, "channels": {"const": 2},
+        "period": {"enum": ["MINIMUM", "DEFAULT"]}, "durationSeconds": {"type": "integer", "minimum": 1, "maximum": 10},
+        "mmcss": {"enum": ["OFF", "PRO_AUDIO"]}
+      }
+    },
+    "capture": {"$ref": "#/$defs/side"},
+    "render": {"$ref": "#/$defs/side"},
+    "duplex": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bothReadyBeforeStart", "coordinatedStartAuthorized", "cancelled", "peerStopRequested", "status", "startDifferenceMilliseconds", "simultaneousRuntimeMilliseconds"],
+      "properties": {
+        "bothReadyBeforeStart": {"type": "boolean"}, "coordinatedStartAuthorized": {"type": "boolean"},
+        "cancelled": {"type": "boolean"}, "peerStopRequested": {"type": "boolean"},
+        "status": {"enum": ["DUPLEX_CLEAN", "DUPLEX_WARNINGS", "FAILED", "INCOMPLETE", "CANCELLED"]},
+        "startDifferenceMilliseconds": {"$ref": "#/$defs/nullableNonnegative"},
+        "simultaneousRuntimeMilliseconds": {"$ref": "#/$defs/nullableNonnegative"}
+      }
+    },
+    "physicalRtl": {"const": "NOT_MEASURED"},
+    "audioHostEligibility": {"const": "NOT_CERTIFIED"}
+  },
+  "$defs": {
+    "nullableNonnegative": {"anyOf": [{"type": "number", "minimum": 0}, {"type": "null"}]},
+    "nullableHresult": {"anyOf": [{"type": "string", "maxLength": 64}, {"type": "null"}]},
+    "side": {
+      "type": "object", "additionalProperties": false,
+      "required": ["endpointId", "direction", "activationHresult", "devicePeriodHresult", "isFormatSupportedHresult", "initializeHresult", "startHresult", "stopHresult", "getBufferSizeHresult", "setEventHandleHresult", "actualBufferFrames", "framesProcessed", "expectedFrames", "events", "packets", "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "intermediateWaitTimeouts", "longEventIntervals", "devicePositionAnomalies", "unavailableCaptureBuffers", "silentBuffersServiced", "eventIntervalsObserved", "frameCoveragePercent", "eventIntervalMedianMilliseconds", "eventIntervalP95Milliseconds", "eventIntervalP99Milliseconds", "elapsedMilliseconds", "startOffsetMilliseconds", "ready", "startSucceeded", "stopSucceeded", "peerStopped", "watchdogTimedOut", "deviceInvalidated", "durationReached", "cancelled", "quality", "cleanup", "errorStage", "errorHresult"],
+      "properties": {
+        "endpointId": {"type": "string", "minLength": 1, "maxLength": 32768},
+        "direction": {"enum": ["CAPTURE", "RENDER"]},
+        "activationHresult": {"$ref": "#/$defs/nullableHresult"}, "devicePeriodHresult": {"$ref": "#/$defs/nullableHresult"},
+        "isFormatSupportedHresult": {"$ref": "#/$defs/nullableHresult"}, "initializeHresult": {"$ref": "#/$defs/nullableHresult"},
+        "startHresult": {"$ref": "#/$defs/nullableHresult"}, "stopHresult": {"$ref": "#/$defs/nullableHresult"},
+        "getBufferSizeHresult": {"$ref": "#/$defs/nullableHresult"}, "setEventHandleHresult": {"$ref": "#/$defs/nullableHresult"},
+        "actualBufferFrames": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "framesProcessed": {"type": "integer", "minimum": 0}, "expectedFrames": {"type": "integer", "minimum": 0},
+        "events": {"type": "integer", "minimum": 0}, "packets": {"type": "integer", "minimum": 0},
+        "discontinuities": {"type": "integer", "minimum": 0}, "timestampErrors": {"type": "integer", "minimum": 0},
+        "serviceFaults": {"type": "integer", "minimum": 0, "description": "Critical stream/API service failures only; excludes intermediate wait expirations and packet-drain-limit hits."}, "packetDrainLimitHits": {"type": "integer", "minimum": 0}, "intermediateWaitTimeouts": {"type": "integer", "minimum": 0, "description": "Bounded wait expirations before a later event; diagnostic count, not alone a service fault."}, "longEventIntervals": {"type": "integer", "minimum": 0, "description": "Observed event intervals above the existing long-interval threshold; blocks clean classification."}, "devicePositionAnomalies": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "unavailableCaptureBuffers": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "silentBuffersServiced": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "eventIntervalsObserved": {"type": "integer", "minimum": 0}, "frameCoveragePercent": {"$ref": "#/$defs/nullableNonnegative"},
+        "eventIntervalMedianMilliseconds": {"$ref": "#/$defs/nullableNonnegative"}, "eventIntervalP95Milliseconds": {"$ref": "#/$defs/nullableNonnegative"}, "eventIntervalP99Milliseconds": {"$ref": "#/$defs/nullableNonnegative"},
+        "elapsedMilliseconds": {"type": "number", "minimum": 0}, "startOffsetMilliseconds": {"$ref": "#/$defs/nullableNonnegative"},
+        "ready": {"type": "boolean"}, "startSucceeded": {"type": "boolean"}, "stopSucceeded": {"type": "boolean"},
+        "peerStopped": {"type": "boolean"}, "watchdogTimedOut": {"type": "boolean"}, "deviceInvalidated": {"type": "boolean"},
+        "durationReached": {"type": "boolean"}, "cancelled": {"type": "boolean"},
+        "quality": {"enum": ["CLEAN", "ANOMALIES_PRESENT", "SEVERE_ANOMALIES", "UNKNOWN"]},
+        "cleanup": {"enum": ["NOT_ATTEMPTED", "RELEASE_ATTEMPTED", "UNKNOWN", "FAILED"]},
+        "errorStage": {"type": "string", "maxLength": 128}, "errorHresult": {"$ref": "#/$defs/nullableHresult"}
+      }
+    }
+  }
+}
