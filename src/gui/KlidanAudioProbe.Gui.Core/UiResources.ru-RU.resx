@@ -191,4 +191,52 @@
   <data name="ConfirmAndScan" xml:space="preserve"><value>Подтвердить и сканировать</value></data>
   <data name="RealWorkerScanning" xml:space="preserve"><value>СКАНИРОВАНИЕ · реальный Worker</value></data>
   <data name="DriverCancellationNote" xml:space="preserve"><value>Запрос отмены не означает, что неотвечающий вызов драйвера уже остановлен. Итог и cleanup отображаются после ответа worker.</value></data>
+  <data name="LatestAutomaticResult" xml:space="preserve"><value>Последний автоматический результат</value></data>
+  <data name="DisconnectedWorkerHistory" xml:space="preserve"><value>Последний ответ отключённого worker · исторические данные</value></data>
+  <data name="SearchEndpointByName" xml:space="preserve"><value>Поиск по имени Windows endpoint</value></data>
+  <data name="SearchDeviceByName" xml:space="preserve"><value>Поиск устройства по имени</value></data>
+  <data name="DirectionFilter" xml:space="preserve"><value>Фильтр направления</value></data>
+  <data name="ActiveOnly" xml:space="preserve"><value>Только активные</value></data>
+  <data name="ShowActiveEndpoints" xml:space="preserve"><value>Показывать только активные Windows endpoints</value></data>
+  <data name="RealWindowsEndpoints" xml:space="preserve"><value>Реальные Windows endpoints · REAL_WINDOWS_METADATA</value></data>
+  <data name="InputOutput" xml:space="preserve"><value>Вход/выход</value></data>
+  <data name="StateLabel" xml:space="preserve"><value>Состояние</value></data>
+  <data name="SelectRowForDetails" xml:space="preserve"><value>Выберите строку для технических сведений</value></data>
+  <data name="SelectedEndpointDetails" xml:space="preserve"><value>Сведения о выбранном Windows endpoint</value></data>
+  <data name="SelectedDeviceDetails" xml:space="preserve"><value>Сведения о выбранном устройстве</value></data>
+  <data name="ExplicitDuplexPair" xml:space="preserve"><value>Явно выбрать пару Capture + Render для Duplex</value></data>
+  <data name="ScanExplicitPair" xml:space="preserve"><value>Сканировать явно выбранную пару Capture и Render</value></data>
+  <data name="ContinueSelectTest" xml:space="preserve"><value>Продолжить · выбрать тест</value></data>
+  <data name="ExplicitScanPairSelection" xml:space="preserve"><value>Явный выбор пары Capture Render для автоматического сканирования</value></data>
+  <data name="SelectScanPair" xml:space="preserve"><value>Выберите пару для сканирования</value></data>
+  <data name="NoConfirmedUniquePair" xml:space="preserve"><value>Windows не подтвердил единственную пару. Выберите активные Capture и Render явно; сходство имён не используется для объединения.</value></data>
+  <data name="AllowCrossGroupPair" xml:space="preserve"><value>Разрешить явную пару из разных физических групп</value></data>
+  <data name="AllowUnconfirmedPhysicalPair" xml:space="preserve"><value>Разрешить пару без подтверждённой общей физической принадлежности</value></data>
+  <data name="UnconfirmedPhysicalPairWarning" xml:space="preserve"><value>Предупреждение: Windows не подтвердил общую физическую принадлежность Capture и Render. Пара будет отмечена как OPERATOR_SELECTED и потребует отдельного подтверждения.</value></data>
+  <data name="DuplexCaptureEndpoint" xml:space="preserve"><value>Пара Duplex: Capture endpoint</value></data>
+  <data name="DuplexRenderEndpoint" xml:space="preserve"><value>Пара Duplex: Render endpoint</value></data>
+  <data name="UnknownDeviceAndRouting" xml:space="preserve"><value>Совпадение устройства: UNKNOWN, если Windows не предоставляет подтверждённую общую идентичность. Физическая маршрутизация: UNKNOWN.</value></data>
+  <data name="RepeatabilityStep3" xml:space="preserve"><value>Шаг 3 · после выбора точных Capture и Render</value></data>
+  <data name="RepeatabilityAvailabilityReason" xml:space="preserve"><value>Причина доступности repeatability</value></data>
+  <data name="PrepareRepeatabilityQa" xml:space="preserve"><value>Подготовить repeatability QA</value></data>
+  <data name="RepeatabilityStep4" xml:space="preserve"><value>Шаг 4 · одно подтверждение для всех шести операций</value></data>
+  <data name="RepeatabilityPlanConsent" xml:space="preserve"><value>Разрешаю весь immutable repeatability plan</value></data>
+  <data name="RepeatabilityStep5" xml:space="preserve"><value>Шаг 5 · Repeatability выполняется</value></data>
+  <data name="RequestCancellation" xml:space="preserve"><value>Запросить отмену</value></data>
+  <data name="ResultsStep6" xml:space="preserve"><value>Шаг 6 · Результаты</value></data>
+  <data name="RealExclusivePeriodDiscovery" xml:space="preserve"><value>Исследование реальных Exclusive периодов</value></data>
+  <data name="PeriodDiscoveryHeading" xml:space="preserve"><value>C4.2A · Исследование периодов</value></data>
+  <data name="PeriodDiscoveryAvailabilityReason" xml:space="preserve"><value>Причина доступности исследования периодов</value></data>
+  <data name="DiscoverPeriods" xml:space="preserve"><value>Исследовать периоды</value></data>
+  <data name="CandidatePlanConfirmation" xml:space="preserve"><value>Одно подтверждение для полного immutable candidate plan</value></data>
+  <data name="InitializeCandidatesConsent" xml:space="preserve"><value>Разрешаю только перечисленные Initialize-only кандидаты</value></data>
+  <data name="SequentialDiscovery" xml:space="preserve"><value>Исследование выполняется последовательно</value></data>
+  <data name="OneCustomDuplexOperation" xml:space="preserve"><value>Одна custom-period Duplex operation</value></data>
+  <data name="CustomDuplexHeading" xml:space="preserve"><value>C4.2B.1 · Одна custom-period Duplex operation</value></data>
+  <data name="CustomDuplexPrerequisite" xml:space="preserve"><value>Только после COMPLETED REAL C4.2A BOTH_EXACT; Capture discarded, Render silence, 5 секунд, MMCSS OFF, без routing.</value></data>
+  <data name="PeriodFrames" xml:space="preserve"><value>Период, frames:</value></data>
+  <data name="Prepare" xml:space="preserve"><value>Подготовить</value></data>
+  <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Отдельное подтверждение перед стартом</value></data>
+  <data name="CustomDuplexConsent" xml:space="preserve"><value>Разрешаю ровно одну перечисленную custom-period Duplex operation</value></data>
+  <data name="DuplexInProgress" xml:space="preserve"><value>Duplex выполняется</value></data>
 </root>

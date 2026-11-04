@@ -191,4 +191,52 @@
   <data name="ConfirmAndScan" xml:space="preserve"><value>Confirm and scan</value></data>
   <data name="RealWorkerScanning" xml:space="preserve"><value>SCANNING · real Worker</value></data>
   <data name="DriverCancellationNote" xml:space="preserve"><value>A cancellation request does not mean an unresponsive driver call has stopped. The result and cleanup are shown after the worker responds.</value></data>
+  <data name="LatestAutomaticResult" xml:space="preserve"><value>Latest automatic result</value></data>
+  <data name="DisconnectedWorkerHistory" xml:space="preserve"><value>Last response from disconnected worker · historical data</value></data>
+  <data name="SearchEndpointByName" xml:space="preserve"><value>Search Windows endpoints by name</value></data>
+  <data name="SearchDeviceByName" xml:space="preserve"><value>Search devices by name</value></data>
+  <data name="DirectionFilter" xml:space="preserve"><value>Direction filter</value></data>
+  <data name="ActiveOnly" xml:space="preserve"><value>Active only</value></data>
+  <data name="ShowActiveEndpoints" xml:space="preserve"><value>Show only active Windows endpoints</value></data>
+  <data name="RealWindowsEndpoints" xml:space="preserve"><value>Real Windows endpoints · REAL_WINDOWS_METADATA</value></data>
+  <data name="InputOutput" xml:space="preserve"><value>Input/output</value></data>
+  <data name="StateLabel" xml:space="preserve"><value>State</value></data>
+  <data name="SelectRowForDetails" xml:space="preserve"><value>Select a row for technical details</value></data>
+  <data name="SelectedEndpointDetails" xml:space="preserve"><value>Selected Windows endpoint details</value></data>
+  <data name="SelectedDeviceDetails" xml:space="preserve"><value>Selected device details</value></data>
+  <data name="ExplicitDuplexPair" xml:space="preserve"><value>Explicitly select a Capture + Render pair for Duplex</value></data>
+  <data name="ScanExplicitPair" xml:space="preserve"><value>Scan the explicitly selected Capture and Render pair</value></data>
+  <data name="ContinueSelectTest" xml:space="preserve"><value>Continue · select test</value></data>
+  <data name="ExplicitScanPairSelection" xml:space="preserve"><value>Explicit Capture Render pair selection for automatic scanning</value></data>
+  <data name="SelectScanPair" xml:space="preserve"><value>Select a pair to scan</value></data>
+  <data name="NoConfirmedUniquePair" xml:space="preserve"><value>Windows did not confirm a unique pair. Explicitly select active Capture and Render endpoints; similar names are not used for grouping.</value></data>
+  <data name="AllowCrossGroupPair" xml:space="preserve"><value>Allow an explicit pair from different physical groups</value></data>
+  <data name="AllowUnconfirmedPhysicalPair" xml:space="preserve"><value>Allow a pair without confirmed common physical identity</value></data>
+  <data name="UnconfirmedPhysicalPairWarning" xml:space="preserve"><value>Warning: Windows did not confirm that Capture and Render belong to the same physical device. The pair will be marked OPERATOR_SELECTED and requires separate confirmation.</value></data>
+  <data name="DuplexCaptureEndpoint" xml:space="preserve"><value>Duplex pair: Capture endpoint</value></data>
+  <data name="DuplexRenderEndpoint" xml:space="preserve"><value>Duplex pair: Render endpoint</value></data>
+  <data name="UnknownDeviceAndRouting" xml:space="preserve"><value>Device match: UNKNOWN if Windows does not provide a confirmed common identity. Physical routing: UNKNOWN.</value></data>
+  <data name="RepeatabilityStep3" xml:space="preserve"><value>Step 3 · after selecting exact Capture and Render endpoints</value></data>
+  <data name="RepeatabilityAvailabilityReason" xml:space="preserve"><value>Repeatability availability reason</value></data>
+  <data name="PrepareRepeatabilityQa" xml:space="preserve"><value>Prepare repeatability QA</value></data>
+  <data name="RepeatabilityStep4" xml:space="preserve"><value>Step 4 · one confirmation for all six operations</value></data>
+  <data name="RepeatabilityPlanConsent" xml:space="preserve"><value>I authorize the entire immutable repeatability plan</value></data>
+  <data name="RepeatabilityStep5" xml:space="preserve"><value>Step 5 · Repeatability in progress</value></data>
+  <data name="RequestCancellation" xml:space="preserve"><value>Request cancellation</value></data>
+  <data name="ResultsStep6" xml:space="preserve"><value>Step 6 · Results</value></data>
+  <data name="RealExclusivePeriodDiscovery" xml:space="preserve"><value>Real Exclusive period discovery</value></data>
+  <data name="PeriodDiscoveryHeading" xml:space="preserve"><value>C4.2A · Period discovery</value></data>
+  <data name="PeriodDiscoveryAvailabilityReason" xml:space="preserve"><value>Period discovery availability reason</value></data>
+  <data name="DiscoverPeriods" xml:space="preserve"><value>Discover periods</value></data>
+  <data name="CandidatePlanConfirmation" xml:space="preserve"><value>One confirmation for the complete immutable candidate plan</value></data>
+  <data name="InitializeCandidatesConsent" xml:space="preserve"><value>I authorize only the listed Initialize-only candidates</value></data>
+  <data name="SequentialDiscovery" xml:space="preserve"><value>Discovery runs sequentially</value></data>
+  <data name="OneCustomDuplexOperation" xml:space="preserve"><value>One custom-period Duplex operation</value></data>
+  <data name="CustomDuplexHeading" xml:space="preserve"><value>C4.2B.1 · One custom-period Duplex operation</value></data>
+  <data name="CustomDuplexPrerequisite" xml:space="preserve"><value>Only after COMPLETED REAL C4.2A BOTH_EXACT; Capture discarded, Render silence, 5 seconds, MMCSS OFF, no routing.</value></data>
+  <data name="PeriodFrames" xml:space="preserve"><value>Period, frames:</value></data>
+  <data name="Prepare" xml:space="preserve"><value>Prepare</value></data>
+  <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Separate confirmation before start</value></data>
+  <data name="CustomDuplexConsent" xml:space="preserve"><value>I authorize exactly one listed custom-period Duplex operation</value></data>
+  <data name="DuplexInProgress" xml:space="preserve"><value>Duplex in progress</value></data>
 </root>
