@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>KLIDAN Audio Probe · диагностика Windows</value></data>
+  <data name="Language" xml:space="preserve"><value>Язык</value></data>
+  <data name="DeveloperTools" xml:space="preserve"><value>Developer Tools · реальные + синтетические</value></data>
+  <data name="DeveloperToolsHidden" xml:space="preserve"><value>Developer Tools отключены. Запустите приложение с --developer-tools.</value></data>
+  <data name="WindowsDiagnostics" xml:space="preserve"><value>Диагностика Windows · только явные действия</value></data>
+  <data name="DeviceStep" xml:space="preserve"><value>1 · Устройство</value></data>
+  <data name="TestStep" xml:space="preserve"><value>2 · Проверка</value></data>
+  <data name="ResultStep" xml:space="preserve"><value>3 · Результат</value></data>
+  <data name="ReturnToWindows" xml:space="preserve"><value>Вернуться к проверке Windows</value></data>
+  <data name="LanguageRestartNotice" xml:space="preserve"><value>Настройка языка сохранена. Для безопасного применения перезапустите GUI.</value></data>
+</root>

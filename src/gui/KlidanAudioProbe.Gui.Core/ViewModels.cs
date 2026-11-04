@@ -20,10 +20,10 @@ public sealed class RelayCommand(Action execute, Func<bool>? canExecute = null) 
     public void Refresh() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
-public sealed class ParameterCommand(Action<object?> execute) : ICommand
+public sealed class ParameterCommand(Action<object?> execute, Func<bool>? canExecute = null) : ICommand
 {
     public event EventHandler? CanExecuteChanged { add { } remove { } }
-    public bool CanExecute(object? parameter) => true;
+    public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
     public void Execute(object? parameter) => execute(parameter);
 }
 
@@ -88,6 +88,7 @@ public sealed class MainViewModel : ViewModel
     private ProbeScreen _screen = ProbeScreen.Devices;
     private OperatorStep _operatorStep = OperatorStep.Device;
     private bool _developerToolsOpen;
+    private readonly bool _developerToolsAvailable;
     private string _operatorTestMode = "EXCLUSIVE_FORMAT_QUERY", _realInitializePeriod = "default";
     private string _operatorResultEndpoint = "", _operatorResultMode = "", _operatorResultConfiguration = "";
     private string _deviceProfileSaveMessage = "";
@@ -230,7 +231,7 @@ public sealed class MainViewModel : ViewModel
     private long _workerTimelineSequence;
     private readonly List<WorkerEventDto> _earlyWorkerEvents = [];
     private TaskCompletionSource? _workerTerminal;
-    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null)
+    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null, bool developerToolsAvailable = true)
     {
         _client = client ?? new FakeProbeClient();
         _worker = worker;
@@ -241,6 +242,7 @@ public sealed class MainViewModel : ViewModel
         _profileDirectory = profileDirectory;
         _bundleExportInteraction = bundleExportInteraction;
         _bundleDirectoriesFactory = bundleDirectoriesFactory;
+        _developerToolsAvailable = developerToolsAvailable;
         _uiContext = SynchronizationContext.Current;
         CaptureEndpoints = new(_client.ListEndpoints(SessionMode.Capture));
         RenderEndpoints = new(_client.ListEndpoints(SessionMode.Render));
@@ -251,10 +253,10 @@ public sealed class MainViewModel : ViewModel
         _selectedFormat = Formats.FirstOrDefault();
         _selectedReport = Reports.FirstOrDefault();
 
-        NavigateCommand = new(p => Navigate(Enum.Parse<ProbeScreen>(p!.ToString()!)));
+        NavigateCommand = new(p => Navigate(Enum.Parse<ProbeScreen>(p!.ToString()!)), () => _developerToolsAvailable);
         OperatorStepCommand = new(p => NavigateOperatorStep(Enum.Parse<OperatorStep>(p!.ToString()!)));
-        OpenDeveloperToolsCommand = new(OpenDeveloperTools);
-        OpenManualRealToolsCommand = new(OpenManualRealTools);
+        OpenDeveloperToolsCommand = new(OpenDeveloperTools, () => _developerToolsAvailable);
+        OpenManualRealToolsCommand = new(OpenManualRealTools, () => _developerToolsAvailable);
         CloseDeveloperToolsCommand = new(CloseDeveloperTools);
         DirectionCommand = new(p => Direction = Enum.Parse<SessionMode>(p!.ToString()!));
         BeginCommand = new(RequestConfirmation, CanBegin);
@@ -342,6 +344,20 @@ public sealed class MainViewModel : ViewModel
     public OperatorStep WorkflowStep { get => _operatorStep; private set { if (Set(ref _operatorStep, value)) { Changed(nameof(WorkflowStepLabel)); Changed(nameof(OperatorSelectedDevice)); } } }
     public string WorkflowStepLabel => WorkflowStep switch { OperatorStep.Device => "1 · Устройство", OperatorStep.Test => "2 · Проверка", _ => "3 · Результат" };
     public bool DeveloperToolsOpen { get => _developerToolsOpen; set { if (Set(ref _developerToolsOpen, value)) { Changed(nameof(WorkerStatusVisible)); RefreshContext(); } } }
+    public bool DeveloperToolsAvailable => _developerToolsAvailable;
+    public IReadOnlyList<StringSelectionOption> LanguageOptions => Localization.Languages;
+    public string SelectedLanguage
+    {
+        get => Localization.CurrentCulture.Name;
+        set
+        {
+            if (value is not ("ru-RU" or "en-US") || value == SelectedLanguage) return;
+            Localization.SetLanguage(value);
+            Changed(nameof(SelectedLanguage));
+            Changed(nameof(LanguageRestartNotice));
+        }
+    }
+    public string LanguageRestartNotice => Localization.Get("LanguageRestartNotice");
     public bool WorkerStatusVisible => DeveloperToolsOpen || WorkerOperationActive;
     public IReadOnlyList<StringSelectionOption> OperatorTestModes { get; } = [new("EXCLUSIVE_FORMAT_QUERY", "Запрос Exclusive-форматов"), new("INITIALIZE_ONLY", "Проверка Initialize-only")];
     public IReadOnlyList<StringSelectionOption> RealInitializePeriods { get; } = [new("default", "Стандартный (DEFAULT)"), new("minimum", "Минимальный (MINIMUM)")];
@@ -1166,7 +1182,7 @@ public sealed class MainViewModel : ViewModel
 
     public void Navigate(ProbeScreen screen)
     {
-        if (AutomaticScanBusy || AutomaticScanRunning) return;
+        if (!_developerToolsAvailable || AutomaticScanBusy || AutomaticScanRunning) return;
         DeveloperToolsOpen = true;
         if (screen == ProbeScreen.Devices) WorkflowStep = OperatorStep.Device;
         if (Set(ref _screen, screen, nameof(Screen))) { Changed(nameof(ConfirmationText)); RefreshContext(); RefreshCanExecute(); }
@@ -1174,7 +1190,7 @@ public sealed class MainViewModel : ViewModel
 
     private void OpenManualRealTools()
     {
-        if (AutomaticScanBusy || AutomaticScanRunning) return;
+        if (!_developerToolsAvailable || AutomaticScanBusy || AutomaticScanRunning) return;
         DeveloperToolsOpen = true;
         Screen = ProbeScreen.Devices;
         WorkflowStep = OperatorStep.Test;
@@ -1183,7 +1199,7 @@ public sealed class MainViewModel : ViewModel
 
     private void OpenDeveloperTools()
     {
-        if (AutomaticScanBusy || AutomaticScanRunning) return;
+        if (!_developerToolsAvailable || AutomaticScanBusy || AutomaticScanRunning) return;
         DeveloperToolsOpen = true;
     }
 

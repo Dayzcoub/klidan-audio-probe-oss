@@ -73,7 +73,7 @@
     <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="64"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Background="{StaticResource OneBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
       <Grid Margin="18,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="KLIDAN" Foreground="{StaticResource AmberBrush}" FontWeight="Bold" FontSize="17"/><TextBlock Text=" AUDIO PROBE" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="  ·  WINDOWS DIAGNOSTICS" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/></StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="KLIDAN" Foreground="{StaticResource AmberBrush}" FontWeight="Bold" FontSize="17"/><TextBlock Text=" AUDIO PROBE" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="  ·  WINDOWS DIAGNOSTICS" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/><TextBlock Text="Язык / Language" Foreground="{StaticResource MutedBrush}" Margin="24,2,6,0" VerticalAlignment="Center"/><ComboBox Width="112" Height="30" ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Value" SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" DisplayMemberPath="Label" ToolTip="Настройка языка применяется после перезапуска GUI" AutomationProperties.Name="Выбор языка / Language selection"/></StackPanel>
         <Grid Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="Кнопки управления окном">
           <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="5"/><ColumnDefinition Width="42"/><ColumnDefinition Width="5"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
           <Button Grid.Column="0" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="Свернуть" ToolTip="Свернуть" Click="Minimize_Click"><Path Width="14" Height="14" Data="M 2,7 L 12,7" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/></Button>
@@ -92,6 +92,7 @@
             <Button x:Name="OperatorDeviceStepButton" Style="{StaticResource OperatorDeviceStepButton}" Content="1 · Устройство" Command="{Binding OperatorStepCommand}" CommandParameter="Device"/>
             <Button x:Name="OperatorTestStepButton" Style="{StaticResource OperatorTestStepButton}" Content="2 · Тест" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
             <Button x:Name="OperatorResultStepButton" Style="{StaticResource OperatorResultStepButton}" Content="3 · Результат" Command="{Binding OperatorStepCommand}" CommandParameter="Result" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
+            <StackPanel Visibility="{Binding DeveloperToolsAvailable, Converter={StaticResource BoolVisibility}}">
             <TextBlock Text="РАЗРАБОТЧИКУ" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold" Margin="12,20,0,7"/>
             <Button Style="{StaticResource NavButton}" Content="Developer Tools · real + synthetic" Command="{Binding OpenDeveloperToolsCommand}"/>
             <StackPanel Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}">
@@ -103,7 +104,7 @@
               <Button Style="{StaticResource NavButton}" Content="Worker Fake / IPC" Command="{Binding NavigateCommand}" CommandParameter="Diagnostics"/>
               <Button Style="{StaticResource NavButton}" Content="Ручные реальные операции" Command="{Binding OpenManualRealToolsCommand}"/>
               <Button Content="Вернуться к проверке Windows" Command="{Binding CloseDeveloperToolsCommand}" Margin="4,8"/>
-            </StackPanel>
+            </StackPanel></StackPanel>
           </StackPanel>
           <Border DockPanel.Dock="Bottom" Background="{StaticResource TwoBrush}" CornerRadius="8" Padding="10" Margin="0,10,0,0"><TextBlock Text="Windows diagnostics · только явные действия" Foreground="{StaticResource SecondaryBrush}" FontWeight="Bold" TextWrapping="Wrap"/></Border>
         </DockPanel>

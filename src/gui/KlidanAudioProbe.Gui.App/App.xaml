@@ -1,4 +1,4 @@
-<Application x:Class="KlidanAudioProbe.Gui.App.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" StartupUri="MainWindow.xaml">
+<Application x:Class="KlidanAudioProbe.Gui.App.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
     <Color x:Key="RootColor">#0B1020</Color><Color x:Key="OneColor">#121A2D</Color><Color x:Key="TwoColor">#19243B</Color><Color x:Key="ThreeColor">#22304B</Color>
     <Color x:Key="TextColor">#F4F7FC</Color><Color x:Key="SecondaryColor">#B8C2D8</Color><Color x:Key="MutedColor">#8490A8</Color>

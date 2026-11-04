@@ -27,12 +27,13 @@ public partial class MainWindow : Window
 
     public MainWindow() : this(null) { }
 
-    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null)
+    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null, bool developerToolsAvailable = true)
     {
         InitializeComponent();
+        Title = KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle");
         _ownsWorkerLifecycle = viewModel is null;
         _profileDirectory = profileDirectory;
-        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this));
+        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable);
         DataContext = _vm;
         _vm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(MainViewModel.Screen) or nameof(MainViewModel.WorkflowStep) or nameof(MainViewModel.DeveloperToolsOpen)) { UpdateScreenVisibility(); UpdateResponsiveLayout(); } if (e.PropertyName == nameof(MainViewModel.SelectedWindowsEndpoint)) UpdateWindowsEndpointDetailsVisibility(); };
         DataContextChanged += (_, _) => UpdateWindowsEndpointDetailsVisibility();

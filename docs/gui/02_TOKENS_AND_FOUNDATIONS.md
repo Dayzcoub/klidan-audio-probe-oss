@@ -50,4 +50,4 @@ Use the **actual KLIDAN WPF resource values**, not an improvised new palette. Th
 - One outline icon family, fixed stroke and sizes 16/20/24. Provide text beside all critical actions (`Начать проверку`, `Стоп`, `Экспорт`). Do not mix emoji into production chrome.
 
 ## Style source-of-truth
-`design-tokens.json` is a portable **design reference**, not immediately a XAML or CSS dependency. Implementation must generate or maintain canonical WPF resources (after framework ADR) and record mapping to main KLIDAN tokens. Avoid direct source-copy dependency on the game app.
+`design-tokens.json` is a portable **design reference**, not immediately a XAML or CSS dependency. Implementation must generate or maintain canonical WPF resources in this repository. Avoid direct source-copy dependency on another application.

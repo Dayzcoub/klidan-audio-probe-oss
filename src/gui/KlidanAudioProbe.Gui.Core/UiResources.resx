@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>KLIDAN Audio Probe · Windows diagnostics</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="DeveloperTools" xml:space="preserve"><value>Developer Tools · real + synthetic</value></data>
+  <data name="DeveloperToolsHidden" xml:space="preserve"><value>Developer Tools are disabled. Start with --developer-tools.</value></data>
+  <data name="WindowsDiagnostics" xml:space="preserve"><value>Windows diagnostics · explicit actions only</value></data>
+  <data name="DeviceStep" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="TestStep" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="ResultStep" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="ReturnToWindows" xml:space="preserve"><value>Return to Windows diagnostics</value></data>
+  <data name="LanguageRestartNotice" xml:space="preserve"><value>Language preference saved. Restart the GUI to apply it safely.</value></data>
+</root>
