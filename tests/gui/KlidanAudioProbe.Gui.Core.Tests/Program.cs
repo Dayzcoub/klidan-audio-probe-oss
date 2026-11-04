@@ -175,6 +175,16 @@ languageWindow.Show(); languageWindow.UpdateLayout();
 var languageSelector = (ComboBox)languageWindow.FindName("LanguageSelector")!;
 Check(languageSelector.Width >= 150 && languageSelector.MinWidth >= 150 && languageSelector.ItemTemplate is not null && languageSelector.Items.Cast<StringSelectionOption>().Select(x => x.Label).SequenceEqual(new[] { "Русский", "English" }), "language ComboBox uses an explicit label template and a bounded width suitable for 1024-DIP layout");
 languageWindow.Close();
+foreach (var (language, expectedFormat) in new[] { ("ru-RU", "Основной: {0}"), ("en-US", "Preferred: {0}") })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var localizedWindow = new MainWindow(new MainViewModel(developerToolsAvailable: false));
+    var preview = (Border)localizedWindow.FindName("HistoricalRecoveryPreview")!;
+    var preferredText = ((StackPanel)preview.Child).Children.OfType<TextBlock>().Single(text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == "HistoricalRecoveryPreferred");
+    Check(BindingOperations.GetBinding(preferredText, TextBlock.TextProperty)?.StringFormat == expectedFormat, $"{language} WPF loads the localized preferred-profile binding format");
+    localizedWindow.Close();
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
 var comboControl = new ComboBox { Style = comboStyle };
 comboControl.ApplyTemplate();
 var popup = (Popup)comboTemplate.FindName("PART_Popup", comboControl);
