@@ -1,14 +1,28 @@
 # KLIDAN Audio Probe
 
-Независимая Windows-утилита для диагностики аудиоинтерфейсов и проверки совместимости WASAPI Shared / Exclusive.
+Независимая Windows x64-утилита для диагностики аудиоинтерфейсов и проверки совместимости WASAPI Shared / Exclusive.
 
-**Статус:** доступны пассивная проверка endpoint, явный Exclusive `Initialize` probe, ограниченный `--test-stream`, Capture meter и подтверждаемый изолированный Render channel test для PCM16 stereo. WPF GUI использует отдельный Native Worker и Named Pipe для явного Windows endpoint discovery, Exclusive format query и consent-gated Initialize-only. Потоковый Capture/Render из GUI не реализован. GUI workflow: Device → Test → Result; Local Demo и Worker Fake находятся в Developer Tools. Аппаратная и интерактивная визуальная QA этого workflow не выполнялась.
+**Статус:** experimental preview. Реализованы пассивное endpoint discovery, WASAPI Exclusive format query и Initialize-only, bounded Capture/Render stream checks, Duplex, Period Discovery, Repeatability, Sustained Validation, Capture meter, Evidence Library, versioned device profiles и consent-gated Automatic Scan. WPF GUI использует отдельный Native Worker и Named Pipe IPC; рабочий путь Device → Test → Result включает реальный scan orchestration и отдельные synthetic Developer Tools.
+
+Приложение не является сертификационным инструментом. Оно показывает наблюдения Windows/WASAPI и сохраняет их происхождение; `AudioHost` остаётся `NOT_CERTIFIED`, физические RTL-измерения отсутствуют, а программные transport/clock результаты не следует трактовать как ADC/DAC или акустическую задержку.
 
 ### GUI Design Kit v0.1 — D0
 
-Визуальный baseline **APPROVED** владельцем проекта 2026-10-30 и импортирован в [docs/gui](docs/gui/README.md). D1 Architecture A (WPF .NET 10 + отдельный Native Worker + типизированный Named Pipe IPC) **ACCEPTED** владельцем 2026-10-30. [D1 architecture](docs/gui/D1_ARCHITECTURE.md), [IPC](docs/gui/D1_IPC_PROTOCOL.md), [lifecycle](docs/gui/D1_LIFECYCLE.md) и [test strategy](docs/gui/D1_TEST_STRATEGY.md) описывают границу. D2 fake-data shell и D3-B1 пассивное обнаружение Windows / D3-B2 реальный WASAPI format query и Initialize-only workflow реализованы в коде; см. [D3-B2](docs/gui/D3_B2_IMPLEMENTATION.md) и [D3-B2.1 operator workflow](docs/gui/D3_B2.1_OPERATOR_WORKFLOW.md). Аппаратная проверка C1/C2 и интерактивная визуальная QA GUI остаются ожидающими. GUI format query не запускает потоки и не передаёт PCM.
+Визуальный baseline и WPF boundary документированы в [docs/gui](docs/gui/README.md), [D1 architecture](docs/gui/D1_ARCHITECTURE.md), [IPC](docs/gui/D1_IPC_PROTOCOL.md) и [lifecycle](docs/gui/D1_LIFECYCLE.md). Developer Tools остаются synthetic/diagnostic-only; они не являются доказательством физических возможностей устройства.
 
-C1 добавляет versioned Device Configuration Profile v1 из текущих реальных Windows/WASAPI query и Initialize-only результатов, включая Capture-only partial profile, строгую проверку, локальное сохранение и sanitized export. Это не KLIDAN import, не AudioHost configuration, не recommendation и не физическая сертификация; см. [C1 implementation](docs/gui/C1_IMPLEMENTATION.md) и [profile schema](docs/schemas/device-configuration-profile-v1.schema.json).
+Device profiles агрегируют exact endpoint-bound evidence, query/Initialize/stream/Duplex observations, historical recovery и sanitized export. Профиль не является KLIDAN import, AudioHost configuration или физической сертификацией; см. [profile format](docs/PROFILE_FORMAT.md) и [profile schemas](docs/schemas/).
+
+## Реализованные GUI workflows
+
+- **Automatic Scan** — свежий discovery, immutable consent-bound plan, bounded Query/Initialize/Stream/Duplex stages и честные `UNKNOWN`/`NOT_RUN` outcomes.
+- **Period Discovery** — exact current-endpoint period candidates с read-back validation; unsupported или incomplete results не продвигаются.
+- **Duplex** — независимые Capture/Render WASAPI Exclusive sessions с отдельными lifecycle, quality, coverage и cleanup facts.
+- **Repeatability** — bounded repeated Duplex operations, per-run identity и aggregate без усреднения статусов.
+- **Sustained Validation** — длительные bounded observations с fail-closed selection; benign intermediate waits остаются diagnostic counters, но material faults блокируют selection.
+- **Evidence Library** — локальный просмотр, сравнение и экспорт завершённых evidence bundles без публикации raw endpoint identifiers.
+- **Device profiles** — versioned JSON profiles, local atomic save/read-back, strict validation, partial Capture/Render states и sanitized export.
+
+Физический QA устройств отражён только в [Hardware Compatibility Matrix](docs/HARDWARE_COMPATIBILITY.md); сырые отчёты и персональные/машинные идентификаторы не входят в OSS snapshot.
 
 ## MVP и принципы
 
@@ -22,6 +36,8 @@ C1 добавляет versioned Device Configuration Profile v1 из текущ�
 ## Сборка (Windows 10/11 x64)
 
 Нужны CMake 3.23+ и Visual Studio 2022 C++ Build Tools с Windows SDK.
+
+Для официальных установщиков используйте страницу [GitHub Releases](https://github.com/Dayzcoub/klidan-audio-probe-oss/releases). На момент подготовки этого snapshot опубликованного release нет; не скачивайте установщики из случайных источников и проверяйте SHA-256 из release notes.
 
 ```powershell
 cmake -S . -B build -A x64
@@ -150,17 +166,14 @@ Render marker sample index привязан к stream-relative `IAudioClock::Get
 
 Capture-пакеты только учитываются и освобождаются; аудиосэмплы не сохраняются. Render передаёт только штатную WASAPI тишину. `STREAM_COMPLETED` подтверждает лишь ограниченный тест `Start`/event/block processing/`Stop`, не длительную стабильность и не сквозную задержку. Запуск может занять Exclusive endpoint.
 
-Операторские результаты B1.1 и B2.1 от 29.10.2026 для Audient iD4, DEXP U700 и Bloody, включая расхождения темпа передачи кадров на Minimum Period, приведены в [HANDOFF](docs/HANDOFF.md) и [DEVICE_QA_NOTES](docs/DEVICE_QA_NOTES.md). Они не подтверждают реальную частоту ЦАП, акустическую задержку или длительную стабильность.
-
 ## Документы
 
-- [AGENTS.md](AGENTS.md) — обязательные правила для Codex, Claude и других агентов.
-- [Маршрутизатор контекста](docs/agent/CONTEXT_ROUTER.md) — что читать для конкретной задачи.
 - [Архитектура](docs/ARCHITECTURE.md) — границы подсистем и независимость от KLIDAN.
 - [План разработки](docs/ROADMAP.md) — версии 0.1–1.0 и критерии готовности.
 - [Безопасность измерений](docs/TEST_SAFETY.md) — условия реального захвата/вывода и честная диагностика.
-- [Формат профиля](docs/PROFILE_FORMAT.md) — проект контракта JSON, пока не production schema.
-- [Аппаратные наблюдения](docs/DEVICE_QA_NOTES.md) — Audient iD4, FLOW 8 и ограничения данных.
-- [Текущий handoff](docs/HANDOFF.md) — исходные материалы и нерешённые вопросы.
+- [Формат профиля](docs/PROFILE_FORMAT.md) — versioned JSON profile contract и evidence boundaries.
+- [Hardware Compatibility Matrix](docs/HARDWARE_COMPATIBILITY.md) — обезличенная матрица операторских наблюдений.
+- [Windows installer](docs/WINDOWS_INSTALLER.md) — воспроизводимая Windows packaging procedure.
+- [JSON schemas](docs/schemas/) — versioned report/profile schemas.
 
-Лицензия для публичного распространения пока не выбрана. До её явного назначения не предполагайте разрешение на распространение модификаций третьими лицами.
+Проект распространяется под [Apache License 2.0](LICENSE). Обязательные notices для RapidJSON и Microsoft .NET runtime находятся в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); эти notices не заменяются Apache License.

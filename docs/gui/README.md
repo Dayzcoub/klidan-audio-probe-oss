@@ -1,8 +1,8 @@
 # KLIDAN Audio Probe — GUI Design Kit
 
-**Status:** owner-approved visual/design baseline v0.1, 2026-10-30. D2 implements a runnable fake-data WPF shell; no native worker or live audio integration exists. D1 separately accepts Architecture A; this design baseline is not a release specification. Designed for the standalone repository `Dayzcoub/klidan-audio-probe`.
+**Status:** owner-approved visual/design baseline v0.1, 2026-10-30. The original D2 fake-data shell has since been extended by the native Worker/Named Pipe integration and the consent-gated Windows/WASAPI workflows documented in the implementation notes. This design corpus remains a UI reference, not a release specification.
 
-See [design governance](GOVERNANCE.md) for the D0 decision, maturity corrections, token provenance and versioning rule. D1 Architecture A approved 2026-10-30; see [D2 implementation](D2_IMPLEMENTATION.md).
+D1 Architecture A was approved 2026-10-30; see [D1 architecture](D1_ARCHITECTURE.md), [D2 implementation](D2_IMPLEMENTATION.md) and the current [D3-B2 implementation](D3_B2_IMPLEMENTATION.md).
 
 ## Purpose
 Provide a consistent visual, interaction, data, accessibility and implementation contract **before** coding the first desktop GUI. Audio Probe is a diagnostic tool, not the game operator console; inherit KLIDAN's visual grammar without copying gaming-specific widgets.
