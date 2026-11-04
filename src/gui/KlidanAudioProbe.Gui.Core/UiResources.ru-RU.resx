@@ -332,4 +332,44 @@
   <data name="CleanupLabel" xml:space="preserve"><value>Очистка</value></data>
   <data name="SessionLabel" xml:space="preserve"><value>Сессия</value></data>
   <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Подробности выбранного события worker</value></data>
+  <data name="LocalDemoNoPipe" xml:space="preserve"><value>LOCAL DEMO · локальная D2 модель · не использует Named Pipe</value></data>
+  <data name="LocalScenariosLimit" xml:space="preserve"><value>Локальные сценарии ниже изменяют только состояние ViewModel. Они не являются событиями worker и не подтверждают работу устройств.</value></data>
+  <data name="LocalDemoWarning" xml:space="preserve"><value>Предупреждение LOCAL DEMO</value></data>
+  <data name="LocalDemoError" xml:space="preserve"><value>Ошибка LOCAL DEMO</value></data>
+  <data name="LocalDemoDeviceLoss" xml:space="preserve"><value>Потеря устройства LOCAL DEMO</value></data>
+  <data name="DisconnectLocalDemo" xml:space="preserve"><value>Отключить LOCAL DEMO</value></data>
+  <data name="LocalDemoTimeline" xml:space="preserve"><value>Временная шкала локальной демонстрации</value></data>
+  <data name="StopWorkerFakeSession" xml:space="preserve"><value>Остановить fake-сессию worker</value></data>
+  <data name="StopLocal" xml:space="preserve"><value>СТОП LOCAL</value></data>
+  <data name="StopLocalDemoSession" xml:space="preserve"><value>Остановить локальную demo-сессию</value></data>
+  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>WINDOWS DIAGNOSTICS · операции выполняются только по явному действию</value></data>
+  <data name="WorkerFakeSessionState" xml:space="preserve"><value>Состояние fake-сессии worker</value></data>
+  <data name="DemoSessionConfirmation" xml:space="preserve"><value>Подтверждение демонстрационной сессии</value></data>
+  <data name="DemoSimulationConsent" xml:space="preserve"><value>Я понимаю, что запускается только демонстрационная симуляция.</value></data>
+  <data name="WorkerFakeConfirmation" xml:space="preserve"><value>Подтверждение WORKER FAKE</value></data>
+  <data name="WorkerFakeLimitations" xml:space="preserve"><value>Worker выполняет только синтетическую операцию. Нет WASAPI, записи PCM или физической проверки.</value></data>
+  <data name="FakeSettingsConsent" xml:space="preserve"><value>Подтверждаю эти точные настройки fake-сессии.</value></data>
+  <data name="ConfirmStartFake" xml:space="preserve"><value>Подтвердить запуск fake</value></data>
+  <data name="SyntheticFixturesHeading" xml:space="preserve"><value>СИНТЕТИЧЕСКИЕ / ТЕСТОВЫЕ ДАННЫЕ</value></data>
+  <data name="RealWindowsDiagnosticsHeading" xml:space="preserve"><value>РЕАЛЬНАЯ ДИАГНОСТИКА WINDOWS</value></data>
+  <data name="DuplexRepeatabilityQa" xml:space="preserve"><value>QA повторяемости Duplex</value></data>
+  <data name="DuplexRepeatabilityHeading" xml:space="preserve"><value>C4.1 · QA повторяемости Duplex</value></data>
+  <data name="InitializeOnlyPairDescription" xml:space="preserve"><value>Реальная диагностика Windows · точная пара Capture/Render · только Initialize</value></data>
+  <data name="BoundedRepeatabilityHeading" xml:space="preserve"><value>C4.2B.2 · ограниченная повторяемость</value></data>
+  <data name="EvidenceComparisonMode" xml:space="preserve"><value>Режим сравнения свидетельств</value></data>
+  <data name="EvidenceLibraryRecords" xml:space="preserve"><value>Записи библиотеки свидетельств</value></data>
+  <data name="TypeColumn" xml:space="preserve"><value>Тип</value></data>
+  <data name="PeriodColumn" xml:space="preserve"><value>Период</value></data>
+  <data name="ModeColumn" xml:space="preserve"><value>Режим</value></data>
+  <data name="LocalTimeColumn" xml:space="preserve"><value>Местное время</value></data>
+  <data name="UtcColumn" xml:space="preserve"><value>UTC</value></data>
+  <data name="ProvenanceColumn" xml:space="preserve"><value>Происхождение</value></data>
+  <data name="StatusColumn" xml:space="preserve"><value>Статус</value></data>
+  <data name="LifecycleQualityColumn" xml:space="preserve"><value>Жизненный цикл / качество</value></data>
+  <data name="NormalizedDuplexComparisons" xml:space="preserve"><value>Нормализованные сравнения Duplex</value></data>
+  <data name="ConfigurationColumn" xml:space="preserve"><value>Конфигурация</value></data>
+  <data name="RunsColumn" xml:space="preserve"><value>Запуски</value></data>
+  <data name="CaptureCoverageColumn" xml:space="preserve"><value>Покрытие Capture</value></data>
+  <data name="RenderCoverageColumn" xml:space="preserve"><value>Покрытие Render</value></data>
+  <data name="DeveloperToolsDescription" xml:space="preserve"><value>ИНСТРУМЕНТЫ РАЗРАБОТЧИКА · реальная диагностика Windows + синтетические данные</value></data>
 </root>

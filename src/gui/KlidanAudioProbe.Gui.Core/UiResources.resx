@@ -332,4 +332,44 @@
   <data name="CleanupLabel" xml:space="preserve"><value>Cleanup</value></data>
   <data name="SessionLabel" xml:space="preserve"><value>Session</value></data>
   <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Selected worker event details</value></data>
+  <data name="LocalDemoNoPipe" xml:space="preserve"><value>LOCAL DEMO · local D2 model · does not use Named Pipe</value></data>
+  <data name="LocalScenariosLimit" xml:space="preserve"><value>The local scenarios below change only ViewModel state. They are not worker events and do not prove device operation.</value></data>
+  <data name="LocalDemoWarning" xml:space="preserve"><value>LOCAL DEMO warning</value></data>
+  <data name="LocalDemoError" xml:space="preserve"><value>LOCAL DEMO error</value></data>
+  <data name="LocalDemoDeviceLoss" xml:space="preserve"><value>LOCAL DEMO device loss</value></data>
+  <data name="DisconnectLocalDemo" xml:space="preserve"><value>Disconnect LOCAL DEMO</value></data>
+  <data name="LocalDemoTimeline" xml:space="preserve"><value>Local demo timeline</value></data>
+  <data name="StopWorkerFakeSession" xml:space="preserve"><value>Stop worker fake session</value></data>
+  <data name="StopLocal" xml:space="preserve"><value>STOP LOCAL</value></data>
+  <data name="StopLocalDemoSession" xml:space="preserve"><value>Stop local demo session</value></data>
+  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>WINDOWS DIAGNOSTICS · operations run only on explicit action</value></data>
+  <data name="WorkerFakeSessionState" xml:space="preserve"><value>Worker fake session state</value></data>
+  <data name="DemoSessionConfirmation" xml:space="preserve"><value>Demo session confirmation</value></data>
+  <data name="DemoSimulationConsent" xml:space="preserve"><value>I understand that only a demo simulation will start.</value></data>
+  <data name="WorkerFakeConfirmation" xml:space="preserve"><value>WORKER FAKE confirmation</value></data>
+  <data name="WorkerFakeLimitations" xml:space="preserve"><value>Worker performs only a synthetic operation. There is no WASAPI, PCM recording or physical test.</value></data>
+  <data name="FakeSettingsConsent" xml:space="preserve"><value>I confirm these exact fake session settings.</value></data>
+  <data name="ConfirmStartFake" xml:space="preserve"><value>Confirm fake start</value></data>
+  <data name="SyntheticFixturesHeading" xml:space="preserve"><value>SYNTHETIC / TEST FIXTURES</value></data>
+  <data name="RealWindowsDiagnosticsHeading" xml:space="preserve"><value>REAL WINDOWS DIAGNOSTICS</value></data>
+  <data name="DuplexRepeatabilityQa" xml:space="preserve"><value>Duplex repeatability QA</value></data>
+  <data name="DuplexRepeatabilityHeading" xml:space="preserve"><value>C4.1 · Duplex repeatability QA</value></data>
+  <data name="InitializeOnlyPairDescription" xml:space="preserve"><value>Real Windows Diagnostics · exact Capture/Render pair · Initialize-only</value></data>
+  <data name="BoundedRepeatabilityHeading" xml:space="preserve"><value>C4.2B.2 · bounded repeatability</value></data>
+  <data name="EvidenceComparisonMode" xml:space="preserve"><value>Evidence comparison mode</value></data>
+  <data name="EvidenceLibraryRecords" xml:space="preserve"><value>Evidence Library records</value></data>
+  <data name="TypeColumn" xml:space="preserve"><value>Type</value></data>
+  <data name="PeriodColumn" xml:space="preserve"><value>Period</value></data>
+  <data name="ModeColumn" xml:space="preserve"><value>Mode</value></data>
+  <data name="LocalTimeColumn" xml:space="preserve"><value>Local time</value></data>
+  <data name="UtcColumn" xml:space="preserve"><value>UTC</value></data>
+  <data name="ProvenanceColumn" xml:space="preserve"><value>Provenance</value></data>
+  <data name="StatusColumn" xml:space="preserve"><value>Status</value></data>
+  <data name="LifecycleQualityColumn" xml:space="preserve"><value>Lifecycle / quality</value></data>
+  <data name="NormalizedDuplexComparisons" xml:space="preserve"><value>Normalized Duplex comparisons</value></data>
+  <data name="ConfigurationColumn" xml:space="preserve"><value>Configuration</value></data>
+  <data name="RunsColumn" xml:space="preserve"><value>Runs</value></data>
+  <data name="CaptureCoverageColumn" xml:space="preserve"><value>Capture coverage</value></data>
+  <data name="RenderCoverageColumn" xml:space="preserve"><value>Render coverage</value></data>
+  <data name="DeveloperToolsDescription" xml:space="preserve"><value>DEVELOPER TOOLS · real Windows diagnostics + synthetic fixtures</value></data>
 </root>
