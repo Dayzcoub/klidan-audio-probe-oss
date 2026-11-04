@@ -78,3 +78,29 @@ literal UI attributes, then repeat the English/Russian restart and DPI checks.
 The current result is intentionally fail-closed: language selection and
 Developer Tools isolation are usable, but the English UI is not fully localized
 and exact multi-DPI visual evidence is absent.
+
+## L10N-3 follow-up audit
+
+The Release GUI was launched again from the current branch. Screenshot review
+at the available desktop size reproduced the mixed-language defect and also
+showed a visual defect in the language selector's displayed value (the compact
+template clipped/truncated the selection text). The accessibility tree
+confirmed the same Russian messages in the real Windows diagnostics screen.
+
+Concrete blockers are concentrated in:
+
+- `src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml`: hundreds of literal
+  `Text`, `Content`, `ToolTip`, header, and accessibility strings;
+- `src/gui/KlidanAudioProbe.Gui.Core/ViewModels.cs`: dynamic status, consent,
+  error, scan, profile, evidence, Worker Fake, and inspector messages;
+- `src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml.cs`: dialog titles,
+  event/status labels, and converter output strings;
+- `src/gui/KlidanAudioProbe.Gui.Core/UiResources.resx` and
+  `UiResources.ru-RU.resx`: only the initial shell keys exist, so there is no
+  complete key set for the surfaces above.
+
+Because these are production UI paths rather than test-only strings, this
+follow-up does not claim completion by applying a blanket runtime translation
+or by treating Russian text as an English fallback. No production code was
+changed in this follow-up; the report records the reproducible blocker for the
+next implementation slice.
