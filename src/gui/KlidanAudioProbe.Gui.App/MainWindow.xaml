@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:core="clr-namespace:KlidanAudioProbe.Gui.Core;assembly=KlidanAudioProbe.Gui.Core"
         xmlns:local="clr-namespace:KlidanAudioProbe.Gui.App"
-        Title="KLIDAN Audio Probe · Windows diagnostics" Icon="/KlidanAudioProbe.Gui.App;component/application-icon.ico" Width="1440" Height="900" MinWidth="1024" MinHeight="720"
+        xmlns:loc="clr-namespace:KlidanAudioProbe.Gui.App"
+        Title="{local:Loc AppTitle}" Icon="/KlidanAudioProbe.Gui.App;component/application-icon.ico" Width="1440" Height="900" MinWidth="1024" MinHeight="720"
         WindowStyle="None" ResizeMode="CanResizeWithGrip" Background="{StaticResource RootBrush}"
         Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" UseLayoutRounding="True"
         SnapsToDevicePixels="True" SizeChanged="Window_SizeChanged">
@@ -73,12 +74,12 @@
     <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="64"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Background="{StaticResource OneBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
       <Grid Margin="18,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="KLIDAN" Foreground="{StaticResource AmberBrush}" FontWeight="Bold" FontSize="17"/><TextBlock Text=" AUDIO PROBE" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="  ·  WINDOWS DIAGNOSTICS" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/><TextBlock Text="Язык / Language" Foreground="{StaticResource MutedBrush}" Margin="24,2,6,0" VerticalAlignment="Center"/><ComboBox Width="112" Height="30" ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Value" SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" DisplayMemberPath="Label" ToolTip="Настройка языка применяется после перезапуска GUI" AutomationProperties.Name="Выбор языка / Language selection"/></StackPanel>
-        <Grid Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="Кнопки управления окном">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="{loc:Loc ProductName}" Foreground="{StaticResource AmberBrush}" FontWeight="Bold" FontSize="17"/><TextBlock Text="{loc:Loc ProductSuffix}" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="{loc:Loc WindowsDiagnosticsSuffix}" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/><TextBlock Text="{loc:Loc LanguageSelection}" Foreground="{StaticResource MutedBrush}" Margin="24,2,6,0" VerticalAlignment="Center"/><ComboBox x:Name="LanguageSelector" Width="156" MinWidth="156" Height="30" ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Value" SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" ToolTip="{loc:Loc LanguageRestartNotice}" AutomationProperties.Name="{loc:Loc LanguageSelection}"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}" TextWrapping="NoWrap"/></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+        <Grid Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="{loc:Loc WindowControls}">
           <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="5"/><ColumnDefinition Width="42"/><ColumnDefinition Width="5"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
-          <Button Grid.Column="0" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="Свернуть" ToolTip="Свернуть" Click="Minimize_Click"><Path Width="14" Height="14" Data="M 2,7 L 12,7" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/></Button>
-          <Button Grid.Column="2" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="Развернуть или восстановить" ToolTip="Развернуть или восстановить" Click="Maximize_Click"><Path x:Name="MaximizeIcon" Width="14" Height="14" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5"><Path.Style><Style TargetType="Path"><Setter Property="Data" Value="M 2,2 L 12,2 12,12 2,12 Z"/><Style.Triggers><DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized"><Setter Property="Data" Value="M 6,2 L 12,2 12,8 M 9,5 L 3,5 3,12 9,12 Z"/></DataTrigger></Style.Triggers></Style></Path.Style></Path></Button>
-          <Button Grid.Column="4" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="Закрыть" ToolTip="Закрыть" Click="Close_Click"><Path Width="14" Height="14" Data="M 2,2 L 12,12 M 12,2 L 2,12" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/></Button>
+          <Button Grid.Column="0" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="{loc:Loc Minimize}" ToolTip="{loc:Loc Minimize}" Click="Minimize_Click"><Path Width="14" Height="14" Data="M 2,7 L 12,7" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/></Button>
+          <Button Grid.Column="2" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="{loc:Loc MaximizeRestore}" ToolTip="{loc:Loc MaximizeRestore}" Click="Maximize_Click"><Path x:Name="MaximizeIcon" Width="14" Height="14" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5"><Path.Style><Style TargetType="Path"><Setter Property="Data" Value="M 2,2 L 12,2 12,12 2,12 Z"/><Style.Triggers><DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized"><Setter Property="Data" Value="M 6,2 L 12,2 12,8 M 9,5 L 3,5 3,12 9,12 Z"/></DataTrigger></Style.Triggers></Style></Path.Style></Path></Button>
+          <Button Grid.Column="4" Style="{StaticResource WindowChromeButton}" AutomationProperties.Name="{loc:Loc Close}" ToolTip="{loc:Loc Close}" Click="Close_Click"><Path Width="14" Height="14" Data="M 2,2 L 12,12 M 12,2 L 2,12" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Square" StrokeEndLineCap="Square"/></Button>
         </Grid>
       </Grid>
     </Border>
@@ -88,22 +89,22 @@
       <Border Grid.Column="0" Background="{StaticResource OneBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
         <DockPanel Margin="12">
           <StackPanel DockPanel.Dock="Top">
-            <TextBlock Text="ПРОВЕРКА" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold" Margin="12,10,0,7"/>
-            <Button x:Name="OperatorDeviceStepButton" Style="{StaticResource OperatorDeviceStepButton}" Content="1 · Устройство" Command="{Binding OperatorStepCommand}" CommandParameter="Device"/>
-            <Button x:Name="OperatorTestStepButton" Style="{StaticResource OperatorTestStepButton}" Content="2 · Тест" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
-            <Button x:Name="OperatorResultStepButton" Style="{StaticResource OperatorResultStepButton}" Content="3 · Результат" Command="{Binding OperatorStepCommand}" CommandParameter="Result" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
+            <TextBlock Text="{loc:Loc CheckSection}" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold" Margin="12,10,0,7"/>
+            <Button x:Name="OperatorDeviceStepButton" Style="{StaticResource OperatorDeviceStepButton}" Content="{loc:Loc DeviceStepLabel}" Command="{Binding OperatorStepCommand}" CommandParameter="Device"/>
+            <Button x:Name="OperatorTestStepButton" Style="{StaticResource OperatorTestStepButton}" Content="{loc:Loc TestStepLabel}" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
+            <Button x:Name="OperatorResultStepButton" Style="{StaticResource OperatorResultStepButton}" Content="{loc:Loc ResultStepLabel}" Command="{Binding OperatorStepCommand}" CommandParameter="Result" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
             <StackPanel Visibility="{Binding DeveloperToolsAvailable, Converter={StaticResource BoolVisibility}}">
-            <TextBlock Text="РАЗРАБОТЧИКУ" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold" Margin="12,20,0,7"/>
-            <Button Style="{StaticResource NavButton}" Content="Developer Tools · real + synthetic" Command="{Binding OpenDeveloperToolsCommand}"/>
+            <TextBlock Text="{loc:Loc DeveloperSection}" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="Bold" Margin="12,20,0,7"/>
+            <Button Style="{StaticResource NavButton}" Content="{loc:Loc DeveloperToolsNav}" Command="{Binding OpenDeveloperToolsCommand}"/>
             <StackPanel Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}">
-              <Button Style="{StaticResource NavButton}" Content="Локальные устройства" Command="{Binding NavigateCommand}" CommandParameter="Devices"/>
-              <Button Style="{StaticResource NavButton}" Content="Локальные форматы" Command="{Binding NavigateCommand}" CommandParameter="Formats"/>
-              <Button Style="{StaticResource NavButton}" Content="Capture demo" Command="{Binding NavigateCommand}" CommandParameter="Capture"/>
-              <Button Style="{StaticResource NavButton}" Content="Render demo" Command="{Binding NavigateCommand}" CommandParameter="Render"/>
-              <Button Style="{StaticResource NavButton}" Content="Библиотека evidence" Command="{Binding NavigateCommand}" CommandParameter="Reports"/>
-              <Button Style="{StaticResource NavButton}" Content="Worker Fake / IPC" Command="{Binding NavigateCommand}" CommandParameter="Diagnostics"/>
-              <Button Style="{StaticResource NavButton}" Content="Ручные реальные операции" Command="{Binding OpenManualRealToolsCommand}"/>
-              <Button Content="Вернуться к проверке Windows" Command="{Binding CloseDeveloperToolsCommand}" Margin="4,8"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc LocalDevices}" Command="{Binding NavigateCommand}" CommandParameter="Devices"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc LocalFormats}" Command="{Binding NavigateCommand}" CommandParameter="Formats"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc CaptureDemo}" Command="{Binding NavigateCommand}" CommandParameter="Capture"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc RenderDemo}" Command="{Binding NavigateCommand}" CommandParameter="Render"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc EvidenceLibrary}" Command="{Binding NavigateCommand}" CommandParameter="Reports"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc WorkerFakeIpc}" Command="{Binding NavigateCommand}" CommandParameter="Diagnostics"/>
+              <Button Style="{StaticResource NavButton}" Content="{loc:Loc ManualRealOperations}" Command="{Binding OpenManualRealToolsCommand}"/>
+              <Button Content="{loc:Loc ReturnToWindowsNav}" Command="{Binding CloseDeveloperToolsCommand}" Margin="4,8"/>
             </StackPanel></StackPanel>
           </StackPanel>
           <Border DockPanel.Dock="Bottom" Background="{StaticResource TwoBrush}" CornerRadius="8" Padding="10" Margin="0,10,0,0"><TextBlock Text="Windows diagnostics · только явные действия" Foreground="{StaticResource SecondaryBrush}" FontWeight="Bold" TextWrapping="Wrap"/></Border>
@@ -113,7 +114,7 @@
       <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="24,22">
           <StackPanel x:Name="OperatorTestPanel" Visibility="Collapsed">
-            <TextBlock Text="Выбор проверки" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc TestSelectionTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding OperatorSelectedDevice}" Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap"/>
             <Border Style="{StaticResource Card}"><StackPanel>
               <TextBlock Text="ТЕСТОВЫЙ РЕЖИМ" FontSize="11" FontWeight="Bold" Foreground="{StaticResource MutedBrush}"/>
@@ -125,7 +126,7 @@
             </StackPanel></Border>
             <Border Style="{StaticResource Card}" Margin="0,12,0,0" AutomationProperties.Name="Реальная проверка Duplex">
               <StackPanel>
-                <TextBlock Text="Одновременная проверка Duplex" FontSize="17" FontWeight="SemiBold"/>
+              <TextBlock Text="{loc:Loc DuplexTestTitle}" FontSize="17" FontWeight="SemiBold"/>
                 <TextBlock Text="Точная выбранная пара Capture / Render. Каждый период требует отдельного свежего подтверждения." Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,8"/>
                 <WrapPanel><Button Content="Проверить MINIMUM" Command="{Binding RequestDuplexMinimumCommand}"/><Button Content="Проверить DEFAULT" Command="{Binding RequestDuplexDefaultCommand}" Margin="8,0,0,0"/></WrapPanel>
                 <Border Style="{StaticResource Card}" Margin="0,8,0,0" Visibility="{Binding DuplexConsentPending, Converter={StaticResource BoolVisibility}}"><StackPanel>
@@ -154,7 +155,7 @@
               </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}"><StackPanel>
-              <TextBlock Text="Параметры запроса" FontSize="17" FontWeight="SemiBold"/>
+              <TextBlock Text="{loc:Loc QueryParametersTitle}" FontSize="17" FontWeight="SemiBold"/>
               <TextBlock Text="Количество каналов (через запятую, 1–64)" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,4"/>
               <TextBox Text="{Binding RealQueryChannelCountsText, UpdateSourceTrigger=PropertyChanged}" MaxWidth="240" AutomationProperties.Name="Запрашиваемые количества каналов"/>
               <Button Content="Запросить Exclusive-форматы" Command="{Binding QueryRealFormatsCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
@@ -179,7 +180,7 @@
             <StackPanel Orientation="Horizontal"><Button Content="Назад · устройство" Command="{Binding OperatorStepCommand}" CommandParameter="Device"/><Button Content="К результатам" Command="{Binding OperatorStepCommand}" CommandParameter="Result" Margin="8,0"/></StackPanel>
           </StackPanel>
           <StackPanel x:Name="AutomaticScanPanel" Visibility="Collapsed">
-            <TextBlock Text="Автоматическое сканирование" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc AutomaticScanTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding OperatorSelectedDevice}" Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,6,0,12"/>
             <Border Style="{StaticResource Card}"><StackPanel>
               <TextBlock Text="{Binding AutomaticScanResultSummary}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -192,7 +193,7 @@
             <WrapPanel Margin="0,12,0,0"><Button Content="К результату" Command="{Binding OperatorStepCommand}" CommandParameter="Result" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanNavigateAwayFromAutomaticScan}"/><Button Content="Назад к устройству" Command="{Binding OperatorStepCommand}" CommandParameter="Device" Margin="8,0,0,0" IsEnabled="{Binding CanNavigateAwayFromAutomaticScan}"/></WrapPanel>
           </StackPanel>
           <StackPanel x:Name="OperatorResultPanel" Visibility="Collapsed">
-            <TextBlock Text="Результат проверки" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc ResultTitle}" FontSize="24" FontWeight="SemiBold"/>
             <Border Style="{StaticResource Card}" Visibility="{Binding HasAutomaticScanResult, Converter={StaticResource BoolVisibility}}"><StackPanel>
               <TextBlock Text="{Binding AutomaticScanResultProvenance}" Foreground="{StaticResource AmberBrush}" FontWeight="Bold"/>
               <TextBlock Text="Устройство" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0"/><TextBlock x:Name="AutomaticScanResultDeviceText" Text="{Binding AutomaticScanResultDevice}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -237,7 +238,7 @@
             <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,0,8"><TextBlock Text="Покрытие" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding FrameCoverage}" TextWrapping="Wrap"/></StackPanel>
             <StackPanel Grid.Row="2" Grid.ColumnSpan="2"><TextBlock Text="Качество потока" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding StreamQuality}" TextWrapping="Wrap"/></StackPanel>
           </Grid>
-          <Expander x:Name="StreamResultDetailsExpander" Header="Подробные сведения" Margin="0,8,0,0">
+          <Expander x:Name="StreamResultDetailsExpander" Header="{loc:Loc DetailsHeader}" Margin="0,8,0,0">
             <StackPanel Margin="0,6,0,0">
               <TextBlock Text="Счётчики faults" FontWeight="SemiBold"/><TextBlock Text="{Binding FaultCounters}" TextWrapping="Wrap" Margin="0,0,0,6"/>
               <TextBlock Text="Stop" FontWeight="SemiBold"/><TextBlock Text="{Binding StopOutcome}" TextWrapping="Wrap" Margin="0,0,0,6"/>
@@ -265,13 +266,13 @@
             <WrapPanel><Button Content="Повторить этот тест" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Style="{StaticResource PrimaryButton}" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/><Button Content="Другой тест на этом устройстве" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Margin="8,0" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/><Button Content="Выбрать другое устройство" Command="{Binding OperatorStepCommand}" CommandParameter="Device"/></WrapPanel>
           </StackPanel>
           <StackPanel x:Name="DevicesPanel">
-            <TextBlock Text="Windows audio devices" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc WindowsAudioDevicesTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="Выберите точный активный endpoint. Обнаружение начинается только после нажатия оператором." Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,18" TextWrapping="Wrap"/>
              <StackPanel Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}">
              <TextBlock Text="SYNTHETIC / TEST FIXTURES" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource AmberBrush}" Margin="0,0,0,8"/>
              <TextBlock Text="LOCAL DEMO · Проверочные данные" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource SecondaryBrush}" Margin="0,0,0,8"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12"><Button Content="Вход · Capture" Command="{Binding DirectionCommand}" CommandParameter="Capture"/><Button Content="Выход · Render" Command="{Binding DirectionCommand}" CommandParameter="Render" Margin="8,0,0,0"/><Button Content="Пустой список" Command="{Binding EmptyDevicesCommand}" Margin="8,0,0,0"/></StackPanel>
-            <TextBlock Text="Список endpoint" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="{loc:Loc EndpointListTitle}" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <Border Style="{StaticResource Card}" Visibility="{Binding IsEndpointListEmpty, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="Пустой список устройств"><StackPanel><TextBlock Text="{Binding EmptyEndpointMessage}" Foreground="{StaticResource SecondaryBrush}"/><TextBlock Text="Реальные устройства не перечисляются. Используются только проверочные данные." Foreground="{StaticResource MutedBrush}" Margin="0,8,0,12"/><Button Content="Вернуть демо" Command="{Binding RestoreDevicesCommand}" HorizontalAlignment="Left"/></StackPanel></Border>
             <ListBox ItemsSource="{Binding EndpointRows}" SelectedItem="{Binding SelectedEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemTemplate="{StaticResource EndpointTemplate}" MaxHeight="300" Visibility="{Binding HasEndpoints, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="Список демонстрационных устройств">
               <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="IsEnabled" Value="{Binding IsAvailable}"/></Style></ListBox.ItemContainerStyle>
@@ -281,17 +282,17 @@
             </StackPanel>
              <Border Style="{StaticResource Card}" Margin="0,12,0,0"><StackPanel>
                <TextBlock Text="REAL WINDOWS DIAGNOSTICS" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource AmberBrush}"/>
-               <TextBlock Text="Windows Devices · реальные системные метаданные" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+               <TextBlock Text="{loc:Loc WindowsDevicesTitle}" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
               <TextBlock Text="Системные метаданные и автоматическое сканирование выполняются только после явного действия и подтверждения." Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,5,0,8"/>
               <Button Content="Найти / обновить устройства" Command="{Binding DiscoverWindowsEndpointsCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"/>
               <Border Style="{StaticResource Card}" Margin="0,10,0,0" AutomationProperties.Name="Сохранённый профиль устройства"><StackPanel>
-                <TextBlock Text="Сохранённый профиль устройства" FontWeight="SemiBold"/>
+                <TextBlock Text="{loc:Loc SavedProfileTitle}" FontWeight="SemiBold"/>
                 <TextBlock Text="Обновите реальные устройства и проверьте сохранённую привязку без запуска аудио." Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,7"/>
                 <Button x:Name="CheckSavedProfileBindingButton" Content="Проверить подключение" Command="{Binding CheckSavedProfileBindingCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" AutomationProperties.Name="Проверить подключение сохранённого устройства"/>
                 <TextBlock x:Name="SavedProfileOperatorStatusText" Text="{Binding SavedProfileOperatorStatus}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite"/>
                 <TextBlock x:Name="SavedProfileOperatorHistoryText" Text="{Binding SavedProfileOperatorHistory}" Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
                 <TextBlock x:Name="SavedProfileOperatorLimitationText" Text="{Binding SavedProfileOperatorLimitation}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
-                <Expander x:Name="SavedProfileDiagnosticsExpander" Header="Расширенная диагностика профилей" IsExpanded="False" Margin="0,8,0,0" AutomationProperties.Name="Расширенная диагностика сохранённых профилей">
+                <Expander x:Name="SavedProfileDiagnosticsExpander" Header="{loc:Loc SavedProfileDiagnosticsTitle}" IsExpanded="False" Margin="0,8,0,0" AutomationProperties.Name="{loc:Loc SavedProfileDiagnosticsTitle}">
                   <StackPanel Margin="0,5,0,0">
                     <TextBlock Text="Выбор профиля и технические сведения предназначены для диагностики; автоматический выбор конфликтующих профилей запрещён." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                     <ComboBox x:Name="SavedDeviceProfileSelector" ItemsSource="{Binding SavedDeviceProfiles}" SelectedItem="{Binding SelectedSavedDeviceProfile, Mode=TwoWay}" AutomationProperties.Name="Расширенный выбор сохранённого профиля">
@@ -306,7 +307,7 @@
                 </Expander>
               </StackPanel></Border>
               <Border x:Name="HistoricalRecoveryCard" Style="{StaticResource Card}" Margin="0,10,0,0" AutomationProperties.Name="Восстановление профиля из предыдущих измерений"><StackPanel>
-                <TextBlock Text="Восстановить профиль из предыдущих измерений" FontWeight="SemiBold"/>
+                <TextBlock Text="{loc:Loc HistoricalRecoveryTitle}" FontWeight="SemiBold"/>
                 <TextBlock Text="Только локальные завершённые измерения. Аудио не запускается; автоматическое восстановление не выполняется." Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,7"/>
                 <ComboBox x:Name="HistoricalRecoveryScanSelector" ItemsSource="{Binding HistoricalSustainedScans}" SelectedItem="{Binding SelectedHistoricalSustainedScan, Mode=TwoWay}" AutomationProperties.Name="Выбор исторического измерения">
                   <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}"><Setter Property="IsEnabled" Value="{Binding IsAvailable}"/></Style></ComboBox.ItemContainerStyle>
@@ -325,12 +326,12 @@
                   <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><Button x:Name="SaveHistoricalRecoveryButton" Content="Сохранить восстановленный профиль" Command="{Binding SaveHistoricalSustainedRecoveryCommand}" Style="{StaticResource PrimaryButton}"/><Button x:Name="CancelHistoricalRecoveryButton" Content="Отмена" Command="{Binding CancelHistoricalSustainedRecoveryCommand}" Margin="8,0,0,0"/></StackPanel>
                 </StackPanel></Border>
               </StackPanel></Border>
-              <TextBlock Text="Физическое устройство" FontWeight="SemiBold" Margin="0,12,0,5"/>
+              <TextBlock Text="{loc:Loc PhysicalDeviceTitle}" FontWeight="SemiBold" Margin="0,12,0,5"/>
               <ComboBox x:Name="PhysicalDeviceSelector" ItemsSource="{Binding PhysicalDeviceGroups}" SelectedItem="{Binding SelectedPhysicalDeviceGroup, Mode=TwoWay}" AutomationProperties.Name="Выбор физического аудиоустройства">
                 <ComboBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding DisplayName}"/><TextBlock Text="{Binding VerificationLabel}" Foreground="{StaticResource MutedBrush}" FontSize="12"/><TextBlock Text="{Binding IdentityProvenanceLabel}" Foreground="{StaticResource MutedBrush}" FontSize="11"/></StackPanel></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
               <TextBlock Text="При неоднозначности выберите Capture и Render ниже. Loopback не подменяет аналоговый вход." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
-              <TextBlock Text="Sustained validation" FontWeight="SemiBold" Margin="0,8,0,3"/>
+              <TextBlock Text="{loc:Loc SustainedValidationTitle}" FontWeight="SemiBold" Margin="0,8,0,3"/>
               <ComboBox ItemsSource="{Binding AutomaticSustainedModes}" SelectedItem="{Binding AutomaticSustainedMode, Mode=TwoWay}" AutomationProperties.Name="Режим длительной проверки"><ComboBox.ToolTip>Standard: 300 секунд; Extended: 600 секунд. Оба режима выполняются только после подтверждения полного плана.</ComboBox.ToolTip></ComboBox>
               <Button x:Name="DeviceScanButton" Content="Сканировать" Command="{Binding PrepareAutomaticScanCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,8,0,0" AutomationProperties.Name="Подготовить автоматическое сканирование выбранного устройства"/>
               <TextBlock Text="{Binding AutomaticScanAvailabilityReason}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
@@ -371,7 +372,7 @@
               <Button Content="Продолжить · выбрать тест" Command="{Binding OperatorStepCommand}" CommandParameter="Test" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,10,0,0" IsEnabled="{Binding CanUseSelectedWindowsEndpoint}" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}"/>
             </StackPanel></Border>
              <Border Style="{StaticResource Card}" Margin="0,12,0,0" Visibility="{Binding DeveloperToolsOpen, Converter={StaticResource BoolVisibility}}">
-               <Expander Header="Физическое группирование · технические сведения">
+               <Expander Header="{loc:Loc PhysicalGroupingTitle}">
                  <ItemsControl ItemsSource="{Binding PhysicalDeviceGroupDetails}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,4"><StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/><TextBlock Text="{Binding GroupId}" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding EndpointId}" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Direction}"/><TextBlock Text="{Binding DeviceState}"/><TextBlock Text="{Binding CandidateReason}" TextWrapping="Wrap"/><TextBlock Text="{Binding FormFactor}"/><TextBlock Text="{Binding FormFactorEvidence}"/><TextBlock Text="{Binding ContainerId}"/><TextBlock Text="{Binding ContainerIdEvidence}" Foreground="{StaticResource SecondaryBrush}"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                </Expander>
              </Border>
@@ -437,7 +438,7 @@
           </StackPanel>
 
           <StackPanel x:Name="FormatsPanel" Visibility="Collapsed">
-            <TextBlock Text="Форматы" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc FormatsTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="12 вариантов · 24 результата периода · проверочные данные" Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,18"/>
             <Border x:Name="LegacyRealFormatCard" Style="{StaticResource Card}" Margin="0,0,0,12" Visibility="Collapsed">
               <StackPanel>
@@ -482,7 +483,7 @@
           </StackPanel>
 
           <StackPanel x:Name="CapturePanel" Visibility="Collapsed">
-            <TextBlock Text="Входные каналы" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc CaptureChannelsTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="Измеритель Capture · только проверочные окна" Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,18"/>
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Метры каналов" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Peak · RMS · Hold · LOCAL DEMO" Foreground="{StaticResource MutedBrush}" Margin="0,3"/><TextBlock Text="{Binding MeterStatusText}" Foreground="{StaticResource SecondaryBrush}" Margin="0,0,0,6"/><TextBlock Text="Банк каналов Capture" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/><ComboBox ItemsSource="{Binding CaptureChannelBanks}" SelectedValuePath="Value" SelectedValue="{Binding CaptureChannelBank, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Банк входных каналов"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox><ListBox ItemsSource="{Binding VisibleMeterChannels}" ItemTemplate="{StaticResource MeterChannelTemplate}" AutomationProperties.Name="Текущие уровни восьми каналов Capture" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="2"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox></StackPanel></Border>
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Целостность потока" FontWeight="SemiBold"/><TextBlock Text="Состояние и качество потока показываются отдельно." Foreground="{StaticResource SecondaryBrush}" Margin="0,8,0,0"/><TextBlock Text="{Binding Session.Lifecycle, Converter={StaticResource SessionStateText}, TargetNullValue=Сессия не запускалась}"/><TextBlock Text="{Binding Session.Quality, Converter={StaticResource SessionStateText}, TargetNullValue=Качество неизвестно}"/><TextBlock Text="Покрытие и ошибки: неизвестно до получения данных сессии." Foreground="{StaticResource MutedBrush}"/></StackPanel></Border>
@@ -490,7 +491,7 @@
           </StackPanel>
 
           <StackPanel x:Name="RenderPanel" Visibility="Collapsed">
-            <TextBlock Text="Выходные каналы" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="{loc:Loc RenderChannelsTitle}" FontSize="24" FontWeight="SemiBold"/>
             <TextBlock Text="Проверка канала · симуляция без воспроизведения" Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,18"/>
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Настройки выхода · демо" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Банк каналов" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,5"/><ComboBox ItemsSource="{Binding RenderChannelBanks}" SelectedValuePath="Value" SelectedValue="{Binding RenderChannelBank, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Банк каналов Windows"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBlock Text="Канал Windows" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/><ComboBox ItemsSource="{Binding RenderChannelOptions}" SelectedValuePath="Value" SelectedValue="{Binding RenderChannel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Выбор канала Windows"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBlock Text="Длительность" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5"/><ComboBox ItemsSource="{Binding DurationOptions}" SelectedValuePath="Value" SelectedValue="{Binding DurationSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Длительность демонстрации"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBlock Text="Сигнал: 997 Гц · не выше −36 dBFS · синус с паузами" Margin="0,16,0,0"/><TextBlock Text="Физическая маршрутизация: НЕИЗВЕСТНО" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"/><TextBlock Text="ДЕМО · Звук не воспроизводится." Foreground="{StaticResource AmberBrush}" Margin="0,6,0,0"/></StackPanel></Border>
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Физическое соответствие" FontWeight="SemiBold"/><TextBlock Text="UNKNOWN · физический выход не проверялся" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0"/><TextBlock Text="Цифровая симуляция не подтверждает сигнал ЦАП или слышимость." Foreground="{StaticResource SecondaryBrush}" Margin="0,4,0,0"/></StackPanel></Border>
@@ -550,7 +551,7 @@
                 <ListBox x:Name="WorkerMeterBankList" ItemsSource="{Binding WorkerVisibleMeterChannels}" ItemTemplate="{StaticResource MeterChannelTemplate}" Margin="0,4,0,0" AutomationProperties.Name="Банк из восьми каналов worker" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="2"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
               </StackPanel>
             </Border>
-            <TextBlock Text="События WORKER FAKE · IPC и локальные действия" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBlock Text="{loc:Loc WorkerEventsTitle}" FontWeight="SemiBold" Margin="0,0,0,6"/>
             <TextBlock Text="{Binding WorkerEmptyTimelineText}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
             <DataGrid x:Name="WorkerTimelineGrid" ItemsSource="{Binding WorkerTimeline}" SelectedItem="{Binding SelectedWorkerTimelineEntry, Mode=TwoWay}" MaxHeight="280" MinHeight="120" RowHeight="30" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Журнал событий worker fake"><DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}"><Setter Property="MinHeight" Value="30"/><Setter Property="ToolTip" Value="{Binding DiagnosticDetails}"/></Style></DataGrid.RowStyle><DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="4,2"/></Style></DataGrid.CellStyle><DataGrid.Columns><DataGridTextColumn Header="Время" Binding="{Binding TimeText}" Width="82"/><DataGridTextColumn Header="Источник" Binding="{Binding SourceText}" Width="96"/><DataGridTextColumn Header="№" Binding="{Binding SequenceText}" Width="42"/><DataGridTextColumn Header="Событие" Binding="{Binding EventLabel}" Width="*" MinWidth="82"/><DataGridTextColumn Header="Состояние" Binding="{Binding LifecycleLabel}" Width="100"/><DataGridTextColumn Header="Качество" Binding="{Binding QualityTableLabel}" Width="100"/><DataGridTextColumn Header="Очистка" Binding="{Binding CleanupTableLabel}" Width="105"/><DataGridTextColumn Header="Сессия" Binding="{Binding SessionShortId}" Width="65"/></DataGrid.Columns></DataGrid>
             <Border Background="{StaticResource OneBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8" Margin="0,4,0,10"><TextBlock Text="{Binding WorkerSelectedEventDetails}" Foreground="{StaticResource SecondaryBrush}" FontSize="11" TextWrapping="Wrap" AutomationProperties.Name="Подробности выбранного события worker"/></Border>

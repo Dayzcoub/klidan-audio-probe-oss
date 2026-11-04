@@ -14,4 +14,45 @@
   <data name="ResultStep" xml:space="preserve"><value>3 · Result</value></data>
   <data name="ReturnToWindows" xml:space="preserve"><value>Return to Windows diagnostics</value></data>
   <data name="LanguageRestartNotice" xml:space="preserve"><value>Language preference saved. Restart the GUI to apply it safely.</value></data>
+  <data name="ProductName" xml:space="preserve"><value>KLIDAN</value></data>
+  <data name="ProductSuffix" xml:space="preserve"><value> AUDIO PROBE</value></data>
+  <data name="WindowsDiagnosticsSuffix" xml:space="preserve"><value>  ·  WINDOWS DIAGNOSTICS</value></data>
+  <data name="LanguageSelection" xml:space="preserve"><value>Language / Language selection</value></data>
+  <data name="WindowControls" xml:space="preserve"><value>Window controls</value></data>
+  <data name="Minimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="MaximizeRestore" xml:space="preserve"><value>Maximize or restore</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="CheckSection" xml:space="preserve"><value>CHECK</value></data>
+  <data name="DeveloperSection" xml:space="preserve"><value>DEVELOPER</value></data>
+  <data name="DeviceStepLabel" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="TestStepLabel" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="ResultStepLabel" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="DeveloperToolsNav" xml:space="preserve"><value>Developer Tools · real + synthetic</value></data>
+  <data name="LocalDevices" xml:space="preserve"><value>Local devices</value></data>
+  <data name="LocalFormats" xml:space="preserve"><value>Local formats</value></data>
+  <data name="CaptureDemo" xml:space="preserve"><value>Capture demo</value></data>
+  <data name="RenderDemo" xml:space="preserve"><value>Render demo</value></data>
+  <data name="EvidenceLibrary" xml:space="preserve"><value>Evidence library</value></data>
+  <data name="WorkerFakeIpc" xml:space="preserve"><value>Worker Fake / IPC</value></data>
+  <data name="ManualRealOperations" xml:space="preserve"><value>Manual real operations</value></data>
+  <data name="ReturnToWindowsNav" xml:space="preserve"><value>Return to Windows diagnostics</value></data>
+  <data name="TestSelectionTitle" xml:space="preserve"><value>Test selection</value></data>
+  <data name="DuplexTestTitle" xml:space="preserve"><value>Duplex test</value></data>
+  <data name="QueryParametersTitle" xml:space="preserve"><value>Query parameters</value></data>
+  <data name="AutomaticScanTitle" xml:space="preserve"><value>Automatic Scan</value></data>
+  <data name="ResultTitle" xml:space="preserve"><value>Test result</value></data>
+  <data name="DetailsHeader" xml:space="preserve"><value>Details</value></data>
+  <data name="WindowsAudioDevicesTitle" xml:space="preserve"><value>Windows audio devices</value></data>
+  <data name="EndpointListTitle" xml:space="preserve"><value>Endpoint list</value></data>
+  <data name="WindowsDevicesTitle" xml:space="preserve"><value>Windows Devices · real system metadata</value></data>
+  <data name="SavedProfileTitle" xml:space="preserve"><value>Saved device profile</value></data>
+  <data name="SavedProfileDiagnosticsTitle" xml:space="preserve"><value>Advanced profile diagnostics</value></data>
+  <data name="HistoricalRecoveryTitle" xml:space="preserve"><value>Restore profile from previous measurements</value></data>
+  <data name="PhysicalDeviceTitle" xml:space="preserve"><value>Physical device</value></data>
+  <data name="SustainedValidationTitle" xml:space="preserve"><value>Sustained validation</value></data>
+  <data name="PhysicalGroupingTitle" xml:space="preserve"><value>Physical grouping · technical details</value></data>
+  <data name="FormatsTitle" xml:space="preserve"><value>Formats</value></data>
+  <data name="CaptureChannelsTitle" xml:space="preserve"><value>Input channels</value></data>
+  <data name="RenderChannelsTitle" xml:space="preserve"><value>Output channels</value></data>
+  <data name="WorkerEventsTitle" xml:space="preserve"><value>WORKER FAKE events · IPC and local actions</value></data>
 </root>

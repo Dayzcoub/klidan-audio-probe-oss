@@ -79,6 +79,43 @@ The current result is intentionally fail-closed: language selection and
 Developer Tools isolation are usable, but the English UI is not fully localized
 and exact multi-DPI visual evidence is absent.
 
+## L10N-4A implementation
+
+Implemented in production:
+
+- `src/gui/KlidanAudioProbe.Gui.App/LocalizationExtension.cs` adds the
+  existing resource manager as a WPF `LocExtension`.
+- `MainWindow.xaml` now uses resource keys for the shell, navigation, major
+  page titles, headers, and the language selector. A structural XML audit still
+  finds 317 literal user-facing attributes in this file; these include the
+  detailed test instructions, confirmations, result labels, grids, tooltips,
+  and accessibility names that remain to be migrated.
+- The language ComboBox has an explicit `ItemTemplate` bound to `Label`, keeps
+  `SelectedValuePath="Value"`, and uses a 156-DIP minimum width. The live GUI
+  now displays `English` and `Русский` instead of the record type.
+- English and Russian resources contain the same 51 keys.
+- `Program.cs` adds a real WPF 1024x720 visual-tree regression check for the
+  language selector.
+
+The live GUI check confirms the selector geometry and language persistence.
+It also confirms the remaining next-layer blocker: dynamic messages supplied
+by `ViewModels.cs` and converter/dialog output in `MainWindow.xaml.cs` still
+contain Russian text while English is selected. Therefore this change closes
+the static XAML slice but does not claim full application localization.
+
+Current L10N-4A acceptance:
+
+```text
+LANGUAGE_SELECTOR = PASS
+XAML_LOCALIZATION_RU = FAIL (317 user-facing attributes remain)
+XAML_LOCALIZATION_EN = FAIL (317 user-facing attributes remain)
+XAML_UNLOCALIZED_USER_STRINGS = 317
+WINDOW_LAYOUT = PASS (1440x900 live screenshot; 1024x720 WPF test)
+WPF_VISUAL_TESTS = PASS
+GUI_RELEASE = PASS
+REGRESSION = PASS for Native CTest 119/119, GUI Core, Worker IPC, and GUI Release; installer rerun pending
+```
+
 ## L10N-3 follow-up audit
 
 The Release GUI was launched again from the current branch. Screenshot review
