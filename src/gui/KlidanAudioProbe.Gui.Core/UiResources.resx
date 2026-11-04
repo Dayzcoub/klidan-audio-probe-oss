@@ -102,4 +102,46 @@
   <data name="UniqueFormatDescription" xml:space="preserve"><value>Each row represents one unique format and one IsFormatSupported query. The period is selected only for Initialize-only.</value></data>
   <data name="SelectSupportedFormat" xml:space="preserve"><value>Select a format with SUPPORTED_REPORTED for Initialize-only</value></data>
   <data name="InitializePeriodAccessible" xml:space="preserve"><value>Initialize-only period</value></data>
+  <data name="InitializeUnavailableReason" xml:space="preserve"><value>Reason Initialize-only is unavailable</value></data>
+  <data name="InitializeNewConfirmation" xml:space="preserve"><value>New confirmation · one Initialize attempt</value></data>
+  <data name="InitializeConsent" xml:space="preserve"><value>I authorize one Exclusive Initialize with these exact settings</value></data>
+  <data name="PhysicalRtlNotMeasured" xml:space="preserve"><value>Physical RTL is not measured. AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="StopRequestCancel" xml:space="preserve"><value>Stop / request cancellation</value></data>
+  <data name="CancellationPendingDescription" xml:space="preserve"><value>A cancellation request does not confirm that the driver has stopped. State and cleanup update only after the Worker responds.</value></data>
+  <data name="ToResult" xml:space="preserve"><value>To result</value></data>
+  <data name="BackToDevice" xml:space="preserve"><value>Back to device</value></data>
+  <data name="DeviceLabel" xml:space="preserve"><value>Device</value></data>
+  <data name="ScanLabel" xml:space="preserve"><value>Scan</value></data>
+  <data name="ExportTechnicalDetails" xml:space="preserve"><value>Export technical details</value></data>
+  <data name="PhysicalLatencyPrefix" xml:space="preserve"><value>Physical latency: </value></data>
+  <data name="OperationsAndTechnicalDetails" xml:space="preserve"><value>Operations and technical details</value></data>
+  <data name="SelectedDuplexResult" xml:space="preserve"><value>Selected Capture / Render pair result</value></data>
+  <data name="SavedDuplexResults" xml:space="preserve"><value>Saved MINIMUM and DEFAULT duplex results</value></data>
+  <data name="BuffersInitializeCr" xml:space="preserve"><value>Buffers C/R · Initialize C/R</value></data>
+  <data name="StartCoverageCr" xml:space="preserve"><value>Start C/R · coverage C/R</value></data>
+  <data name="QualityCrDuplex" xml:space="preserve"><value>Quality C/R/Duplex</value></data>
+  <data name="AutomaticScanResult" xml:space="preserve"><value>Automatic scan · result</value></data>
+  <data name="ScanInitializeCandidates" xml:space="preserve"><value>Automatic scan candidate initialization</value></data>
+  <data name="ChannelsLabel" xml:space="preserve"><value>Channels</value></data>
+  <data name="PeriodLabel" xml:space="preserve"><value>Period</value></data>
+  <data name="BufferLabel" xml:space="preserve"><value>Buffer</value></data>
+  <data name="StreamTestDescription" xml:space="preserve"><value>The stream test runs separately only after Initialize succeeds. Capture reads packets without saving PCM; Render sends digital silence.</value></data>
+  <data name="TestSelectedPeriodStream" xml:space="preserve"><value>Test the selected period stream · 5 seconds</value></data>
+  <data name="StreamConsentHeading" xml:space="preserve"><value>Separate consent to start a real stream</value></data>
+  <data name="StreamConsent" xml:space="preserve"><value>I authorize one selected Capture/Render stream</value></data>
+  <data name="StreamResultsAccessible" xml:space="preserve"><value>Stream test results: separate MINIMUM and DEFAULT cards</value></data>
+  <data name="BufferPrefix" xml:space="preserve"><value>Buffer: </value></data>
+  <data name="FramesSuffix" xml:space="preserve"><value> frames</value></data>
+  <data name="FinalStatus" xml:space="preserve"><value>Final status</value></data>
+  <data name="FramesExpected" xml:space="preserve"><value>Frames / expected</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
+  <data name="StreamQuality" xml:space="preserve"><value>Stream quality</value></data>
+  <data name="FaultCounters" xml:space="preserve"><value>Fault counters</value></data>
+  <data name="ReasonDetails" xml:space="preserve"><value>Reason / details</value></data>
+  <data name="ErrorResultDetails" xml:space="preserve"><value>Error or result details</value></data>
+  <data name="ScanTechnicalData" xml:space="preserve"><value>Automatic scan technical data · HRESULT, periods, buffer, cleanup</value></data>
+  <data name="ExclusiveFormatResults" xml:space="preserve"><value>Unique Exclusive format results</value></data>
+  <data name="FullResultsTechnicalData" xml:space="preserve"><value>Full results and technical data</value></data>
+  <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Technical diagnostics · HRESULT, alignment retry, COM release</value></data>
+  <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Initialize-only technical details</value></data>
 </root>

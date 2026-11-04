@@ -102,4 +102,46 @@
   <data name="UniqueFormatDescription" xml:space="preserve"><value>Каждая строка — один уникальный формат и один запрос IsFormatSupported. Период выбирается только для Initialize-only.</value></data>
   <data name="SelectSupportedFormat" xml:space="preserve"><value>Выберите формат с SUPPORTED_REPORTED для Initialize-only</value></data>
   <data name="InitializePeriodAccessible" xml:space="preserve"><value>Период Initialize-only</value></data>
+  <data name="InitializeUnavailableReason" xml:space="preserve"><value>Причина недоступности Initialize-only</value></data>
+  <data name="InitializeNewConfirmation" xml:space="preserve"><value>Новое подтверждение · одна попытка Initialize</value></data>
+  <data name="InitializeConsent" xml:space="preserve"><value>Разрешаю однократную Exclusive Initialize для этих точных настроек</value></data>
+  <data name="PhysicalRtlNotMeasured" xml:space="preserve"><value>Физический RTL не измеряется. AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="StopRequestCancel" xml:space="preserve"><value>Остановить / запросить отмену</value></data>
+  <data name="CancellationPendingDescription" xml:space="preserve"><value>Запрос отмены не подтверждает остановку драйвера. Состояние и cleanup обновятся только после ответа Worker.</value></data>
+  <data name="ToResult" xml:space="preserve"><value>К результату</value></data>
+  <data name="BackToDevice" xml:space="preserve"><value>Назад к устройству</value></data>
+  <data name="DeviceLabel" xml:space="preserve"><value>Устройство</value></data>
+  <data name="ScanLabel" xml:space="preserve"><value>Сканирование</value></data>
+  <data name="ExportTechnicalDetails" xml:space="preserve"><value>Технические сведения экспорта</value></data>
+  <data name="PhysicalLatencyPrefix" xml:space="preserve"><value>Физическая задержка: </value></data>
+  <data name="OperationsAndTechnicalDetails" xml:space="preserve"><value>Операции и технические сведения</value></data>
+  <data name="SelectedDuplexResult" xml:space="preserve"><value>Результат выбранной пары Capture / Render</value></data>
+  <data name="SavedDuplexResults" xml:space="preserve"><value>Сохранённые итоги Duplex MINIMUM и DEFAULT</value></data>
+  <data name="BuffersInitializeCr" xml:space="preserve"><value>Буферы C/R · Initialize C/R</value></data>
+  <data name="StartCoverageCr" xml:space="preserve"><value>Start C/R · покрытие C/R</value></data>
+  <data name="QualityCrDuplex" xml:space="preserve"><value>Качество C/R/Duplex</value></data>
+  <data name="AutomaticScanResult" xml:space="preserve"><value>Автоматическое сканирование · итог</value></data>
+  <data name="ScanInitializeCandidates" xml:space="preserve"><value>Инициализация кандидатов автоматического сканирования</value></data>
+  <data name="ChannelsLabel" xml:space="preserve"><value>Каналы</value></data>
+  <data name="PeriodLabel" xml:space="preserve"><value>Период</value></data>
+  <data name="BufferLabel" xml:space="preserve"><value>Буфер</value></data>
+  <data name="StreamTestDescription" xml:space="preserve"><value>Проверка потока выполняется только отдельно после успешного Initialize. Capture считывает пакеты без сохранения PCM; Render передаёт цифровую тишину.</value></data>
+  <data name="TestSelectedPeriodStream" xml:space="preserve"><value>Проверить поток выбранного периода · 5 секунд</value></data>
+  <data name="StreamConsentHeading" xml:space="preserve"><value>Отдельное согласие на запуск реального потока</value></data>
+  <data name="StreamConsent" xml:space="preserve"><value>Разрешаю один выбранный Capture/Render stream</value></data>
+  <data name="StreamResultsAccessible" xml:space="preserve"><value>Результаты проверки потока: отдельные карточки MINIMUM и DEFAULT</value></data>
+  <data name="BufferPrefix" xml:space="preserve"><value>Буфер: </value></data>
+  <data name="FramesSuffix" xml:space="preserve"><value> кадров</value></data>
+  <data name="FinalStatus" xml:space="preserve"><value>Итоговый статус</value></data>
+  <data name="FramesExpected" xml:space="preserve"><value>Кадры / ожидается</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Покрытие</value></data>
+  <data name="StreamQuality" xml:space="preserve"><value>Качество потока</value></data>
+  <data name="FaultCounters" xml:space="preserve"><value>Счётчики faults</value></data>
+  <data name="ReasonDetails" xml:space="preserve"><value>Причина / подробности</value></data>
+  <data name="ErrorResultDetails" xml:space="preserve"><value>Подробности ошибки или результата</value></data>
+  <data name="ScanTechnicalData" xml:space="preserve"><value>Технические данные автоматического scan · HRESULT, периоды, буфер, cleanup</value></data>
+  <data name="ExclusiveFormatResults" xml:space="preserve"><value>Результаты уникальных Exclusive-форматов</value></data>
+  <data name="FullResultsTechnicalData" xml:space="preserve"><value>Полные результаты и технические данные</value></data>
+  <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Техническая диагностика · HRESULT, alignment retry, COM release</value></data>
+  <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Технические детали Initialize-only</value></data>
 </root>
