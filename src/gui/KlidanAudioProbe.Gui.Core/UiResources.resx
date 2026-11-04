@@ -394,4 +394,13 @@
   <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
   <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
   <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · fake only</value></data>
+  <data name="WindowsChannelFormat" xml:space="preserve"><value>Windows channel {0}</value></data>
+  <data name="SessionIdFormat" xml:space="preserve"><value>Session {0:D}</value></data>
+  <data name="PreferredFormat" xml:space="preserve"><value>Preferred: {0}</value></data>
+  <data name="FallbackFormat" xml:space="preserve"><value>Fallback: {0}</value></data>
+  <data name="ConfidenceFormat" xml:space="preserve"><value>Confidence: {0}</value></data>
+  <data name="SessionNotStarted" xml:space="preserve"><value>Session has not started</value></data>
+  <data name="QualityUnknown" xml:space="preserve"><value>Quality unknown</value></data>
+  <data name="NoFakeSession" xml:space="preserve"><value>No fake session</value></data>
+  <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 seconds; Extended: 600 seconds. Both modes run only after confirmation of the complete plan.</value></data>
 </root>

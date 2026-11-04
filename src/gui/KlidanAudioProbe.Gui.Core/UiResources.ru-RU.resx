@@ -394,4 +394,13 @@
   <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
   <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
   <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · только fake</value></data>
+  <data name="WindowsChannelFormat" xml:space="preserve"><value>Канал Windows {0}</value></data>
+  <data name="SessionIdFormat" xml:space="preserve"><value>Сессия {0:D}</value></data>
+  <data name="PreferredFormat" xml:space="preserve"><value>Основной: {0}</value></data>
+  <data name="FallbackFormat" xml:space="preserve"><value>Резервный: {0}</value></data>
+  <data name="ConfidenceFormat" xml:space="preserve"><value>Уверенность: {0}</value></data>
+  <data name="SessionNotStarted" xml:space="preserve"><value>Сессия не запускалась</value></data>
+  <data name="QualityUnknown" xml:space="preserve"><value>Качество неизвестно</value></data>
+  <data name="NoFakeSession" xml:space="preserve"><value>Нет fake-сессии</value></data>
+  <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 секунд; Extended: 600 секунд. Оба режима выполняются только после подтверждения полного плана.</value></data>
 </root>
