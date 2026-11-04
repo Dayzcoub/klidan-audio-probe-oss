@@ -239,4 +239,49 @@
   <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Отдельное подтверждение перед стартом</value></data>
   <data name="CustomDuplexConsent" xml:space="preserve"><value>Разрешаю ровно одну перечисленную custom-period Duplex operation</value></data>
   <data name="DuplexInProgress" xml:space="preserve"><value>Duplex выполняется</value></data>
+  <data name="PrepareFiveRuns" xml:space="preserve"><value>Подготовить 5 запусков</value></data>
+  <data name="WholeSeriesConfirmation" xml:space="preserve"><value>Одно подтверждение для всей серии</value></data>
+  <data name="FiveCustomDuplexConsent" xml:space="preserve"><value>Разрешаю пять последовательных custom-period Duplex операций</value></data>
+  <data name="ConfirmStartSeries" xml:space="preserve"><value>Подтвердить и запустить серию</value></data>
+  <data name="RepeatabilityInProgress" xml:space="preserve"><value>Repeatability выполняется</value></data>
+  <data name="DemoFormatMatrixSummary" xml:space="preserve"><value>12 вариантов · 24 результата периода · проверочные данные</value></data>
+  <data name="RealWasapiExclusiveFormats" xml:space="preserve"><value>REAL WASAPI · Exclusive-форматы выбранного Windows endpoint</value></data>
+  <data name="ChannelCandidates" xml:space="preserve"><value>Каналы-кандидаты (1–64, до 32 значений):</value></data>
+  <data name="RealQueryResults" xml:space="preserve"><value>Результаты REAL_WASAPI_QUERY</value></data>
+  <data name="StatusLabel" xml:space="preserve"><value>Статус</value></data>
+  <data name="NewConfirmationRequired" xml:space="preserve"><value>Требуется новое подтверждение</value></data>
+  <data name="SelectedInitializeConsent" xml:space="preserve"><value>Разрешаю однократную Exclusive Initialize для выбранных настроек</value></data>
+  <data name="ConfirmAndCheck" xml:space="preserve"><value>Подтвердить и проверить</value></data>
+  <data name="InitializeLimitations" xml:space="preserve"><value>Initialize не вызывает Start и не передаёт PCM. Результат не доказывает запуск потока или аудио-наблюдение.</value></data>
+  <data name="FormatMatrix" xml:space="preserve"><value>Матрица форматов</value></data>
+  <data name="EncodingLabel" xml:space="preserve"><value>Кодирование</value></data>
+  <data name="FrequencyHz" xml:space="preserve"><value>Частота, Гц</value></data>
+  <data name="DefaultPeriod" xml:space="preserve"><value>Период: стандартный</value></data>
+  <data name="MinimumPeriod" xml:space="preserve"><value>Период: минимальный</value></data>
+  <data name="DriverSupportLimitations" xml:space="preserve"><value>Поддержка драйвером не означает Initialize, запуск потока или аудио-наблюдение.</value></data>
+  <data name="CaptureMeterDemo" xml:space="preserve"><value>Измеритель Capture · только проверочные окна</value></data>
+  <data name="ChannelMeters" xml:space="preserve"><value>Метры каналов</value></data>
+  <data name="CaptureChannelBank" xml:space="preserve"><value>Банк каналов Capture</value></data>
+  <data name="InputChannelBank" xml:space="preserve"><value>Банк входных каналов</value></data>
+  <data name="EightCaptureLevels" xml:space="preserve"><value>Текущие уровни восьми каналов Capture</value></data>
+  <data name="StreamIntegrity" xml:space="preserve"><value>Целостность потока</value></data>
+  <data name="StateQualitySeparate" xml:space="preserve"><value>Состояние и качество потока показываются отдельно.</value></data>
+  <data name="CoverageFaultsUnknown" xml:space="preserve"><value>Покрытие и ошибки: неизвестно до получения данных сессии.</value></data>
+  <data name="StartCaptureSimulation" xml:space="preserve"><value>Начать симуляцию Capture</value></data>
+  <data name="NextWindow" xml:space="preserve"><value>Следующее окно</value></data>
+  <data name="ChannelTestSimulation" xml:space="preserve"><value>Проверка канала · симуляция без воспроизведения</value></data>
+  <data name="DemoOutputSettings" xml:space="preserve"><value>Настройки выхода · демо</value></data>
+  <data name="ChannelBank" xml:space="preserve"><value>Банк каналов</value></data>
+  <data name="WindowsChannelBank" xml:space="preserve"><value>Банк каналов Windows</value></data>
+  <data name="WindowsChannel" xml:space="preserve"><value>Канал Windows</value></data>
+  <data name="WindowsChannelSelection" xml:space="preserve"><value>Выбор канала Windows</value></data>
+  <data name="Duration" xml:space="preserve"><value>Длительность</value></data>
+  <data name="DemoDuration" xml:space="preserve"><value>Длительность демонстрации</value></data>
+  <data name="DemoSignalDescription" xml:space="preserve"><value>Сигнал: 997 Гц · не выше −36 dBFS · синус с паузами</value></data>
+  <data name="PhysicalRoutingUnknown" xml:space="preserve"><value>Физическая маршрутизация: НЕИЗВЕСТНО</value></data>
+  <data name="DemoNoSound" xml:space="preserve"><value>ДЕМО · Звук не воспроизводится.</value></data>
+  <data name="PhysicalMapping" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · физический выход не проверялся</value></data>
+  <data name="DigitalSimulationLimit" xml:space="preserve"><value>Цифровая симуляция не подтверждает сигнал ЦАП или слышимость.</value></data>
+  <data name="StartRenderSimulation" xml:space="preserve"><value>Начать симуляцию Render</value></data>
 </root>

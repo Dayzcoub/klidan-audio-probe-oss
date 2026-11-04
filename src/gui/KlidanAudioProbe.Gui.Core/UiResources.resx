@@ -239,4 +239,49 @@
   <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Separate confirmation before start</value></data>
   <data name="CustomDuplexConsent" xml:space="preserve"><value>I authorize exactly one listed custom-period Duplex operation</value></data>
   <data name="DuplexInProgress" xml:space="preserve"><value>Duplex in progress</value></data>
+  <data name="PrepareFiveRuns" xml:space="preserve"><value>Prepare 5 runs</value></data>
+  <data name="WholeSeriesConfirmation" xml:space="preserve"><value>One confirmation for the entire series</value></data>
+  <data name="FiveCustomDuplexConsent" xml:space="preserve"><value>I authorize five sequential custom-period Duplex operations</value></data>
+  <data name="ConfirmStartSeries" xml:space="preserve"><value>Confirm and start series</value></data>
+  <data name="RepeatabilityInProgress" xml:space="preserve"><value>Repeatability in progress</value></data>
+  <data name="DemoFormatMatrixSummary" xml:space="preserve"><value>12 formats · 24 period results · test data</value></data>
+  <data name="RealWasapiExclusiveFormats" xml:space="preserve"><value>REAL WASAPI · Exclusive formats of the selected Windows endpoint</value></data>
+  <data name="ChannelCandidates" xml:space="preserve"><value>Channel candidates (1–64, up to 32 values):</value></data>
+  <data name="RealQueryResults" xml:space="preserve"><value>REAL_WASAPI_QUERY results</value></data>
+  <data name="StatusLabel" xml:space="preserve"><value>Status</value></data>
+  <data name="NewConfirmationRequired" xml:space="preserve"><value>New confirmation required</value></data>
+  <data name="SelectedInitializeConsent" xml:space="preserve"><value>I authorize one Exclusive Initialize with the selected settings</value></data>
+  <data name="ConfirmAndCheck" xml:space="preserve"><value>Confirm and check</value></data>
+  <data name="InitializeLimitations" xml:space="preserve"><value>Initialize does not call Start or transmit PCM. The result does not prove stream startup or audio observation.</value></data>
+  <data name="FormatMatrix" xml:space="preserve"><value>Format matrix</value></data>
+  <data name="EncodingLabel" xml:space="preserve"><value>Encoding</value></data>
+  <data name="FrequencyHz" xml:space="preserve"><value>Frequency, Hz</value></data>
+  <data name="DefaultPeriod" xml:space="preserve"><value>Period: default</value></data>
+  <data name="MinimumPeriod" xml:space="preserve"><value>Period: minimum</value></data>
+  <data name="DriverSupportLimitations" xml:space="preserve"><value>Driver support does not mean Initialize, stream startup or audio observation.</value></data>
+  <data name="CaptureMeterDemo" xml:space="preserve"><value>Capture meter · test windows only</value></data>
+  <data name="ChannelMeters" xml:space="preserve"><value>Channel meters</value></data>
+  <data name="CaptureChannelBank" xml:space="preserve"><value>Capture channel bank</value></data>
+  <data name="InputChannelBank" xml:space="preserve"><value>Input channel bank</value></data>
+  <data name="EightCaptureLevels" xml:space="preserve"><value>Current levels of eight Capture channels</value></data>
+  <data name="StreamIntegrity" xml:space="preserve"><value>Stream integrity</value></data>
+  <data name="StateQualitySeparate" xml:space="preserve"><value>Stream state and quality are shown separately.</value></data>
+  <data name="CoverageFaultsUnknown" xml:space="preserve"><value>Coverage and faults: unknown until session data is received.</value></data>
+  <data name="StartCaptureSimulation" xml:space="preserve"><value>Start Capture simulation</value></data>
+  <data name="NextWindow" xml:space="preserve"><value>Next window</value></data>
+  <data name="ChannelTestSimulation" xml:space="preserve"><value>Channel test · simulation without playback</value></data>
+  <data name="DemoOutputSettings" xml:space="preserve"><value>Output settings · demo</value></data>
+  <data name="ChannelBank" xml:space="preserve"><value>Channel bank</value></data>
+  <data name="WindowsChannelBank" xml:space="preserve"><value>Windows channel bank</value></data>
+  <data name="WindowsChannel" xml:space="preserve"><value>Windows channel</value></data>
+  <data name="WindowsChannelSelection" xml:space="preserve"><value>Windows channel selection</value></data>
+  <data name="Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="DemoDuration" xml:space="preserve"><value>Demo duration</value></data>
+  <data name="DemoSignalDescription" xml:space="preserve"><value>Signal: 997 Hz · no higher than −36 dBFS · sine with pauses</value></data>
+  <data name="PhysicalRoutingUnknown" xml:space="preserve"><value>Physical routing: UNKNOWN</value></data>
+  <data name="DemoNoSound" xml:space="preserve"><value>DEMO · No sound is played.</value></data>
+  <data name="PhysicalMapping" xml:space="preserve"><value>Physical mapping</value></data>
+  <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · physical output was not tested</value></data>
+  <data name="DigitalSimulationLimit" xml:space="preserve"><value>Digital simulation does not confirm a DAC signal or audibility.</value></data>
+  <data name="StartRenderSimulation" xml:space="preserve"><value>Start Render simulation</value></data>
 </root>
