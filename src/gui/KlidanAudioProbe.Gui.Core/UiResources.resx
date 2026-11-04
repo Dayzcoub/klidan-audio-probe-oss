@@ -144,4 +144,51 @@
   <data name="FullResultsTechnicalData" xml:space="preserve"><value>Full results and technical data</value></data>
   <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Technical diagnostics · HRESULT, alignment retry, COM release</value></data>
   <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Initialize-only technical details</value></data>
+  <data name="SaveAcceptedRealResults" xml:space="preserve"><value>Saves only accepted real results. Pair profile v3 may contain a provisional Probe recommendation; AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="SaveDeviceProfileForKlidan" xml:space="preserve"><value>Save a local device configuration profile for KLIDAN</value></data>
+  <data name="SelectAnotherDevice" xml:space="preserve"><value>Select another device</value></data>
+  <data name="SelectActiveEndpoint" xml:space="preserve"><value>Select the exact active endpoint. Discovery starts only after the operator acts.</value></data>
+  <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Test data</value></data>
+  <data name="InputCapture" xml:space="preserve"><value>Input · Capture</value></data>
+  <data name="OutputRender" xml:space="preserve"><value>Output · Render</value></data>
+  <data name="EmptyList" xml:space="preserve"><value>Empty list</value></data>
+  <data name="EmptyDeviceList" xml:space="preserve"><value>Empty device list</value></data>
+  <data name="DemoOnlyDevices" xml:space="preserve"><value>Real devices are not enumerated. Only test data is used.</value></data>
+  <data name="RestoreDemo" xml:space="preserve"><value>Restore demo</value></data>
+  <data name="DemoDeviceList" xml:space="preserve"><value>Demo device list</value></data>
+  <data name="RowSelectionRetained" xml:space="preserve"><value>The selected row is retained when focus changes.</value></data>
+  <data name="PhysicalJackMappingUnknown" xml:space="preserve"><value>Physical jack mapping: UNKNOWN</value></data>
+  <data name="WorkerFakeSynthetic" xml:space="preserve"><value>WORKER FAKE · Developer Tools only · synthetic operations</value></data>
+  <data name="OpenWorkerFakeDiagnostics" xml:space="preserve"><value>Open WORKER FAKE diagnostics</value></data>
+  <data name="MetadataAndScanConsent" xml:space="preserve"><value>System metadata retrieval and automatic scanning run only after explicit action and confirmation.</value></data>
+  <data name="FindRefreshDevices" xml:space="preserve"><value>Find / refresh devices</value></data>
+  <data name="SavedDeviceProfile" xml:space="preserve"><value>Saved device profile</value></data>
+  <data name="CheckSavedBinding" xml:space="preserve"><value>Refresh real devices and check the saved binding without starting audio.</value></data>
+  <data name="CheckConnection" xml:space="preserve"><value>Check connection</value></data>
+  <data name="CheckSavedDeviceConnection" xml:space="preserve"><value>Check saved device connection</value></data>
+  <data name="ProfileSelectionDiagnostics" xml:space="preserve"><value>Profile selection and technical details are for diagnostics; conflicting profiles are never selected automatically.</value></data>
+  <data name="AdvancedSavedProfileSelection" xml:space="preserve"><value>Advanced saved profile selection</value></data>
+  <data name="RefreshProfiles" xml:space="preserve"><value>Refresh profiles</value></data>
+  <data name="CheckTechnicalDetails" xml:space="preserve"><value>Check technical details</value></data>
+  <data name="RecoverProfileFromHistory" xml:space="preserve"><value>Recover a profile from previous measurements</value></data>
+  <data name="LocalCompletedMeasurementsOnly" xml:space="preserve"><value>Only local completed measurements are used. Audio is not started; recovery is not automatic.</value></data>
+  <data name="HistoricalMeasurementSelection" xml:space="preserve"><value>Historical measurement selection</value></data>
+  <data name="RefreshPreviousMeasurements" xml:space="preserve"><value>Refresh previous measurements</value></data>
+  <data name="TechnicalInformation" xml:space="preserve"><value>Technical information</value></data>
+  <data name="CheckOldMeasurements" xml:space="preserve"><value>Check old measurements</value></data>
+  <data name="VerifiedResult" xml:space="preserve"><value>Verified result</value></data>
+  <data name="ConfirmNewV4Profile" xml:space="preserve"><value>I confirm creation of a NEW local v4 profile from historical data</value></data>
+  <data name="RecoveryLimitations" xml:space="preserve"><value>Nothing is started; source reports are unchanged; this is not current runtime certification; AudioHost is not configured automatically.</value></data>
+  <data name="SaveRecoveredProfile" xml:space="preserve"><value>Save recovered profile</value></data>
+  <data name="PhysicalAudioDeviceSelection" xml:space="preserve"><value>Physical audio device selection</value></data>
+  <data name="AmbiguousCaptureRender" xml:space="preserve"><value>If ambiguous, select Capture and Render below. Loopback does not replace an analog input.</value></data>
+  <data name="SustainedTestMode" xml:space="preserve"><value>Sustained test mode</value></data>
+  <data name="ScanButton" xml:space="preserve"><value>Scan</value></data>
+  <data name="PrepareAutomaticScan" xml:space="preserve"><value>Prepare automatic scan of the selected device</value></data>
+  <data name="ScanPlanConfirmation" xml:space="preserve"><value>One confirmation for the scan plan</value></data>
+  <data name="ScanPlanConsent" xml:space="preserve"><value>I authorize the listed operations for these exact endpoints and settings</value></data>
+  <data name="ConfirmWholeScanPlan" xml:space="preserve"><value>Confirm the entire unchanged scan plan once</value></data>
+  <data name="ConfirmAndScan" xml:space="preserve"><value>Confirm and scan</value></data>
+  <data name="RealWorkerScanning" xml:space="preserve"><value>SCANNING · real Worker</value></data>
+  <data name="DriverCancellationNote" xml:space="preserve"><value>A cancellation request does not mean an unresponsive driver call has stopped. The result and cleanup are shown after the worker responds.</value></data>
 </root>

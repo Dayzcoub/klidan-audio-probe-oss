@@ -144,4 +144,51 @@
   <data name="FullResultsTechnicalData" xml:space="preserve"><value>Полные результаты и технические данные</value></data>
   <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Техническая диагностика · HRESULT, alignment retry, COM release</value></data>
   <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Технические детали Initialize-only</value></data>
+  <data name="SaveAcceptedRealResults" xml:space="preserve"><value>Сохраняет только принятые реальные результаты. Pair profile v3 может содержать provisional Probe recommendation; AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="SaveDeviceProfileForKlidan" xml:space="preserve"><value>Сохранить локальный профиль конфигурации устройства для KLIDAN</value></data>
+  <data name="SelectAnotherDevice" xml:space="preserve"><value>Выбрать другое устройство</value></data>
+  <data name="SelectActiveEndpoint" xml:space="preserve"><value>Выберите точный активный endpoint. Обнаружение начинается только после нажатия оператором.</value></data>
+  <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Проверочные данные</value></data>
+  <data name="InputCapture" xml:space="preserve"><value>Вход · Capture</value></data>
+  <data name="OutputRender" xml:space="preserve"><value>Выход · Render</value></data>
+  <data name="EmptyList" xml:space="preserve"><value>Пустой список</value></data>
+  <data name="EmptyDeviceList" xml:space="preserve"><value>Пустой список устройств</value></data>
+  <data name="DemoOnlyDevices" xml:space="preserve"><value>Реальные устройства не перечисляются. Используются только проверочные данные.</value></data>
+  <data name="RestoreDemo" xml:space="preserve"><value>Вернуть демо</value></data>
+  <data name="DemoDeviceList" xml:space="preserve"><value>Список демонстрационных устройств</value></data>
+  <data name="RowSelectionRetained" xml:space="preserve"><value>Выбранная строка сохраняется при смене фокуса.</value></data>
+  <data name="PhysicalJackMappingUnknown" xml:space="preserve"><value>Физическое соответствие разъёмам: UNKNOWN</value></data>
+  <data name="WorkerFakeSynthetic" xml:space="preserve"><value>WORKER FAKE · только Developer Tools · синтетические операции</value></data>
+  <data name="OpenWorkerFakeDiagnostics" xml:space="preserve"><value>Открыть диагностику WORKER FAKE</value></data>
+  <data name="MetadataAndScanConsent" xml:space="preserve"><value>Системные метаданные и автоматическое сканирование выполняются только после явного действия и подтверждения.</value></data>
+  <data name="FindRefreshDevices" xml:space="preserve"><value>Найти / обновить устройства</value></data>
+  <data name="SavedDeviceProfile" xml:space="preserve"><value>Сохранённый профиль устройства</value></data>
+  <data name="CheckSavedBinding" xml:space="preserve"><value>Обновите реальные устройства и проверьте сохранённую привязку без запуска аудио.</value></data>
+  <data name="CheckConnection" xml:space="preserve"><value>Проверить подключение</value></data>
+  <data name="CheckSavedDeviceConnection" xml:space="preserve"><value>Проверить подключение сохранённого устройства</value></data>
+  <data name="ProfileSelectionDiagnostics" xml:space="preserve"><value>Выбор профиля и технические сведения предназначены для диагностики; автоматический выбор конфликтующих профилей запрещён.</value></data>
+  <data name="AdvancedSavedProfileSelection" xml:space="preserve"><value>Расширенный выбор сохранённого профиля</value></data>
+  <data name="RefreshProfiles" xml:space="preserve"><value>Обновить профили</value></data>
+  <data name="CheckTechnicalDetails" xml:space="preserve"><value>Технические детали проверки</value></data>
+  <data name="RecoverProfileFromHistory" xml:space="preserve"><value>Восстановление профиля из предыдущих измерений</value></data>
+  <data name="LocalCompletedMeasurementsOnly" xml:space="preserve"><value>Только локальные завершённые измерения. Аудио не запускается; автоматическое восстановление не выполняется.</value></data>
+  <data name="HistoricalMeasurementSelection" xml:space="preserve"><value>Выбор исторического измерения</value></data>
+  <data name="RefreshPreviousMeasurements" xml:space="preserve"><value>Обновить предыдущие измерения</value></data>
+  <data name="TechnicalInformation" xml:space="preserve"><value>Технические сведения</value></data>
+  <data name="CheckOldMeasurements" xml:space="preserve"><value>Проверить старые измерения</value></data>
+  <data name="VerifiedResult" xml:space="preserve"><value>Проверенный результат</value></data>
+  <data name="ConfirmNewV4Profile" xml:space="preserve"><value>Подтверждаю создание НОВОГО локального v4 профиля из исторических данных</value></data>
+  <data name="RecoveryLimitations" xml:space="preserve"><value>Ничего не запускается; исходные отчёты не изменяются; это не текущая runtime-сертификация; AudioHost автоматически не настраивается.</value></data>
+  <data name="SaveRecoveredProfile" xml:space="preserve"><value>Сохранить восстановленный профиль</value></data>
+  <data name="PhysicalAudioDeviceSelection" xml:space="preserve"><value>Выбор физического аудиоустройства</value></data>
+  <data name="AmbiguousCaptureRender" xml:space="preserve"><value>При неоднозначности выберите Capture и Render ниже. Loopback не подменяет аналоговый вход.</value></data>
+  <data name="SustainedTestMode" xml:space="preserve"><value>Режим длительной проверки</value></data>
+  <data name="ScanButton" xml:space="preserve"><value>Сканировать</value></data>
+  <data name="PrepareAutomaticScan" xml:space="preserve"><value>Подготовить автоматическое сканирование выбранного устройства</value></data>
+  <data name="ScanPlanConfirmation" xml:space="preserve"><value>Одно подтверждение для плана сканирования</value></data>
+  <data name="ScanPlanConsent" xml:space="preserve"><value>Разрешаю перечисленные операции для этих точных endpoints и настроек</value></data>
+  <data name="ConfirmWholeScanPlan" xml:space="preserve"><value>Подтвердить один раз весь неизменяемый план сканирования</value></data>
+  <data name="ConfirmAndScan" xml:space="preserve"><value>Подтвердить и сканировать</value></data>
+  <data name="RealWorkerScanning" xml:space="preserve"><value>СКАНИРОВАНИЕ · реальный Worker</value></data>
+  <data name="DriverCancellationNote" xml:space="preserve"><value>Запрос отмены не означает, что неотвечающий вызов драйвера уже остановлен. Итог и cleanup отображаются после ответа worker.</value></data>
 </root>
