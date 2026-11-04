@@ -55,4 +55,21 @@
   <data name="CaptureChannelsTitle" xml:space="preserve"><value>Входные каналы</value></data>
   <data name="RenderChannelsTitle" xml:space="preserve"><value>Выходные каналы</value></data>
   <data name="WorkerEventsTitle" xml:space="preserve"><value>События WORKER FAKE · IPC и локальные действия</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Подтвердить</value></data>
+  <data name="ConfirmAndStart" xml:space="preserve"><value>Подтвердить и запустить</value></data>
+  <data name="TestMinimum" xml:space="preserve"><value>Проверить MINIMUM</value></data>
+  <data name="TestDefault" xml:space="preserve"><value>Проверить DEFAULT</value></data>
+  <data name="StopBoth" xml:space="preserve"><value>Остановить обе стороны</value></data>
+  <data name="RequestFormats" xml:space="preserve"><value>Запросить Exclusive-форматы</value></data>
+  <data name="CheckInitialization" xml:space="preserve"><value>Проверить инициализацию</value></data>
+  <data name="BackDevice" xml:space="preserve"><value>Назад · устройство</value></data>
+  <data name="ToResults" xml:space="preserve"><value>К результатам</value></data>
+  <data name="OpenReportFolder" xml:space="preserve"><value>Открыть папку отчёта</value></data>
+  <data name="ExportResults" xml:space="preserve"><value>Экспортировать результаты</value></data>
+  <data name="StartTest" xml:space="preserve"><value>Запустить проверку</value></data>
+  <data name="Stop" xml:space="preserve"><value>Остановить</value></data>
+  <data name="SaveKlidanProfile" xml:space="preserve"><value>Сохранить профиль для KLIDAN</value></data>
+  <data name="RepeatTest" xml:space="preserve"><value>Повторить этот тест</value></data>
+  <data name="OtherTest" xml:space="preserve"><value>Другой тест на этом устройстве</value></data>
 </root>

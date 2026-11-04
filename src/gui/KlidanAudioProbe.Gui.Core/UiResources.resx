@@ -55,4 +55,21 @@
   <data name="CaptureChannelsTitle" xml:space="preserve"><value>Input channels</value></data>
   <data name="RenderChannelsTitle" xml:space="preserve"><value>Output channels</value></data>
   <data name="WorkerEventsTitle" xml:space="preserve"><value>WORKER FAKE events · IPC and local actions</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="ConfirmAndStart" xml:space="preserve"><value>Confirm and start</value></data>
+  <data name="TestMinimum" xml:space="preserve"><value>Test MINIMUM</value></data>
+  <data name="TestDefault" xml:space="preserve"><value>Test DEFAULT</value></data>
+  <data name="StopBoth" xml:space="preserve"><value>Stop both sides</value></data>
+  <data name="RequestFormats" xml:space="preserve"><value>Query Exclusive formats</value></data>
+  <data name="CheckInitialization" xml:space="preserve"><value>Check initialization</value></data>
+  <data name="BackDevice" xml:space="preserve"><value>Back · device</value></data>
+  <data name="ToResults" xml:space="preserve"><value>Go to results</value></data>
+  <data name="OpenReportFolder" xml:space="preserve"><value>Open report folder</value></data>
+  <data name="ExportResults" xml:space="preserve"><value>Export results</value></data>
+  <data name="StartTest" xml:space="preserve"><value>Start test</value></data>
+  <data name="Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="SaveKlidanProfile" xml:space="preserve"><value>Save profile for KLIDAN</value></data>
+  <data name="RepeatTest" xml:space="preserve"><value>Repeat this test</value></data>
+  <data name="OtherTest" xml:space="preserve"><value>Another test on this device</value></data>
 </root>
