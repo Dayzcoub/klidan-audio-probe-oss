@@ -284,4 +284,52 @@
   <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · физический выход не проверялся</value></data>
   <data name="DigitalSimulationLimit" xml:space="preserve"><value>Цифровая симуляция не подтверждает сигнал ЦАП или слышимость.</value></data>
   <data name="StartRenderSimulation" xml:space="preserve"><value>Начать симуляцию Render</value></data>
+  <data name="DemoSimulationData" xml:space="preserve"><value>ДЕМО · Данные симуляции</value></data>
+  <data name="DemoTestData" xml:space="preserve"><value>ДЕМО · Проверочные данные</value></data>
+  <data name="WindowsExplicitActions" xml:space="preserve"><value>Windows diagnostics · только явные действия</value></data>
+  <data name="RefreshIndex" xml:space="preserve"><value>Обновить индекс</value></data>
+  <data name="LocalRebuildableIndex" xml:space="preserve"><value>Локальный rebuildable-индекс. Исторические записи read-only и не разрешают активные операции.</value></data>
+  <data name="ExactEndpointIdentityFilter" xml:space="preserve"><value>Фильтр exact endpoint identity</value></data>
+  <data name="ReportTypeFilter" xml:space="preserve"><value>Фильтр report type</value></data>
+  <data name="RealOrSynthetic" xml:space="preserve"><value>REAL или SYNTHETIC</value></data>
+  <data name="ComparisonMode" xml:space="preserve"><value>Режим сравнения</value></data>
+  <data name="HistoricalEvidenceLimit" xml:space="preserve"><value>Историческая запись: observed evidence не равна current device state.</value></data>
+  <data name="OpenOriginalFile" xml:space="preserve"><value>Открыть оригинальный файл</value></data>
+  <data name="Diagnostics" xml:space="preserve"><value>Диагностика</value></data>
+  <data name="SyntheticModelActions" xml:space="preserve"><value>Фактические действия текущей синтетической модели</value></data>
+  <data name="WorkerFakePipe" xml:space="preserve"><value>WORKER FAKE · реальный Named Pipe · без аудиоустройств</value></data>
+  <data name="NativeWorkerState" xml:space="preserve"><value>Состояние Native Worker</value></data>
+  <data name="StartWorkerFake" xml:space="preserve"><value>Запустить worker fake</value></data>
+  <data name="QuerySyntheticDevices" xml:space="preserve"><value>Запросить синтетические устройства</value></data>
+  <data name="ShutDownWorker" xml:space="preserve"><value>Завершить worker</value></data>
+  <data name="RemoteWorkerFakeResponses" xml:space="preserve"><value>Удалённые ответы WORKER FAKE</value></data>
+  <data name="SyntheticWorkerDevice" xml:space="preserve"><value>Синтетическое устройство worker</value></data>
+  <data name="LastDisconnectedWorkerResponse" xml:space="preserve"><value>Последний ответ отключённого worker</value></data>
+  <data name="HistoricalDisconnectedResponse" xml:space="preserve"><value>Исторический ответ отключённого worker</value></data>
+  <data name="FormatAndTopology" xml:space="preserve"><value>Формат и топология этого формата</value></data>
+  <data name="SyntheticStreamFormat" xml:space="preserve"><value>Формат синтетического потока</value></data>
+  <data name="SelectedWorkerFormatTopology" xml:space="preserve"><value>Топология и число каналов выбранного worker формата</value></data>
+  <data name="WindowsRenderChannel" xml:space="preserve"><value>Канал Windows для Render</value></data>
+  <data name="WindowsRenderSessionChannel" xml:space="preserve"><value>Канал Windows для сессии Render</value></data>
+  <data name="WorkerFakeDuration" xml:space="preserve"><value>Длительность worker fake</value></data>
+  <data name="WorkerFakePeriod" xml:space="preserve"><value>Период worker fake</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Сценарий</value></data>
+  <data name="WorkerFakeScenario" xml:space="preserve"><value>Сценарий worker fake</value></data>
+  <data name="RequestCapture" xml:space="preserve"><value>Запросить Capture</value></data>
+  <data name="RequestRender" xml:space="preserve"><value>Запросить Render</value></data>
+  <data name="StopWorker" xml:space="preserve"><value>СТОП WORKER</value></data>
+  <data name="ActiveFakeSettingsImmutable" xml:space="preserve"><value>Настройки активной fake-сессии неизменяемы:</value></data>
+  <data name="ImmutableWorkerSettings" xml:space="preserve"><value>Неизменяемые настройки сессии worker</value></data>
+  <data name="WorkerPhysicalMappingUnknown" xml:space="preserve"><value>Физическое соответствие каналам: UNKNOWN · PCM не генерируется и устройства не активируются.</value></data>
+  <data name="PhysicalRoutingUnknownLower" xml:space="preserve"><value>Физическая маршрутизация: неизвестно</value></data>
+  <data name="WorkerMeterChannelBank" xml:space="preserve"><value>Банк каналов измерителя worker</value></data>
+  <data name="EightWorkerChannelBank" xml:space="preserve"><value>Банк из восьми каналов worker</value></data>
+  <data name="WorkerFakeEventLog" xml:space="preserve"><value>Журнал событий worker fake</value></data>
+  <data name="TimeLabel" xml:space="preserve"><value>Время</value></data>
+  <data name="SourceLabel" xml:space="preserve"><value>Источник</value></data>
+  <data name="EventLabel" xml:space="preserve"><value>Событие</value></data>
+  <data name="QualityLabel" xml:space="preserve"><value>Качество</value></data>
+  <data name="CleanupLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="SessionLabel" xml:space="preserve"><value>Сессия</value></data>
+  <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Подробности выбранного события worker</value></data>
 </root>

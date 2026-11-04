@@ -284,4 +284,52 @@
   <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · physical output was not tested</value></data>
   <data name="DigitalSimulationLimit" xml:space="preserve"><value>Digital simulation does not confirm a DAC signal or audibility.</value></data>
   <data name="StartRenderSimulation" xml:space="preserve"><value>Start Render simulation</value></data>
+  <data name="DemoSimulationData" xml:space="preserve"><value>DEMO · Simulation data</value></data>
+  <data name="DemoTestData" xml:space="preserve"><value>DEMO · Test data</value></data>
+  <data name="WindowsExplicitActions" xml:space="preserve"><value>Windows diagnostics · explicit actions only</value></data>
+  <data name="RefreshIndex" xml:space="preserve"><value>Refresh index</value></data>
+  <data name="LocalRebuildableIndex" xml:space="preserve"><value>Local rebuildable index. Historical records are read-only and do not authorize active operations.</value></data>
+  <data name="ExactEndpointIdentityFilter" xml:space="preserve"><value>Exact endpoint identity filter</value></data>
+  <data name="ReportTypeFilter" xml:space="preserve"><value>Report type filter</value></data>
+  <data name="RealOrSynthetic" xml:space="preserve"><value>REAL or SYNTHETIC</value></data>
+  <data name="ComparisonMode" xml:space="preserve"><value>Comparison mode</value></data>
+  <data name="HistoricalEvidenceLimit" xml:space="preserve"><value>Historical record: observed evidence is not the current device state.</value></data>
+  <data name="OpenOriginalFile" xml:space="preserve"><value>Open original file</value></data>
+  <data name="Diagnostics" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="SyntheticModelActions" xml:space="preserve"><value>Actual actions of the current synthetic model</value></data>
+  <data name="WorkerFakePipe" xml:space="preserve"><value>WORKER FAKE · real Named Pipe · no audio devices</value></data>
+  <data name="NativeWorkerState" xml:space="preserve"><value>Native Worker state</value></data>
+  <data name="StartWorkerFake" xml:space="preserve"><value>Start worker fake</value></data>
+  <data name="QuerySyntheticDevices" xml:space="preserve"><value>Query synthetic devices</value></data>
+  <data name="ShutDownWorker" xml:space="preserve"><value>Shut down worker</value></data>
+  <data name="RemoteWorkerFakeResponses" xml:space="preserve"><value>Remote WORKER FAKE responses</value></data>
+  <data name="SyntheticWorkerDevice" xml:space="preserve"><value>Synthetic worker device</value></data>
+  <data name="LastDisconnectedWorkerResponse" xml:space="preserve"><value>Last response from disconnected worker</value></data>
+  <data name="HistoricalDisconnectedResponse" xml:space="preserve"><value>Historical response from disconnected worker</value></data>
+  <data name="FormatAndTopology" xml:space="preserve"><value>Format and its topology</value></data>
+  <data name="SyntheticStreamFormat" xml:space="preserve"><value>Synthetic stream format</value></data>
+  <data name="SelectedWorkerFormatTopology" xml:space="preserve"><value>Topology and channel count of the selected worker format</value></data>
+  <data name="WindowsRenderChannel" xml:space="preserve"><value>Windows channel for Render</value></data>
+  <data name="WindowsRenderSessionChannel" xml:space="preserve"><value>Windows channel for the Render session</value></data>
+  <data name="WorkerFakeDuration" xml:space="preserve"><value>Worker fake duration</value></data>
+  <data name="WorkerFakePeriod" xml:space="preserve"><value>Worker fake period</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Scenario</value></data>
+  <data name="WorkerFakeScenario" xml:space="preserve"><value>Worker fake scenario</value></data>
+  <data name="RequestCapture" xml:space="preserve"><value>Request Capture</value></data>
+  <data name="RequestRender" xml:space="preserve"><value>Request Render</value></data>
+  <data name="StopWorker" xml:space="preserve"><value>STOP WORKER</value></data>
+  <data name="ActiveFakeSettingsImmutable" xml:space="preserve"><value>Active fake session settings are immutable:</value></data>
+  <data name="ImmutableWorkerSettings" xml:space="preserve"><value>Immutable worker session settings</value></data>
+  <data name="WorkerPhysicalMappingUnknown" xml:space="preserve"><value>Physical channel mapping: UNKNOWN · no PCM is generated and no devices are activated.</value></data>
+  <data name="PhysicalRoutingUnknownLower" xml:space="preserve"><value>Physical routing: unknown</value></data>
+  <data name="WorkerMeterChannelBank" xml:space="preserve"><value>Worker meter channel bank</value></data>
+  <data name="EightWorkerChannelBank" xml:space="preserve"><value>Eight-channel worker bank</value></data>
+  <data name="WorkerFakeEventLog" xml:space="preserve"><value>Worker fake event log</value></data>
+  <data name="TimeLabel" xml:space="preserve"><value>Time</value></data>
+  <data name="SourceLabel" xml:space="preserve"><value>Source</value></data>
+  <data name="EventLabel" xml:space="preserve"><value>Event</value></data>
+  <data name="QualityLabel" xml:space="preserve"><value>Quality</value></data>
+  <data name="CleanupLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="SessionLabel" xml:space="preserve"><value>Session</value></data>
+  <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Selected worker event details</value></data>
 </root>
