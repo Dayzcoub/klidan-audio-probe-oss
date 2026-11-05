@@ -234,7 +234,7 @@ LOADING_CLEANUP = PASS (Loading=false and cleanup-complete recorded for both)
 DISCOVERY_3_RUNS = NOT_RUN (only two refreshes occurred in the one GUI launch)
 PERIOD_DISCOVERY_TEST = PASS (included in 810 GUI Core/WPF checks)
 GUI_TESTS = PASS (810 Core/WPF; 292 Worker IPC/process)
-FINAL_HEAD = pending checkpoint push
-WORKTREE = pending checkpoint push
+FINAL_HEAD = 67c704c (QA-6A checkpoint)
+WORKTREE = clean after checkpoint push
 READY_FOR_DPI_QA = NO (RU/EN three-refresh interactive validation remains incomplete)
 ```
