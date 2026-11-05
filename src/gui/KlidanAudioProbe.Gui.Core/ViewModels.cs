@@ -833,7 +833,7 @@ public sealed class MainViewModel : ViewModel
           Localization.Get("VmRepeatabilityPlanTimeLimit") + "\n" +
           string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanWorkerSession"), preparation.WorkerPlan.LifetimeSeconds, preparation.WorkerPlan.MaximumOperationDurationSeconds, preparation.WorkerPlan.MaximumOperationCount) + "\n" +
           Localization.Get("VmRepeatabilityPlanSafetyLimits");
-    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{result.Summary}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\nPersistence: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
+    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{result.Summary}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\n{Localization.Get("VmPersistenceLabel")}: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
     public bool PeriodDiscoveryConsentPending => _periodDiscoveryConsentPending;
     public bool PeriodDiscoveryConsentChecked { get => _periodDiscoveryConsentChecked; set { if (Set(ref _periodDiscoveryConsentChecked, value)) ConfirmPeriodDiscoveryCommand.Refresh(); } }
     public bool PeriodDiscoveryRunning => _periodDiscoveryRunning;
@@ -950,7 +950,7 @@ public sealed class MainViewModel : ViewModel
         get => _windowsEndpointActiveOnly;
         set { if (Set(ref _windowsEndpointActiveOnly, value)) RefreshWindowsEndpointBrowser(); }
     }
-    public IReadOnlyList<ChoiceOption> WindowsEndpointDirectionOptions { get; } = [new("ALL", Localization.Get("VmAllDirections")), new("CAPTURE", "Capture"), new("RENDER", "Render")];
+    public IReadOnlyList<ChoiceOption> WindowsEndpointDirectionOptions { get; } = [new("ALL", Localization.Get("VmAllDirections")), new("CAPTURE", Localization.Get("VmCaptureLabel")), new("RENDER", Localization.Get("VmRenderLabel"))];
     public int WindowsEndpointTotalCount => WindowsEndpointSource.Count;
     public int WindowsEndpointDisplayedCount => WindowsEndpointRows.Count;
     public int WindowsEndpointActiveCaptureCount => WindowsEndpointSource.Count(e => e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE");
@@ -1020,7 +1020,7 @@ public sealed class MainViewModel : ViewModel
         ? Localization.Get("VmSavedProfileExactBindingExplanation")
         : Localization.Get("VmSavedProfileBindingNoRecommendation");
     public string SavedProfileBindingTechnicalDetails => _savedProfileBindingResult is { } result
-        ? $"Overall: {result.Overall}\nCapture: {result.Capture}\nRender: {result.Render}\nProfile: {result.SourceProfileId:D}\nScan session: {result.SourceScanSessionId ?? "UNKNOWN"}\nGeneration: {result.DiscoveryGeneration ?? "UNKNOWN"}\nExact IDs: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\nReasons: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\nLimitations: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\nFurther verification required: {result.RequiresFurtherVerification}"
+        ? $"{Localization.Get("VmOverallLabel")}: {result.Overall}\n{Localization.Get("VmCaptureLabel")}: {result.Capture}\n{Localization.Get("VmRenderLabel")}: {result.Render}\n{Localization.Get("VmProfileLabel")}: {result.SourceProfileId:D}\n{Localization.Get("VmScanSessionLabel")}: {result.SourceScanSessionId ?? "UNKNOWN"}\n{Localization.Get("VmGenerationLabel")}: {result.DiscoveryGeneration ?? "UNKNOWN"}\n{Localization.Get("VmExactIdsLabel")}: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\n{Localization.Get("VmReasonsLabel")}: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\n{Localization.Get("VmLimitationsLabel")}: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\n{Localization.Get("VmFurtherVerificationRequiredLabel")}: {result.RequiresFurtherVerification}"
         : Localization.Get("VmSavedProfileTechnicalDetailsMissing");
     public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalWorkerEndpoint"), e.Name, e.Direction, e.ChannelCount)).ToArray();
     public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? Localization.Get("VmWorkerRestartRequired") : string.Empty;
@@ -1077,7 +1077,7 @@ public sealed class MainViewModel : ViewModel
             return string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterLive"), sequence, completed, count);
         }
     }
-    public string WorkerMeterModeLabel => WorkerSession?.Mode switch { SessionMode.Capture => "Capture", SessionMode.Render => Localization.Get("VmWorkerMeterRenderMode"), _ => Localization.Get("VmWorkerMeterNoSession") };
+    public string WorkerMeterModeLabel => WorkerSession?.Mode switch { SessionMode.Capture => Localization.Get("VmCaptureLabel"), SessionMode.Render => Localization.Get("VmWorkerMeterRenderMode"), _ => Localization.Get("VmWorkerMeterNoSession") };
     public string WorkerMeterFormatSummary => _workerSessionSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterFormatSummary"), s.FormatId, s.SampleRate, s.ChannelCount, s.DurationSeconds) : Localization.Get("VmWorkerMeterFormatUnknown");
     public string WorkerMeterSnapshotSummary => WorkerSession?.Mode == SessionMode.Render
         ? _workerRenderMeter is { } r ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterSnapshotSummary"), r.SnapshotSequence, r.ChannelCount) : Localization.Get("VmWorkerMeterSnapshotNoData")
@@ -2130,7 +2130,7 @@ public sealed class MainViewModel : ViewModel
             _duplexValidations[period] = result;
             var assessment = DuplexAssessments.Single(a => a.Period == period);
             _duplexStatus = $"{period}: {assessment.Classification} · Capture {assessment.CaptureCoverage} · Render {assessment.RenderCoverage}. {assessment.Reason}";
-            _operatorResultEndpoint = $"Capture · {capture.FriendlyNameDisplay}\nRender · {render.FriendlyNameDisplay}";
+            _operatorResultEndpoint = $"{Localization.Get("VmCaptureLabel")} · {capture.FriendlyNameDisplay}\n{Localization.Get("VmRenderLabel")} · {render.FriendlyNameDisplay}";
             _operatorResultMode = "Одновременная проверка Duplex";
             _operatorResultProvenance = "REAL_WASAPI_DUPLEX";
             _operatorResultConfiguration = $"48 кГц stereo PCM16 · {period} · 5 секунд · MMCSS OFF";

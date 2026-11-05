@@ -1094,4 +1094,15 @@ Fallback: {1}
   <data name="VmWorkerSyntheticEventDetail" xml:space="preserve"><value>Синтетическое событие {0}.</value></data>
   <data name="VmWorkerEventNotice" xml:space="preserve"><value>Событие {0} · IPC sequence {1}.</value></data>
   <data name="VmWorkerPipeDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker/pipe отключены; Stop/cleanup неизвестны.</value></data>
+  <data name="VmPersistenceLabel" xml:space="preserve"><value>Сохранение</value></data>
+  <data name="VmCaptureLabel" xml:space="preserve"><value>Захват</value></data>
+  <data name="VmRenderLabel" xml:space="preserve"><value>Вывод</value></data>
+  <data name="VmOverallLabel" xml:space="preserve"><value>Общий итог</value></data>
+  <data name="VmProfileLabel" xml:space="preserve"><value>Профиль</value></data>
+  <data name="VmScanSessionLabel" xml:space="preserve"><value>Сеанс сканирования</value></data>
+  <data name="VmGenerationLabel" xml:space="preserve"><value>Поколение</value></data>
+  <data name="VmExactIdsLabel" xml:space="preserve"><value>Точные идентификаторы</value></data>
+  <data name="VmReasonsLabel" xml:space="preserve"><value>Причины</value></data>
+  <data name="VmLimitationsLabel" xml:space="preserve"><value>Ограничения</value></data>
+  <data name="VmFurtherVerificationRequiredLabel" xml:space="preserve"><value>Требуется дополнительная проверка</value></data>
 </root>

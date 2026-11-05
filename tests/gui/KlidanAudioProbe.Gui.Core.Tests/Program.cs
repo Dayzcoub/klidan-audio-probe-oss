@@ -1563,9 +1563,9 @@ var directionPopup = (Popup)directionCombo.Template.FindName("PART_Popup", direc
 Check(directionPopup.IsOpen, "runtime direction dropdown opens with its themed popup");
 directionCombo.IsDropDownOpen = false; endpointWindow.UpdateLayout();
 directionCombo.SelectedValue = "CAPTURE"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
-Check(browserVm.WindowsEndpointDirectionFilter == "CAPTURE" && SelectedComboLabel(directionCombo) == "Capture", "runtime direction selection displays Capture and updates the typed filter binding");
+Check(browserVm.WindowsEndpointDirectionFilter == "CAPTURE" && SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel"), "runtime direction selection displays the localized Capture label and updates the typed filter binding");
 directionCombo.SelectedValue = "RENDER"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
-Check(browserVm.WindowsEndpointDirectionFilter == "RENDER" && SelectedComboLabel(directionCombo) == "Render", "runtime direction selection displays Render and updates the typed filter binding");
+Check(browserVm.WindowsEndpointDirectionFilter == "RENDER" && SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderLabel"), "runtime direction selection displays the localized Render label and updates the typed filter binding");
 directionCombo.SelectedValue = "ALL"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 Check(SelectedComboLabel(directionCombo) == "Все", "runtime direction ComboBox restores the Все label after changing selection");
 searchBox.Text = "Audio 2"; searchBox.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
