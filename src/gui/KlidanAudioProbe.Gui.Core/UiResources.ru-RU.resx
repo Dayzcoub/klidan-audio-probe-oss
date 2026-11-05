@@ -656,4 +656,25 @@
   <data name="VmInspectorSessionSection" xml:space="preserve"><value>СЕССИЯ</value></data>
   <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>ИЗМЕРЕНИЯ</value></data>
   <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>ДАННЫЕ</value></data>
+  <data name="VmInspectorWorkerTransport" xml:space="preserve"><value>Локальный Windows Named Pipe · протокол 1.0</value></data>
+  <data name="VmInspectorWorkerSyntheticProvenance" xml:space="preserve"><value>Worker Fake · синтетические данные</value></data>
+  <data name="VmInspectorWorkerRealDevicesNotUsed" xml:space="preserve"><value>Реальные аудиоустройства не используются.</value></data>
+  <data name="VmInspectorUnknown" xml:space="preserve"><value>Неизвестно</value></data>
+  <data name="VmInspectorNotStarted" xml:space="preserve"><value>Не запускалась</value></data>
+  <data name="VmInspectorNoData" xml:space="preserve"><value>Нет данных</value></data>
+  <data name="VmInspectorSnapshotsCoalesced" xml:space="preserve"><value>Снимков: {0}</value></data>
+  <data name="VmInspectorQualityClean" xml:space="preserve"><value>Чисто · синтетическая модель</value></data>
+  <data name="VmInspectorQualityWarning" xml:space="preserve"><value>Предупреждение · синтетическая модель</value></data>
+  <data name="VmInspectorQualityFailed" xml:space="preserve"><value>Ошибка · синтетическая модель</value></data>
+  <data name="VmInspectorUnknownNotAssessed" xml:space="preserve"><value>Неизвестно / не оценено</value></data>
+  <data name="VmInspectorCleanupCompletedSynthetic" xml:space="preserve"><value>Симуляция очистки завершена</value></data>
+  <data name="VmInspectorCleanupNotAttempted" xml:space="preserve"><value>Не выполнялась</value></data>
+  <data name="VmInspectorSyntheticNoRealAudioMeasured" xml:space="preserve"><value>Синтетическая модель · реальный звук не измерялся</value></data>
+  <data name="VmInspectorLifecyclePreparing" xml:space="preserve"><value>Подготовка</value></data>
+  <data name="VmInspectorLifecycleReady" xml:space="preserve"><value>Готова</value></data>
+  <data name="VmInspectorLifecycleStarted" xml:space="preserve"><value>Запущена</value></data>
+  <data name="VmInspectorLifecycleStopping" xml:space="preserve"><value>Остановка</value></data>
+  <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Остановлена</value></data>
+  <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Завершена</value></data>
+  <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Ошибка</value></data>
 </root>

@@ -656,4 +656,25 @@
   <data name="VmInspectorSessionSection" xml:space="preserve"><value>SESSION</value></data>
   <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>MEASUREMENTS</value></data>
   <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>EVIDENCE</value></data>
+  <data name="VmInspectorWorkerTransport" xml:space="preserve"><value>Local Windows Named Pipe · protocol 1.0</value></data>
+  <data name="VmInspectorWorkerSyntheticProvenance" xml:space="preserve"><value>Worker Fake · synthetic data</value></data>
+  <data name="VmInspectorWorkerRealDevicesNotUsed" xml:space="preserve"><value>Real audio devices are not used.</value></data>
+  <data name="VmInspectorUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="VmInspectorNotStarted" xml:space="preserve"><value>Not started</value></data>
+  <data name="VmInspectorNoData" xml:space="preserve"><value>No data</value></data>
+  <data name="VmInspectorSnapshotsCoalesced" xml:space="preserve"><value>{0} snapshots</value></data>
+  <data name="VmInspectorQualityClean" xml:space="preserve"><value>Clean · synthetic model</value></data>
+  <data name="VmInspectorQualityWarning" xml:space="preserve"><value>Warning · synthetic model</value></data>
+  <data name="VmInspectorQualityFailed" xml:space="preserve"><value>Failed · synthetic model</value></data>
+  <data name="VmInspectorUnknownNotAssessed" xml:space="preserve"><value>Unknown / not assessed</value></data>
+  <data name="VmInspectorCleanupCompletedSynthetic" xml:space="preserve"><value>Simulated cleanup completed</value></data>
+  <data name="VmInspectorCleanupNotAttempted" xml:space="preserve"><value>Not attempted</value></data>
+  <data name="VmInspectorSyntheticNoRealAudioMeasured" xml:space="preserve"><value>Synthetic model · no real audio was measured</value></data>
+  <data name="VmInspectorLifecyclePreparing" xml:space="preserve"><value>Preparing</value></data>
+  <data name="VmInspectorLifecycleReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="VmInspectorLifecycleStarted" xml:space="preserve"><value>Started</value></data>
+  <data name="VmInspectorLifecycleStopping" xml:space="preserve"><value>Stopping</value></data>
+  <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Failed</value></data>
 </root>

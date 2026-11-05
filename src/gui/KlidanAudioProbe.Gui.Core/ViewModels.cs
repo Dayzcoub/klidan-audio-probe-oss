@@ -3159,8 +3159,8 @@ public sealed class MainViewModel : ViewModel
         var connectionFields = new List<InspectorFieldDto>
         {
             new(Localization.Get("VmInspectorStateLabel"), connection, WorkerState.State.ToString()),
-            new(Localization.Get("VmInspectorTransportLabel"), "Локальный Windows Named Pipe · протокол 1.0"),
-            new(Localization.Get("VmInspectorProvenanceLabel"), "Worker Fake · синтетические данные", "Реальные аудиоустройства не используются.")
+            new(Localization.Get("VmInspectorTransportLabel"), Localization.Get("VmInspectorWorkerTransport")),
+            new(Localization.Get("VmInspectorProvenanceLabel"), Localization.Get("VmInspectorWorkerSyntheticProvenance"), Localization.Get("VmInspectorWorkerRealDevicesNotUsed"))
         };
         if (WorkerState.State is WorkerConnectionState.Failed or WorkerConnectionState.Incompatible || WorkerState.State == WorkerConnectionState.Disconnected && WorkerSession?.Lifecycle == SessionLifecycle.Unknown)
             connectionFields.Add(new(Localization.Get("VmInspectorReasonLabel"), WorkerState.Message, WorkerState.State.ToString()));
@@ -3170,36 +3170,36 @@ public sealed class MainViewModel : ViewModel
         {
             sessionFields.Add(new(Localization.Get("VmInspectorModeLabel"), session.Mode == SessionMode.Capture ? "Capture" : "Render", session.Mode.ToString()));
             sessionFields.Add(new(Localization.Get("VmInspectorEndpointLabel"), settings?.EndpointId ?? session.EndpointName));
-            sessionFields.Add(new(Localization.Get("VmInspectorFormatLabel"), settings is null ? "Неизвестно" : $"{settings.Encoding} · {settings.SampleRate} Гц · {settings.ChannelCount} каналов", settings?.FormatId));
-            if (session.Mode == SessionMode.Render) sessionFields.Add(new(Localization.Get("VmInspectorWindowsChannelLabel"), settings?.RenderChannel?.ToString() ?? session.RenderChannel?.ToString() ?? "Неизвестно"));
+            sessionFields.Add(new(Localization.Get("VmInspectorFormatLabel"), settings is null ? Localization.Get("VmInspectorUnknown") : $"{settings.Encoding} · {settings.SampleRate} Гц · {settings.ChannelCount} каналов", settings?.FormatId));
+            if (session.Mode == SessionMode.Render) sessionFields.Add(new(Localization.Get("VmInspectorWindowsChannelLabel"), settings?.RenderChannel?.ToString() ?? session.RenderChannel?.ToString() ?? Localization.Get("VmInspectorUnknown")));
             sessionFields.Add(new(Localization.Get("VmInspectorDurationLabel"), settings is null ? $"{session.DurationSeconds} с" : $"{settings.DurationSeconds} с"));
             sessionFields.Add(new(Localization.Get("VmInspectorStateLabel"), LifecycleLabel(session.Lifecycle), session.Lifecycle.ToString()));
             sessionFields.Add(new(Localization.Get("VmInspectorIdLabel"), session.Id.ToString("N")[..8]));
             sessionFields.Add(new(Localization.Get("VmInspectorFullUuidLabel"), session.Id.ToString("D"), Copyable: true));
         }
-        else sessionFields.Add(new(Localization.Get("VmInspectorSessionLabel"), "Не запускалась"));
+        else sessionFields.Add(new(Localization.Get("VmInspectorSessionLabel"), Localization.Get("VmInspectorNotStarted")));
 
         var measurementFields = new List<InspectorFieldDto>
         {
-            new(Localization.Get("VmInspectorSnapshotLabel"), sequence?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Нет данных"),
+            new(Localization.Get("VmInspectorSnapshotLabel"), sequence?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Localization.Get("VmInspectorNoData")),
             new(Localization.Get("VmInspectorDataLabel"), measurementState),
-            new(Localization.Get("VmInspectorChannelsLabel"), channelCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Неизвестно"),
-            new(Localization.Get("VmInspectorCoalescingLabel"), capture is not null ? $"{capture.CoalescedSnapshotCount} снимков" : render is not null ? $"{render.CoalescedSnapshotCount} снимков" : "Нет данных")
+            new(Localization.Get("VmInspectorChannelsLabel"), channelCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Localization.Get("VmInspectorUnknown")),
+            new(Localization.Get("VmInspectorCoalescingLabel"), capture is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorSnapshotsCoalesced"), capture.CoalescedSnapshotCount) : render is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorSnapshotsCoalesced"), render.CoalescedSnapshotCount) : Localization.Get("VmInspectorNoData"))
         };
-        var quality = WorkerSession?.Quality switch { StreamQuality.Clean => "Чисто · синтетическая модель", StreamQuality.Warning => "Предупреждение · синтетическая модель", StreamQuality.Failed => "Ошибка · синтетическая модель", _ => "Неизвестно / не оценено" };
-        var cleanup = WorkerSession?.CleanupStatus switch { "SYNTHETIC_CLEANUP_COMPLETED" => "Фиктивная очистка завершена", "NOT_ATTEMPTED" => "Не выполнялась", null or "UNKNOWN" => "Неизвестно / не оценено", var code => code };
+        var quality = WorkerSession?.Quality switch { StreamQuality.Clean => Localization.Get("VmInspectorQualityClean"), StreamQuality.Warning => Localization.Get("VmInspectorQualityWarning"), StreamQuality.Failed => Localization.Get("VmInspectorQualityFailed"), _ => Localization.Get("VmInspectorUnknownNotAssessed") };
+        var cleanup = WorkerSession?.CleanupStatus switch { "SYNTHETIC_CLEANUP_COMPLETED" => Localization.Get("VmInspectorCleanupCompletedSynthetic"), "NOT_ATTEMPTED" => Localization.Get("VmInspectorCleanupNotAttempted"), null or "UNKNOWN" => Localization.Get("VmInspectorUnknownNotAssessed"), var code => code };
         return
         [
             new(Localization.Get("VmInspectorConnectionSection"), connectionFields),
             new(Localization.Get("VmInspectorSessionSection"), sessionFields),
             new(Localization.Get("VmInspectorMeasurementsSection"), measurementFields),
-            new(Localization.Get("VmInspectorEvidenceSection"), [new(Localization.Get("VmInspectorStreamQualityLabel"), quality, WorkerSession?.Quality.ToString()), new(Localization.Get("VmInspectorCleanupLabel"), cleanup, WorkerSession?.CleanupStatus), new(Localization.Get("VmInspectorPhysicalRoutingLabel"), "Неизвестно / не оценено"), new(Localization.Get("VmInspectorObservationLabel"), "Синтетическая модель · реальный звук не измерялся")])
+            new(Localization.Get("VmInspectorEvidenceSection"), [new(Localization.Get("VmInspectorStreamQualityLabel"), quality, WorkerSession?.Quality.ToString()), new(Localization.Get("VmInspectorCleanupLabel"), cleanup, WorkerSession?.CleanupStatus), new(Localization.Get("VmInspectorPhysicalRoutingLabel"), Localization.Get("VmInspectorUnknownNotAssessed")), new(Localization.Get("VmInspectorObservationLabel"), Localization.Get("VmInspectorSyntheticNoRealAudioMeasured"))])
         ];
     }
 
     private static string LifecycleLabel(SessionLifecycle state) => state switch
     {
-        SessionLifecycle.Preparing => "Подготовка", SessionLifecycle.Ready => "Готова", SessionLifecycle.Started => "Запущена", SessionLifecycle.Stopping => "Остановка", SessionLifecycle.Stopped => "Остановлена", SessionLifecycle.Completed => "Завершена", SessionLifecycle.Failed => "Ошибка", _ => "Неизвестно / не оценено"
+        SessionLifecycle.Preparing => Localization.Get("VmInspectorLifecyclePreparing"), SessionLifecycle.Ready => Localization.Get("VmInspectorLifecycleReady"), SessionLifecycle.Started => Localization.Get("VmInspectorLifecycleStarted"), SessionLifecycle.Stopping => Localization.Get("VmInspectorLifecycleStopping"), SessionLifecycle.Stopped => Localization.Get("VmInspectorLifecycleStopped"), SessionLifecycle.Completed => Localization.Get("VmInspectorLifecycleCompleted"), SessionLifecycle.Failed => Localization.Get("VmInspectorLifecycleFailed"), _ => Localization.Get("VmInspectorUnknownNotAssessed")
     };
 
     public static string StatusLabel(FormatStatus status) => status switch
