@@ -808,6 +808,13 @@ SpinWait.SpinUntil(() => realWorkflowVm.RealFormatMatrix is not null, TimeSpan.F
 Check(realWorkflowWorker.RealQueryCalls == 1 && realWorkflowWorker.LastRealEndpointId == "local-windows-id" && realWorkflowWorker.LastRealDirection == "CAPTURE" && realWorkflowVm.RealFormatMatrix?.Provenance == "REAL_WASAPI_QUERY", "GUI sends exact selected endpoint identity and keeps real query provenance separate");
 Check(realWorkflowVm.RealFormatEndpointLabel == "Fixture Interface" && !realWorkflowVm.RealInitializationDetails.Contains("local-windows-id", StringComparison.Ordinal), "real format presentation resolves friendly identity without exposing the raw endpoint ID");
 Check(realWorkflowVm.RealFormatRows.Count == 12 && realWorkflowVm.WorkflowStep == OperatorStep.Result && realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeFormatQuery") && realWorkflowVm.OperatorResultOutcome.Contains("завершён", StringComparison.Ordinal), "one query produces 12 unique-format rows and a distinct operator result state");
+var queryModeTestCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    Check(realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeFormatQuery") && !realWorkflowVm.IsDuplexOperatorResult, $"operator mode displays localized format-query label in {language} while retaining its internal result kind");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(queryModeTestCulture, false);
 Check(realWorkflowVm.RealFormatRows.First().DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.SelectedRealFormatRow?.DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.RealFormatSummary.Contains("Форматов проверено: 12", StringComparison.Ordinal) && realWorkflowVm.RealFormatSummary.Contains("Initialize: NOT_ATTEMPTED", StringComparison.Ordinal), "supported formats sort first and the compact summary separates query counts from unattempted Initialize");
 Check(!realWorkflowVm.OperatorResultOutcome.Contains("CLEAN", StringComparison.Ordinal) && !realWorkflowVm.OperatorResultOutcome.Contains("Started", StringComparison.Ordinal), "successful query result does not claim clean stream quality or audio start");
 var scanMatrixResponse = realQueryResponse with { Candidates = realCandidates.Select(c => c.SampleRate == 44100 ? c with { Status = "UNSUPPORTED", SupportStatus = "UNSUPPORTED", SupportHr = "0x88890008" } : c).ToArray() };

@@ -64,6 +64,7 @@ public abstract class ViewModel : INotifyPropertyChanged
 public sealed class MainViewModel : ViewModel
 {
     public const int EventHistoryLimit = 200;
+    private enum OperatorResultKind { None, Duplex, DeviceScan, FormatQuery, InitializeOnly }
     private readonly IProbeClient _client;
     private readonly IWorkerClient? _worker;
     private readonly IAutomaticScanWorkflow? _automaticScanWorkflow;
@@ -90,7 +91,8 @@ public sealed class MainViewModel : ViewModel
     private bool _developerToolsOpen;
     private readonly bool _developerToolsAvailable;
     private string _operatorTestMode = "EXCLUSIVE_FORMAT_QUERY", _realInitializePeriod = "default";
-    private string _operatorResultEndpoint = "", _operatorResultMode = "", _operatorResultConfiguration = "";
+    private string _operatorResultEndpoint = "", _operatorResultConfiguration = "";
+    private OperatorResultKind _operatorResultMode;
     private string _deviceProfileSaveMessage = "";
     private string _operatorResultProvenance = Localization.Get("VmOperatorResultProvenanceEmpty");
     private RealFormatUniqueRowDto? _selectedRealFormatRow;
@@ -624,11 +626,11 @@ public sealed class MainViewModel : ViewModel
     public bool HasOperatorInitializeResult => RealInitializationResult is not null && _realInitializationError is null;
     public string OperatorResultMode => _operatorResultMode switch
     {
-        "Одновременная проверка Duplex" => Localization.Get("VmOperatorModeDuplex"),
-        "Автоматическое сканирование конфигурации" => Localization.Get("VmOperatorModeDeviceScan"),
-        "Запрос Exclusive-форматов" => Localization.Get("VmOperatorModeFormatQuery"),
-        "Проверка Initialize-only" => Localization.Get("VmOperatorModeInitializeOnly"),
-        _ => _operatorResultMode
+        OperatorResultKind.Duplex => Localization.Get("VmOperatorModeDuplex"),
+        OperatorResultKind.DeviceScan => Localization.Get("VmOperatorModeDeviceScan"),
+        OperatorResultKind.FormatQuery => Localization.Get("VmOperatorModeFormatQuery"),
+        OperatorResultKind.InitializeOnly => Localization.Get("VmOperatorModeInitializeOnly"),
+        _ => string.Empty
     };
     public string OperatorResultConfiguration => _operatorResultConfiguration;
     public string OperatorSelectedDevice => WorkflowStep == OperatorStep.Result && _operatorResultEndpoint.Length > 0 ? _operatorResultEndpoint : SelectedWindowsEndpoint is { } e ? $"{e.FriendlyNameDisplay} · {DirectionDisplayLabel(e.Direction)} · {e.DeviceState}" : SelectedPhysicalDeviceGroup?.DisplayName ?? RealFormatEndpointLabel;
@@ -1236,7 +1238,7 @@ public sealed class MainViewModel : ViewModel
         if (!ReferenceEquals(_selectedRealFormatCandidate, candidate)) SelectedRealFormatCandidate = candidate;
     }
 
-    public bool IsDuplexOperatorResult => _operatorResultMode == "Одновременная проверка Duplex";
+    public bool IsDuplexOperatorResult => _operatorResultMode == OperatorResultKind.Duplex;
     public bool IsSingleEndpointOperatorResult => !IsDuplexOperatorResult;
     public bool HasSingleEndpointScanResult => IsSingleEndpointOperatorResult && HasDeviceScanResult;
     public bool HasSingleEndpointQueryResult => IsSingleEndpointOperatorResult && HasOperatorQueryResult;
@@ -2168,7 +2170,7 @@ public sealed class MainViewModel : ViewModel
             var assessment = DuplexAssessments.Single(a => a.Period == period);
             _duplexStatus = $"{period}: {assessment.Classification} · {Localization.Get("VmCaptureLabel")} {assessment.CaptureCoverage} · {Localization.Get("VmRenderLabel")} {assessment.RenderCoverage}. {assessment.Reason}";
             _operatorResultEndpoint = $"{Localization.Get("VmCaptureLabel")} · {capture.FriendlyNameDisplay}\n{Localization.Get("VmRenderLabel")} · {render.FriendlyNameDisplay}";
-            _operatorResultMode = "Одновременная проверка Duplex";
+            _operatorResultMode = OperatorResultKind.Duplex;
             _operatorResultProvenance = "REAL_WASAPI_DUPLEX";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorDuplexConfiguration"), period);
             OperatorResultOutcome = $"{assessment.Classification} · {assessment.Reason}";
@@ -2249,9 +2251,10 @@ public sealed class MainViewModel : ViewModel
 
     private static StreamValidationResultRow StreamValidationResultRowFromReport(string period, System.Text.Json.JsonElement report)
     {
+        const string MissingReportValue = "\0";
         string? Text(string name) => report.TryGetProperty(name, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString() : null;
-        string Value(string name) => report.TryGetProperty(name, out var v) && v.ValueKind is not (System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined) ? v.ToString() : "неизвестно";
-        string Display(string value) => value == "неизвестно" ? Localization.Get("VmStreamUnknownValue") : value;
+        string Value(string name) => report.TryGetProperty(name, out var v) && v.ValueKind is not (System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined) ? v.ToString() : MissingReportValue;
+        string Display(string value) => value == MissingReportValue ? Localization.Get("VmStreamUnknownValue") : value;
         bool? Bool(string name) => report.TryGetProperty(name, out var v) && (v.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False) ? v.GetBoolean() : null;
         string Outcome(string name, string? hresultName = null)
         {
@@ -2259,7 +2262,7 @@ public sealed class MainViewModel : ViewModel
             return v.ValueKind == System.Text.Json.JsonValueKind.True ? "SUCCESS" : v.ValueKind == System.Text.Json.JsonValueKind.False ? "FAILED" : "UNKNOWN";
         }
         var frames = Value("framesProcessed"); var expected = Value("expectedFrames");
-        var coverage = report.TryGetProperty("frameCoveragePercent", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.Number && c.TryGetDouble(out var percent) && double.IsFinite(percent) ? percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%" : "неизвестно";
+        var coverage = report.TryGetProperty("frameCoveragePercent", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.Number && c.TryGetDouble(out var percent) && double.IsFinite(percent) ? percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%" : MissingReportValue;
         var faults = string.Join(" · ", new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts" }.Select(name => $"{name}={Display(Value(name))}"));
         var quality = Text("streamQuality") ?? "UNKNOWN";
         var cleanup = Text("cleanup") ?? "UNKNOWN";
@@ -2270,11 +2273,11 @@ public sealed class MainViewModel : ViewModel
         if (Bool("cancelled") == true) status = "CANCELLED";
         else if (Bool("watchdogTimedOut") == true) status = "UNKNOWN";
         else if (initialized == "FAILED" || start == "FAILED" || stop == "FAILED") status = "FAILED";
-        else if (initialized == "UNKNOWN" || start == "UNKNOWN" || stop == "UNKNOWN" || frames == "неизвестно" || expected == "неизвестно" || quality == "UNKNOWN") status = "UNKNOWN";
+        else if (initialized == "UNKNOWN" || start == "UNKNOWN" || stop == "UNKNOWN" || frames == MissingReportValue || expected == MissingReportValue || quality == "UNKNOWN") status = "UNKNOWN";
         else if (quality == "CLEAN" && Bool("durationReached") == true && frames != "0" && !cleanup.Contains("FAILED", StringComparison.Ordinal) && !cleanup.Contains("UNKNOWN", StringComparison.Ordinal) && !cleanup.Contains("RELEASE_PENDING", StringComparison.Ordinal)) status = "COMPLETED";
         else status = "COMPLETED_WITH_WARNINGS";
         var errorStage = Text("errorStage"); var errorHresult = Text("errorHresult");
-        var details = errorStage is { Length: > 0 } and not ("none" or "UNKNOWN") ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsStageHresult"), errorStage, Display(errorHresult ?? "неизвестно")) : quality == "CLEAN" ? Localization.Get("VmStreamDetailsCleanReport") : string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsQualityAndCleanup"), quality, Display(Value("durationReached")), cleanup);
+        var details = errorStage is { Length: > 0 } and not ("none" or "UNKNOWN") ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsStageHresult"), errorStage, Display(errorHresult ?? MissingReportValue)) : quality == "CLEAN" ? Localization.Get("VmStreamDetailsCleanReport") : string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsQualityAndCleanup"), quality, Display(Value("durationReached")), cleanup);
         return new(period, Display(Value("actualBufferFrames")), initialized, start, $"{Display(frames)} / {Display(expected)}", Display(coverage), quality, faults, stop, cleanup, status, details);
     }
 
@@ -2329,7 +2332,7 @@ public sealed class MainViewModel : ViewModel
                 _realQueryInvalidated = true;
             }
             _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
-            _operatorResultMode = "Автоматическое сканирование конфигурации";
+            _operatorResultMode = OperatorResultKind.DeviceScan;
             _operatorResultProvenance = "REAL_WASAPI_QUERY + REAL_WASAPI_INITIALIZE_ONLY";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorDeviceScanConfiguration"), result.Initializations.Count);
             OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmScanOutcome"), result.State);
@@ -2391,7 +2394,7 @@ public sealed class MainViewModel : ViewModel
             var requestedChannels = RealQueryChannelCountsText.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(value => int.TryParse(value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var count) ? count : -1).ToArray();
             if (requestedChannels.Length is < 1 or > 32 || requestedChannels.Any(count => count is < 1 or > 64) || requestedChannels.Distinct().Count() != requestedChannels.Length) throw new ArgumentException(Localization.Get("VmQueryChannelsValidation"));
             _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
-            _operatorResultMode = "Запрос Exclusive-форматов";
+            _operatorResultMode = OperatorResultKind.FormatQuery;
             _operatorResultProvenance = "REAL_WASAPI_QUERY";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorFormatQueryConfiguration"), string.Join(", ", requestedChannels));
             NotifyOperatorResult();
@@ -2399,7 +2402,7 @@ public sealed class MainViewModel : ViewModel
             if (WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent)
             {
                 _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
-                _operatorResultMode = "Запрос Exclusive-форматов";
+                _operatorResultMode = OperatorResultKind.FormatQuery;
                 _operatorResultConfiguration = Localization.Get("VmQueryDisconnectedConfiguration");
                 _realFormatError = Localization.Get("VmQueryDisconnectedError");
                 OperatorResultOutcome = Localization.Get("VmQueryDisconnectedOutcome");
@@ -2423,7 +2426,7 @@ public sealed class MainViewModel : ViewModel
             NotifyOperatorResult();
             if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
         }
-        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}"; _operatorResultMode = "Запрос Exclusive-форматов"; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
+        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}"; _operatorResultMode = OperatorResultKind.FormatQuery; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
         finally { _realQueryRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
     }
 
@@ -2450,7 +2453,7 @@ public sealed class MainViewModel : ViewModel
         try
         {
             _operatorResultEndpoint = OperatorSelectedDevice;
-            _operatorResultMode = "Проверка Initialize-only";
+            _operatorResultMode = OperatorResultKind.InitializeOnly;
             _operatorResultProvenance = "REAL_WASAPI_INITIALIZE_ONLY";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorInitializeConfiguration"), candidate.Encoding, candidate.SampleRate, candidate.Channels, candidate.Period);
             NotifyOperatorResult();
