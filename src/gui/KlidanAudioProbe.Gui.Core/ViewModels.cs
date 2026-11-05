@@ -1649,13 +1649,13 @@ public sealed class MainViewModel : ViewModel
             preparedRender != (preparation.Plan.Target.PairIdentity == ScanPairIdentity.OperatorSelectedPair ? SelectedDuplexRenderEndpoint?.EndpointId : SelectedWindowsEndpoint?.Direction == "RENDER" ? SelectedWindowsEndpoint.EndpointId : null))
         {
             CancelAutomaticScanConsent();
-            SetAutomaticScanStatus("Worker, discovery или точный endpoint изменились. Обновите устройства и подготовьте подтверждение заново.");
+            SetAutomaticScanStatus(Localization.Get("VmScanAuthorizationInvalidated"));
             return;
         }
         AutomaticScanConsentPending = false;
         AutomaticScanConsentChecked = false;
         AutomaticScanRunning = true;
-        InvalidateAutomaticScanExport("Новый scan начал работу; прежняя подготовка экспорта сброшена.");
+        InvalidateAutomaticScanExport(Localization.Get("VmScanExportInvalidatedByNewScan"));
         DeveloperToolsOpen = false;
         WorkflowStep = OperatorStep.Test;
         _automaticScanAttempted = true;
@@ -1663,7 +1663,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(AutomaticScanAttempted)); Changed(nameof(AutomaticScanResultSummary)); Changed(nameof(AutomaticScanPersistenceText));
         _automaticScanCancellation = new CancellationTokenSource();
         var confirmationId = Guid.NewGuid(); // Created only after the operator accepts the displayed immutable plan.
-        SetAutomaticScanStatus("Подтверждение принято; регистрируется ограниченная сессия Worker.");
+        SetAutomaticScanStatus(Localization.Get("VmScanConsentAccepted"));
         _automaticScanTask = RunAutomaticScanAsync(preparation, confirmationId, _automaticScanCancellation.Token);
         try { await _automaticScanTask; }
         finally
@@ -1679,7 +1679,7 @@ public sealed class MainViewModel : ViewModel
         try
         {
             var result = await _automaticScanWorkflow!.RunApprovedAsync(preparation, confirmationId, OnAutomaticScanProgress, cancellationToken);
-            InvalidateAutomaticScanExport("Получен новый результат scan; требуется отдельная проверка полноты экспорта.");
+            InvalidateAutomaticScanExport(Localization.Get("VmScanExportNeedsFreshValidation"));
             _automaticScanResult = result;
             _automaticScanOutcomeUnknown = result.Lifecycle == ScanRunLifecycle.Unknown;
             ApplyAutomaticScanEvents(result.Events);
@@ -1691,7 +1691,7 @@ public sealed class MainViewModel : ViewModel
         catch (Exception ex)
         {
             _automaticScanOutcomeUnknown = true;
-            SetAutomaticScanStatus($"UNKNOWN · исход или закрытие Worker-сессии не подтверждены: {ex.GetType().Name}: {ex.Message}");
+            SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmScanOutcomeUnknown"), ex.GetType().Name, ex.Message));
             _automaticScanTerminal = true;
             Changed(nameof(AutomaticScanAvailabilityReason));
             NotifyAutomaticScanResultBindings();
@@ -1731,7 +1731,7 @@ public sealed class MainViewModel : ViewModel
         AutomaticScanConsentPending = false;
         AutomaticScanConsentChecked = false;
         _automaticScanPreparation = null;
-        SetAutomaticScanStatus("Подтверждение отменено; операции Worker не запускались.");
+        SetAutomaticScanStatus(Localization.Get("VmScanConsentCancelled"));
         Changed(nameof(AutomaticScanConsentText));
     }
 
@@ -1740,7 +1740,7 @@ public sealed class MainViewModel : ViewModel
         if (AutomaticScanConsentPending) { CancelAutomaticScanConsent(); return; }
         if (!_automaticScanRunning) return;
         _automaticScanCancellation?.Cancel();
-        SetAutomaticScanStatus("Запрошена отмена. Текущий вызов драйвера может быть не прерываемым; итог и очистка ожидаются от Worker.");
+        SetAutomaticScanStatus(Localization.Get("VmScanCancellationRequested"));
     }
 
     private void OpenAutomaticScanLocation()
@@ -1756,28 +1756,28 @@ public sealed class MainViewModel : ViewModel
         if (!CanExportAutomaticScan || _bundleExportInteraction is null || _automaticScanResult?.Persistence?.SummaryPath is not { } summaryPath || _automaticScanResult.SessionId is not { } sessionId) return;
         _automaticScanExportRunning = true;
         Changed(nameof(AutomaticScanExportRunning)); Changed(nameof(CanExportAutomaticScan)); ExportAutomaticScanCommand.Refresh();
-        SetAutomaticScanExport("Проверка и экспорт результатов выполняются…", "EXPORTING");
+        SetAutomaticScanExport(Localization.Get("VmExportPreparing"), "EXPORTING");
         try
         {
             var directories = _bundleDirectoriesFactory?.Invoke(summaryPath) ?? LaboratoryEvidenceBundleService.DefaultDirectories(summaryPath, _profileDirectory);
             var prepared = await Task.Run(() => LaboratoryEvidenceBundleService.Prepare(sessionId, directories));
-            if (_automaticScanResult?.SessionId != sessionId) { SetAutomaticScanExport("Экспорт отменён: результат scan изменился.", "SESSION_CHANGED"); return; }
+            if (_automaticScanResult?.SessionId != sessionId) { SetAutomaticScanExport(Localization.Get("VmExportScanChanged"), "SESSION_CHANGED"); return; }
             _automaticScanExportPreparation = prepared;
-            _automaticScanExportTechnicalDetails = prepared.Errors.Count == 0 ? "Полнота и identities источников прошли проверку." : string.Join("\n", prepared.Errors);
+            _automaticScanExportTechnicalDetails = prepared.Errors.Count == 0 ? Localization.Get("VmExportSourceValidationPassed") : string.Join("\n", prepared.Errors);
             Changed(nameof(AutomaticScanExportTechnicalDetails));
-            if (!prepared.IsComplete) { SetAutomaticScanExport("Не все исходные отчёты доступны.", "INCOMPLETE"); return; }
-            SetAutomaticScanExport("Результаты готовы к экспорту.", "COMPLETE");
+            if (!prepared.IsComplete) { SetAutomaticScanExport(Localization.Get("VmExportSourceReportsUnavailable"), "INCOMPLETE"); return; }
+            SetAutomaticScanExport(Localization.Get("VmExportReady"), "COMPLETE");
             var suggested = $"klidan-audio-probe-{sessionId}.zip";
             var destination = await _bundleExportInteraction.PickDestinationAsync(suggested);
-            if (string.IsNullOrWhiteSpace(destination)) { SetAutomaticScanExport("Экспорт отменён. Исходные данные не изменены.", "CANCELLED"); return; }
-            if (_automaticScanResult?.SessionId != sessionId || _automaticScanExportPreparation?.SourceFingerprint != prepared.SourceFingerprint) { SetAutomaticScanExport("Экспорт отменён: результат scan изменился.", "SESSION_CHANGED"); return; }
-            if (!await _bundleExportInteraction.ConfirmAsync("Архив содержит технические идентификаторы устройств и компьютера. Не предназначен для публичной публикации. Создать LOCAL_FULL_EVIDENCE архив?")) { SetAutomaticScanExport("Экспорт отменён. Исходные данные не изменены.", "CANCELLED"); return; }
+            if (string.IsNullOrWhiteSpace(destination)) { SetAutomaticScanExport(Localization.Get("VmExportCancelledUnchanged"), "CANCELLED"); return; }
+            if (_automaticScanResult?.SessionId != sessionId || _automaticScanExportPreparation?.SourceFingerprint != prepared.SourceFingerprint) { SetAutomaticScanExport(Localization.Get("VmExportScanChanged"), "SESSION_CHANGED"); return; }
+            if (!await _bundleExportInteraction.ConfirmAsync(Localization.Get("VmExportPrivacyConfirmation"))) { SetAutomaticScanExport(Localization.Get("VmExportCancelledUnchanged"), "CANCELLED"); return; }
             var path = await Task.Run(() => LaboratoryEvidenceBundleService.Export(prepared, destination));
             var verification = await Task.Run(() => LaboratoryEvidenceBundleService.Verify(path));
             if (!verification.IsValid) throw new InvalidDataException(string.Join("; ", verification.Errors));
-            SetAutomaticScanExport($"Архив создан и успешно проверен: {path}", "VERIFIED");
+            SetAutomaticScanExport(string.Format(Localization.CurrentCulture, Localization.Get("VmExportVerified"), path), "VERIFIED");
         }
-        catch (Exception ex) { SetAutomaticScanExport("Экспорт не выполнен. Исходные данные не изменены.", $"{ex.GetType().Name}: {ex.Message}"); }
+        catch (Exception ex) { SetAutomaticScanExport(Localization.Get("VmExportFailedUnchanged"), $"{ex.GetType().Name}: {ex.Message}"); }
         finally { _automaticScanExportRunning = false; Changed(nameof(AutomaticScanExportRunning)); Changed(nameof(CanExportAutomaticScan)); ExportAutomaticScanCommand.Refresh(); }
     }
 

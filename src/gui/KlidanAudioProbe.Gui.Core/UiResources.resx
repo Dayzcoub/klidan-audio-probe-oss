@@ -887,4 +887,20 @@
   <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Long-term Stability and Duplex: NOT_RUN.</value></data>
   <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
   <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
+  <data name="VmScanAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or the exact endpoint changed. Refresh devices and prepare consent again.</value></data>
+  <data name="VmScanExportInvalidatedByNewScan" xml:space="preserve"><value>A new scan started; the previous export preparation was cleared.</value></data>
+  <data name="VmScanConsentAccepted" xml:space="preserve"><value>Consent accepted; a bounded Worker session is being registered.</value></data>
+  <data name="VmScanExportNeedsFreshValidation" xml:space="preserve"><value>A new scan result was received; export completeness must be checked separately.</value></data>
+  <data name="VmScanOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · Worker session outcome or closure was not confirmed: {0}: {1}</value></data>
+  <data name="VmScanConsentCancelled" xml:space="preserve"><value>Consent was cancelled; no Worker operations were started.</value></data>
+  <data name="VmScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. The current driver call may not be interruptible; Worker is expected to report the outcome and cleanup.</value></data>
+  <data name="VmExportPreparing" xml:space="preserve"><value>Validating and exporting results…</value></data>
+  <data name="VmExportScanChanged" xml:space="preserve"><value>Export cancelled: the scan result changed.</value></data>
+  <data name="VmExportSourceValidationPassed" xml:space="preserve"><value>Source completeness and identities passed validation.</value></data>
+  <data name="VmExportSourceReportsUnavailable" xml:space="preserve"><value>Not all source reports are available.</value></data>
+  <data name="VmExportReady" xml:space="preserve"><value>Results are ready to export.</value></data>
+  <data name="VmExportCancelledUnchanged" xml:space="preserve"><value>Export cancelled. Source data was not changed.</value></data>
+  <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>The archive contains technical device and computer identifiers. It is not intended for public release. Create a LOCAL_FULL_EVIDENCE archive?</value></data>
+  <data name="VmExportVerified" xml:space="preserve"><value>Archive created and verified successfully: {0}</value></data>
+  <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Export failed. Source data was not changed.</value></data>
 </root>

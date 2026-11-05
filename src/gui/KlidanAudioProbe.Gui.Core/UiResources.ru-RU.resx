@@ -887,4 +887,20 @@
   <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Длительная Stability и Duplex: NOT_RUN.</value></data>
   <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
   <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
+  <data name="VmScanAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или точный endpoint изменились. Обновите устройства и подготовьте подтверждение заново.</value></data>
+  <data name="VmScanExportInvalidatedByNewScan" xml:space="preserve"><value>Новый scan начал работу; прежняя подготовка экспорта сброшена.</value></data>
+  <data name="VmScanConsentAccepted" xml:space="preserve"><value>Подтверждение принято; регистрируется ограниченная сессия Worker.</value></data>
+  <data name="VmScanExportNeedsFreshValidation" xml:space="preserve"><value>Получен новый результат scan; требуется отдельная проверка полноты экспорта.</value></data>
+  <data name="VmScanOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход или закрытие Worker-сессии не подтверждены: {0}: {1}</value></data>
+  <data name="VmScanConsentCancelled" xml:space="preserve"><value>Подтверждение отменено; операции Worker не запускались.</value></data>
+  <data name="VmScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Текущий вызов драйвера может быть не прерываемым; итог и очистка ожидаются от Worker.</value></data>
+  <data name="VmExportPreparing" xml:space="preserve"><value>Проверка и экспорт результатов выполняются…</value></data>
+  <data name="VmExportScanChanged" xml:space="preserve"><value>Экспорт отменён: результат scan изменился.</value></data>
+  <data name="VmExportSourceValidationPassed" xml:space="preserve"><value>Полнота и identities источников прошли проверку.</value></data>
+  <data name="VmExportSourceReportsUnavailable" xml:space="preserve"><value>Не все исходные отчёты доступны.</value></data>
+  <data name="VmExportReady" xml:space="preserve"><value>Результаты готовы к экспорту.</value></data>
+  <data name="VmExportCancelledUnchanged" xml:space="preserve"><value>Экспорт отменён. Исходные данные не изменены.</value></data>
+  <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>Архив содержит технические идентификаторы устройств и компьютера. Не предназначен для публичной публикации. Создать LOCAL_FULL_EVIDENCE архив?</value></data>
+  <data name="VmExportVerified" xml:space="preserve"><value>Архив создан и успешно проверен: {0}</value></data>
+  <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Экспорт не выполнен. Исходные данные не изменены.</value></data>
 </root>
