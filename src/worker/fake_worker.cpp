@@ -825,6 +825,9 @@ bool HandleClient(HANDLE pipe) {
                 writer.Response(correlation,"ListEndpoints","OK","","","{\"provenance\":\"FAKE_SYNTHETIC\",\"endpoints\":"+list+"}");continue;
             }
             if(command=="ListWindowsEndpoints") {
+#if defined(PROBE_TEST_DISCOVERY_DELAY)
+                if(const auto* scenario=std::getenv("KLIDAN_TEST_FORMAT_SCENARIO");scenario&&std::string_view(scenario)=="HOLD_DISCOVERY")std::this_thread::sleep_for(std::chrono::milliseconds(350));
+#endif
                 if(realOperationBusy.load()){writer.Response(correlation,command,"ERROR","BUSY","Discovery cannot change while an Exclusive operation is active.");continue;}
                 if(scanAuthorization)scanAuthorization->invalid=true;
                 try {

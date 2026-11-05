@@ -8,7 +8,7 @@ AppName=KLIDAN Audio Probe
 AppVersion={#AppVersion}
 AppVerName=KLIDAN Audio Probe {#AppVersion}
 AppPublisher=KLIDAN Audio Probe
-AppPublisherURL=https://github.com/Dayzcoub/klidan-audio-probe
+AppPublisherURL=https://github.com/Dayzcoub/klidan-audio-probe-oss
 DefaultDirName={localappdata}\Programs\KLIDAN Audio Probe
 DefaultGroupName=KLIDAN Audio Probe
 DisableProgramGroupPage=yes
@@ -26,9 +26,16 @@ Uninstallable=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+
+[CustomMessages]
+english.CreateDesktopIcon=Create a desktop shortcut
+english.AdditionalTasks=Additional shortcuts:
+russian.CreateDesktopIcon=Создать ярлык на рабочем столе
+russian.AdditionalTasks=Дополнительные ярлыки:
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalTasks}"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

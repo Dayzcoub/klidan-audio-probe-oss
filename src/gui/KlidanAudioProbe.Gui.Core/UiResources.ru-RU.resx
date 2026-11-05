@@ -1,0 +1,1255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>KLIDAN Audio Probe · диагностика Windows</value></data>
+  <data name="Language" xml:space="preserve"><value>Язык</value></data>
+  <data name="DeveloperTools" xml:space="preserve"><value>Developer Tools · реальные + синтетические</value></data>
+  <data name="DeveloperToolsHidden" xml:space="preserve"><value>Developer Tools отключены. Запустите приложение с --developer-tools.</value></data>
+  <data name="WindowsDiagnostics" xml:space="preserve"><value>Диагностика Windows · только явные действия</value></data>
+  <data name="DeviceStep" xml:space="preserve"><value>1 · Устройство</value></data>
+  <data name="TestStep" xml:space="preserve"><value>2 · Проверка</value></data>
+  <data name="ResultStep" xml:space="preserve"><value>3 · Результат</value></data>
+  <data name="ReturnToWindows" xml:space="preserve"><value>Вернуться к проверке Windows</value></data>
+  <data name="LanguageRestartNotice" xml:space="preserve"><value>Настройка языка сохранена. Для безопасного применения перезапустите GUI.</value></data>
+  <data name="ProductName" xml:space="preserve"><value>KLIDAN</value></data>
+  <data name="ProductSuffix" xml:space="preserve"><value> AUDIO PROBE</value></data>
+  <data name="WindowsDiagnosticsSuffix" xml:space="preserve"><value>  ·  ДИАГНОСТИКА WINDOWS</value></data>
+  <data name="LanguageSelection" xml:space="preserve"><value>Язык / Выбор языка</value></data>
+  <data name="WindowControls" xml:space="preserve"><value>Кнопки управления окном</value></data>
+  <data name="Minimize" xml:space="preserve"><value>Свернуть</value></data>
+  <data name="MaximizeRestore" xml:space="preserve"><value>Развернуть или восстановить</value></data>
+  <data name="Close" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="CheckSection" xml:space="preserve"><value>ПРОВЕРКА</value></data>
+  <data name="DeveloperSection" xml:space="preserve"><value>РАЗРАБОТЧИКУ</value></data>
+  <data name="DeviceStepLabel" xml:space="preserve"><value>1 · Устройство</value></data>
+  <data name="TestStepLabel" xml:space="preserve"><value>2 · Проверка</value></data>
+  <data name="ResultStepLabel" xml:space="preserve"><value>3 · Результат</value></data>
+  <data name="DeveloperToolsNav" xml:space="preserve"><value>Инструменты разработчика · реальные + синтетические</value></data>
+  <data name="LocalDevices" xml:space="preserve"><value>Локальные устройства</value></data>
+  <data name="LocalFormats" xml:space="preserve"><value>Локальные форматы</value></data>
+  <data name="CaptureDemo" xml:space="preserve"><value>Демо Capture</value></data>
+  <data name="RenderDemo" xml:space="preserve"><value>Демо Render</value></data>
+  <data name="EvidenceLibrary" xml:space="preserve"><value>Библиотека evidence</value></data>
+  <data name="WorkerFakeIpc" xml:space="preserve"><value>Worker Fake / IPC</value></data>
+  <data name="ManualRealOperations" xml:space="preserve"><value>Ручные реальные операции</value></data>
+  <data name="ReturnToWindowsNav" xml:space="preserve"><value>Вернуться к диагностике Windows</value></data>
+  <data name="TestSelectionTitle" xml:space="preserve"><value>Выбор проверки</value></data>
+  <data name="DuplexTestTitle" xml:space="preserve"><value>Проверка Duplex</value></data>
+  <data name="QueryParametersTitle" xml:space="preserve"><value>Параметры запроса</value></data>
+  <data name="AutomaticScanTitle" xml:space="preserve"><value>Автоматическое сканирование</value></data>
+  <data name="ResultTitle" xml:space="preserve"><value>Результат проверки</value></data>
+  <data name="DetailsHeader" xml:space="preserve"><value>Подробные сведения</value></data>
+  <data name="WindowsAudioDevicesTitle" xml:space="preserve"><value>Аудиоустройства Windows</value></data>
+  <data name="EndpointListTitle" xml:space="preserve"><value>Список endpoint</value></data>
+  <data name="WindowsDevicesTitle" xml:space="preserve"><value>Устройства Windows · реальные системные метаданные</value></data>
+  <data name="SavedProfileTitle" xml:space="preserve"><value>Сохранённый профиль устройства</value></data>
+  <data name="SavedProfileDiagnosticsTitle" xml:space="preserve"><value>Расширенная диагностика профилей</value></data>
+  <data name="HistoricalRecoveryTitle" xml:space="preserve"><value>Восстановить профиль из предыдущих измерений</value></data>
+  <data name="PhysicalDeviceTitle" xml:space="preserve"><value>Физическое устройство</value></data>
+  <data name="SustainedValidationTitle" xml:space="preserve"><value>Длительная проверка</value></data>
+  <data name="PhysicalGroupingTitle" xml:space="preserve"><value>Физическое группирование · технические сведения</value></data>
+  <data name="FormatsTitle" xml:space="preserve"><value>Форматы</value></data>
+  <data name="CaptureChannelsTitle" xml:space="preserve"><value>Входные каналы</value></data>
+  <data name="RenderChannelsTitle" xml:space="preserve"><value>Выходные каналы</value></data>
+  <data name="WorkerEventsTitle" xml:space="preserve"><value>События WORKER FAKE · IPC и локальные действия</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Подтвердить</value></data>
+  <data name="ConfirmAndStart" xml:space="preserve"><value>Подтвердить и запустить</value></data>
+  <data name="TestMinimum" xml:space="preserve"><value>Проверить MINIMUM</value></data>
+  <data name="TestDefault" xml:space="preserve"><value>Проверить DEFAULT</value></data>
+  <data name="StopBoth" xml:space="preserve"><value>Остановить обе стороны</value></data>
+  <data name="RequestFormats" xml:space="preserve"><value>Запросить Exclusive-форматы</value></data>
+  <data name="CheckInitialization" xml:space="preserve"><value>Проверить инициализацию</value></data>
+  <data name="BackDevice" xml:space="preserve"><value>Назад · устройство</value></data>
+  <data name="ToResults" xml:space="preserve"><value>К результатам</value></data>
+  <data name="OpenReportFolder" xml:space="preserve"><value>Открыть папку отчёта</value></data>
+  <data name="ExportResults" xml:space="preserve"><value>Экспортировать результаты</value></data>
+  <data name="StartTest" xml:space="preserve"><value>Запустить проверку</value></data>
+  <data name="Stop" xml:space="preserve"><value>Остановить</value></data>
+  <data name="SaveKlidanProfile" xml:space="preserve"><value>Сохранить профиль для KLIDAN</value></data>
+  <data name="RepeatTest" xml:space="preserve"><value>Повторить этот тест</value></data>
+  <data name="OtherTest" xml:space="preserve"><value>Другой тест на этом устройстве</value></data>
+  <data name="TestModeHeading" xml:space="preserve"><value>ТЕСТОВЫЙ РЕЖИМ</value></data>
+  <data name="TestModeAccessible" xml:space="preserve"><value>Режим проверки</value></data>
+  <data name="TestModeDescription" xml:space="preserve"><value>Доступно: пассивный Exclusive IsFormatSupported и отдельная Initialize-only проверка. Initialize может кратковременно занять endpoint; Start и PCM не используются.</value></data>
+  <data name="InitializeQueryPrerequisite" xml:space="preserve"><value>Для Initialize-only нужен актуальный запрос форматов именно для выбранного endpoint. Запустите его здесь; после результата выберите поддерживаемый формат и DEFAULT/MINIMUM. Initialize автоматически не запускается.</value></data>
+  <data name="FutureCaptureMeter" xml:space="preserve"><value>В будущем · Live Capture Meter · недоступно</value></data>
+  <data name="FutureRenderTest" xml:space="preserve"><value>В будущем · Live Render Channel Test · недоступно</value></data>
+  <data name="RealDuplexTest" xml:space="preserve"><value>Реальная проверка Duplex</value></data>
+  <data name="DuplexPairDescription" xml:space="preserve"><value>Точная выбранная пара Capture / Render. Каждый период требует отдельного свежего подтверждения.</value></data>
+  <data name="DuplexNewConfirmation" xml:space="preserve"><value>Новое подтверждение · Duplex</value></data>
+  <data name="DuplexConsent" xml:space="preserve"><value>Разрешаю ровно эту одновременную Exclusive проверку</value></data>
+  <data name="DuplexRunning" xml:space="preserve"><value>RUNNING · ожидается структурированный отчёт</value></data>
+  <data name="DuplexResultsAccessible" xml:space="preserve"><value>Итоги MINIMUM и DEFAULT Duplex</value></data>
+  <data name="DuplexBuffers" xml:space="preserve"><value>Буферы · Capture / Render</value></data>
+  <data name="DuplexFrames" xml:space="preserve"><value>Кадры · Capture / Render</value></data>
+  <data name="DuplexCoverage" xml:space="preserve"><value>Покрытие · Capture / Render</value></data>
+  <data name="DuplexQuality" xml:space="preserve"><value>Качество · Capture / Render / Duplex</value></data>
+  <data name="DuplexFaultDetails" xml:space="preserve"><value>Faults, Stop, cleanup и детали</value></data>
+  <data name="ConcurrentTimeMs" xml:space="preserve"><value>Одновременное время, мс</value></data>
+  <data name="ReportLabel" xml:space="preserve"><value>Отчёт</value></data>
+  <data name="QueryChannelCountsLabel" xml:space="preserve"><value>Количество каналов (через запятую, 1–64)</value></data>
+  <data name="QueryChannelCountsAccessible" xml:space="preserve"><value>Запрашиваемые количества каналов</value></data>
+  <data name="FormatResultsSummary" xml:space="preserve"><value>Сводка результатов форматов</value></data>
+  <data name="UniqueFormatResults" xml:space="preserve"><value>Уникальные результаты REAL_WASAPI_QUERY</value></data>
+  <data name="FormatColumn" xml:space="preserve"><value>Формат</value></data>
+  <data name="HertzColumn" xml:space="preserve"><value>Гц</value></data>
+  <data name="ChannelsColumn" xml:space="preserve"><value>Кан.</value></data>
+  <data name="QueryStatusColumn" xml:space="preserve"><value>Статус запроса</value></data>
+  <data name="UniqueFormatDescription" xml:space="preserve"><value>Каждая строка — один уникальный формат и один запрос IsFormatSupported. Период выбирается только для Initialize-only.</value></data>
+  <data name="SelectSupportedFormat" xml:space="preserve"><value>Выберите формат с SUPPORTED_REPORTED для Initialize-only</value></data>
+  <data name="InitializePeriodAccessible" xml:space="preserve"><value>Период Initialize-only</value></data>
+  <data name="InitializeUnavailableReason" xml:space="preserve"><value>Причина недоступности Initialize-only</value></data>
+  <data name="InitializeNewConfirmation" xml:space="preserve"><value>Новое подтверждение · одна попытка Initialize</value></data>
+  <data name="InitializeConsent" xml:space="preserve"><value>Разрешаю однократную Exclusive Initialize для этих точных настроек</value></data>
+  <data name="PhysicalRtlNotMeasured" xml:space="preserve"><value>Физический RTL не измеряется. AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="StopRequestCancel" xml:space="preserve"><value>Остановить / запросить отмену</value></data>
+  <data name="CancellationPendingDescription" xml:space="preserve"><value>Запрос отмены не подтверждает остановку драйвера. Состояние и cleanup обновятся только после ответа Worker.</value></data>
+  <data name="ToResult" xml:space="preserve"><value>К результату</value></data>
+  <data name="BackToDevice" xml:space="preserve"><value>Назад к устройству</value></data>
+  <data name="DeviceLabel" xml:space="preserve"><value>Устройство</value></data>
+  <data name="ScanLabel" xml:space="preserve"><value>Сканирование</value></data>
+  <data name="ExportTechnicalDetails" xml:space="preserve"><value>Технические сведения экспорта</value></data>
+  <data name="PhysicalLatencyPrefix" xml:space="preserve"><value>Физическая задержка: </value></data>
+  <data name="OperationsAndTechnicalDetails" xml:space="preserve"><value>Операции и технические сведения</value></data>
+  <data name="SelectedDuplexResult" xml:space="preserve"><value>Результат выбранной пары Capture / Render</value></data>
+  <data name="SavedDuplexResults" xml:space="preserve"><value>Сохранённые итоги Duplex MINIMUM и DEFAULT</value></data>
+  <data name="BuffersInitializeCr" xml:space="preserve"><value>Буферы C/R · Initialize C/R</value></data>
+  <data name="StartCoverageCr" xml:space="preserve"><value>Start C/R · покрытие C/R</value></data>
+  <data name="QualityCrDuplex" xml:space="preserve"><value>Качество C/R/Duplex</value></data>
+  <data name="AutomaticScanResult" xml:space="preserve"><value>Автоматическое сканирование · итог</value></data>
+  <data name="ScanInitializeCandidates" xml:space="preserve"><value>Инициализация кандидатов автоматического сканирования</value></data>
+  <data name="ChannelsLabel" xml:space="preserve"><value>Каналы</value></data>
+  <data name="PeriodLabel" xml:space="preserve"><value>Период</value></data>
+  <data name="BufferLabel" xml:space="preserve"><value>Буфер</value></data>
+  <data name="StreamTestDescription" xml:space="preserve"><value>Проверка потока выполняется только отдельно после успешного Initialize. Capture считывает пакеты без сохранения PCM; Render передаёт цифровую тишину.</value></data>
+  <data name="TestSelectedPeriodStream" xml:space="preserve"><value>Проверить поток выбранного периода · 5 секунд</value></data>
+  <data name="StreamConsentHeading" xml:space="preserve"><value>Отдельное согласие на запуск реального потока</value></data>
+  <data name="StreamConsent" xml:space="preserve"><value>Разрешаю один выбранный Capture/Render stream</value></data>
+  <data name="StreamResultsAccessible" xml:space="preserve"><value>Результаты проверки потока: отдельные карточки MINIMUM и DEFAULT</value></data>
+  <data name="BufferPrefix" xml:space="preserve"><value>Буфер: </value></data>
+  <data name="FramesSuffix" xml:space="preserve"><value> кадров</value></data>
+  <data name="FinalStatus" xml:space="preserve"><value>Итоговый статус</value></data>
+  <data name="FramesExpected" xml:space="preserve"><value>Кадры / ожидается</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Покрытие</value></data>
+  <data name="StreamQuality" xml:space="preserve"><value>Качество потока</value></data>
+  <data name="FaultCounters" xml:space="preserve"><value>Счётчики faults</value></data>
+  <data name="ReasonDetails" xml:space="preserve"><value>Причина / подробности</value></data>
+  <data name="ErrorResultDetails" xml:space="preserve"><value>Подробности ошибки или результата</value></data>
+  <data name="ScanTechnicalData" xml:space="preserve"><value>Технические данные автоматического scan · HRESULT, периоды, буфер, cleanup</value></data>
+  <data name="ExclusiveFormatResults" xml:space="preserve"><value>Результаты уникальных Exclusive-форматов</value></data>
+  <data name="FullResultsTechnicalData" xml:space="preserve"><value>Полные результаты и технические данные</value></data>
+  <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Техническая диагностика · HRESULT, alignment retry, COM release</value></data>
+  <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Технические детали Initialize-only</value></data>
+  <data name="SaveAcceptedRealResults" xml:space="preserve"><value>Сохраняет только принятые реальные результаты. Pair profile v3 может содержать provisional Probe recommendation; AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="SaveDeviceProfileForKlidan" xml:space="preserve"><value>Сохранить локальный профиль конфигурации устройства для KLIDAN</value></data>
+  <data name="SelectAnotherDevice" xml:space="preserve"><value>Выбрать другое устройство</value></data>
+  <data name="SelectActiveEndpoint" xml:space="preserve"><value>Выберите точный активный endpoint. Обнаружение начинается только после нажатия оператором.</value></data>
+  <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Проверочные данные</value></data>
+  <data name="VmDemoEndpointDisplayName" xml:space="preserve"><value>ДЕМО · Данные симуляции · {0} · {1} кан.</value></data>
+  <data name="VmDemoAvailable" xml:space="preserve"><value>Демо · доступно</value></data>
+  <data name="VmDemoDisabled" xml:space="preserve"><value>Демо · отключено</value></data>
+  <data name="VmDemoKilohertz" xml:space="preserve"><value>кГц</value></data>
+  <data name="InputCapture" xml:space="preserve"><value>Вход · Capture</value></data>
+  <data name="OutputRender" xml:space="preserve"><value>Выход · Render</value></data>
+  <data name="EmptyList" xml:space="preserve"><value>Пустой список</value></data>
+  <data name="EmptyDeviceList" xml:space="preserve"><value>Пустой список устройств</value></data>
+  <data name="DemoOnlyDevices" xml:space="preserve"><value>Реальные устройства не перечисляются. Используются только проверочные данные.</value></data>
+  <data name="RestoreDemo" xml:space="preserve"><value>Вернуть демо</value></data>
+  <data name="DemoDeviceList" xml:space="preserve"><value>Список демонстрационных устройств</value></data>
+  <data name="RowSelectionRetained" xml:space="preserve"><value>Выбранная строка сохраняется при смене фокуса.</value></data>
+  <data name="PhysicalJackMappingUnknown" xml:space="preserve"><value>Физическое соответствие разъёмам: UNKNOWN</value></data>
+  <data name="WorkerFakeSynthetic" xml:space="preserve"><value>WORKER FAKE · только Developer Tools · синтетические операции</value></data>
+  <data name="OpenWorkerFakeDiagnostics" xml:space="preserve"><value>Открыть диагностику WORKER FAKE</value></data>
+  <data name="MetadataAndScanConsent" xml:space="preserve"><value>Системные метаданные и автоматическое сканирование выполняются только после явного действия и подтверждения.</value></data>
+  <data name="FindRefreshDevices" xml:space="preserve"><value>Найти / обновить устройства</value></data>
+  <data name="SavedDeviceProfile" xml:space="preserve"><value>Сохранённый профиль устройства</value></data>
+  <data name="CheckSavedBinding" xml:space="preserve"><value>Обновите реальные устройства и проверьте сохранённую привязку без запуска аудио.</value></data>
+  <data name="CheckConnection" xml:space="preserve"><value>Проверить подключение</value></data>
+  <data name="CheckSavedDeviceConnection" xml:space="preserve"><value>Проверить подключение сохранённого устройства</value></data>
+  <data name="ProfileSelectionDiagnostics" xml:space="preserve"><value>Выбор профиля и технические сведения предназначены для диагностики; автоматический выбор конфликтующих профилей запрещён.</value></data>
+  <data name="AdvancedSavedProfileSelection" xml:space="preserve"><value>Расширенный выбор сохранённого профиля</value></data>
+  <data name="RefreshProfiles" xml:space="preserve"><value>Обновить профили</value></data>
+  <data name="CheckTechnicalDetails" xml:space="preserve"><value>Технические детали проверки</value></data>
+  <data name="RecoverProfileFromHistory" xml:space="preserve"><value>Восстановление профиля из предыдущих измерений</value></data>
+  <data name="LocalCompletedMeasurementsOnly" xml:space="preserve"><value>Только локальные завершённые измерения. Аудио не запускается; автоматическое восстановление не выполняется.</value></data>
+  <data name="HistoricalMeasurementSelection" xml:space="preserve"><value>Выбор исторического измерения</value></data>
+  <data name="RefreshPreviousMeasurements" xml:space="preserve"><value>Обновить предыдущие измерения</value></data>
+  <data name="TechnicalInformation" xml:space="preserve"><value>Технические сведения</value></data>
+  <data name="CheckOldMeasurements" xml:space="preserve"><value>Проверить старые измерения</value></data>
+  <data name="VerifiedResult" xml:space="preserve"><value>Проверенный результат</value></data>
+  <data name="ConfirmNewV4Profile" xml:space="preserve"><value>Подтверждаю создание НОВОГО локального v4 профиля из исторических данных</value></data>
+  <data name="RecoveryLimitations" xml:space="preserve"><value>Ничего не запускается; исходные отчёты не изменяются; это не текущая runtime-сертификация; AudioHost автоматически не настраивается.</value></data>
+  <data name="SaveRecoveredProfile" xml:space="preserve"><value>Сохранить восстановленный профиль</value></data>
+  <data name="PhysicalAudioDeviceSelection" xml:space="preserve"><value>Выбор физического аудиоустройства</value></data>
+  <data name="AmbiguousCaptureRender" xml:space="preserve"><value>При неоднозначности выберите Capture и Render ниже. Loopback не подменяет аналоговый вход.</value></data>
+  <data name="SustainedTestMode" xml:space="preserve"><value>Режим длительной проверки</value></data>
+  <data name="ScanButton" xml:space="preserve"><value>Сканировать</value></data>
+  <data name="PrepareAutomaticScan" xml:space="preserve"><value>Подготовить автоматическое сканирование выбранного устройства</value></data>
+  <data name="ScanPlanConfirmation" xml:space="preserve"><value>Одно подтверждение для плана сканирования</value></data>
+  <data name="ScanPlanConsent" xml:space="preserve"><value>Разрешаю перечисленные операции для этих точных endpoints и настроек</value></data>
+  <data name="ConfirmWholeScanPlan" xml:space="preserve"><value>Подтвердить один раз весь неизменяемый план сканирования</value></data>
+  <data name="ConfirmAndScan" xml:space="preserve"><value>Подтвердить и сканировать</value></data>
+  <data name="RealWorkerScanning" xml:space="preserve"><value>СКАНИРОВАНИЕ · реальный Worker</value></data>
+  <data name="DriverCancellationNote" xml:space="preserve"><value>Запрос отмены не означает, что неотвечающий вызов драйвера уже остановлен. Итог и cleanup отображаются после ответа worker.</value></data>
+  <data name="LatestAutomaticResult" xml:space="preserve"><value>Последний автоматический результат</value></data>
+  <data name="DisconnectedWorkerHistory" xml:space="preserve"><value>Последний ответ отключённого worker · исторические данные</value></data>
+  <data name="SearchEndpointByName" xml:space="preserve"><value>Поиск по имени Windows endpoint</value></data>
+  <data name="SearchDeviceByName" xml:space="preserve"><value>Поиск устройства по имени</value></data>
+  <data name="DirectionFilter" xml:space="preserve"><value>Фильтр направления</value></data>
+  <data name="ActiveOnly" xml:space="preserve"><value>Только активные</value></data>
+  <data name="ShowActiveEndpoints" xml:space="preserve"><value>Показывать только активные Windows endpoints</value></data>
+  <data name="RealWindowsEndpoints" xml:space="preserve"><value>Реальные Windows endpoints · REAL_WINDOWS_METADATA</value></data>
+  <data name="InputOutput" xml:space="preserve"><value>Вход/выход</value></data>
+  <data name="StateLabel" xml:space="preserve"><value>Состояние</value></data>
+  <data name="SelectRowForDetails" xml:space="preserve"><value>Выберите строку для технических сведений</value></data>
+  <data name="SelectedEndpointDetails" xml:space="preserve"><value>Сведения о выбранном Windows endpoint</value></data>
+  <data name="SelectedDeviceDetails" xml:space="preserve"><value>Сведения о выбранном устройстве</value></data>
+  <data name="ExplicitDuplexPair" xml:space="preserve"><value>Явно выбрать пару Capture + Render для Duplex</value></data>
+  <data name="ScanExplicitPair" xml:space="preserve"><value>Сканировать явно выбранную пару Capture и Render</value></data>
+  <data name="ContinueSelectTest" xml:space="preserve"><value>Продолжить · выбрать тест</value></data>
+  <data name="ExplicitScanPairSelection" xml:space="preserve"><value>Явный выбор пары Capture Render для автоматического сканирования</value></data>
+  <data name="SelectScanPair" xml:space="preserve"><value>Выберите пару для сканирования</value></data>
+  <data name="NoConfirmedUniquePair" xml:space="preserve"><value>Windows не подтвердил единственную пару. Выберите активные Capture и Render явно; сходство имён не используется для объединения.</value></data>
+  <data name="AllowCrossGroupPair" xml:space="preserve"><value>Разрешить явную пару из разных физических групп</value></data>
+  <data name="AllowUnconfirmedPhysicalPair" xml:space="preserve"><value>Разрешить пару без подтверждённой общей физической принадлежности</value></data>
+  <data name="UnconfirmedPhysicalPairWarning" xml:space="preserve"><value>Предупреждение: Windows не подтвердил общую физическую принадлежность Capture и Render. Пара будет отмечена как OPERATOR_SELECTED и потребует отдельного подтверждения.</value></data>
+  <data name="DuplexCaptureEndpoint" xml:space="preserve"><value>Пара Duplex: Capture endpoint</value></data>
+  <data name="DuplexRenderEndpoint" xml:space="preserve"><value>Пара Duplex: Render endpoint</value></data>
+  <data name="UnknownDeviceAndRouting" xml:space="preserve"><value>Совпадение устройства: UNKNOWN, если Windows не предоставляет подтверждённую общую идентичность. Физическая маршрутизация: UNKNOWN.</value></data>
+  <data name="RepeatabilityStep3" xml:space="preserve"><value>Шаг 3 · после выбора точных Capture и Render</value></data>
+  <data name="RepeatabilityAvailabilityReason" xml:space="preserve"><value>Причина доступности repeatability</value></data>
+  <data name="PrepareRepeatabilityQa" xml:space="preserve"><value>Подготовить repeatability QA</value></data>
+  <data name="RepeatabilityStep4" xml:space="preserve"><value>Шаг 4 · одно подтверждение для всех шести операций</value></data>
+  <data name="RepeatabilityPlanConsent" xml:space="preserve"><value>Разрешаю весь immutable repeatability plan</value></data>
+  <data name="RepeatabilityStep5" xml:space="preserve"><value>Шаг 5 · Repeatability выполняется</value></data>
+  <data name="RequestCancellation" xml:space="preserve"><value>Запросить отмену</value></data>
+  <data name="ResultsStep6" xml:space="preserve"><value>Шаг 6 · Результаты</value></data>
+  <data name="RealExclusivePeriodDiscovery" xml:space="preserve"><value>Исследование реальных Exclusive периодов</value></data>
+  <data name="PeriodDiscoveryHeading" xml:space="preserve"><value>C4.2A · Исследование периодов</value></data>
+  <data name="PeriodDiscoveryAvailabilityReason" xml:space="preserve"><value>Причина доступности исследования периодов</value></data>
+  <data name="DiscoverPeriods" xml:space="preserve"><value>Исследовать периоды</value></data>
+  <data name="CandidatePlanConfirmation" xml:space="preserve"><value>Одно подтверждение для полного immutable candidate plan</value></data>
+  <data name="InitializeCandidatesConsent" xml:space="preserve"><value>Разрешаю только перечисленные Initialize-only кандидаты</value></data>
+  <data name="SequentialDiscovery" xml:space="preserve"><value>Исследование выполняется последовательно</value></data>
+  <data name="OneCustomDuplexOperation" xml:space="preserve"><value>Одна custom-period Duplex operation</value></data>
+  <data name="CustomDuplexHeading" xml:space="preserve"><value>C4.2B.1 · Одна custom-period Duplex operation</value></data>
+  <data name="CustomDuplexPrerequisite" xml:space="preserve"><value>Только после COMPLETED REAL C4.2A BOTH_EXACT; Capture discarded, Render silence, 5 секунд, MMCSS OFF, без routing.</value></data>
+  <data name="PeriodFrames" xml:space="preserve"><value>Период, frames:</value></data>
+  <data name="Prepare" xml:space="preserve"><value>Подготовить</value></data>
+  <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Отдельное подтверждение перед стартом</value></data>
+  <data name="CustomDuplexConsent" xml:space="preserve"><value>Разрешаю ровно одну перечисленную custom-period Duplex operation</value></data>
+  <data name="DuplexInProgress" xml:space="preserve"><value>Duplex выполняется</value></data>
+  <data name="PrepareFiveRuns" xml:space="preserve"><value>Подготовить 5 запусков</value></data>
+  <data name="WholeSeriesConfirmation" xml:space="preserve"><value>Одно подтверждение для всей серии</value></data>
+  <data name="FiveCustomDuplexConsent" xml:space="preserve"><value>Разрешаю пять последовательных custom-period Duplex операций</value></data>
+  <data name="ConfirmStartSeries" xml:space="preserve"><value>Подтвердить и запустить серию</value></data>
+  <data name="RepeatabilityInProgress" xml:space="preserve"><value>Repeatability выполняется</value></data>
+  <data name="DemoFormatMatrixSummary" xml:space="preserve"><value>12 вариантов · 24 результата периода · проверочные данные</value></data>
+  <data name="RealWasapiExclusiveFormats" xml:space="preserve"><value>REAL WASAPI · Exclusive-форматы выбранного Windows endpoint</value></data>
+  <data name="ChannelCandidates" xml:space="preserve"><value>Каналы-кандидаты (1–64, до 32 значений):</value></data>
+  <data name="RealQueryResults" xml:space="preserve"><value>Результаты REAL_WASAPI_QUERY</value></data>
+  <data name="StatusLabel" xml:space="preserve"><value>Статус</value></data>
+  <data name="NewConfirmationRequired" xml:space="preserve"><value>Требуется новое подтверждение</value></data>
+  <data name="SelectedInitializeConsent" xml:space="preserve"><value>Разрешаю однократную Exclusive Initialize для выбранных настроек</value></data>
+  <data name="ConfirmAndCheck" xml:space="preserve"><value>Подтвердить и проверить</value></data>
+  <data name="InitializeLimitations" xml:space="preserve"><value>Initialize не вызывает Start и не передаёт PCM. Результат не доказывает запуск потока или аудио-наблюдение.</value></data>
+  <data name="FormatMatrix" xml:space="preserve"><value>Матрица форматов</value></data>
+  <data name="EncodingLabel" xml:space="preserve"><value>Кодирование</value></data>
+  <data name="FrequencyHz" xml:space="preserve"><value>Частота, Гц</value></data>
+  <data name="DefaultPeriod" xml:space="preserve"><value>Период: стандартный</value></data>
+  <data name="MinimumPeriod" xml:space="preserve"><value>Период: минимальный</value></data>
+  <data name="DriverSupportLimitations" xml:space="preserve"><value>Поддержка драйвером не означает Initialize, запуск потока или аудио-наблюдение.</value></data>
+  <data name="CaptureMeterDemo" xml:space="preserve"><value>Измеритель Capture · только проверочные окна</value></data>
+  <data name="ChannelMeters" xml:space="preserve"><value>Метры каналов</value></data>
+  <data name="CaptureChannelBank" xml:space="preserve"><value>Банк каналов Capture</value></data>
+  <data name="InputChannelBank" xml:space="preserve"><value>Банк входных каналов</value></data>
+  <data name="EightCaptureLevels" xml:space="preserve"><value>Текущие уровни восьми каналов Capture</value></data>
+  <data name="StreamIntegrity" xml:space="preserve"><value>Целостность потока</value></data>
+  <data name="StateQualitySeparate" xml:space="preserve"><value>Состояние и качество потока показываются отдельно.</value></data>
+  <data name="CoverageFaultsUnknown" xml:space="preserve"><value>Покрытие и ошибки: неизвестно до получения данных сессии.</value></data>
+  <data name="StartCaptureSimulation" xml:space="preserve"><value>Начать симуляцию Capture</value></data>
+  <data name="NextWindow" xml:space="preserve"><value>Следующее окно</value></data>
+  <data name="ChannelTestSimulation" xml:space="preserve"><value>Проверка канала · симуляция без воспроизведения</value></data>
+  <data name="DemoOutputSettings" xml:space="preserve"><value>Настройки выхода · демо</value></data>
+  <data name="ChannelBank" xml:space="preserve"><value>Банк каналов</value></data>
+  <data name="WindowsChannelBank" xml:space="preserve"><value>Банк каналов Windows</value></data>
+  <data name="WindowsChannel" xml:space="preserve"><value>Канал Windows</value></data>
+  <data name="WindowsChannelSelection" xml:space="preserve"><value>Выбор канала Windows</value></data>
+  <data name="Duration" xml:space="preserve"><value>Длительность</value></data>
+  <data name="DemoDuration" xml:space="preserve"><value>Длительность демонстрации</value></data>
+  <data name="DemoSignalDescription" xml:space="preserve"><value>Сигнал: 997 Гц · не выше −36 dBFS · синус с паузами</value></data>
+  <data name="PhysicalRoutingUnknown" xml:space="preserve"><value>Физическая маршрутизация: НЕИЗВЕСТНО</value></data>
+  <data name="DemoNoSound" xml:space="preserve"><value>ДЕМО · Звук не воспроизводится.</value></data>
+  <data name="PhysicalMapping" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · физический выход не проверялся</value></data>
+  <data name="DigitalSimulationLimit" xml:space="preserve"><value>Цифровая симуляция не подтверждает сигнал ЦАП или слышимость.</value></data>
+  <data name="StartRenderSimulation" xml:space="preserve"><value>Начать симуляцию Render</value></data>
+  <data name="DemoSimulationData" xml:space="preserve"><value>ДЕМО · Данные симуляции</value></data>
+  <data name="DemoTestData" xml:space="preserve"><value>ДЕМО · Проверочные данные</value></data>
+  <data name="WindowsExplicitActions" xml:space="preserve"><value>Диагностика Windows · только явные действия</value></data>
+  <data name="RefreshIndex" xml:space="preserve"><value>Обновить индекс</value></data>
+  <data name="LocalRebuildableIndex" xml:space="preserve"><value>Локальный rebuildable-индекс. Исторические записи read-only и не разрешают активные операции.</value></data>
+  <data name="ExactEndpointIdentityFilter" xml:space="preserve"><value>Фильтр exact endpoint identity</value></data>
+  <data name="ReportTypeFilter" xml:space="preserve"><value>Фильтр report type</value></data>
+  <data name="RealOrSynthetic" xml:space="preserve"><value>REAL или SYNTHETIC</value></data>
+  <data name="ComparisonMode" xml:space="preserve"><value>Режим сравнения</value></data>
+  <data name="HistoricalEvidenceLimit" xml:space="preserve"><value>Историческая запись: observed evidence не равна current device state.</value></data>
+  <data name="OpenOriginalFile" xml:space="preserve"><value>Открыть оригинальный файл</value></data>
+  <data name="Diagnostics" xml:space="preserve"><value>Диагностика</value></data>
+  <data name="SyntheticModelActions" xml:space="preserve"><value>Фактические действия текущей синтетической модели</value></data>
+  <data name="WorkerFakePipe" xml:space="preserve"><value>WORKER FAKE · реальный Named Pipe · без аудиоустройств</value></data>
+  <data name="NativeWorkerState" xml:space="preserve"><value>Состояние Native Worker</value></data>
+  <data name="StartWorkerFake" xml:space="preserve"><value>Запустить worker fake</value></data>
+  <data name="QuerySyntheticDevices" xml:space="preserve"><value>Запросить синтетические устройства</value></data>
+  <data name="ShutDownWorker" xml:space="preserve"><value>Завершить worker</value></data>
+  <data name="RemoteWorkerFakeResponses" xml:space="preserve"><value>Удалённые ответы WORKER FAKE</value></data>
+  <data name="SyntheticWorkerDevice" xml:space="preserve"><value>Синтетическое устройство worker</value></data>
+  <data name="LastDisconnectedWorkerResponse" xml:space="preserve"><value>Последний ответ отключённого worker</value></data>
+  <data name="HistoricalDisconnectedResponse" xml:space="preserve"><value>Исторический ответ отключённого worker</value></data>
+  <data name="FormatAndTopology" xml:space="preserve"><value>Формат и топология этого формата</value></data>
+  <data name="SyntheticStreamFormat" xml:space="preserve"><value>Формат синтетического потока</value></data>
+  <data name="SelectedWorkerFormatTopology" xml:space="preserve"><value>Топология и число каналов выбранного worker формата</value></data>
+  <data name="WindowsRenderChannel" xml:space="preserve"><value>Канал Windows для Render</value></data>
+  <data name="WindowsRenderSessionChannel" xml:space="preserve"><value>Канал Windows для сессии Render</value></data>
+  <data name="WorkerFakeDuration" xml:space="preserve"><value>Длительность worker fake</value></data>
+  <data name="WorkerFakePeriod" xml:space="preserve"><value>Период worker fake</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Сценарий</value></data>
+  <data name="WorkerFakeScenario" xml:space="preserve"><value>Сценарий worker fake</value></data>
+  <data name="RequestCapture" xml:space="preserve"><value>Запросить Capture</value></data>
+  <data name="RequestRender" xml:space="preserve"><value>Запросить Render</value></data>
+  <data name="StopWorker" xml:space="preserve"><value>СТОП WORKER</value></data>
+  <data name="ActiveFakeSettingsImmutable" xml:space="preserve"><value>Настройки активной fake-сессии неизменяемы:</value></data>
+  <data name="ImmutableWorkerSettings" xml:space="preserve"><value>Неизменяемые настройки сессии worker</value></data>
+  <data name="WorkerPhysicalMappingUnknown" xml:space="preserve"><value>Физическое соответствие каналам: UNKNOWN · PCM не генерируется и устройства не активируются.</value></data>
+  <data name="PhysicalRoutingUnknownLower" xml:space="preserve"><value>Физическая маршрутизация: неизвестно</value></data>
+  <data name="WorkerMeterChannelBank" xml:space="preserve"><value>Банк каналов измерителя worker</value></data>
+  <data name="EightWorkerChannelBank" xml:space="preserve"><value>Банк из восьми каналов worker</value></data>
+  <data name="WorkerFakeEventLog" xml:space="preserve"><value>Журнал событий worker fake</value></data>
+  <data name="TimeLabel" xml:space="preserve"><value>Время</value></data>
+  <data name="SourceLabel" xml:space="preserve"><value>Источник</value></data>
+  <data name="EventLabel" xml:space="preserve"><value>Событие</value></data>
+  <data name="QualityLabel" xml:space="preserve"><value>Качество</value></data>
+  <data name="CleanupLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="SessionLabel" xml:space="preserve"><value>Сессия</value></data>
+  <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Подробности выбранного события worker</value></data>
+  <data name="LocalDemoNoPipe" xml:space="preserve"><value>LOCAL DEMO · локальная D2 модель · не использует Named Pipe</value></data>
+  <data name="LocalScenariosLimit" xml:space="preserve"><value>Локальные сценарии ниже изменяют только состояние ViewModel. Они не являются событиями worker и не подтверждают работу устройств.</value></data>
+  <data name="LocalDemoWarning" xml:space="preserve"><value>Предупреждение LOCAL DEMO</value></data>
+  <data name="LocalDemoError" xml:space="preserve"><value>Ошибка LOCAL DEMO</value></data>
+  <data name="LocalDemoDeviceLoss" xml:space="preserve"><value>Потеря устройства LOCAL DEMO</value></data>
+  <data name="DisconnectLocalDemo" xml:space="preserve"><value>Отключить LOCAL DEMO</value></data>
+  <data name="LocalDemoTimeline" xml:space="preserve"><value>Временная шкала локальной демонстрации</value></data>
+  <data name="StopWorkerFakeSession" xml:space="preserve"><value>Остановить fake-сессию worker</value></data>
+  <data name="StopLocal" xml:space="preserve"><value>СТОП LOCAL</value></data>
+  <data name="StopLocalDemoSession" xml:space="preserve"><value>Остановить локальную demo-сессию</value></data>
+  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>ДИАГНОСТИКА WINDOWS · операции выполняются только по явному действию</value></data>
+  <data name="WorkerFakeSessionState" xml:space="preserve"><value>Состояние fake-сессии worker</value></data>
+  <data name="DemoSessionConfirmation" xml:space="preserve"><value>Подтверждение демонстрационной сессии</value></data>
+  <data name="DemoSimulationConsent" xml:space="preserve"><value>Я понимаю, что запускается только демонстрационная симуляция.</value></data>
+  <data name="WorkerFakeConfirmation" xml:space="preserve"><value>Подтверждение WORKER FAKE</value></data>
+  <data name="WorkerFakeLimitations" xml:space="preserve"><value>Worker выполняет только синтетическую операцию. Нет WASAPI, записи PCM или физической проверки.</value></data>
+  <data name="FakeSettingsConsent" xml:space="preserve"><value>Подтверждаю эти точные настройки fake-сессии.</value></data>
+  <data name="ConfirmStartFake" xml:space="preserve"><value>Подтвердить запуск fake</value></data>
+  <data name="SyntheticFixturesHeading" xml:space="preserve"><value>СИНТЕТИЧЕСКИЕ / ТЕСТОВЫЕ ДАННЫЕ</value></data>
+  <data name="RealWindowsDiagnosticsHeading" xml:space="preserve"><value>РЕАЛЬНАЯ ДИАГНОСТИКА WINDOWS</value></data>
+  <data name="DuplexRepeatabilityQa" xml:space="preserve"><value>QA повторяемости Duplex</value></data>
+  <data name="DuplexRepeatabilityHeading" xml:space="preserve"><value>C4.1 · QA повторяемости Duplex</value></data>
+  <data name="InitializeOnlyPairDescription" xml:space="preserve"><value>Реальная диагностика Windows · точная пара Capture/Render · только Initialize</value></data>
+  <data name="BoundedRepeatabilityHeading" xml:space="preserve"><value>C4.2B.2 · ограниченная повторяемость</value></data>
+  <data name="EvidenceComparisonMode" xml:space="preserve"><value>Режим сравнения свидетельств</value></data>
+  <data name="EvidenceLibraryRecords" xml:space="preserve"><value>Записи библиотеки свидетельств</value></data>
+  <data name="TypeColumn" xml:space="preserve"><value>Тип</value></data>
+  <data name="PeriodColumn" xml:space="preserve"><value>Период</value></data>
+  <data name="ModeColumn" xml:space="preserve"><value>Режим</value></data>
+  <data name="LocalTimeColumn" xml:space="preserve"><value>Местное время</value></data>
+  <data name="UtcColumn" xml:space="preserve"><value>UTC</value></data>
+  <data name="ProvenanceColumn" xml:space="preserve"><value>Происхождение</value></data>
+  <data name="StatusColumn" xml:space="preserve"><value>Статус</value></data>
+  <data name="LifecycleQualityColumn" xml:space="preserve"><value>Жизненный цикл / качество</value></data>
+  <data name="NormalizedDuplexComparisons" xml:space="preserve"><value>Нормализованные сравнения Duplex</value></data>
+  <data name="ConfigurationColumn" xml:space="preserve"><value>Конфигурация</value></data>
+  <data name="RunsColumn" xml:space="preserve"><value>Запуски</value></data>
+  <data name="CaptureCoverageColumn" xml:space="preserve"><value>Покрытие Capture</value></data>
+  <data name="RenderCoverageColumn" xml:space="preserve"><value>Покрытие Render</value></data>
+  <data name="DeveloperToolsDescription" xml:space="preserve"><value>ИНСТРУМЕНТЫ РАЗРАБОТЧИКА · реальная диагностика Windows + синтетические данные</value></data>
+  <data name="InitializeCaptureRender" xml:space="preserve"><value>Initialize · Capture / Render</value></data>
+  <data name="StartCaptureRender" xml:space="preserve"><value>Start · Capture / Render</value></data>
+  <data name="FaultsLabel" xml:space="preserve"><value>Ошибки</value></data>
+  <data name="StopCleanupLabel" xml:space="preserve"><value>Остановка / очистка</value></data>
+  <data name="AudioHostNotCertifiedSuffix" xml:space="preserve"><value> · AudioHost: NOT_CERTIFIED</value></data>
+  <data name="WindowsRealWasapi" xml:space="preserve"><value>WINDOWS · РЕАЛЬНЫЙ WASAPI</value></data>
+  <data name="FaultStopCleanup" xml:space="preserve"><value>Ошибки, остановка, очистка</value></data>
+  <data name="InitializeLabel" xml:space="preserve"><value>Initialize</value></data>
+  <data name="EventColumn" xml:space="preserve"><value>Событие</value></data>
+  <data name="CleanupTechnicalLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="StartLabel" xml:space="preserve"><value>Start</value></data>
+  <data name="StopLabel" xml:space="preserve"><value>Stop</value></data>
+  <data name="RealEvidencePhysicalRtl" xml:space="preserve"><value>Свидетельства: REAL · AudioHost: NOT_CERTIFIED · Физический RTL: NOT_MEASURED</value></data>
+  <data name="CaptureEndpointLabel" xml:space="preserve"><value>Endpoint Capture</value></data>
+  <data name="RenderEndpointLabel" xml:space="preserve"><value>Endpoint Render</value></data>
+  <data name="DemoMeterLegend" xml:space="preserve"><value>Peak · RMS · Hold · ЛОКАЛЬНОЕ ДЕМО</value></data>
+  <data name="EvidenceLibraryTitle" xml:space="preserve"><value>Библиотека свидетельств</value></data>
+  <data name="FormatTableColumn" xml:space="preserve"><value>Формат</value></data>
+  <data name="CaptureP99" xml:space="preserve"><value>Capture P99</value></data>
+  <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
+  <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
+  <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · только fake</value></data>
+  <data name="WindowsChannelFormat" xml:space="preserve"><value>Канал Windows {0}</value></data>
+  <data name="SessionIdFormat" xml:space="preserve"><value>Сессия {0:D}</value></data>
+  <data name="PreferredFormat" xml:space="preserve"><value>Основной: {0}</value></data>
+  <data name="FallbackFormat" xml:space="preserve"><value>Резервный: {0}</value></data>
+  <data name="ConfidenceFormat" xml:space="preserve"><value>Уверенность: {0}</value></data>
+  <data name="SessionNotStarted" xml:space="preserve"><value>Сессия не запускалась</value></data>
+  <data name="QualityUnknown" xml:space="preserve"><value>Качество неизвестно</value></data>
+  <data name="NoFakeSession" xml:space="preserve"><value>Нет fake-сессии</value></data>
+  <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 секунд; Extended: 600 секунд. Оба режима выполняются только после подтверждения полного плана.</value></data>
+  <data name="VmOperatorResultProvenanceEmpty" xml:space="preserve"><value>REAL_WASAPI_QUERY · данные отсутствуют</value></data>
+  <data name="VmOperatorResultOutcomeEmpty" xml:space="preserve"><value>Результат ещё не получен.</value></data>
+  <data name="VmSyntheticBuildNotice" xml:space="preserve"><value>Данные этой сборки синтетические.</value></data>
+  <data name="VmHistoricalRecoveryChooseMeasurement" xml:space="preserve"><value>Выберите завершённое историческое измерение.</value></data>
+  <data name="VmSavedProfileCheckConnection" xml:space="preserve"><value>Нажмите «Проверить подключение», чтобы обновить устройства и найти сохранённый профиль.</value></data>
+  <data name="VmSavedProfileNoHistorySelected" xml:space="preserve"><value>Историческая конфигурация пока не выбрана.</value></data>
+  <data name="VmSavedProfileCheckLimitation" xml:space="preserve"><value>Проверка не применяет настройки и не запускает аудио.</value></data>
+  <data name="VmStreamNotValidated" xml:space="preserve"><value>Поток не проверялся.</value></data>
+  <data name="VmDeviceScanNotStarted" xml:space="preserve"><value>Сканирование не запускалось.</value></data>
+  <data name="VmAutomaticScanNotStarted" xml:space="preserve"><value>Сканирование не запускалось.</value></data>
+  <data name="VmAutomaticScanExportNotPrepared" xml:space="preserve"><value>Экспорт не подготовлен.</value></data>
+  <data name="VmAutomaticScanExportDetailsMissing" xml:space="preserve"><value>Технические сведения экспорта отсутствуют.</value></data>
+  <data name="VmDuplexNotStarted" xml:space="preserve"><value>Duplex не запускался.</value></data>
+  <data name="VmDuplexRepeatabilityNotStarted" xml:space="preserve"><value>Repeatability QA не запускалась.</value></data>
+  <data name="VmCustomRepeatabilityNotStarted" xml:space="preserve"><value>Custom-period repeatability не запускалась.</value></data>
+  <data name="VmPeriodDiscoveryNotStarted" xml:space="preserve"><value>Исследование периодов не запускалось.</value></data>
+  <data name="VmWorkflowDeviceStep" xml:space="preserve"><value>1 · Устройство</value></data>
+  <data name="VmWorkflowTestStep" xml:space="preserve"><value>2 · Проверка</value></data>
+  <data name="VmWorkflowResultStep" xml:space="preserve"><value>3 · Результат</value></data>
+  <data name="VmOperatorExclusiveFormatQuery" xml:space="preserve"><value>Запрос Exclusive-форматов</value></data>
+  <data name="VmOperatorInitializeOnly" xml:space="preserve"><value>Проверка Initialize-only</value></data>
+  <data name="VmDefaultPeriod" xml:space="preserve"><value>Стандартный (DEFAULT)</value></data>
+  <data name="VmMinimumPeriod" xml:space="preserve"><value>Минимальный (MINIMUM)</value></data>
+  <data name="VmInitializeNeedsWorker" xml:space="preserve"><value>Worker отключён. Подключите worker, чтобы продолжить.</value></data>
+  <data name="VmInitializeEndpointStale" xml:space="preserve"><value>Endpoint устарел или недоступен. Повторно обновите список и выберите активное устройство.</value></data>
+  <data name="VmInitializeOperationRunning" xml:space="preserve"><value>Операция выполняется. Дождитесь её завершения.</value></data>
+  <data name="VmInitializeNeedsCurrentQuery" xml:space="preserve"><value>Нет текущего запроса форматов для выбранного endpoint. Выполните запрос.</value></data>
+  <data name="VmInitializeNeedsSelectedFormat" xml:space="preserve"><value>Формат не выбран. Выберите строку с SUPPORTED_REPORTED.</value></data>
+  <data name="VmInitializeFormatIncomplete" xml:space="preserve"><value>Конфликт или неполные данные. Этот формат нельзя инициализировать.</value></data>
+  <data name="VmInitializeFormatUnsupported" xml:space="preserve"><value>Выбранный формат не поддерживается (или запрос завершился ошибкой) для Initialize-only.</value></data>
+  <data name="VmInitializePeriodUnavailable" xml:space="preserve"><value>Для выбранного периода нет пригодного результата формата.</value></data>
+  <data name="VmInitializeAwaitingConsent" xml:space="preserve"><value>Ожидается свежее подтверждение или отмена.</value></data>
+  <data name="VmInitializeWorkerCapabilityMissing" xml:space="preserve"><value>Подключённый worker не поддерживает Initialize-only.</value></data>
+  <data name="VmAutomaticScanPlanNotPrepared" xml:space="preserve"><value>Ступенчатый план ещё не подготовлен.</value></data>
+  <data name="VmAutomaticScanCandidatesAwaitQuery" xml:space="preserve"><value>Кандидаты появятся после FORMAT_QUERY; ограничения Probe не означают несовместимость устройства.</value></data>
+  <data name="VmAutomaticScanUnavailable" xml:space="preserve"><value>Автоматическое сканирование недоступно в этом окне.</value></data>
+  <data name="VmAutomaticScanPreviousOutcomeUnknown" xml:space="preserve"><value>Предыдущая операция не завершилась с подтверждённым исходом. Закройте и заново запустите приложение.</value></data>
+  <data name="VmAutomaticScanInProgress" xml:space="preserve"><value>Сканирование выполняется; новые операции заблокированы.</value></data>
+  <data name="VmAutomaticScanCancelOtherConsent" xml:space="preserve"><value>Сначала отмените другое ожидающее подтверждение.</value></data>
+  <data name="VmAutomaticScanChooseUnconfirmedPair" xml:space="preserve"><value>Явно выберите Capture и Render; общая физическая принадлежность не подтверждена.</value></data>
+  <data name="VmAutomaticScanChoosePairEndpoints" xml:space="preserve"><value>Для парного сканирования явно выберите Capture и Render endpoints.</value></data>
+  <data name="VmAutomaticScanCheckUnconfirmedPair" xml:space="preserve"><value>Будет проверена явно выбранная пара; общая физическая принадлежность не подтверждена.</value></data>
+  <data name="VmAutomaticScanCheckExactPair" xml:space="preserve"><value>Будет проверена только явно выбранная пара точных endpoints.</value></data>
+  <data name="VmAutomaticScanChooseCaptureOrPair" xml:space="preserve"><value>Выберите активный Capture endpoint для частичного сканирования или разрешите явную пару.</value></data>
+  <data name="VmAutomaticScanChooseRenderOrPair" xml:space="preserve"><value>Выберите активный Render endpoint для частичного сканирования или разрешите явную пару.</value></data>
+  <data name="VmAutomaticScanChooseActiveEndpoint" xml:space="preserve"><value>Выберите доступный активный endpoint текущей физической группы.</value></data>
+  <data name="VmAutomaticScanPlanBoundToEndpoint" xml:space="preserve"><value>План будет ограничен выбранным endpoint и обновлённой Windows discovery.</value></data>
+  <data name="VmAutomaticScanResultMissing" xml:space="preserve"><value>Результат отсутствует.</value></data>
+  <data name="VmAutomaticScanCompleted" xml:space="preserve"><value>Завершено</value></data>
+  <data name="VmAutomaticScanPartiallyCompleted" xml:space="preserve"><value>Частично завершено</value></data>
+  <data name="VmAutomaticScanCancelled" xml:space="preserve"><value>Отменено</value></data>
+  <data name="VmAutomaticScanFailed" xml:space="preserve"><value>Не завершено</value></data>
+  <data name="VmAutomaticScanOutcomeUnknown" xml:space="preserve"><value>Исход неизвестен</value></data>
+  <data name="VmAutomaticScanProvenanceUnknown" xml:space="preserve"><value>UNKNOWN · источник операций не установлен.</value></data>
+  <data name="VmAutomaticScanProvenanceDemo" xml:space="preserve"><value>DEMO · Данные симуляции (только проверка UI).</value></data>
+  <data name="VmAutomaticScanProvenanceReal" xml:space="preserve"><value>REAL WASAPI · принятые результаты.</value></data>
+  <data name="VmAutomaticScanProvenanceMixed" xml:space="preserve"><value>Смешанное или неизвестное происхождение · рекомендация не считается реальной.</value></data>
+  <data name="VmAutomaticScanSaveUnknown" xml:space="preserve"><value>Исход нового сканирования неизвестен; сохранение этого результата не подтверждено.</value></data>
+  <data name="VmAutomaticScanSaveUnconfirmed" xml:space="preserve"><value>Автоматическое сохранение не подтверждено: результат операции недоступен.</value></data>
+  <data name="VmAutomaticScanReportNotSaved" xml:space="preserve"><value>Отчёт не сохранён.</value></data>
+  <data name="VmChooseActiveWindowsDevice" xml:space="preserve"><value>Выберите активное Windows-устройство.</value></data>
+  <data name="VmDeviceScanPlanBound" xml:space="preserve"><value>План ограничен выбранным активным endpoint; автоматической смены устройства нет.</value></data>
+  <data name="VmConnectWorker" xml:space="preserve"><value>Подключите worker.</value></data>
+  <data name="VmRefreshWindowsDevices" xml:space="preserve"><value>Обновите список реальных Windows-устройств.</value></data>
+  <data name="VmChooseCaptureOrRenderEndpoint" xml:space="preserve"><value>Выберите активный Capture или Render endpoint.</value></data>
+  <data name="VmSelectedEndpointInactive" xml:space="preserve"><value>Выбранный endpoint не активен.</value></data>
+  <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>Подключённый worker не поддерживает необходимые реальные операции.</value></data>
+  <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Дождитесь завершения текущей операции или отмените ожидающее подтверждение.</value></data>
+  <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>Нет данных сканирования.</value></data>
+  <data name="VmWorkerLabel" xml:space="preserve"><value>Worker</value></data>
+  <data name="VmWorkerConnected" xml:space="preserve"><value>Worker: подключён</value></data>
+  <data name="VmWorkerDisconnected" xml:space="preserve"><value>отключён</value></data>
+  <data name="VmWorkerStarting" xml:space="preserve"><value>запускается</value></data>
+  <data name="VmWorkerConnecting" xml:space="preserve"><value>подключается</value></data>
+  <data name="VmWorkerHandshaking" xml:space="preserve"><value>согласует протокол</value></data>
+  <data name="VmWorkerStopping" xml:space="preserve"><value>останавливается</value></data>
+  <data name="VmWorkerIncompatible" xml:space="preserve"><value>несовместим</value></data>
+  <data name="VmWorkerError" xml:space="preserve"><value>ошибка</value></data>
+  <data name="VmWindowsDiscoveryCurrent" xml:space="preserve"><value>Обнаружение Windows: актуально</value></data>
+  <data name="VmWindowsDiscoveryRefreshing" xml:space="preserve"><value>Обнаружение Windows: обновляется</value></data>
+  <data name="VmWindowsDiscoveryError" xml:space="preserve"><value>Обнаружение Windows: ошибка · {0}</value></data>
+  <data name="VmWindowsDiscoveryStale" xml:space="preserve"><value>Обнаружение Windows: устарело или не выполнялось</value></data>
+  <data name="VmEndpointListEmpty" xml:space="preserve"><value>Список {0} пуст. Доступны только проверочные данные; нажмите «Вернуть демо».</value></data>
+  <data name="VmChooseDemoEndpoint" xml:space="preserve"><value>Выберите доступную строку для демонстрационной сессии.</value></data>
+  <data name="VmEvidenceLibraryStatus" xml:space="preserve"><value>Показано записей: {0} · корректных: {1} · некорректные/неподдерживаемые сохранены для диагностики: {2}.</value></data>
+  <data name="VmSelectEvidenceRecord" xml:space="preserve"><value>Выберите запись доказательств.</value></data>
+  <data name="VmSelectDuplexRecord" xml:space="preserve"><value>Выберите запись Duplex для сравнения совместимых исторических запусков.</value></data>
+  <data name="VmUtcLabel" xml:space="preserve"><value>UTC</value></data>
+  <data name="VmLocalLabel" xml:space="preserve"><value>Местное время</value></data>
+  <data name="VmIdentityLabel" xml:space="preserve"><value>Идентификатор</value></data>
+  <data name="VmOriginalLabel" xml:space="preserve"><value>Исходный файл</value></data>
+  <data name="VmRepeatabilityWorkflowUnavailable" xml:space="preserve"><value>Сценарий проверки повторяемости недоступен.</value></data>
+  <data name="VmRepeatabilityWorkerOutcomeUnknown" xml:space="preserve"><value>Исход операции Worker неизвестен (UNKNOWN); перезапустите Worker перед повторным использованием.</value></data>
+  <data name="VmRepeatabilityWorkerDisconnected" xml:space="preserve"><value>Worker не подключён.</value></data>
+  <data name="VmRepeatabilityRefreshDiscovery" xml:space="preserve"><value>Обновите обнаружение Windows перед подготовкой проверки повторяемости.</value></data>
+  <data name="VmRepeatabilityChoosePair" xml:space="preserve"><value>Выберите один активный Capture и один активный Render endpoint.</value></data>
+  <data name="VmRepeatabilityOperationActive" xml:space="preserve"><value>Выполняется или не завершена другая операция сканирования/аудио.</value></data>
+  <data name="VmRepeatabilityAwaitingConsent" xml:space="preserve"><value>Ожидается подтверждение другой операции.</value></data>
+  <data name="VmRepeatabilityReady" xml:space="preserve"><value>Готово: точная активная пара Capture/Render и актуальное обнаружение Worker.</value></data>
+  <data name="VmRepeatabilitySelectExactEndpoints" xml:space="preserve"><value>Выберите точные Capture и Render endpoints.</value></data>
+  <data name="VmRepeatabilityResultMissing" xml:space="preserve"><value>Результат проверки повторяемости ещё не получен.</value></data>
+  <data name="VmReportLabel" xml:space="preserve"><value>Отчёт</value></data>
+  <data name="VmNotSaved" xml:space="preserve"><value>не сохранён</value></data>
+  <data name="VmNotConfirmed" xml:space="preserve"><value>не подтверждено</value></data>
+  <data name="VmPeriodDiscoveryReady" xml:space="preserve"><value>Готово: точная текущая пара Capture/Render и актуальное обнаружение Windows.</value></data>
+  <data name="VmPeriodMatrixMissing" xml:space="preserve"><value>Матрица ещё не получена.</value></data>
+  <data name="VmReportNotSaved" xml:space="preserve"><value>Отчёт ещё не сохранён.</value></data>
+  <data name="VmPeriodDiscoveryResultMissing" xml:space="preserve"><value>Исследование периодов ещё не завершено.</value></data>
+  <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Готово: будет запущен ровно один выбранный custom period.</value></data>
+  <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Сначала завершите REAL C4.2A period discovery и выберите текущую пару endpoint-ов.</value></data>
+  <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex ещё не завершён.</value></data>
+  <data name="VmPeriodDiscoveryUnavailable" xml:space="preserve"><value>Исследование периодов недоступно в этом окне.</value></data>
+  <data name="VmWorkerDisconnectedMessage" xml:space="preserve"><value>Worker не подключён.</value></data>
+  <data name="VmPeriodDiscoveryWorkerCapabilitiesMissing" xml:space="preserve"><value>Подключённый Worker не поддерживает passive preflight и custom-period Initialize.</value></data>
+  <data name="VmPeriodDiscoveryPriorOutcomeUnknown" xml:space="preserve"><value>Исход предыдущей операции UNKNOWN; безопасное повторное использование Worker запрещено.</value></data>
+  <data name="VmPeriodDiscoveryRefreshWindows" xml:space="preserve"><value>Обновите Windows discovery перед исследованием периодов.</value></data>
+  <data name="VmPeriodDiscoverySelectExactPair" xml:space="preserve"><value>Выберите точные активные Capture и Render endpoints.</value></data>
+  <data name="VmPeriodDiscoveryOperationActive" xml:space="preserve"><value>Другая операция активна или не разрешила безопасное завершение.</value></data>
+  <data name="VmPeriodDiscoveryAwaitingConsent" xml:space="preserve"><value>Другое подтверждение ожидает решения.</value></data>
+  <data name="VmPeriodDiscoveryNeedsCurrentPair" xml:space="preserve"><value>Требуется текущая точная пара и свежая Windows discovery.</value></data>
+  <data name="VmPeriodDiscoveryPlanPrepared" xml:space="preserve"><value>Подготовлен неизменяемый план кандидатов; требуется отдельное подтверждение.</value></data>
+  <data name="VmPeriodDiscoveryPreparationFailed" xml:space="preserve"><value>Исследование периодов недоступно: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalDiscarded" xml:space="preserve"><value>Discovery, Worker или точная пара изменились; подтверждение сброшено.</value></data>
+  <data name="VmPeriodDiscoveryApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; точные кандидаты проверяются последовательно.</value></data>
+  <data name="VmPeriodDiscoveryOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход исследования периодов не подтверждён: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalCancelled" xml:space="preserve"><value>Подтверждение исследования периодов отменено.</value></data>
+  <data name="VmPeriodDiscoveryCancellationRequested" xml:space="preserve"><value>Запрошена отмена; незавершённая native очистка остановит серию со статусом UNKNOWN.</value></data>
+  <data name="VmPeriodPlanDiscardedGroupChanged" xml:space="preserve"><value>Группа физических устройств изменилась; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryRefreshed" xml:space="preserve"><value>Обнаружение Windows обновлено; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Выбор точной пары Capture/Render изменился; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Обнаружение обновляется; прежний план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker отключён или изменил идентификатор сессии; план периодов сброшен.</value></data>
+  <data name="VmCustomRepeatabilityPlanMissing" xml:space="preserve"><value>После C4.2A выберите допустимый custom period.</value></data>
+  <data name="VmCustomRepeatabilityPlanRunCount" xml:space="preserve"><value>{0} последовательных запусков · {1}</value></data>
+  <data name="VmCustomRepeatabilityPlanTiming" xml:space="preserve"><value>5 секунд каждый · пауза {0} мс · MMCSS OFF</value></data>
+  <data name="VmCustomRepeatabilityPlanSafety" xml:space="preserve"><value>Данные Capture отбрасываются; Render передаёт только тишину; маршрутизации нет.</value></data>
+  <data name="VmCustomRepeatabilityResultMissing" xml:space="preserve"><value>Проверка custom-period repeatability ещё не завершена.</value></data>
+  <data name="VmRealFormatQueryNotRun" xml:space="preserve"><value>Реальный Exclusive-запрос не выполнялся.</value></data>
+  <data name="VmRealFormatHistoryStale" xml:space="preserve"><value>ИСТОРИЧЕСКИЙ РЕЗУЛЬТАТ · Worker, discovery или выбранный endpoint изменились.</value></data>
+  <data name="VmRealFormatQuerySummary" xml:space="preserve"><value>REAL_WASAPI_QUERY · уникальных форматов: {0}. IsFormatSupported вызывается один раз для каждого формата; периоды отдельно не запрашиваются.</value></data>
+  <data name="VmWindowsEndpointLocalIdHidden" xml:space="preserve"><value>Windows endpoint · локальный идентификатор скрыт</value></data>
+  <data name="VmRealFormatConflictHeader" xml:space="preserve"><value>INCOMPLETE/CONFLICT · Initialize-only заблокирован.</value></data>
+  <data name="VmRealFormatCandidateSelectForDetails" xml:space="preserve"><value>Выберите результат периода, чтобы увидеть HRESULT и технические сведения.</value></data>
+  <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only ещё не выполнялся.</value></data>
+  <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize временно резервирует выбранное устройство. Проверяется только направление {0}, {1}, {2} Гц, каналов: {3}, период {4}. Start и PCM не запускаются.</value></data>
+  <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Выберите точный результат поддерживаемого формата.</value></data>
+  <data name="VmAllDirections" xml:space="preserve"><value>Все</value></data>
+  <data name="VmWindowsEndpointCounts" xml:space="preserve"><value>Всего: {0} · показано: {1} · активных Capture: {2} · активных Render: {3}</value></data>
+  <data name="VmWindowsEndpointsEnumerating" xml:space="preserve"><value>Перечисление Windows endpoints…</value></data>
+  <data name="VmWindowsDiscoveryPartial" xml:space="preserve"><value>Частичный результат: endpoints — {0}, ошибок — {1}.</value></data>
+  <data name="VmWindowsEndpointsNoneFound" xml:space="preserve"><value>Windows endpoints не обнаружены.</value></data>
+  <data name="VmWindowsEndpointsReceived" xml:space="preserve"><value>Получено Windows endpoints: {0}.</value></data>
+  <data name="VmWindowsDiscoveryWorkerDisconnectedHistorical" xml:space="preserve"><value>Последний ответ отключённого Worker · исторические данные, текущая доступность неизвестна.</value></data>
+  <data name="VmWindowsDiscoveryRequestFailed" xml:space="preserve"><value>Запрос не выполнен: {0}</value></data>
+  <data name="VmWindowsDiscoveryNotRequested" xml:space="preserve"><value>Не запрашивалось. Автоматический поиск отключён.</value></data>
+  <data name="VmSavedProfileBindingNotChecked" xml:space="preserve"><value>Проверка подключения ещё не выполнялась.</value></data>
+  <data name="VmSavedProfileMatchesNone" xml:space="preserve"><value>Совпадений нет.</value></data>
+  <data name="VmWorkerRestartRequired" xml:space="preserve"><value>Автоматический перезапуск отключён. Для нового подключения запустите новый процесс GUI.</value></data>
+  <data name="VmWorkerRenderMeterHeading" xml:space="preserve"><value>Render · синтетическая модель предполагаемого цифрового выхода</value></data>
+  <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · синтетические уровни по каналам</value></data>
+  <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Измерение: {0} · источник: {1}</value></data>
+  <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>Профиль не выбран.</value></data>
+  <data name="VmWorkerMeterStale" xml:space="preserve"><value>УСТАРЕЛО · последнее синтетическое наблюдение сохранено; новых данных нет.</value></data>
+  <data name="VmWorkerMeterSnapshotMissing" xml:space="preserve"><value>Снимок измерителя ещё не получен.</value></data>
+  <data name="VmWorkerMeterFinalWindowMissing" xml:space="preserve"><value>ФИНАЛЬНО · снимок {0} не содержит завершённого окна; уровни неизвестны.</value></data>
+  <data name="VmWorkerMeterFinalData" xml:space="preserve"><value>ФИНАЛЬНЫЕ синтетические данные · снимок {0} · каналов: {1}; качество и cleanup не подтверждены.</value></data>
+  <data name="VmWorkerMeterStopping" xml:space="preserve"><value>STOPPING · снимок {0} заморожен до терминального события.</value></data>
+  <data name="VmWorkerMeterWindowMissing" xml:space="preserve"><value>Нет завершённого окна · уровни неизвестны, это не тишина.</value></data>
+  <data name="VmWorkerMeterLive" xml:space="preserve"><value>LIVE · синтетический снимок {0} · окно {1} · каналов: {2} · это не аудиоизмерение.</value></data>
+  <data name="VmWorkerMeterRenderMode" xml:space="preserve"><value>Render · модель цифрового выхода</value></data>
+  <data name="VmWorkerMeterNoSession" xml:space="preserve"><value>Нет сессии</value></data>
+  <data name="VmWorkerMeterFormatUnknown" xml:space="preserve"><value>Формат и длительность неизвестны</value></data>
+  <data name="VmWorkerMeterSnapshotNoData" xml:space="preserve"><value>Снимок: нет данных</value></data>
+  <data name="VmWorkerMeterCoalescedNoData" xml:space="preserve"><value>Объединение: нет данных</value></data>
+  <data name="VmWorkerEventsMissing" xml:space="preserve"><value>События отсутствуют.</value></data>
+  <data name="VmWorkerTimelineEmpty" xml:space="preserve"><value>Событий worker fake пока нет.</value></data>
+  <data name="VmDemoEventsEmpty" xml:space="preserve"><value>Событий пока нет. Запустите синтетическую сессию или выберите сценарий.</value></data>
+  <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Сначала выберите доступное демонстрационное устройство.</value></data>
+  <data name="VmInspectorDetails" xml:space="preserve"><value>Сведения</value></data>
+  <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Данные симуляции</value></data>
+  <data name="VmWorkerPeriodDefault" xml:space="preserve"><value>Стандартный (DEFAULT)</value></data>
+  <data name="VmWorkerPeriodMinimum" xml:space="preserve"><value>Минимальный (MINIMUM)</value></data>
+  <data name="VmWorkerMmcssOff" xml:space="preserve"><value>Отключён (OFF)</value></data>
+  <data name="VmWorkerMmcssProAudio" xml:space="preserve"><value>Pro Audio (PRO_AUDIO)</value></data>
+  <data name="VmWorkerScenarioNormal" xml:space="preserve"><value>Обычная сессия</value></data>
+  <data name="VmWorkerScenarioSilent" xml:space="preserve"><value>Только тишина</value></data>
+  <data name="VmWorkerScenarioNoWindow" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmWorkerScenarioWarning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="VmWorkerScenarioFailure" xml:space="preserve"><value>Синтетическая ошибка</value></data>
+  <data name="VmWorkerScenarioDeviceLoss" xml:space="preserve"><value>Потеря устройства (fake)</value></data>
+  <data name="VmDurationOneSecond" xml:space="preserve"><value>1 секунда</value></data>
+  <data name="VmDurationThreeSeconds" xml:space="preserve"><value>3 секунды</value></data>
+  <data name="VmDurationFiveSeconds" xml:space="preserve"><value>5 секунд</value></data>
+  <data name="VmDurationTenSeconds" xml:space="preserve"><value>10 секунд</value></data>
+  <data name="VmDemoRenderConfirmation" xml:space="preserve"><value>Подтвердите симуляцию выхода: {0}, канал Windows {1}, {2} с. Звук не воспроизводится.</value></data>
+  <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Подтвердите симуляцию Capture: {0}, {1} с. Реального захвата нет.</value></data>
+  <data name="VmInspectorWindowsProvenance" xml:space="preserve"><value>WINDOWS · Системные метаданные</value></data>
+  <data name="VmInspectorWorkerProvenance" xml:space="preserve"><value>WORKER FAKE · Синтетические данные</value></data>
+  <data name="VmInspectorWindowsDeviceTitle" xml:space="preserve"><value>Аудиоустройство Windows · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorDemoDeviceTitle" xml:space="preserve"><value>Устройство · демо</value></data>
+  <data name="VmInspectorEndpointsNotRequested" xml:space="preserve"><value>Реальные endpoints ещё не запрошены или не выбраны.</value></data>
+  <data name="VmInspectorConnectWorkerForDiscovery" xml:space="preserve"><value>Подключите worker, затем вручную обновите список Windows.</value></data>
+  <data name="VmInspectorPassiveDemoList" xml:space="preserve"><value>Пассивный список · проверочные данные</value></data>
+  <data name="VmInspectorFormatTitle" xml:space="preserve"><value>Формат · результаты проверки</value></data>
+  <data name="VmInspectorFormatNotSelected" xml:space="preserve"><value>Формат не выбран.</value></data>
+  <data name="VmInspectorCaptureTitle" xml:space="preserve"><value>Сессия Capture · демо</value></data>
+  <data name="VmInspectorCaptureNotStarted" xml:space="preserve"><value>Capture-сессия не запускалась.</value></data>
+  <data name="VmInspectorRenderTitle" xml:space="preserve"><value>Настройки выхода · демо</value></data>
+  <data name="VmInspectorRenderNotStarted" xml:space="preserve"><value>Сессия Render не запускалась.</value></data>
+  <data name="VmInspectorReportsTitle" xml:space="preserve"><value>Результаты проверки · демо</value></data>
+  <data name="VmInspectorReportNotSelected" xml:space="preserve"><value>Отчёт не выбран.</value></data>
+  <data name="VmInspectorWorkerTitle" xml:space="preserve"><value>Сведения worker fake</value></data>
+  <data name="VmInspectorWorkerSessionNotStarted" xml:space="preserve"><value>Worker-сессия не запускалась.</value></data>
+  <data name="VmInspectorWorkerEventsMissing" xml:space="preserve"><value>Worker событий пока нет.</value></data>
+  <data name="VmInspectorDemoDiagnosticsTitle" xml:space="preserve"><value>Диагностика · демо</value></data>
+  <data name="VmInspectorWindowsSectionTitle" xml:space="preserve"><value>Windows endpoint · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorMeasurementStale" xml:space="preserve"><value>Устарели</value></data>
+  <data name="VmInspectorMeasurementFinal" xml:space="preserve"><value>Финальные</value></data>
+  <data name="VmInspectorMeasurementMissing" xml:space="preserve"><value>Нет данных</value></data>
+  <data name="VmInspectorMeasurementWindowMissing" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmInspectorMeasurementCurrent" xml:space="preserve"><value>Текущие</value></data>
+  <data name="VmInspectorWorkerConnected" xml:space="preserve"><value>Подключён (демо)</value></data>
+  <data name="VmInspectorWorkerStarting" xml:space="preserve"><value>Запускается</value></data>
+  <data name="VmInspectorWorkerConnecting" xml:space="preserve"><value>Подключается</value></data>
+  <data name="VmInspectorWorkerNegotiating" xml:space="preserve"><value>Согласование протокола</value></data>
+  <data name="VmInspectorWorkerStopping" xml:space="preserve"><value>Отключается</value></data>
+  <data name="VmInspectorWorkerIncompatible" xml:space="preserve"><value>Несовместим</value></data>
+  <data name="VmInspectorWorkerFailed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmInspectorWorkerDisconnected" xml:space="preserve"><value>Отключён</value></data>
+  <data name="VmInspectorStateLabel" xml:space="preserve"><value>Состояние</value></data>
+  <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Транспорт</value></data>
+  <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Происхождение</value></data>
+  <data name="VmInspectorReasonLabel" xml:space="preserve"><value>Причина</value></data>
+  <data name="VmInspectorModeLabel" xml:space="preserve"><value>Режим</value></data>
+  <data name="VmInspectorEndpointLabel" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="VmInspectorFormatLabel" xml:space="preserve"><value>Формат</value></data>
+  <data name="VmInspectorWindowsChannelLabel" xml:space="preserve"><value>Канал Windows</value></data>
+  <data name="VmInspectorDurationLabel" xml:space="preserve"><value>Длительность</value></data>
+  <data name="VmInspectorIdLabel" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorFullUuidLabel" xml:space="preserve"><value>Полный UUID</value></data>
+  <data name="VmInspectorSessionLabel" xml:space="preserve"><value>Сессия</value></data>
+  <data name="VmInspectorSnapshotLabel" xml:space="preserve"><value>Снимок</value></data>
+  <data name="VmInspectorDataLabel" xml:space="preserve"><value>Данные</value></data>
+  <data name="VmInspectorChannelsLabel" xml:space="preserve"><value>Каналов</value></data>
+  <data name="VmInspectorCoalescingLabel" xml:space="preserve"><value>Объединение</value></data>
+  <data name="VmInspectorStreamQualityLabel" xml:space="preserve"><value>Качество потока</value></data>
+  <data name="VmInspectorCleanupLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="VmInspectorPhysicalRoutingLabel" xml:space="preserve"><value>Физическая маршрутизация</value></data>
+  <data name="VmInspectorObservationLabel" xml:space="preserve"><value>Наблюдение</value></data>
+  <data name="VmInspectorConnectionSection" xml:space="preserve"><value>СОЕДИНЕНИЕ</value></data>
+  <data name="VmInspectorSessionSection" xml:space="preserve"><value>СЕССИЯ</value></data>
+  <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>ИЗМЕРЕНИЯ</value></data>
+  <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>ДАННЫЕ</value></data>
+  <data name="VmInspectorWorkerTransport" xml:space="preserve"><value>Локальный Windows Named Pipe · протокол 1.0</value></data>
+  <data name="VmInspectorWorkerSyntheticProvenance" xml:space="preserve"><value>Worker Fake · синтетические данные</value></data>
+  <data name="VmInspectorWorkerRealDevicesNotUsed" xml:space="preserve"><value>Реальные аудиоустройства не используются.</value></data>
+  <data name="VmInspectorUnknown" xml:space="preserve"><value>Неизвестно</value></data>
+  <data name="VmInspectorNotStarted" xml:space="preserve"><value>Не запускалась</value></data>
+  <data name="VmInspectorNoData" xml:space="preserve"><value>Нет данных</value></data>
+  <data name="VmInspectorSnapshotsCoalesced" xml:space="preserve"><value>Снимков: {0}</value></data>
+  <data name="VmInspectorQualityClean" xml:space="preserve"><value>Чисто · синтетическая модель</value></data>
+  <data name="VmInspectorQualityWarning" xml:space="preserve"><value>Предупреждение · синтетическая модель</value></data>
+  <data name="VmInspectorQualityFailed" xml:space="preserve"><value>Ошибка · синтетическая модель</value></data>
+  <data name="VmInspectorUnknownNotAssessed" xml:space="preserve"><value>Неизвестно / не оценено</value></data>
+  <data name="VmInspectorCleanupCompletedSynthetic" xml:space="preserve"><value>Симуляция очистки завершена</value></data>
+  <data name="VmInspectorCleanupNotAttempted" xml:space="preserve"><value>Не выполнялась</value></data>
+  <data name="VmInspectorSyntheticNoRealAudioMeasured" xml:space="preserve"><value>Синтетическая модель · реальный звук не измерялся</value></data>
+  <data name="VmInspectorLifecyclePreparing" xml:space="preserve"><value>Подготовка</value></data>
+  <data name="VmInspectorLifecycleReady" xml:space="preserve"><value>Готова</value></data>
+  <data name="VmInspectorLifecycleStarted" xml:space="preserve"><value>Запущена</value></data>
+  <data name="VmInspectorLifecycleStopping" xml:space="preserve"><value>Остановка</value></data>
+  <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Остановлена</value></data>
+  <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Завершена</value></data>
+  <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmCaptureInputDirection" xml:space="preserve"><value>вход (Capture)</value></data>
+  <data name="VmRenderOutputDirection" xml:space="preserve"><value>выход (Render)</value></data>
+  <data name="VmInspectorDirectionLabel" xml:space="preserve"><value>Направление</value></data>
+  <data name="VmPeriodDefaultLabel" xml:space="preserve"><value>Период: стандартный</value></data>
+  <data name="VmPeriodMinimumLabel" xml:space="preserve"><value>Период: минимальный</value></data>
+  <data name="VmFormatStatusSupported" xml:space="preserve"><value>✓ Поддерживается</value></data>
+  <data name="VmFormatStatusUnsupported" xml:space="preserve"><value>× Нет</value></data>
+  <data name="VmFormatStatusFailed" xml:space="preserve"><value>! Ошибка</value></data>
+  <data name="VmFormatStatusUnknown" xml:space="preserve"><value>? Неизвестно</value></data>
+  <data name="VmFormatStatusNotTested" xml:space="preserve"><value>? Не проверено</value></data>
+  <data name="VmFormatStatusInitialized" xml:space="preserve"><value>✓ Инициализировано</value></data>
+  <data name="VmFormatStatusReady" xml:space="preserve"><value>✓ Готово</value></data>
+  <data name="VmPeriodStatusFormat" xml:space="preserve"><value>Статус: {0}</value></data>
+  <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
+  <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
+  <data name="VmPeriodProvenance" xml:space="preserve"><value>Происхождение: {0}</value></data>
+  <data name="VmInspectorMixerFormatLabel" xml:space="preserve"><value>Формат микширования</value></data>
+  <data name="VmInspectorWindowsChannelsLabel" xml:space="preserve"><value>Каналы Windows</value></data>
+  <data name="VmInspectorPhysicalConnectorsLabel" xml:space="preserve"><value>Физические разъёмы</value></data>
+  <data name="VmInspectorDeviceLabel" xml:space="preserve"><value>Устройство</value></data>
+  <data name="VmInspectorMeterLabel" xml:space="preserve"><value>Измеритель</value></data>
+  <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Соединение</value></data>
+  <data name="VmInspectorEventLabel" xml:space="preserve"><value>Событие</value></data>
+  <data name="VmScanCommandQuery" xml:space="preserve"><value>запрос форматов</value></data>
+  <data name="VmScanCommandInitialize" xml:space="preserve"><value>Initialize-only</value></data>
+  <data name="VmScanCommandStream" xml:space="preserve"><value>проверка Capture/Render потока</value></data>
+  <data name="VmScanCommandDuplex" xml:space="preserve"><value>одновременная Duplex проверка</value></data>
+  <data name="VmScanStageDiscovery" xml:space="preserve"><value>Проверка выбранных устройств</value></data>
+  <data name="VmScanStageQuery" xml:space="preserve"><value>Запрос форматов</value></data>
+  <data name="VmScanStageInitialize" xml:space="preserve"><value>Инициализация</value></data>
+  <data name="VmScanStageStream" xml:space="preserve"><value>Проверка потока</value></data>
+  <data name="VmScanStageDuplex" xml:space="preserve"><value>Duplex</value></data>
+  <data name="VmScanStagePeriodDiscovery" xml:space="preserve"><value>Period discovery</value></data>
+  <data name="VmScanStageCustomDuplex" xml:space="preserve"><value>Custom Duplex</value></data>
+  <data name="VmScanStageRepeatability" xml:space="preserve"><value>Repeatability</value></data>
+  <data name="VmScanStageEvaluate" xml:space="preserve"><value>Оценка результатов</value></data>
+  <data name="VmScanStageSave" xml:space="preserve"><value>Сохранение отчёта</value></data>
+  <data name="VmScanStageComplete" xml:space="preserve"><value>Завершение</value></data>
+  <data name="VmScanLifecycleCompleted" xml:space="preserve"><value>ЗАВЕРШЕНО</value></data>
+  <data name="VmScanLifecycleIncomplete" xml:space="preserve"><value>НЕПОЛНО</value></data>
+  <data name="VmScanLifecycleCancelled" xml:space="preserve"><value>ОТМЕНЕНО</value></data>
+  <data name="VmScanLifecycleFailed" xml:space="preserve"><value>ОШИБКА</value></data>
+  <data name="VmScanLifecycleUnknown" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmOperationLifecyclePending" xml:space="preserve"><value>ОЖИДАЕТ</value></data>
+  <data name="VmOperationLifecycleRunning" xml:space="preserve"><value>ВЫПОЛНЯЕТСЯ</value></data>
+  <data name="VmOperationLifecycleCompleted" xml:space="preserve"><value>ЗАВЕРШЕНО</value></data>
+  <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>ПРОПУЩЕНО</value></data>
+  <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>ОШИБКА</value></data>
+  <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmNavigateNeedEndpoint" xml:space="preserve"><value>Сначала выберите активное устройство или точную пару Capture/Render.</value></data>
+  <data name="VmNavigateNeedRealTest" xml:space="preserve"><value>Сначала выполните реальную проверку.</value></data>
+  <data name="VmDemoDeviceUnavailable" xml:space="preserve"><value>Выберите доступное демонстрационное устройство на экране «Устройства» и откройте соответствующий режим.</value></data>
+  <data name="VmDemoStarted" xml:space="preserve"><value>Симуляция запущена. Реальные устройства не используются.</value></data>
+  <data name="VmDemoStartCancelled" xml:space="preserve"><value>Запуск отменён; сессия не начиналась.</value></data>
+  <data name="VmWorkerFakeNotStarted" xml:space="preserve"><value>Worker fake mode не запускался.</value></data>
+  <data name="VmWorkerConfirmationRequested" xml:space="preserve"><value>Запрошено подтверждение worker fake: {0}, {1}, каналов: {2}.</value></data>
+  <data name="VmWorkerStartRejected" xml:space="preserve"><value>Worker fake отклонил Start: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomeUnknown" xml:space="preserve"><value>Результат запуска неизвестен: {0}: {1}</value></data>
+  <data name="VmWorkerConsentCancelled" xml:space="preserve"><value>Запуск worker fake отменён до отправки команды.</value></data>
+  <data name="VmWorkerStopAccepted" xml:space="preserve"><value>Stop принят. Это подтверждение не означает завершение или cleanup.</value></data>
+  <data name="VmWorkerSettingsAccepted" xml:space="preserve"><value>Worker fake принял неизменяемые настройки сессии {0:D}.</value></data>
+  <data name="VmWorkerEventQueueOverflow" xml:space="preserve"><value>Очередь UI событий переполнена. Состояние операции UNKNOWN; новые данные не отображаются.</value></data>
+  <data name="VmWorkerTransportFault" xml:space="preserve"><value>Транспорт worker: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Результат Start неизвестен. Новая операция заблокирована до позднего ответа или отключения worker.</value></data>
+  <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Поздний ответ worker: запуск отвергнут ({0}).</value></data>
+  <data name="VmRepeatabilityPlanPrepared" xml:space="preserve"><value>План repeatability подготовлен; требуется одно явное подтверждение.</value></data>
+  <data name="VmRepeatabilityPlanFailed" xml:space="preserve"><value>План repeatability не подготовлен: {0}: {1}</value></data>
+  <data name="VmRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или точные endpoints изменились. Подтверждение сброшено; подготовьте план заново.</value></data>
+  <data name="VmRepeatabilityApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; регистрируется ограниченная по времени Worker session.</value></data>
+  <data name="VmRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход repeatability session не подтверждён: {0}: {1}</value></data>
+  <data name="VmRepeatabilityApprovalCancelled" xml:space="preserve"><value>Подтверждение repeatability отменено.</value></data>
+  <data name="VmRepeatabilityPlanChanged" xml:space="preserve"><value>Подтверждение repeatability сброшено: выбранный план изменился.</value></data>
+  <data name="VmRepeatabilityCancellationRequested" xml:space="preserve"><value>Запрошена отмена repeatability; активная native operation должна подтвердить остановку или остаться UNKNOWN.</value></data>
+  <data name="VmRepeatabilityDiscoveryUpdating" xml:space="preserve"><value>Обнаружение обновляется; прежнее подтверждение repeatability сброшено.</value></data>
+  <data name="VmRepeatabilityWorkerChanged" xml:space="preserve"><value>Worker отключён или изменил идентификатор сессии; подтверждение repeatability сброшено.</value></data>
+  <data name="VmCustomRepeatabilityPlanPrepared" xml:space="preserve"><value>Подготовлен план из пяти custom-period операций; требуется одно явное подтверждение.</value></data>
+  <data name="VmCustomRepeatabilityPlanFailed" xml:space="preserve"><value>План repeatability не подготовлен: {0}: {1}</value></data>
+  <data name="VmCustomRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или endpoints изменились; подтверждение сброшено.</value></data>
+  <data name="VmCustomRepeatabilityApprovalCancelled" xml:space="preserve"><value>Подтверждение custom repeatability отменено.</value></data>
+  <data name="VmCustomRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход custom repeatability не подтверждён: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexPlanPrepared" xml:space="preserve"><value>План подготовлен; перед запуском требуется отдельное явное подтверждение.</value></data>
+  <data name="VmCustomPeriodDuplexPreparationFailed" xml:space="preserve"><value>Custom-period Duplex недоступен: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexAuthorizationInvalidated" xml:space="preserve"><value>Discovery, Worker или endpoints изменились; подтверждение сброшено.</value></data>
+  <data name="VmCustomPeriodDuplexApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; выполняется одна custom-period Duplex operation.</value></data>
+  <data name="VmCustomPeriodDuplexOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход custom-period Duplex не подтверждён: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexApprovalCancelled" xml:space="preserve"><value>Подтверждение custom-period Duplex отменено.</value></data>
+  <data name="VmCustomPeriodDuplexCancellationRequested" xml:space="preserve"><value>Запрошена отмена; следующий запуск заблокирован, если cleanup не подтверждён.</value></data>
+  <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Требуется свежее подтверждение · {0} · 5 с · MMCSS OFF.</value></data>
+  <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Подтверждение Duplex отменено; операция не отправлялась.</value></data>
+  <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Отмена передана Worker; ожидается координированный Stop обеих сторон и итоговый отчёт.</value></data>
+  <data name="VmOperatorStreamEvidenceNone" xml:space="preserve"><value>Stream validation не запускалась: Start и обслуживание кадров не наблюдались.</value></data>
+  <data name="VmOperatorStreamEvidenceCount" xml:space="preserve"><value>Принятых отчётов stream validation: {0}. Start, кадры и качество показаны отдельно ниже; длительная стабильность, Duplex и физическая маршрутизация не подтверждены.</value></data>
+  <data name="VmOperatorProfileEvidenceNoStreams" xml:space="preserve"><value>Профиль сохраняет только полученные результаты и не подтверждает Start, PCM-наблюдение, стабильность, Duplex или физическую маршрутизацию. Рекомендация не формируется.</value></data>
+  <data name="VmOperatorProfileEvidenceWithStreams" xml:space="preserve"><value>Профиль v2 включает принятые streamObservations при успешном сохранении. Они не подтверждают длительную стабильность, Duplex, физическую маршрутизацию или QA AudioHost; рекомендация не формируется.</value></data>
+  <data name="VmStreamEvidenceNotRun" xml:space="preserve"><value>Результаты потока: NOT_RUN; streamObservations отсутствуют.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotSaved" xml:space="preserve"><value>Последняя попытка {0}: {1}; принятого отчёта нет, попытка не сохранена.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotInProfile" xml:space="preserve"><value>Последняя попытка {0}: {1}; профиль schemaVersion {2} не содержит её как streamObservation: {3}</value></data>
+  <data name="VmStreamEvidencePreviousSavedLatestNotIncluded" xml:space="preserve"><value>Предыдущие принятые наблюдения сохранены в профиле schemaVersion 2; последняя попытка {0}: {1} не включена: {2}</value></data>
+  <data name="VmStreamEvidenceSessionSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии и сохранены в профиле schemaVersion 2: {0}</value></data>
+  <data name="VmStreamEvidenceSessionAttemptNotSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии ({0}); последняя попытка {1}: {2}; текущий набор не сохранён в профиле v2.</value></data>
+  <data name="VmStreamEvidenceSessionNotSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии ({0}); эти результаты ещё не сохранены в профиле v2.</value></data>
+  <data name="VmStreamValidationConsent" xml:space="preserve"><value>{0} · {1} · ID: {2} · 48 кГц PCM16 · каналов: {3} · {4} · до 5 секунд. Exclusive endpoint будет временно занят. Capture читает пакеты микрофона без сохранения PCM; Render передаёт только цифровую тишину. Физический звук/маршрутизация не измеряются.</value></data>
+  <data name="VmStreamValidationSelectInitializedCandidate" xml:space="preserve"><value>Выберите успешно инициализированный кандидат.</value></data>
+  <data name="VmStreamValidationAuthorizationRequired" xml:space="preserve"><value>Свежая отдельная авторизация требуется для каждого периода.</value></data>
+  <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>Нужен текущий результат успешного Initialize для выбранного точного endpoint и подключённый worker.</value></data>
+  <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
+  <data name="VmPeriodEvidenceAccessibleText" xml:space="preserve"><value>{0}. HRESULT IsFormatSupported: {1}. HRESULT Initialize: {2}. Происхождение: {3}.</value></data>
+  <data name="VmScanOutcome" xml:space="preserve"><value>{0} · поддержка и Initialize разделены. Запуск потока, стабильность и Duplex не проверялись.</value></data>
+  <data name="VmQueryInvalidated" xml:space="preserve"><value>Выполняется новый запрос; предыдущая матрица временно не является текущим результатом.</value></data>
+  <data name="VmQueryChannelsValidation" xml:space="preserve"><value>Введите от 1 до 32 уникальных номеров каналов в диапазоне 1–64 через запятую.</value></data>
+  <data name="VmQueryDisconnectedConfiguration" xml:space="preserve"><value>Результат не подтверждён после потери соединения.</value></data>
+  <data name="VmQueryDisconnectedError" xml:space="preserve"><value>REAL_WASAPI_QUERY outcome UNKNOWN · worker/discovery отключились до принятия результата.</value></data>
+  <data name="VmQueryDisconnectedOutcome" xml:space="preserve"><value>Исход запроса неизвестен; нет подтверждённого результата.</value></data>
+  <data name="VmQuerySuccessOutcome" xml:space="preserve"><value>Запрос завершён; поддержка драйвера показана отдельно и не означает Initialize или запуск потока.</value></data>
+  <data name="VmQueryErrorPrefix" xml:space="preserve"><value>Ошибка REAL_WASAPI_QUERY:</value></data>
+  <data name="VmQueryHistoricalSuffix" xml:space="preserve"><value> Последняя успешная матрица остаётся исторической и не разрешает Initialize-only.</value></data>
+  <data name="VmQueryFailureOutcome" xml:space="preserve"><value>Запрос не завершён; итог операции неизвестен.</value></data>
+  <data name="VmInitializeSelectionChanged" xml:space="preserve"><value>Выбор endpoint или формата изменился; подтверждение сброшено.</value></data>
+  <data name="VmInitializeResponseMismatch" xml:space="preserve"><value>Ответ Initialize-only не соответствует подтверждённому endpoint и точному формату.</value></data>
+  <data name="VmInitializeSuccessOutcome" xml:space="preserve"><value>Initialize-only завершён · {0}. Запуск и аудио-наблюдение не выполнялись.</value></data>
+  <data name="VmInitializeResultMissing" xml:space="preserve"><value>результат отсутствует</value></data>
+  <data name="VmInitializeErrorPrefix" xml:space="preserve"><value>Initialize-only: исход неизвестен или отклонён</value></data>
+  <data name="VmInitializeUnknownOutcome" xml:space="preserve"><value>Исход Initialize неизвестен (UNKNOWN) · операция worker могла быть выполнена.</value></data>
+  <data name="VmBindingExactFound" xml:space="preserve"><value>Пара устройств найдена. Аудиоконфигурация требует повторной проверки.</value></data>
+  <data name="VmBindingCaptureMissing" xml:space="preserve"><value>Сохранённый аудиовход не найден.</value></data>
+  <data name="VmBindingRenderMissing" xml:space="preserve"><value>Сохранённый аудиовыход не найден.</value></data>
+  <data name="VmBindingBothMissing" xml:space="preserve"><value>Сохранённые Capture и Render endpoints не найдены.</value></data>
+  <data name="VmBindingEndpointUnavailable" xml:space="preserve"><value>Сохранённый endpoint отключён или не подключён.</value></data>
+  <data name="VmBindingDiscoveryIncomplete" xml:space="preserve"><value>Список устройств неполный. Совпадение не подтверждено.</value></data>
+  <data name="VmBindingInvalidProvenance" xml:space="preserve"><value>Проверка отклонена: discovery не имеет REAL_WINDOWS_METADATA.</value></data>
+  <data name="VmBindingDiscoveryFailed" xml:space="preserve"><value>Проверка discovery не завершена.</value></data>
+  <data name="VmBindingProfileInvalid" xml:space="preserve"><value>Профиль повреждён или не поддерживается.</value></data>
+  <data name="VmBindingUnboundProfile" xml:space="preserve"><value>Профиль не привязан к этому компьютеру.</value></data>
+  <data name="VmBindingIdentityAmbiguous" xml:space="preserve"><value>Точные endpoint identities неоднозначны.</value></data>
+  <data name="VmBindingMetadataContradiction" xml:space="preserve"><value>Доступные метаданные противоречат сохранённой привязке.</value></data>
+  <data name="VmBindingMetadataInsufficient" xml:space="preserve"><value>Метаданные устройства недоступны или недостаточны.</value></data>
+  <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Проверка устарела: Worker отключён.</value></data>
+  <data name="VmBindingInvalidated" xml:space="preserve"><value>Проверка устарела: входные данные изменились.</value></data>
+  <data name="VmBindingNotRun" xml:space="preserve"><value>Проверка не выполнена.</value></data>
+  <data name="VmBindingInvalidWorker" xml:space="preserve"><value>Проверка устарела: Worker отключён или изменился.</value></data>
+  <data name="VmBindingAvailabilityUnknown" xml:space="preserve"><value>Текущая доступность устройства неизвестна.</value></data>
+  <data name="VmBindingReconnectWorker" xml:space="preserve"><value>Подключите Worker заново только после штатного нового запуска; прежняя проверка не действует.</value></data>
+  <data name="VmBindingInvalidProfileSelection" xml:space="preserve"><value>Проверка устарела: выбранный профиль изменился.</value></data>
+  <data name="VmBindingNotConfirmed" xml:space="preserve"><value>Текущее сопоставление не подтверждено.</value></data>
+  <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Повторите проверку для выбранного профиля.</value></data>
+  <data name="VmBindingRediscovery" xml:space="preserve"><value>Проверка устарела: список устройств обновляется.</value></data>
+  <data name="VmBindingDiscoveryCompleted" xml:space="preserve"><value>Список устройств обновлён. Привязка сохранённого профиля не проверена.</value></data>
+  <data name="VmEndpointRefreshFailure" xml:space="preserve"><value>Не удалось обновить список устройств: {0}. Привязка сохранённого профиля не проверена.</value></data>
+  <data name="VmBindingCheckAfterDiscovery" xml:space="preserve"><value>При необходимости отдельно проверьте привязку сохранённого профиля.</value></data>
+  <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>Предыдущий результат не относится к новому discovery.</value></data>
+  <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Дождитесь полного списка устройств и повторите проверку.</value></data>
+  <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Проверка устарела: текущий список устройств больше не подтверждён.</value></data>
+  <data name="VmBindingRetryAfterRefresh" xml:space="preserve"><value>Повторите проверку после обновления Worker и списка устройств.</value></data>
+  <data name="VmBindingFreshMetadataRequired" xml:space="preserve"><value>Проверка отклонена: свежий список устройств не имеет REAL_WINDOWS_METADATA.</value></data>
+  <data name="VmBindingMissingEndpointUnknown" xml:space="preserve"><value>Отсутствующий endpoint нельзя считать definitively absent.</value></data>
+  <data name="VmBindingRetryFullMetadataDiscovery" xml:space="preserve"><value>Повторите проверку после полного REAL_WINDOWS_METADATA discovery.</value></data>
+  <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>Сохранённый профиль для этой пары устройств не найден.</value></data>
+  <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>Это не означает несовместимость устройства.</value></data>
+  <data name="VmBindingExactIdOnly" xml:space="preserve"><value>Проверка выполняет только сопоставление точных ID и не применяет настройки.</value></data>
+  <data name="VmDiscoveryWorkerDisconnected" xml:space="preserve"><value>Worker не подключён</value></data>
+  <data name="VmDiscoverySuccess" xml:space="preserve"><value>Получены метаданные Windows endpoints: {0} · REAL_WINDOWS_METADATA. Аудиопотоки не запускались.</value></data>
+  <data name="VmDiscoveryFailure" xml:space="preserve"><value>Получить метаданные Windows endpoints не удалось: {0}.</value></data>
+  <data name="VmInspectorHertz" xml:space="preserve"><value>Гц</value></data>
+  <data name="VmInspectorBits" xml:space="preserve"><value> бит</value></data>
+  <data name="VmInspectorFriendlyName" xml:space="preserve"><value>Полное имя</value></data>
+  <data name="VmInspectorDirection" xml:space="preserve"><value>Направление</value></data>
+  <data name="VmInspectorFormFactor" xml:space="preserve"><value>Форм-фактор</value></data>
+  <data name="VmInspectorSharedMode" xml:space="preserve"><value>Shared Mode</value></data>
+  <data name="VmInspectorSampleRate" xml:space="preserve"><value>Частота дискретизации</value></data>
+  <data name="VmInspectorContainerBits" xml:space="preserve"><value>Контейнер / valid bits</value></data>
+  <data name="VmInspectorReportedChannels" xml:space="preserve"><value>Сообщено каналов</value></data>
+  <data name="VmInspectorTopology" xml:space="preserve"><value>Топология</value></data>
+  <data name="VmInspectorSpeakerMask" xml:space="preserve"><value>Маска динамиков</value></data>
+  <data name="VmInspectorPropertyAvailability" xml:space="preserve"><value>Доступность свойств / HRESULT</value></data>
+  <data name="VmInspectorPropertyAvailabilityDetails" xml:space="preserve"><value>{0}: {1}; {2}: {3}; {4}: {5}; {6}: {7}</value></data>
+  <data name="VmInspectorId" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorName" xml:space="preserve"><value>имя</value></data>
+  <data name="VmInspectorState" xml:space="preserve"><value>состояние</value></data>
+  <data name="VmInspectorFormat" xml:space="preserve"><value>формат</value></data>
+  <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
+  <data name="VmInspectorSharedMetadataNotTested" xml:space="preserve"><value>Метаданные Shared Mode · Exclusive capability NOT TESTED</value></data>
+  <data name="VmInspectorUnknownUpper" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmInspectorChannelAbbreviation" xml:space="preserve"><value>кан.</value></data>
+  <data name="VmInspectorSecondsAbbreviation" xml:space="preserve"><value>с</value></data>
+  <data name="VmInspectorCleanupUnknownNoData" xml:space="preserve"><value>НЕИЗВЕСТНО / нет данных</value></data>
+  <data name="VmInspectorNotSelected" xml:space="preserve"><value>не выбрано</value></data>
+  <data name="VmInspectorDemoSimulation" xml:space="preserve"><value>ДЕМО · Данные симуляции</value></data>
+  <data name="VmInspectorWorkerDataSynthetic" xml:space="preserve"><value>все данные Worker синтетические.</value></data>
+  <data name="VmInspectorSessionValue" xml:space="preserve"><value>Сессия: {0}</value></data>
+  <data name="VmInspectorStateValue" xml:space="preserve"><value>Состояние: {0}</value></data>
+  <data name="VmInspectorQualityValue" xml:space="preserve"><value>Качество потока: {0}</value></data>
+  <data name="VmInspectorNotAssessed" xml:space="preserve"><value>не оценивалось</value></data>
+  <data name="VmInspectorLastEvent" xml:space="preserve"><value>Последнее событие: №{0} {1} · {2:HH:mm:ss.fff}</value></data>
+  <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>Событий пока нет.</value></data>
+  <data name="VmInspectorNoEvents" xml:space="preserve"><value>Нет событий.</value></data>
+  <data name="VmDuplexPairChanged" xml:space="preserve"><value>Пара или настройки изменились; требуется новое подтверждение.</value></data>
+  <data name="VmDuplexRunning" xml:space="preserve"><value>RUNNING · {0} · до 5 секунд на точной паре; Capture отбросит данные, Render отправляет тишину.</value></data>
+  <data name="VmDuplexBindingChanged" xml:space="preserve"><value>Пара или Worker изменились во время Duplex; текущий результат неизвестен и не может разрешить рекомендацию профиля.</value></data>
+  <data name="VmDuplexFailureStatus" xml:space="preserve"><value>{0} · {1}: {2}. {3}</value></data>
+  <data name="VmDuplexCleanupUnconfirmed" xml:space="preserve"><value>Stop/cleanup не подтверждены.</value></data>
+  <data name="VmStreamCancellationAccepted" xml:space="preserve"><value>Отмена принята к обработке worker; ожидается Stop и итоговый отчёт.</value></data>
+  <data name="VmStreamConsentInvalidated" xml:space="preserve"><value>Цель или настройки изменились; подтверждение сброшено.</value></data>
+  <data name="VmStreamUnknownValue" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmStreamAwaitingWorkerResult" xml:space="preserve"><value>Ожидание результата worker.</value></data>
+  <data name="VmStreamProgress" xml:space="preserve"><value>Выполняется реальный {0} stream · {1} · до 5 секунд.</value></data>
+  <data name="VmStreamRunning" xml:space="preserve"><value>{0}: RUNNING · {1} · ожидается итоговый отчёт.</value></data>
+  <data name="VmStreamBindingChanged" xml:space="preserve"><value>Worker или привязка к точному endpoint изменились; результат потока нельзя считать текущим.</value></data>
+  <data name="VmStreamResultOutcome" xml:space="preserve"><value>{0} stream: {1}; Start={2}; frames={3}; quality={4}. {5}</value></data>
+  <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Длительная Stability и Duplex: NOT_RUN.</value></data>
+  <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
+  <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
+  <data name="VmScanAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или точный endpoint изменились. Обновите устройства и подготовьте подтверждение заново.</value></data>
+  <data name="VmScanExportInvalidatedByNewScan" xml:space="preserve"><value>Новый scan начал работу; прежняя подготовка экспорта сброшена.</value></data>
+  <data name="VmScanConsentAccepted" xml:space="preserve"><value>Подтверждение принято; регистрируется ограниченная сессия Worker.</value></data>
+  <data name="VmScanExportNeedsFreshValidation" xml:space="preserve"><value>Получен новый результат scan; требуется отдельная проверка полноты экспорта.</value></data>
+  <data name="VmScanOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход или закрытие Worker-сессии не подтверждены: {0}: {1}</value></data>
+  <data name="VmScanConsentCancelled" xml:space="preserve"><value>Подтверждение отменено; операции Worker не запускались.</value></data>
+  <data name="VmScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Текущий вызов драйвера может быть не прерываемым; итог и очистка ожидаются от Worker.</value></data>
+  <data name="VmExportPreparing" xml:space="preserve"><value>Проверка и экспорт результатов выполняются…</value></data>
+  <data name="VmExportScanChanged" xml:space="preserve"><value>Экспорт отменён: результат scan изменился.</value></data>
+  <data name="VmExportSourceValidationPassed" xml:space="preserve"><value>Полнота и identities источников прошли проверку.</value></data>
+  <data name="VmExportSourceReportsUnavailable" xml:space="preserve"><value>Не все исходные отчёты доступны.</value></data>
+  <data name="VmExportReady" xml:space="preserve"><value>Результаты готовы к экспорту.</value></data>
+  <data name="VmExportCancelledUnchanged" xml:space="preserve"><value>Экспорт отменён. Исходные данные не изменены.</value></data>
+  <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>Архив содержит технические идентификаторы устройств и компьютера. Не предназначен для публичной публикации. Создать LOCAL_FULL_EVIDENCE архив?</value></data>
+  <data name="VmExportVerified" xml:space="preserve"><value>Архив создан и успешно проверен: {0}</value></data>
+  <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Экспорт не выполнен. Исходные данные не изменены.</value></data>
+  <data name="VmDemoSessionRequested" xml:space="preserve"><value>Запрошена демонстрационная сессия {0} для {1}.</value></data>
+  <data name="VmDemoConsentAccepted" xml:space="preserve"><value>Оператор подтвердил демонстрационную симуляцию.</value></data>
+  <data name="VmDemoPreparing" xml:space="preserve"><value>Синтетическая подготовка.</value></data>
+  <data name="VmDemoSessionRunning" xml:space="preserve"><value>Синтетическая сессия выполняется.</value></data>
+  <data name="VmDemoSessionStarted" xml:space="preserve"><value>Синтетическая сессия запущена.</value></data>
+  <data name="VmDemoConsentCancelled" xml:space="preserve"><value>Оператор отменил подтверждение; сессия не запускалась.</value></data>
+  <data name="VmDemoStopping" xml:space="preserve"><value>Останавливается (симуляция)…</value></data>
+  <data name="VmDemoStopRequested" xml:space="preserve"><value>Запрошена остановка demo-сессии.</value></data>
+  <data name="VmDemoStopped" xml:space="preserve"><value>Остановлено (симуляция).</value></data>
+  <data name="VmDemoSessionStopped" xml:space="preserve"><value>Demo-сессия остановлена.</value></data>
+  <data name="VmDemoDurationCompleted" xml:space="preserve"><value>Симуляция завершена по заданной длительности; качество не оценивалось.</value></data>
+  <data name="VmDemoDurationEvent" xml:space="preserve"><value>Синтетическая длительность завершена; качество неизвестно.</value></data>
+  <data name="VmDemoDigitalSilence" xml:space="preserve"><value>Цифровая тишина</value></data>
+  <data name="VmDemoCompletedWindow" xml:space="preserve"><value>Завершённое окно</value></data>
+  <data name="VmDemoMeterSnapshot" xml:space="preserve"><value>Снимок проверочных данных №{0}.</value></data>
+  <data name="VmDemoWorkerDisconnected" xml:space="preserve"><value>Worker отключён; остановка и очистка неизвестны.</value></data>
+  <data name="VmDemoConnectionLost" xml:space="preserve"><value>Соединение потеряно; состояние Stop и cleanup неизвестно.</value></data>
+  <data name="VmDemoSessionFailure" xml:space="preserve"><value>Синтетическая ошибка подготовки/сессии.</value></data>
+  <data name="VmDemoScenarioFailure" xml:space="preserve"><value>Синтетическая ошибка сценария.</value></data>
+  <data name="VmDemoCaptureTimingWarning" xml:space="preserve"><value>Синтетическое предупреждение времени Capture.</value></data>
+  <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Предупреждение о целостности временных меток Capture.</value></data>
+  <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Синтетическая потеря устройства; качество неизвестно.</value></data>
+  <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Синтетическая потеря устройства; cleanup неизвестен.</value></data>
+  <data name="VmWorkerRenderMeterInterpretation" xml:space="preserve"><value>Канал Windows {0} · остальные каналы намеренно цифрово беззвучны. Это модель намерения, не измерение ЦАП/громкоговорителей; физическая маршрутизация UNKNOWN.</value></data>
+  <data name="VmWorkerCaptureMeterInterpretation" xml:space="preserve"><value>Синтетические уровни окна; PCM, Capture endpoints и микрофон не используются.</value></data>
+  <data name="VmWorkerMeterBankRange" xml:space="preserve"><value>Каналы {0}–{1}</value></data>
+  <data name="VmWorkerMeterDigitalSilence" xml:space="preserve"><value>Цифровая тишина</value></data>
+  <data name="VmWorkerMeterSyntheticWindow" xml:space="preserve"><value>Синтетическое окно</value></data>
+  <data name="VmWorkerMeterNoMeasurement" xml:space="preserve"><value>Нет измерения</value></data>
+  <data name="VmWorkerMeterIntendedSilence" xml:space="preserve"><value>Намеренная цифровая тишина</value></data>
+  <data name="VmWorkerMeterIntendedModelLevel" xml:space="preserve"><value>Предполагаемый уровень · модель</value></data>
+  <data name="VmWorkerMeterNoCompletedWindow" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmWorkerMeterFormatSummary" xml:space="preserve"><value>{0} · {1} Гц · {2} каналов · {3} с</value></data>
+  <data name="VmWorkerMeterSnapshotSummary" xml:space="preserve"><value>Снимок {0} · {1} каналов</value></data>
+  <data name="VmWorkerMeterCoalescedSummary" xml:space="preserve"><value>Объединено: {0}</value></data>
+  <data name="VmWorkerConsentSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} каналов · период {4} · MMCSS {5} · {6} с · сценарий {7} · канал Windows {8}. Только синтетическая операция; физическое соответствие UNKNOWN.</value></data>
+  <data name="VmWorkerMeterNotApplicable" xml:space="preserve"><value>не применяется</value></data>
+  <data name="VmWorkerConsentMissing" xml:space="preserve"><value>Нет настроек для подтверждения.</value></data>
+  <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} каналов · топология {4} · период {5} · MMCSS {6} · {7} с · канал Windows {8} · {9}</value></data>
+  <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Неизвестно: сессия ещё не принята worker.</value></data>
+  <data name="VmOperatorResultDetails" xml:space="preserve"><value>{0}
+{1}
+Конфигурация: {2}
+Уникальных форматов: {3}. Поддержка драйвера не является Initialize или запуском аудио.</value></data>
+  <data name="VmOperatorQueryNotRun" xml:space="preserve"><value>Реальный запрос ещё не выполнялся.</value></data>
+  <data name="VmStreamEvidenceRunningSummary" xml:space="preserve"><value>Stream: RUNNING; принятых наблюдений {0}; текущая попытка ещё не сохранена.</value></data>
+  <data name="VmAutomaticScanCandidatesSummary" xml:space="preserve"><value>Кандидаты: {0}; для теста {1}; Initialize accepted {2}; not tested {3}; UNKNOWN {4}.</value></data>
+  <data name="VmAutomaticScanPlanMissing" xml:space="preserve"><value>План ещё не подготовлен.</value></data>
+  <data name="VmAutomaticScanActiveUnavailable" xml:space="preserve"><value>Активное время потоков: 0 с (недоступно)</value></data>
+  <data name="VmAutomaticScanActiveBound" xml:space="preserve"><value>Суммарное активное время: не более {0} с</value></data>
+  <data name="VmAutomaticScanIdentityUnconfirmed" xml:space="preserve"><value>Общая физическая принадлежность Capture/Render не подтверждена; пара выбрана оператором явно.</value></data>
+  <data name="VmAutomaticScanIdentityCurrent" xml:space="preserve"><value>Физическая принадлежность пары ограничена текущей проверкой Windows identity.</value></data>
+  <data name="VmAutomaticScanStagesSaved" xml:space="preserve"><value>Стадийный план будет сохранён в результате.</value></data>
+  <data name="VmAutomaticScanConsentSummary" xml:space="preserve"><value>{0}
+{1}
+Операции: {2}. Формат-кандидат: 48 кГц PCM16, периоды MINIMUM, DEFAULT и подтверждённые CUSTOM; MMCSS OFF и PRO_AUDIO проверяются раздельно. Sustained режим: {3}. {4}; общий лимит плана: не более {5} операций и {6} с wall-clock. Worker session: до {7} с и не более {8} операций за batch. Стадии: {9}. Exclusive доступ может временно прервать другие приложения. Capture пакеты только считываются и отбрасываются; записи PCM нет. Render передаёт только цифровую тишину. Нет физической маршрутизации, тестового тона или RTL. Неотвечающий драйвер может оставить исход операции UNKNOWN.</value></data>
+  <data name="VmAutomaticScanResultScanning" xml:space="preserve"><value>СКАНИРОВАНИЕ · {0}</value></data>
+  <data name="VmAutomaticScanResultUnknown" xml:space="preserve"><value>UNKNOWN · {0}</value></data>
+  <data name="VmAutomaticScanRecommendationMissing" xml:space="preserve"><value>Рекомендация отсутствует.</value></data>
+  <data name="VmAutomaticScanRecommendationSelected" xml:space="preserve"><value>Выбор {0}: {1} · {2} кГц {3} · {4}/{5} frames · MMCSS {6} · {7} с · {8}. Запасной: {9}. AudioHost: NOT_CERTIFIED. {10}</value></data>
+  <data name="VmAutomaticScanFinalConfigurationMissing" xml:space="preserve"><value>Финальная конфигурация не выбрана. {0} AudioHost: NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanLatencyNotMeasured" xml:space="preserve"><value>Не измерена</value></data>
+  <data name="VmAutomaticScanWorkerOutcomeUnconfirmed" xml:space="preserve"><value>Исход Worker не подтверждён.</value></data>
+  <data name="VmAutomaticScanDataMissing" xml:space="preserve"><value>Данные отсутствуют.</value></data>
+  <data name="VmAutomaticScanPersistenceFailed" xml:space="preserve"><value>SAVE_FAILED · сводка не сохранена: {0}</value></data>
+  <data name="VmAutomaticScanProfileNotCreated" xml:space="preserve"><value>Сводка сохранена, но профиль не сформирован: {0}
+Причина: {1}</value></data>
+  <data name="VmAutomaticScanSavedAndReloaded" xml:space="preserve"><value>Сводка и профиль сохранены и перечитаны: {0}
+Профили: {1}</value></data>
+  <data name="VmAutomaticScanProfileNotCreatedShort" xml:space="preserve"><value>профиль не сформирован</value></data>
+  <data name="VmAutomaticScanSaveStatus" xml:space="preserve"><value>Сохранение: {0} · {1}</value></data>
+  <data name="VmAutomaticScanErrorUnavailable" xml:space="preserve"><value>причина недоступна</value></data>
+  <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>неизвестный путь</value></data>
+  <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>состояние не подтверждено</value></data>
+  <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Технические сведения отсутствуют.</value></data>
+  <data name="VmDeviceScanConsent" xml:space="preserve"><value>Устройство: {0} · {1}. Пассивный запрос существующей матрицы (44,1/48 кГц, PCM16/PCM24-in-32/Float32), затем до {2} Initialize-only проверок только для поддержанных 48 кГц PCM16 кандидатов (Capture: каналы 1/2; Render: канал 2). Потоки не запускаются, PCM не передаётся, звук не выводится. Initialize может временно занять Exclusive endpoint. Общий предел: {3} секунд. Stream, стабильность и Duplex не подтверждаются.</value></data>
+  <data name="VmDeviceScanResultSummary" xml:space="preserve"><value>{0} · 48 кГц PCM16: сообщено поддерживаемых {1}; Initialize успешно {2}, ошибки/неполные {3}; Stream: {4}; длительная Stability и Duplex: NOT_RUN.</value></data>
+  <data name="VmDeviceScanStreamObservations" xml:space="preserve"><value>принятых наблюдений {0}</value></data>
+  <data name="VmDeviceProfileSaved" xml:space="preserve"><value>Профиль schemaVersion {0} сохранён: {1}</value></data>
+  <data name="VmWorkerChannelSummary" xml:space="preserve"><value>{0} · {1} · {2} каналов потока</value></data>
+  <data name="VmWorkerFormatNotSelected" xml:space="preserve"><value>Топология формата не выбрана.</value></data>
+  <data name="VmEndpointCandidateLoopbackExcluded" xml:space="preserve"><value>Исключён: Loopback name hint</value></data>
+  <data name="VmEndpointCandidateInactive" xml:space="preserve"><value>Исключён: endpoint неактивен или ID недоступен</value></data>
+  <data name="VmEndpointCandidateCaptureExplicit" xml:space="preserve"><value>Явный выбор: FormFactor неизвестен или свойство недоступно</value></data>
+  <data name="VmEndpointCandidateCapture" xml:space="preserve"><value>Capture candidate</value></data>
+  <data name="VmEndpointCandidateRender" xml:space="preserve"><value>Render candidate</value></data>
+  <data name="VmEndpointCandidateUnknownDirection" xml:space="preserve"><value>Исключён: направление неизвестно</value></data>
+  <data name="VmDuplexConsent" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}
+48 кГц · stereo PCM16 · WASAPI Exclusive · {4} · до 5 секунд · MMCSS OFF. Оба endpoint будут открыты Exclusive. Capture packets будут прочитаны и отброшены; микрофонное аудио не сохраняется. Render отправляет только цифровую тишину. Нет Capture→Render маршрутизации или тестового тона. Отмена координирует Stop обеих сторон; при потере worker cleanup остаётся UNKNOWN.</value></data>
+  <data name="VmDuplexSelectActivePair" xml:space="preserve"><value>Выберите активные Capture и Render endpoints.</value></data>
+  <data name="VmRepeatabilityPlanEndpoints" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}</value></data>
+  <data name="VmRepeatabilityPlanFormat" xml:space="preserve"><value>48 кГц · {0} · {1} канала</value></data>
+  <data name="VmRepeatabilityPlanOrder" xml:space="preserve"><value>6 запусков · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT</value></data>
+  <data name="VmRepeatabilityPlanTimeLimit" xml:space="preserve"><value>5 секунд на операцию · 30 секунд общего активного аудио · MMCSS OFF</value></data>
+  <data name="VmRepeatabilityPlanWorkerSession" xml:space="preserve"><value>Worker session: {0} секунд lifetime, {1} секунд на операцию, {2} операций максимум</value></data>
+  <data name="VmRepeatabilityPlanSafetyLimits" xml:space="preserve"><value>Данные Capture отбрасываются; Render передаёт только цифровую тишину. Физическая RTL и активация AudioHost не проверяются.</value></data>
+  <data name="VmMeterWindowMissing" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmMeterStale" xml:space="preserve"><value>Устарело · последнее наблюдение: окно {0}; остановка и cleanup неизвестны.</value></data>
+  <data name="VmMeterFinal" xml:space="preserve"><value>Финальные значения · окно {0}; качество и cleanup не подтверждались.</value></data>
+  <data name="VmMeterStopping" xml:space="preserve"><value>STOPPING · последние значения заморожены до терминального события; окно {0}.</value></data>
+  <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Окно {0} · наблюдалась цифровая тишина</value></data>
+  <data name="VmMeterDemoLive" xml:space="preserve"><value>Окно {0} · LIVE · ДЕМО · Данные симуляции</value></data>
+  <data name="VmWindowsChannelOption" xml:space="preserve"><value>Канал Windows {0}</value></data>
+  <data name="VmRealCandidateConflictDetails" xml:space="preserve"><value>{0}: Status={1}, IsFormatSupported={2}, HRESULT={3}, query cleanup={4}, release attempts={5}</value></data>
+  <data name="VmRealEvidenceNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
+  <data name="VmRealEvidenceUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmRealCandidateFormatDetails" xml:space="preserve"><value>{0} · {1} · {2} Гц · {3} канал(а) · контейнер/valid bits: {4}/{5} · канал-маска: {6} · период: {7}</value></data>
+  <data name="VmRealCandidateQueryDetails" xml:space="preserve"><value>Query: Activate {0} · IsFormatSupported {1} ({2}) · GetDevicePeriod {3} · default/minimum {4}/{5} ×100 нс · query cleanup {6}, Release попыток {7}</value></data>
+  <data name="VmRealCandidateInitializeDetails" xml:space="preserve"><value>Initialize: {0}, попытка {1} · период API {2}, доступен {3} · запрос {4} ×100 нс · первый HRESULT {5}</value></data>
+  <data name="VmRealCandidateAlignmentDetails" xml:space="preserve"><value>Alignment retry: GetBufferSize {0}, frames {1}, Activate {2}, период {3} ×100 нс, Initialize {4} · итог {5}</value></data>
+  <data name="VmRealCandidateBufferDetails" xml:space="preserve"><value>Буфер: HRESULT {0}, {1} frames, {2} ×100 нс · event create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7}, Release попыток {8}</value></data>
+  <data name="VmRealInitializationDetailsFormat" xml:space="preserve"><value>{0}REAL INITIALIZE-ONLY · {1} · {2} · {3}, {4} Гц, {5} канал(а), {6}</value></data>
+  <data name="VmRealHistoricalPrefix" xml:space="preserve"><value>ИСТОРИЧЕСКИЙ · </value></data>
+  <data name="VmRealFormatUnknown" xml:space="preserve"><value>формат неизвестен</value></data>
+  <data name="VmRealPeriodUnknown" xml:space="preserve"><value>период неизвестен</value></data>
+  <data name="VmRealInitializationSupportDetails" xml:space="preserve"><value>Поддержка: {0} · IsFormatSupported {1} · Activate {2} · query cleanup {3} ({4} Release попыток)</value></data>
+  <data name="VmRealInitializationApiDetails" xml:space="preserve"><value>Initialize: period query {0}, доступен {1}, запрос {2} ×100 нс · первый {3} · Alignment retry: GetBufferSize {4} / {5} frames · Activate {6} · retry Initialize {7} · итог {8}</value></data>
+  <data name="VmRealInitializationBufferDetails" xml:space="preserve"><value>Буфер: HRESULT {0}, {1} frames / {2} ×100 нс · событие: create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7} ({8} Release попыток). Start не вызывался; PCM не передавался.</value></data>
+  <data name="VmRealRequestedPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} мс</value></data>
+  <data name="VmRealPeriodValueUnknown" xml:space="preserve"><value>величина неизвестна</value></data>
+  <data name="VmRealEventReady" xml:space="preserve"><value>готовность подтверждена</value></data>
+  <data name="VmRealEventNotReady" xml:space="preserve"><value>готовность не достигнута</value></data>
+  <data name="VmRealCleanupReleaseAttempted" xml:space="preserve"><value>RELEASE_ATTEMPTED · попытка освобождения; очистка не подтверждена</value></data>
+  <data name="VmRealInitializationSummary" xml:space="preserve"><value>REAL INITIALIZE-ONLY RESULT
+Устройство: {0}
+Формат: {1} · {2} Гц · {3} канал(а)
+IsFormatSupported status: {4}
+Запрошенный период: {5} · {6}
+Initialize status: {7} · HRESULT: {8}
+Фактический буфер: {9} frames
+Event readiness: {10}
+Cleanup evidence: {11}
+Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
+  <data name="VmHistoricalSelectionChanged" xml:space="preserve"><value>Выбор исторического измерения изменён.</value></data>
+  <data name="VmHistoricalRecoveryPreferred" xml:space="preserve"><value>{0} · {1}/{2} frames · {3} · {4} с</value></data>
+  <data name="VmHistoricalRecoveryPreferredMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmHistoricalRecoveryFallback" xml:space="preserve"><value>{0} · {1}/{2} frames</value></data>
+  <data name="VmHistoricalRecoveryFallbackMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmSavedProfilePrimary" xml:space="preserve"><value>{0} · {1} с · {2}</value></data>
+  <data name="VmSavedProfileFallback" xml:space="preserve"><value>{0} · {1} с</value></data>
+  <data name="VmSavedProfileEvidenceSummary" xml:space="preserve"><value>Primary: {0}
+Fallback: {1}
+{2}</value></data>
+  <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · исторические короткие результаты
+{1}</value></data>
+  <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.</value></data>
+  <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.</value></data>
+  <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>Технических данных нет.</value></data>
+  <data name="VmHistoricalWorkerEndpoint" xml:space="preserve"><value>{0} · {1} · {2} каналов · synthetic</value></data>
+  <data name="VmWorkerInitialDisconnected" xml:space="preserve"><value>Worker не запускался.</value></data>
+  <data name="VmHistoricalOperatorSectionMissing" xml:space="preserve"><value>Исторический длительный раздел отсутствует.</value></data>
+  <data name="VmHistoricalOperatorPrimary" xml:space="preserve"><value>Primary: {0} · MMCSS {1} · {2} с · {3}</value></data>
+  <data name="VmHistoricalOperatorPrimaryNone" xml:space="preserve"><value>Primary: NONE</value></data>
+  <data name="VmHistoricalOperatorFallback" xml:space="preserve"><value>Fallback: {0} · {1} с</value></data>
+  <data name="VmHistoricalOperatorFallbackNone" xml:space="preserve"><value>Fallback: NONE</value></data>
+  <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
+{1}
+{2}</value></data>
+  <data name="VmCustomPeriodDuplexNotStarted" xml:space="preserve"><value>Custom-period Duplex не запускался.</value></data>
+  <data name="VmWorkerFakeOperationFailed" xml:space="preserve"><value>Операция fake worker не выполнена: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPrepareCommandFailed" xml:space="preserve"><value>Сканирование не подготовлено: {0}: {1}</value></data>
+  <data name="VmAutomaticScanConfirmCommandUnknown" xml:space="preserve"><value>UNKNOWN · {0}: {1}</value></data>
+  <data name="VmRealFormatSummary" xml:space="preserve"><value>Форматов проверено: {0} · Поддерживается: {1} · Не поддерживается: {2} · Ошибки/неполные: {3} · Не проверено: {4} · Initialize: {5}</value></data>
+  <data name="VmWorkerFakeFixturesReceived" xml:space="preserve"><value>Получено проверочных данных worker fake: {0}. Локальные демо fixtures остаются отдельными.</value></data>
+  <data name="VmWorkerCommandRejected" xml:space="preserve"><value>Команда отвергнута: {0}/{1}: {2}</value></data>
+  <data name="VmWorkerQueryFailed" xml:space="preserve"><value>Запрос worker не выполнен: {0}: {1}</value></data>
+  <data name="VmAutomaticScanRefreshingBeforePlan" xml:space="preserve"><value>Обновление Windows endpoints перед построением плана…</value></data>
+  <data name="VmAutomaticScanPlanPreparedConsentRequired" xml:space="preserve"><value>План подготовлен. Операции начнутся только после вашего подтверждения.</value></data>
+  <data name="VmAutomaticScanPlanPrepareFailed" xml:space="preserve"><value>План не подготовлен: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPhysicalGroupChanged" xml:space="preserve"><value>Физическая группа устройства изменилась после обнаружения; выберите устройство заново.</value></data>
+  <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>Физическая пара больше не является однозначной; выберите Capture и Render явно.</value></data>
+  <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>Выбранный точный endpoint исчез или стал неактивен после обновления. Автоматическая подмена устройства запрещена.</value></data>
+  <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>Пара изменилась; прежняя оценка и подтверждение сброшены.</value></data>
+  <data name="VmStreamCommandFailed" xml:space="preserve"><value>Ошибка проверки Stream: {0}: {1}</value></data>
+  <data name="VmDuplexCommandFailed" xml:space="preserve"><value>Ошибка Duplex или неизвестный исход: {0}: {1}</value></data>
+  <data name="VmDeviceProfileCurrentResultRequired" xml:space="preserve"><value>Требуется текущий принятый результат реального WASAPI для выбранного активного endpoint.</value></data>
+  <data name="VmWorkerConsentFingerprintBound" xml:space="preserve"><value>Одноразовое подтверждение сформировано и привязано к отпечатку настроек.</value></data>
+  <data name="VmWorkerSyntheticOperationAccepted" xml:space="preserve"><value>Синтетическая операция принята worker.</value></data>
+  <data name="VmDuplexDisconnectedDuringValidation" xml:space="preserve"><value>UNKNOWN · worker отключён во время Duplex; обе стороны и cleanup неизвестны.</value></data>
+  <data name="VmDuplexHistoricalAfterDisconnect" xml:space="preserve"><value>Сохранены последние принятые Duplex результаты; после отключения они исторические. Очистка и физическая маршрутизация из отключения не выводятся.</value></data>
+  <data name="VmWorkerDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker отключён; Stop и cleanup неизвестны.</value></data>
+  <data name="VmWorkerEventCallbackFailed" xml:space="preserve"><value>Ошибка обработки события worker: {0}</value></data>
+  <data name="VmWorkerUiQueueOverflow" xml:space="preserve"><value>Очередь UI переполнена; продолжение событий worker не подтверждено.</value></data>
+  <data name="VmWorkerUiQueueOverflowDetails" xml:space="preserve"><value>Ограниченная очередь управляющих событий исчерпана; lifecycle/cleanup не подтверждены.</value></data>
+  <data name="VmWorkerSnapshotsCoalescedDetails" xml:space="preserve"><value>UI сохранил только последний снимок; объединено ожидавших снимков: {0}.</value></data>
+  <data name="VmWorkerSyntheticEventDetail" xml:space="preserve"><value>Синтетическое событие {0}.</value></data>
+  <data name="VmWorkerEventNotice" xml:space="preserve"><value>Событие {0} · IPC sequence {1}.</value></data>
+  <data name="VmWorkerPipeDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker/pipe отключены; Stop/cleanup неизвестны.</value></data>
+  <data name="VmPersistenceLabel" xml:space="preserve"><value>Сохранение</value></data>
+  <data name="VmCaptureLabel" xml:space="preserve"><value>Захват</value></data>
+  <data name="VmRenderLabel" xml:space="preserve"><value>Вывод</value></data>
+  <data name="VmOverallLabel" xml:space="preserve"><value>Общий итог</value></data>
+  <data name="VmProfileLabel" xml:space="preserve"><value>Профиль</value></data>
+  <data name="VmScanSessionLabel" xml:space="preserve"><value>Сеанс сканирования</value></data>
+  <data name="VmGenerationLabel" xml:space="preserve"><value>Поколение</value></data>
+  <data name="VmExactIdsLabel" xml:space="preserve"><value>Точные идентификаторы</value></data>
+  <data name="VmReasonsLabel" xml:space="preserve"><value>Причины</value></data>
+  <data name="VmLimitationsLabel" xml:space="preserve"><value>Ограничения</value></data>
+  <data name="VmFurtherVerificationRequiredLabel" xml:space="preserve"><value>Требуется дополнительная проверка</value></data>
+  <data name="VmOperatorModeDuplex" xml:space="preserve"><value>Проверка Duplex</value></data>
+  <data name="VmOperatorModeDeviceScan" xml:space="preserve"><value>Автоматическое сканирование конфигурации</value></data>
+  <data name="VmOperatorModeFormatQuery" xml:space="preserve"><value>Запрос Exclusive-форматов</value></data>
+  <data name="VmOperatorModeInitializeOnly" xml:space="preserve"><value>Проверка только Initialize</value></data>
+  <data name="VmDeviceScanCancellationWaiting" xml:space="preserve"><value>Запрошена отмена; ожидается завершение текущего вызова Worker.</value></data>
+  <data name="VmDeviceScanConsentInvalidated" xml:space="preserve"><value>Изменились endpoint, состояние устройства или план; подтверждение сканирования сброшено.</value></data>
+  <data name="VmDeviceScanPreflight" xml:space="preserve"><value>Проверка выбранного активного endpoint и согласованного плана.</value></data>
+  <data name="VmDeviceScanStreamSeparateConsentRequired" xml:space="preserve"><value>Поток не проверялся. После успешного Initialize выберите период и запросите отдельное согласие.</value></data>
+  <data name="VmOperatorDuplexConfiguration" xml:space="preserve"><value>48 кГц, стерео, PCM16 · {0} · 5 секунд · MMCSS OFF</value></data>
+  <data name="VmOperatorDeviceScanConfiguration" xml:space="preserve"><value>48 кГц, PCM16 · результатов Initialize-only: {0}</value></data>
+  <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Кандидатные количества каналов: {0} · 44,1/48 кГц · PCM16, PCM24-in-32, Float32</value></data>
+  <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Гц · каналов: {2} · {3}</value></data>
+  <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Результат Worker не соответствует выбранному Windows endpoint или контракту пассивного запроса.</value></data>
+  <data name="VmHistoricalRecoveryChecking" xml:space="preserve"><value>Проверка исторических измерений…</value></data>
+  <data name="VmHistoricalRecoveryConfigurationMissing" xml:space="preserve"><value>Подтверждённая конфигурация не найдена.</value></data>
+  <data name="VmHistoricalRecoveryPreviewReady" xml:space="preserve"><value>Исторические измерения прошли проверку по текущим правилам. Просмотрите результат и подтвердите сохранение.</value></data>
+  <data name="VmHistoricalRecoveryRejected" xml:space="preserve"><value>Проверка исторических измерений отклонена. См. технические сведения.</value></data>
+  <data name="VmHistoricalRecoveryProfileCreated" xml:space="preserve"><value>Создан новый профиль v4: {0:D} · {1:dd.MM.yyyy HH:mm}.</value></data>
+  <data name="VmHistoricalRecoverySaveFailed" xml:space="preserve"><value>Профиль не сохранён. См. технические сведения.</value></data>
+  <data name="VmHistoricalRecoveryCancelled" xml:space="preserve"><value>Проверка отменена.</value></data>
+  <data name="VmBindingExactIdsOnlyLimitation" xml:space="preserve"><value>Точные Capture/Render ID совпали. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не проверялись.</value></data>
+  <data name="VmBindingMultipleProfilesFound" xml:space="preserve"><value>Для этой пары устройств найдено несколько сохранённых профилей. Выбор неоднозначен.</value></data>
+  <data name="VmBindingMultipleProfilesChooseManually" xml:space="preserve"><value>Профиль не выбран автоматически; откройте расширенную диагностику и выберите его.</value></data>
+  <data name="VmBindingLegacyMeasurementsFound" xml:space="preserve"><value>Найдены предыдущие измерения. Подтверждённого длительного профиля пока нет.</value></data>
+  <data name="VmBindingShortResultsNotSustained" xml:space="preserve"><value>Короткие результаты не переинтерпретируются как длительная проверка.</value></data>
+  <data name="VmBindingSustainedValidationRequired" xml:space="preserve"><value>Для длительного профиля v4 нужна отдельная проверенная длительная проверка.</value></data>
+  <data name="VmBindingProfileCorruptOrUnsupported" xml:space="preserve"><value>Сохранённый профиль повреждён или не поддерживается.</value></data>
+  <data name="VmBindingMatchingProfileNotFound" xml:space="preserve"><value>Для этой пары устройств доступный профиль не найден.</value></data>
+  <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Обновите локальные профили и повторите проверку.</value></data>
+  <data name="VmBindingCheckFailed" xml:space="preserve"><value>Проверка не завершена: {0}.</value></data>
+  <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>Текущий результат не подтверждён.</value></data>
+  <data name="VmAutomaticSustainedStandard" xml:space="preserve"><value>Стандартный (300 с)</value></data>
+  <data name="VmAutomaticSustainedExtended" xml:space="preserve"><value>Расширенный (600 с)</value></data>
+  <data name="VmWorkerUnsupportedFakeFormat" xml:space="preserve"><value>Неподдерживаемый формат Worker Fake.</value></data>
+  <data name="VmWorkerGuiSessionRequestDetail" xml:space="preserve"><value>Запрос сформирован в GUI; соединение использует только сервис Fake.</value></data>
+  <data name="VmWorkerConsentCancelledDetail" xml:space="preserve"><value>Согласие отменено; команда Start не отправлялась.</value></data>
+  <data name="VmWorkerStopAcceptedAwaitingTerminal" xml:space="preserve"><value>Worker принял Stop; ожидается конечное событие.</value></data>
+  <data name="VmWorkerWindowClosingCleanupUnknown" xml:space="preserve"><value>Окно закрывается; конечная очистка не наблюдалась.</value></data>
+  <data name="VmWorkerWindowCloseStopUnconfirmed" xml:space="preserve"><value>Остановка при закрытии окна не подтверждена.</value></data>
+  <data name="VmWorkerStateDispatchFailed" xml:space="preserve"><value>Не удалось передать состояние Worker в UI: {0}</value></data>
+  <data name="VmWorkerSessionDispatchFailed" xml:space="preserve"><value>Не удалось передать поздний ответ в UI: {0}</value></data>
+  <data name="VmWorkerStartResponseCorrelated" xml:space="preserve"><value>Ответ Start сопоставлен; состояние операции Worker: {0}.</value></data>
+  <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker отключился до конечного события.</value></data>
+  <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Исход Start неизвестен: не получен ответ или конечное подтверждение очистки.</value></data>
+  <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>Событие MeterSnapshot не содержит проверенного типизированного DTO Capture/Render.</value></data>
+  <data name="VmInspectorIpcSequence" xml:space="preserve"><value>последовательность IPC</value></data>
+  <data name="VmInspectorSequenceLocal" xml:space="preserve"><value>локальное</value></data>
+  <data name="VmInspectorWorkerFormatValue" xml:space="preserve"><value>{0} · {1} {2} · {3} {4}</value></data>
+  <data name="VmInspectorDurationValue" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="VmStreamStatusDetail" xml:space="preserve"><value>Период {0}: {1}. {2}</value></data>
+  <data name="VmStreamDetailsStageHresult" xml:space="preserve"><value>Этап: {0}; HRESULT: {1}.</value></data>
+  <data name="VmStreamDetailsCleanReport" xml:space="preserve"><value>Отчёт завершён; cleanup содержит только явно наблюдённые этапы.</value></data>
+  <data name="VmStreamDetailsQualityAndCleanup" xml:space="preserve"><value>Поток: {0}; durationReached={1}; cleanup: {2}.</value></data>
+  <data name="VmAutomaticScanProgressDetail" xml:space="preserve"><value>Ход выполнения: {0} · {1}: {2}</value></data>
+  <data name="VmRepeatabilityProgressStatus" xml:space="preserve"><value>Ход проверки ({0}): {1}</value></data>
+  <data name="VmDeviceScanStageIdle" xml:space="preserve"><value>Ожидание</value></data>
+  <data name="VmDeviceScanStagePreflight" xml:space="preserve"><value>Предварительная проверка</value></data>
+  <data name="VmDeviceScanStagePassiveQuery" xml:space="preserve"><value>Пассивный запрос форматов</value></data>
+  <data name="VmDeviceScanStageCandidateSelection" xml:space="preserve"><value>Отбор кандидатов</value></data>
+  <data name="VmDeviceScanStageActiveInitialize" xml:space="preserve"><value>Активный Initialize</value></data>
+  <data name="VmDeviceScanStageStreamValidation" xml:space="preserve"><value>Проверка потока</value></data>
+  <data name="VmDeviceScanStageResultAggregation" xml:space="preserve"><value>Сводка результатов</value></data>
+  <data name="VmDeviceScanStageCompleted" xml:space="preserve"><value>Завершено</value></data>
+  <data name="VmDeviceScanStageCancelling" xml:space="preserve"><value>Отмена выполняется</value></data>
+  <data name="VmDeviceScanStageCancelled" xml:space="preserve"><value>Отменено</value></data>
+  <data name="VmDeviceScanStageFailed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmDeviceScanStageIncomplete" xml:space="preserve"><value>Неполный результат</value></data>
+  <data name="VmDeviceScanDetailSupport" xml:space="preserve"><value>поддержка</value></data>
+  <data name="VmDeviceScanDetailFirst" xml:space="preserve"><value>первая попытка</value></data>
+  <data name="VmDeviceScanDetailAlignment" xml:space="preserve"><value>выравнивание</value></data>
+  <data name="VmDeviceScanDetailFrames" xml:space="preserve"><value>кадров</value></data>
+  <data name="VmDeviceScanDetailPeriod100ns" xml:space="preserve"><value>период100нс</value></data>
+  <data name="VmDeviceScanDetailFinal" xml:space="preserve"><value>итог</value></data>
+  <data name="VmDeviceScanDetailRequestedPeriod" xml:space="preserve"><value>запрошенныйПериод100нс</value></data>
+  <data name="VmDeviceScanDetailActualPeriod" xml:space="preserve"><value>фактическийПериод100нс</value></data>
+  <data name="VmDeviceScanDetailBufferFrames" xml:space="preserve"><value>кадрыБуфера</value></data>
+  <data name="VmDeviceScanDetailEventReady" xml:space="preserve"><value>событиеГотово</value></data>
+  <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>освобождения</value></data>
+  <data name="VmAutomaticScanTimeoutLabel" xml:space="preserve"><value>тайм-аут</value></data>
+  <data name="VmAutomaticScanMillisecondsAbbreviation" xml:space="preserve"><value>мс</value></data>
+  <data name="VmAutomaticScanStageSustained" xml:space="preserve"><value>Длительная проверка</value></data>
+  <data name="VmAutomaticScanStageFinalSelection" xml:space="preserve"><value>Итоговый выбор</value></data>
+  <data name="VmAutomaticScanStatePlanned" xml:space="preserve"><value>ЗАПЛАНИРОВАНО</value></data>
+  <data name="VmAutomaticScanStateNotRun" xml:space="preserve"><value>НЕ ЗАПУСКАЛОСЬ</value></data>
+  <data name="VmAutomaticScanStageMessageExactPair" xml:space="preserve"><value>Автоматически запускается для точной пары Capture/Render при наличии актуальной поддержки пользовательского периода.</value></data>
+  <data name="VmAutomaticScanStageMessageApprovedScope" xml:space="preserve"><value>Автоматически запускается только для вариантов в пределах утверждённого лимита.</value></data>
+  <data name="VmAutomaticScanStageMessageSustained" xml:space="preserve"><value>При подходящих кратких результатах выполняет непрерывную проверку 60 с и ограниченную проверку MMCSS в режимах Standard/Extended.</value></data>
+  <data name="VmAutomaticScanStageMessageSelection" xml:space="preserve"><value>Выбор основной/резервной конфигурации по длительным результатам; AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanStageMessageBounded" xml:space="preserve"><value>Этап с ограничениями включён в неизменяемый план сканирования.</value></data>
+  <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Итоговый выбор ожидает результаты длительной проверки.</value></data>
+  <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>Автоматический этап на основе операций не запланирован.</value></data>
+  <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>Операция не запланирована.</value></data>
+  <data name="UiDeviceProfileSaveError" xml:space="preserve"><value>Профиль не сохранён: {0}</value></data>
+  <data name="UiExportZipFilter" xml:space="preserve"><value>ZIP-архив (*.zip)|*.zip</value></data>
+  <data name="UiEventSessionRequested" xml:space="preserve"><value>Запрошена сессия</value></data>
+  <data name="UiEventConsentAccepted" xml:space="preserve"><value>Согласие принято</value></data>
+  <data name="UiEventConsentCancelled" xml:space="preserve"><value>Согласие отменено</value></data>
+  <data name="UiEventStarted" xml:space="preserve"><value>Запуск</value></data>
+  <data name="UiEventMeterSnapshot" xml:space="preserve"><value>Снимок измерителя</value></data>
+  <data name="UiEventWarning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="UiEventDeviceLoss" xml:space="preserve"><value>Потеря устройства</value></data>
+  <data name="UiEventWorkerDisconnected" xml:space="preserve"><value>Worker отключён</value></data>
+  <data name="UiEventUnknown" xml:space="preserve"><value>Неизвестное событие</value></data>
+  <data name="UiEventUnknownWithValue" xml:space="preserve"><value>Неизвестное событие: {0}</value></data>
+  <data name="UiSessionLifecycleStartedDemo" xml:space="preserve"><value>ЗАПУЩЕНА · демо</value></data>
+  <data name="UiSessionLifecycleStoppingDemo" xml:space="preserve"><value>ОСТАНОВКА · демо</value></data>
+  <data name="UiSessionLifecycleStoppedDemo" xml:space="preserve"><value>ОСТАНОВЛЕНА · демо</value></data>
+  <data name="UiSessionLifecycleCompletedDemo" xml:space="preserve"><value>ЗАВЕРШЕНА · демо</value></data>
+  <data name="UiSessionLifecycleFailedDemo" xml:space="preserve"><value>ОШИБКА · демо</value></data>
+  <data name="UiSessionUnknownWithValue" xml:space="preserve"><value>Неизвестно: {0}</value></data>
+  <data name="UiEventReady" xml:space="preserve"><value>Готово</value></data>
+  <data name="UiEventStopped" xml:space="preserve"><value>Остановлено</value></data>
+  <data name="UiEventCompleted" xml:space="preserve"><value>Завершено</value></data>
+  <data name="UiEventFailure" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmAutomaticScanSummaryDisplay" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Физический RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmDuplexRecommendationSummary" xml:space="preserve"><value>PROBE_PROVISIONAL · {0} · {1}. AudioHost: NOT_CERTIFIED. {2}</value></data>
+  <data name="VmRecommendationReasonAmbiguousPeriod" xml:space="preserve"><value>Для одного периода получено несколько кандидатов; автоматический выбор из неоднозначных записей заблокирован.</value></data>
+  <data name="VmRecommendationReasonDifferentPairs" xml:space="preserve"><value>Кандидаты относятся к разным точным парам или несовместимым настройкам; они не ранжируются совместно.</value></data>
+  <data name="VmRecommendationReasonMinimumSelected" xml:space="preserve"><value>Кандидат MINIMUM выбран по чистому короткому Duplex evidence для этой точной пары.</value></data>
+  <data name="VmRecommendationReasonNoAudioHostActivation" xml:space="preserve"><value>Рекомендация не разрешает активацию AudioHost; требуется длительная и production QA.</value></data>
+  <data name="VmRecommendationReasonDefaultSelected" xml:space="preserve"><value>DEFAULT выбран: MINIMUM не имеет независимого чистого Duplex подтверждения.</value></data>
+  <data name="VmRecommendationReasonShortRunOnly" xml:space="preserve"><value>Проверка ограничена коротким запуском; AudioHost не сертифицирован.</value></data>
+  <data name="VmRecommendationReasonNoCleanCandidate" xml:space="preserve"><value>Нет кандидата с полным чистым Duplex evidence для этой точной пары.</value></data>
+  <data name="VmRecommendationReasonNoSeparateProof" xml:space="preserve"><value>Формат support и отдельные Capture/Render результаты не заменяют совместную Duplex проверку.</value></data>
+  <data name="VmRepeatabilitySummaryDisplay" xml:space="preserve"><value>План: {0}; попыток: {1}; завершено: {2}; ошибок: {3}; неизвестно: {4}; пропущено: {5}. {6}</value></data>
+  <data name="VmRepeatabilityClassClean" xml:space="preserve"><value>повторяемо чисто</value></data>
+  <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>непостоянные аномалии</value></data>
+  <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>повторяемые аномалии</value></data>
+  <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>недостаточно данных</value></data>
+  <data name="VmConfidenceHigh" xml:space="preserve"><value>ВЫСОКАЯ (HIGH)</value></data>
+  <data name="VmConfidenceMedium" xml:space="preserve"><value>СРЕДНЯЯ (MEDIUM)</value></data>
+  <data name="VmConfidenceLow" xml:space="preserve"><value>НИЗКАЯ (LOW)</value></data>
+  <data name="VmConfidenceNone" xml:space="preserve"><value>НЕТ (NONE)</value></data>
+  <data name="VmConfidenceProvisional" xml:space="preserve"><value>ПРЕДВАРИТЕЛЬНАЯ (PROVISIONAL)</value></data>
+  <data name="VmConfidenceProvisionalSingleRun" xml:space="preserve"><value>ПРЕДВАРИТЕЛЬНАЯ: ОДИН ДЛИТЕЛЬНЫЙ ЗАПУСК (PROVISIONAL_SINGLE_SUSTAINED_RUN)</value></data>
+  <data name="VmConfidenceVerifiedSustained" xml:space="preserve"><value>ПОДТВЕРЖДЕНО ДЛИТЕЛЬНЫМИ ПРОВЕРКАМИ (VERIFIED_SUSTAINED_CLEAN)</value></data>
+  <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Состояние: {0}\n{1}\nСохранение: {2}\nОтчёт: {3}</value></data>
+  <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Состояние: {0}\nСохранение: {1}\nОтчёт: {2}{3}</value></data>
+  <data name="VmErrorDetail" xml:space="preserve"><value>Ошибка: {0}</value></data>
+</root>

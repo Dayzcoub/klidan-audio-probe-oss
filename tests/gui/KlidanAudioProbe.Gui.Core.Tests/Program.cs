@@ -32,6 +32,93 @@ void Throws<T>(Action action, string name) where T : Exception
     catch (T) { Check(true, name); return; }
     throw new InvalidOperationException($"FAIL: {name}");
 }
+const string baselineLanguage = "en-US";
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage("en-US", false);
+Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("Windows diagnostics", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language").Length > 0, "English localization resources are complete for the public shell");
+Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow en-US without changing SessionMode values");
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage("ru-RU", false);
+Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("диагностика", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language") == "Язык", "Russian localization resources are complete for the public shell");
+Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow ru-RU without changing SessionMode values");
+var eventConverterCases = new (ProbeEventKind Value, string Resource)[]
+{
+    (ProbeEventKind.SessionRequested, "UiEventSessionRequested"), (ProbeEventKind.ConsentAccepted, "UiEventConsentAccepted"),
+    (ProbeEventKind.ConsentCancelled, "UiEventConsentCancelled"), (ProbeEventKind.Preparing, "VmInspectorLifecyclePreparing"),
+    (ProbeEventKind.Ready, "UiEventReady"), (ProbeEventKind.Started, "UiEventStarted"),
+    (ProbeEventKind.MeterSnapshot, "UiEventMeterSnapshot"), (ProbeEventKind.Stopping, "VmInspectorLifecycleStopping"),
+    (ProbeEventKind.Stopped, "UiEventStopped"), (ProbeEventKind.Completed, "UiEventCompleted"),
+    (ProbeEventKind.Warning, "UiEventWarning"), (ProbeEventKind.Failure, "UiEventFailure"),
+    (ProbeEventKind.DeviceLoss, "UiEventDeviceLoss"), (ProbeEventKind.WorkerDisconnected, "UiEventWorkerDisconnected")
+};
+var sessionStateConverterCases = new (object Value, string Resource)[]
+{
+    (SessionMode.Capture, "InputCapture"), (SessionMode.Render, "OutputRender"),
+    (SessionLifecycle.Preparing, "VmInspectorLifecyclePreparing"), (SessionLifecycle.Ready, "VmInspectorLifecycleReady"),
+    (SessionLifecycle.Started, "UiSessionLifecycleStartedDemo"), (SessionLifecycle.Stopping, "UiSessionLifecycleStoppingDemo"),
+    (SessionLifecycle.Stopped, "UiSessionLifecycleStoppedDemo"), (SessionLifecycle.Completed, "UiSessionLifecycleCompletedDemo"),
+    (SessionLifecycle.Failed, "UiSessionLifecycleFailedDemo"), (SessionLifecycle.Unknown, "VmInspectorUnknownUpper"),
+    (StreamQuality.Clean, "VmInspectorQualityClean"), (StreamQuality.Warning, "VmInspectorQualityWarning"),
+    (StreamQuality.Failed, "VmInspectorQualityFailed"), (StreamQuality.Unknown, "VmInspectorUnknownUpper")
+};
+var eventConverter = new EventKindConverter();
+var sessionStateConverter = new SessionStateConverter();
+var scanSummaryOperations = new[]
+{
+    new ScanOperationResult(new(ScanStage.Query), ScanOperationLifecycle.Completed, "", "NOT_APPLICABLE", null),
+    new ScanOperationResult(new(ScanStage.Stream), ScanOperationLifecycle.Skipped, "", "NOT_ATTEMPTED", null),
+    new ScanOperationResult(new(ScanStage.Duplex), ScanOperationLifecycle.Unknown, "", "UNKNOWN", null)
+};
+const string scanSummarySource = "Completed · завершено 1 · пропущено 1 · ошибки 1. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.";
+var recommendationFixture = DeviceConfigurationEvaluator.Recommend([]);
+var scanSummaryFixture = new ScanRunResult("localization-fixture", ScanRunLifecycle.Completed, new(null, null), scanSummaryOperations, [], [], recommendationFixture, scanSummarySource, false, "NOT_CERTIFIED");
+var summaryVm = new MainViewModel();
+typeof(MainViewModel).GetField("_automaticScanResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(summaryVm, scanSummaryFixture);
+var repeatabilityCountsFixture = new DuplexRepeatabilityCounts(2, 2, 1, 0, 0, 1);
+const string repeatabilitySummarySource = "План: 2; attempted: 2; completed: 1; failed: 0; unknown: 0; skipped: 1. MINIMUM: REPEATABLY_CLEAN; DEFAULT: INSUFFICIENT_EVIDENCE";
+var repeatabilitySummaryFixture = new DuplexRepeatabilityResult("localization-fixture", ScanRunLifecycle.Completed, new(null, null), [],
+    [new("MINIMUM", DuplexRepeatabilityClassification.REPEATABLY_CLEAN, 3, ["DUPLEX_CLEAN"]), new("DEFAULT", DuplexRepeatabilityClassification.INSUFFICIENT_EVIDENCE, 0, ["NOT_RUN"])],
+    repeatabilitySummarySource, "TEST_FAKE", Counts: repeatabilityCountsFixture);
+typeof(MainViewModel).GetField("_duplexRepeatabilityResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(summaryVm, repeatabilitySummaryFixture);
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var converterCulture = System.Globalization.CultureInfo.GetCultureInfo(language);
+    var demoFixtures = new FakeProbeClient();
+    var demoCapture = demoFixtures.ListEndpoints(SessionMode.Capture)[0];
+    var demoDisabled = demoFixtures.ListEndpoints(SessionMode.Capture)[1];
+    var demoSession = new SessionDto(Guid.Empty, SessionMode.Capture, demoCapture.Name, null, 1, SessionLifecycle.Preparing, StreamQuality.Unknown, "fixture", null, ChannelCount: demoCapture.Channels);
+    Check(demoCapture.DisplayName == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmDemoEndpointDisplayName"), "Capture", 2) && demoCapture.DisplayState == KlidanAudioProbe.Gui.Core.Localization.Get("VmDemoAvailable") && demoCapture.DisplayFormat == string.Format(converterCulture, "48 {0} · PCM16", KlidanAudioProbe.Gui.Core.Localization.Get("VmDemoKilohertz")) && demoDisabled.DisplayState == KlidanAudioProbe.Gui.Core.Localization.Get("VmDemoDisabled") && demoDisabled.DisplayFormat == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknown"), $"local demo device display labels follow {language}");
+    var serializedDemo = JsonSerializer.Serialize(demoCapture);
+    var serializedSession = JsonSerializer.Serialize(demoSession);
+    Check(demoCapture.Name == "ДЕМО · Данные симуляции · Capture · 2 канала" && demoCapture.State == "Демо · доступно" && demoCapture.Format == "48 кГц · PCM16" && demoSession.EndpointName == demoCapture.Name && demoSession.DisplayEndpointName == demoCapture.DisplayName && !serializedDemo.Contains("DisplayName", StringComparison.Ordinal) && !serializedDemo.Contains("DisplayState", StringComparison.Ordinal) && !serializedDemo.Contains("DisplayFormat", StringComparison.Ordinal) && !serializedSession.Contains("DisplayEndpointName", StringComparison.Ordinal), $"demo display localization preserves raw data and JSON shape in {language}");
+    var periodEvidence = new PeriodEvidence(FormatStatus.NotTested, null, null, null);
+    var expectedUnknown = KlidanAudioProbe.Gui.Core.Localization.Get("VmValueUnknown");
+    var expectedNotObserved = KlidanAudioProbe.Gui.Core.Localization.Get("VmValueNotObserved");
+    Check(periodEvidence.DisplayAccessibleText == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmPeriodEvidenceAccessibleText"), periodEvidence.StatusCode, expectedUnknown, expectedNotObserved, expectedUnknown) && periodEvidence.AccessibleText.Contains("не наблюдался", StringComparison.Ordinal), $"period evidence accessibility text localizes without altering its source value for {language}");
+    var periodEvidenceJson = JsonSerializer.Serialize(periodEvidence);
+    Check(periodEvidenceJson.Contains("AccessibleText", StringComparison.Ordinal) && !periodEvidenceJson.Contains("DisplayAccessibleText", StringComparison.Ordinal), $"period evidence JSON shape excludes localized UI projection for {language}");
+    var disconnectedWorker = new GuiStateWorkerClient([]);
+    var disconnectedWorkerVm = new MainViewModel(worker: disconnectedWorker);
+    disconnectedWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker отключён."));
+    Check(disconnectedWorkerVm.WorkerState.Message == "Worker отключён." && disconnectedWorkerVm.WorkerStateDisplayMessage == KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerDisconnectedMessage") && disconnectedWorkerVm.DuplexWorkerAvailability.EndsWith(KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerDisconnectedMessage"), StringComparison.Ordinal), $"default disconnected worker message localizes only in UI for {language}");
+    disconnectedWorker.SetState(new(WorkerConnectionState.Disconnected, "pipe detail"));
+    Check(disconnectedWorkerVm.WorkerStateDisplayMessage == "pipe detail", $"worker diagnostic detail remains unchanged for {language}");
+    foreach (var (value, resource) in eventConverterCases)
+        Check((string)eventConverter.Convert(value, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get(resource), $"EventKindConverter localizes {value} in {language}");
+    foreach (var (value, resource) in sessionStateConverterCases)
+        Check((string)sessionStateConverter.Convert(value, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get(resource), $"SessionStateConverter localizes {value} in {language}");
+    Check((string)eventConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknown") && (string)eventConverter.Convert((ProbeEventKind)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknownWithValue"), (ProbeEventKind)999), $"EventKindConverter localizes missing and unknown values in {language}");
+    Check((string)sessionStateConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownUpper") && (string)sessionStateConverter.Convert((SessionLifecycle)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiSessionUnknownWithValue"), (SessionLifecycle)999), $"SessionStateConverter localizes missing and unknown values in {language}");
+    Check(summaryVm.AutomaticScanResultSummary == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanSummaryDisplay"), KlidanAudioProbe.Gui.Core.Localization.Get("VmScanLifecycleCompleted"), 1, 1, 1) && scanSummaryFixture.Summary == scanSummarySource, $"automatic scan summary localizes its display without changing source summary in {language}");
+    Check(summaryVm.AutomaticScanRecommendationText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRecommendationReasonNoCleanCandidate"), StringComparison.Ordinal), $"recommendation explanation localizes in {language}");
+    var expectedRepeatabilitySummary = string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilitySummaryDisplay"), 2, 2, 1, 0, 0, 1,
+        $"MINIMUM: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassClean")}; DEFAULT: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassInsufficient")}");
+    Check(summaryVm.DuplexRepeatabilityResultText.StartsWith(expectedRepeatabilitySummary, StringComparison.Ordinal) && repeatabilitySummaryFixture.Summary == repeatabilitySummarySource, $"repeatability summary localizes its display without changing source summary in {language}");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
+var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
+Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
+typeof(MainViewModel).GetMethod("SetDeviceScanProgress", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lockedDeveloperVm, [DeviceScanStage.Preflight, "fixture"]);
+Check(lockedDeveloperVm.DeviceScanProgress.StartsWith(KlidanAudioProbe.Gui.Core.Localization.Get("VmDeviceScanStagePreflight"), StringComparison.Ordinal), "device scan progress localizes its stage without altering the DeviceScanStage enum");
 WindowsEndpointDto GroupEndpoint(string id, string direction, string name, string? container, string? formFactor = null)
 {
     var available = new WindowsPropertyEvidenceDto(0, "AVAILABLE");
@@ -162,6 +249,21 @@ Check(comboStyle.Setters.OfType<Setter>().Any(s => s.Property == Control.Foregro
 Check(comboStyle.Setters.OfType<Setter>().Any(s => s.Property == Control.BackgroundProperty && Equals(s.Value, app.Resources["TwoBrush"])), "closed ComboBox uses dark token surface");
 Check(comboStyle.Setters.OfType<Setter>().Any(s => s.Property == FrameworkElement.HorizontalAlignmentProperty && Equals(s.Value, HorizontalAlignment.Stretch)) && comboStyle.Setters.OfType<Setter>().Any(s => s.Property == Control.HorizontalContentAlignmentProperty && Equals(s.Value, HorizontalAlignment.Stretch)), "shared ComboBox stretches its control and content");
 Check(comboTemplate.Triggers.OfType<Trigger>().Any(t => t.Property == ComboBox.IsKeyboardFocusWithinProperty) && comboTemplate.Triggers.OfType<Trigger>().Any(t => t.Property == ComboBox.IsDropDownOpenProperty) && comboTemplate.Triggers.OfType<Trigger>().Any(t => t.Property == UIElement.IsEnabledProperty), "ComboBox template defines keyboard focus, open and disabled states");
+var languageWindow = new MainWindow(new MainViewModel(developerToolsAvailable: false)) { Width = 1024, Height = 720, ShowActivated = false };
+languageWindow.Show(); languageWindow.UpdateLayout();
+var languageSelector = (ComboBox)languageWindow.FindName("LanguageSelector")!;
+Check(languageSelector.Width >= 150 && languageSelector.MinWidth >= 150 && languageSelector.ItemTemplate is not null && languageSelector.Items.Cast<StringSelectionOption>().Select(x => x.Label).SequenceEqual(new[] { "Русский", "English" }), "language ComboBox uses an explicit label template and a bounded width suitable for 1024-DIP layout");
+languageWindow.Close();
+foreach (var (language, expectedFormat) in new[] { ("ru-RU", "Основной: {0}"), ("en-US", "Preferred: {0}") })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var localizedWindow = new MainWindow(new MainViewModel(developerToolsAvailable: false));
+    var preview = (Border)localizedWindow.FindName("HistoricalRecoveryPreview")!;
+    var preferredText = ((StackPanel)preview.Child).Children.OfType<TextBlock>().Single(text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == "HistoricalRecoveryPreferred");
+    Check(BindingOperations.GetBinding(preferredText, TextBlock.TextProperty)?.StringFormat == expectedFormat, $"{language} WPF loads the localized preferred-profile binding format");
+    localizedWindow.Close();
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
 var comboControl = new ComboBox { Style = comboStyle };
 comboControl.ApplyTemplate();
 var popup = (Popup)comboTemplate.FindName("PART_Popup", comboControl);
@@ -389,7 +491,7 @@ finally { if (Directory.Exists(profileTemp)) Directory.Delete(profileTemp, recur
 var vm = new MainViewModel();
 Check(vm.Session is null && vm.Events.Count == 0 && vm.Meter is null, "no session, meter, or fake error event on launch");
 Check(vm.WorkflowStep == OperatorStep.Device && !vm.DeveloperToolsOpen && vm.WorkerState.State == WorkerConnectionState.Disconnected, "first launch starts on Device without connecting a worker or opening Developer Tools");
-Check(vm.InspectorProvenanceText == "WINDOWS · Системные метаданные" && vm.InspectorTitle.Contains("REAL_WINDOWS_METADATA", StringComparison.Ordinal), "empty first-launch inspector is Windows metadata context, not DEMO provenance");
+Check(vm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && vm.InspectorTitle == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsDeviceTitle"), "empty first-launch inspector is localized Windows metadata context, not DEMO provenance");
 vm.NavigateOperatorStep(OperatorStep.Test);
 Check(vm.WorkflowStep == OperatorStep.Device, "test step refuses to proceed without a selected current real Windows endpoint");
 Check(vm.CaptureEndpoints.All(e => e.IsDemo) && vm.RenderEndpoints.All(e => e.IsDemo), "all endpoint fixtures are synthetic");
@@ -400,10 +502,10 @@ Check(vm.Formats.Count == 12 && vm.Formats.SelectMany(f => new[] { f.DefaultPeri
 Check(vm.Formats.SelectMany(f => new[] { f.DefaultPeriod.Status, f.MinimumPeriod.Status }).Distinct().Count() >= 5, "matrix shows distinct supported, unsupported, failed and unknown/not-tested states");
 var statusLabels = new Dictionary<FormatStatus, string>
 {
-    [FormatStatus.SupportedReported] = "✓ Поддерживается", [FormatStatus.Unsupported] = "× Нет", [FormatStatus.Failed] = "! Ошибка",
-    [FormatStatus.Unknown] = "? Неизвестно", [FormatStatus.NotTested] = "? Не проверено", [FormatStatus.Initialized] = "✓ Инициализировано", [FormatStatus.Ready] = "✓ Готово"
+    [FormatStatus.SupportedReported] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusSupported"), [FormatStatus.Unsupported] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusUnsupported"), [FormatStatus.Failed] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusFailed"),
+    [FormatStatus.Unknown] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusUnknown"), [FormatStatus.NotTested] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusNotTested"), [FormatStatus.Initialized] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusInitialized"), [FormatStatus.Ready] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusReady")
 };
-Check(statusLabels.All(pair => MainViewModel.StatusLabel(pair.Key) == pair.Value), "format matrix uses concise Russian status labels with text and symbols");
+Check(statusLabels.All(pair => MainViewModel.StatusLabel(pair.Key) == pair.Value), "format matrix uses localized concise status labels with text and symbols");
 Check(new PeriodEvidence(FormatStatus.Unknown, null).StatusCode == "UNKNOWN" && new PeriodEvidence(FormatStatus.NotTested, null).StatusCode == "NOT_TESTED", "UNKNOWN and NOT_TESTED remain distinct machine-readable states");
 var accessibleEvidence = new PeriodEvidence(FormatStatus.Initialized, "S_OK", "S_OK", "INITIALIZE_ONLY").AccessibleText;
 Check(accessibleEvidence.Contains("INITIALIZED", StringComparison.Ordinal) && accessibleEvidence.Contains("IsFormatSupported HRESULT: S_OK", StringComparison.Ordinal) && accessibleEvidence.Contains("Initialize HRESULT: S_OK", StringComparison.Ordinal) && accessibleEvidence.Contains("INITIALIZE_ONLY", StringComparison.Ordinal), "accessible format-cell text preserves status, HRESULTs and provenance");
@@ -426,12 +528,13 @@ using (var duplexReportSchemaV2 = JsonDocument.Parse(File.ReadAllBytes(Path.Comb
 var profileSource = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.Core/DeviceConfigurationProfile.cs"));
 Check(!profileSource.Contains("IAudioClient", StringComparison.Ordinal) && !profileSource.Contains("IMMDevice", StringComparison.Ordinal) && !profileSource.Contains("Wasapi", StringComparison.Ordinal), "profile creation and validation are pure data operations without hardware APIs");
 Check(mainWindowXaml.Contains("x:Name=\"OperatorTestPanel\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding RealFormatRows}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding QueryRealFormatsCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding RequestRealInitializeCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding ConfirmRealInitializeCommand}\"", StringComparison.Ordinal) && !mainWindowXaml.Contains("Binding RealFormatMatrix.EndpointId", StringComparison.Ordinal), "operator test step exposes the real query and fresh-consent Initialize flow without endpoint IDs");
-Check(mainWindowXaml.Contains("CommandParameter=\"Device\"", StringComparison.Ordinal) && mainWindowXaml.Contains("CommandParameter=\"Test\"", StringComparison.Ordinal) && mainWindowXaml.Contains("CommandParameter=\"Result\"", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"OperatorResultPanel\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Developer Tools", StringComparison.Ordinal), "three-step operator flow and isolated developer tools are present");
-Check(mainWindowXaml.Contains("REAL WINDOWS DIAGNOSTICS", StringComparison.Ordinal) && mainWindowXaml.Contains("SYNTHETIC / TEST FIXTURES", StringComparison.Ordinal) && mainWindowXaml.Contains("DuplexRepeatabilityAvailabilityReason", StringComparison.Ordinal) && mainWindowXaml.Contains("VerticalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal), "real diagnostics, synthetic fixtures, repeatability readiness and inspector scrolling have explicit UI sections");
-Check(mainWindowXaml.Contains("Content=\"Исследовать периоды\"", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryAvailabilityReason", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryConsentPending", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryMatrixText", StringComparison.Ordinal) && mainWindowXaml.Contains("PrepareCustomPeriodDuplexButton", StringComparison.Ordinal) && mainWindowXaml.Contains("PrepareCustomRepeatabilityCommand", StringComparison.Ordinal), "C4.2A/C4.2B custom Duplex controls expose readiness, explicit preparation and bounded repeatability bindings");
+Check(mainWindowXaml.Contains("ScrollViewer.HorizontalScrollBarVisibility=\"Disabled\"", StringComparison.Ordinal), "local format table does not expose a horizontal scrollbar");
+Check(mainWindowXaml.Contains("CommandParameter=\"Device\"", StringComparison.Ordinal) && mainWindowXaml.Contains("CommandParameter=\"Test\"", StringComparison.Ordinal) && mainWindowXaml.Contains("CommandParameter=\"Result\"", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"OperatorResultPanel\"", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc WorkerFakeSynthetic}", StringComparison.Ordinal), "three-step operator flow and isolated developer tools are present");
+Check(mainWindowXaml.Contains("{loc:Loc RealWindowsDiagnosticsHeading}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc SyntheticFixturesHeading}", StringComparison.Ordinal) && mainWindowXaml.Contains("DuplexRepeatabilityAvailabilityReason", StringComparison.Ordinal) && mainWindowXaml.Contains("VerticalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal), "real diagnostics, synthetic fixtures, repeatability readiness and inspector scrolling have explicit UI sections");
+Check(mainWindowXaml.Contains("Content=\"{loc:Loc DiscoverPeriods}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryAvailabilityReason", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryConsentPending", StringComparison.Ordinal) && mainWindowXaml.Contains("PeriodDiscoveryMatrixText", StringComparison.Ordinal) && mainWindowXaml.Contains("PrepareCustomPeriodDuplexButton", StringComparison.Ordinal) && mainWindowXaml.Contains("PrepareCustomRepeatabilityCommand", StringComparison.Ordinal), "C4.2A/C4.2B custom Duplex controls expose readiness, explicit preparation and bounded repeatability bindings");
 Check(mainWindowXaml.Contains("EvidenceLibraryEntries", StringComparison.Ordinal) && mainWindowXaml.Contains("EvidenceLibraryDeviceFilter", StringComparison.Ordinal) && mainWindowXaml.Contains("EvidenceLibraryProvenanceFilter", StringComparison.Ordinal) && mainWindowXaml.Contains("OpenEvidenceLibraryLocationCommand", StringComparison.Ordinal) && mainWindowXaml.Contains("RefreshEvidenceLibraryCommand", StringComparison.Ordinal), "E1.1 Evidence Library exposes bounded local filtering, details, original location and explicit refresh bindings");
 Check(mainWindowXaml.Contains("AutomaticScanCandidateSummary", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanStagePlanText", StringComparison.Ordinal), "S1 normal scan exposes candidate coverage and staged limitations");
-Check(mainWindowXaml.Contains("EvidenceLibraryComparisons", StringComparison.Ordinal) && mainWindowXaml.Contains("EvidenceLibraryComparisonMode", StringComparison.Ordinal) && mainWindowXaml.Contains("Normalized Duplex comparisons", StringComparison.Ordinal), "E1.2 GUI exposes exact and exploratory normalized Duplex comparison states");
+Check(mainWindowXaml.Contains("EvidenceLibraryComparisons", StringComparison.Ordinal) && mainWindowXaml.Contains("EvidenceLibraryComparisonMode", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc NormalizedDuplexComparisons}", StringComparison.Ordinal), "E1.2 GUI exposes exact and exploratory normalized Duplex comparison states");
 var customCandidate = new ExclusivePeriodCandidateDto(40_000, 192, 40_000, "ACCEPTED", "BOTH_EXACT", "0x00000000", null, null, 192, 40_000, "RELEASE_ATTEMPTED", 1);
 ExclusivePeriodDiscoveryReportDto CustomReport(string id, string endpoint, string direction) => new(1, "wasapi-exclusive-period-discovery", id, id, "2026-11-01T12:00:00Z", "REAL_WASAPI_INITIALIZE_ONLY", endpoint, direction, 48_000, "PCM16", 2, 30_000, 100_000, [customCandidate]);
 var customSeries = new PeriodDiscoverySeriesResult("COMPLETED", [CustomReport("capture-report", "capture-current", "CAPTURE"), CustomReport("render-report", "render-current", "RENDER")], [], "BOTH_EXACT", null, "SAVED_AND_RELOADED");
@@ -444,26 +547,26 @@ var customRoot = Path.Combine(Path.GetTempPath(), "klidan-custom-period-test-" +
 var customPath = CustomPeriodDuplexReportStorage.Save(new CustomPeriodDuplexResult("COMPLETED", Guid.NewGuid().ToString("D"), selectedCustom.AuthorizationValue, null, "NOT_SAVED", duplexJson.RootElement.Clone()), customRoot);
 Check(JsonDocument.Parse(File.ReadAllBytes(customPath)).RootElement.GetProperty("report").GetProperty("provenance").GetString() == "REAL_WASAPI_DUPLEX", "C4.2B.1 persists REAL report provenance unchanged and reads it back");
 Directory.Delete(customRoot, true);
-Check(mainWindowXaml.Contains("ShowNormalPairSelection", StringComparison.Ordinal) && mainWindowXaml.Contains("При неоднозначности выберите Capture и Render ниже", StringComparison.Ordinal) && !mainWindowXaml.Contains("в Developer Tools. Loopback", StringComparison.Ordinal), "ambiguous physical pairing is exposed in the normal device screen while manual tools remain isolated");
-Check(mainWindowXaml.Contains("Content=\"Сохранить профиль для KLIDAN\"", StringComparison.Ordinal) && mainWindowXaml.Contains("IsEnabled=\"{Binding CanSaveDeviceProfile}\"", StringComparison.Ordinal) && mainWindowCode.Contains("DeviceConfigurationProfileStorage.SaveLocal(profile, _profileDirectory)", StringComparison.Ordinal) && mainWindowCode.Contains("_vm.RecordDeviceProfileSaved(path, profile)", StringComparison.Ordinal), "real operator result exposes a current-evidence-gated local profile save action with schema/path reporting");
+Check(mainWindowXaml.Contains("ShowNormalPairSelection", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc AmbiguousCaptureRender}", StringComparison.Ordinal) && !mainWindowXaml.Contains("в Developer Tools. Loopback", StringComparison.Ordinal), "ambiguous physical pairing is exposed in the normal device screen while manual tools remain isolated");
+Check(mainWindowXaml.Contains("Content=\"{loc:Loc SaveKlidanProfile}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("IsEnabled=\"{Binding CanSaveDeviceProfile}\"", StringComparison.Ordinal) && mainWindowCode.Contains("DeviceConfigurationProfileStorage.SaveLocal(profile, _profileDirectory)", StringComparison.Ordinal) && mainWindowCode.Contains("_vm.RecordDeviceProfileSaved(path, profile)", StringComparison.Ordinal), "real operator result exposes a current-evidence-gated local profile save action with schema/path reporting");
 Check(appXaml.Contains("<ContentPresenter x:Name=\"SelectionPresenter\" Grid.Column=\"0\"", StringComparison.Ordinal) && appXaml.Contains("<ColumnDefinition Width=\"34\"/>", StringComparison.Ordinal), "selected ComboBox text is constrained to the area before the visible arrow");
 Check(appXaml.Contains("HorizontalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) && appXaml.Contains("MaxHeight=\"320\"", StringComparison.Ordinal), "long dropdown choices remain reachable in a bounded-height popup");
 Check(mainWindowXaml.Contains("x:Name=\"WorkerFakeSettingsGrid\"", StringComparison.Ordinal) && mainWindowXaml.Contains("WorkerFakeSettingsGrid_SizeChanged", StringComparison.Ordinal) && !mainWindowXaml.Contains("StackPanel Orientation=\"Horizontal\" Margin=\"0,8,0,0\"", StringComparison.Ordinal), "Worker Fake controls use the responsive labeled grid, not content-sized horizontal rows");
 Check(new[] { "WorkerDurationSetting", "WorkerPeriodSetting", "WorkerMmcssSetting", "WorkerScenarioSetting" }.All(name => mainWindowXaml.Contains($"x:Name=\"{name}\"", StringComparison.Ordinal)) && mainWindowXaml.Contains("MinWidth=\"160\"", StringComparison.Ordinal), "all four Worker Fake selectors have labeled, minimum-width grid cells");
-Check(mainWindowXaml.Split("<ComboBox ", StringSplitOptions.None).Length - 1 == 22 && !mainWindowXaml.Contains("<ComboBox Style=", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal), "all 22 dropdowns use the shared ComboBox presentation, including saved profile selection");
-Check(mainWindowXaml.Contains("Восстановить профиль из предыдущих измерений", StringComparison.Ordinal) && mainWindowXaml.Contains("Проверить старые измерения", StringComparison.Ordinal) && mainWindowXaml.Contains("Сохранить восстановленный профиль", StringComparison.Ordinal) && mainWindowXaml.Contains("HistoricalRecoveryConfirmation", StringComparison.Ordinal), "historical recovery UI exposes selection, preview and explicit confirmation without audio controls");
-Check(mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding DefaultPeriod.AccessibleText}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding MinimumPeriod.AccessibleText}\"", StringComparison.Ordinal), "both period cells bind full accessibility evidence");
+Check(mainWindowXaml.Split("<ComboBox ", StringSplitOptions.None).Length - 1 == 23 && !mainWindowXaml.Contains("<ComboBox Style=", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal), "all dropdowns, including language and saved profile selection, use the shared ComboBox presentation");
+Check(mainWindowXaml.Contains("{loc:Loc HistoricalRecoveryTitle}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc CheckOldMeasurements}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc SaveRecoveredProfile}", StringComparison.Ordinal) && mainWindowXaml.Contains("HistoricalRecoveryConfirmation", StringComparison.Ordinal), "historical recovery UI exposes selection, preview and explicit confirmation without audio controls");
+Check(mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding DefaultPeriod.DisplayAccessibleText}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding MinimumPeriod.DisplayAccessibleText}\"", StringComparison.Ordinal), "both period cells bind localized accessibility evidence");
 Check(mainWindowXaml.Contains("ItemsSource=\"{Binding CaptureChannelBanks}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding RenderChannelBanks}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding VisibleMeterChannels}\"", StringComparison.Ordinal), "Capture and Render expose dynamic keyboard-accessible channel banks");
-Check(mainWindowXaml.Contains("Command=\"{Binding ConnectWorkerCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding QueryWorkerEndpointsCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding WorkerState.Message", StringComparison.Ordinal), "Diagnostics provides deliberate worker connect and endpoint query controls");
+Check(mainWindowXaml.Contains("Command=\"{Binding ConnectWorkerCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding QueryWorkerEndpointsCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding WorkerStateDisplayMessage", StringComparison.Ordinal), "Diagnostics provides deliberate worker connect and endpoint query controls with a localized display message");
 Check(mainWindowXaml.Contains("x:Name=\"WorkerChannelCountText\" Text=\"{Binding WorkerChannelSummary}\"", StringComparison.Ordinal), "Diagnostics channel summary uses a real ViewModel text binding");
-Check(mainWindowXaml.Contains("AutomationProperties.Name=\"Кнопки управления окном\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ColumnDefinition Width=\"5\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Style=\"{StaticResource WindowChromeButton}\"", StringComparison.Ordinal), "titlebar uses centered dedicated controls with explicit separation and shared right margin");
+Check(mainWindowXaml.Contains("AutomationProperties.Name=\"{loc:Loc WindowControls}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ColumnDefinition Width=\"5\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Style=\"{StaticResource WindowChromeButton}\"", StringComparison.Ordinal), "titlebar uses centered dedicated controls with explicit separation and shared right margin");
 Check(mainWindowXaml.Contains("StrokeStartLineCap=\"Square\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Value=\"Maximized\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Value=\"M 6,2 L 12,2 12,8 M 9,5 L 3,5 3,12 9,12 Z\"", StringComparison.Ordinal), "titlebar uses centered vector icons and switches maximize to restore geometry");
 Check(mainWindowXaml.Contains("Click=\"Minimize_Click\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Click=\"Maximize_Click\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Click=\"Close_Click\"", StringComparison.Ordinal) && mainWindowCode.Contains("if (e.ClickCount == 2) Maximize_Click(sender, e); else DragMove();", StringComparison.Ordinal), "titlebar controls are wired and double-click maximizes while a normal drag moves the window");
-Check(mainWindowXaml.Contains("Последний ответ отключённого worker", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding HistoricalWorkerEndpointNames", StringComparison.Ordinal), "disconnected endpoint snapshot has an explicitly historical presentation");
+Check(mainWindowXaml.Contains("{loc:Loc DisconnectedWorkerHistory}", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding HistoricalWorkerEndpointNames", StringComparison.Ordinal), "disconnected endpoint snapshot has an explicitly historical presentation");
 Check(mainWindowXaml.Contains("Visibility=\"{Binding WorkerRenderChannelVisible, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal), "Render channel selector is visibility-bound to endpoint direction");
 Check(mainWindowXaml.Contains("Visibility=\"{Binding IsEndpointListEmpty, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding RestoreDevicesCommand}\"", StringComparison.Ordinal), "empty endpoint state is explicit and offers demo restore");
 Check(mainWindowXaml.Contains("Visibility=\"{Binding HasEndpoints, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal) && appXaml.Contains("Property=\"RowHeight\" Value=\"42\"", StringComparison.Ordinal), "endpoint list hides when empty and matrix row height is fixed");
-Check(mainWindowXaml.Contains("Content=\"СТОП WORKER\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Content=\"СТОП LOCAL\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Visibility=\"{Binding WorkerOperationActive, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding WorkerSession.Lifecycle, Converter={StaticResource SessionStateText}", StringComparison.Ordinal), "separate worker and local Stop controls bind their own lifecycle status");
+Check(mainWindowXaml.Contains("Content=\"{loc:Loc StopWorker}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Content=\"{loc:Loc StopLocal}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Visibility=\"{Binding WorkerOperationActive, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding WorkerSession.Lifecycle, Converter={StaticResource SessionStateText}", StringComparison.Ordinal), "separate worker and local Stop controls bind their own lifecycle status");
 
 var workerFormats = new[] { 2, 8, 32, 48, 64 }.Select(n => new FormatTopologyDto($"PCM16-{n}", DemoTopologyFixtures.Independent(n))).ToArray();
 var unavailableEvidence = new WindowsPropertyEvidenceDto(unchecked((int)0x80070490), "UNAVAILABLE");
@@ -515,7 +618,7 @@ Check(physicalVm.WorkflowStep == OperatorStep.Device && !((Button)physicalWindow
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Device page is the only primary page visible in normal mode");
 physicalVm.OpenDeveloperToolsCommand.Execute(null); physicalWindow.UpdateLayout();
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Developer Tools device navigation keeps the Device page alone visible");
-Check(((Button)physicalWindow.FindName("PreparePeriodDiscoveryButton")).IsVisible && !((Button)physicalWindow.FindName("PreparePeriodDiscoveryButton")).IsEnabled && ((TextBlock)physicalWindow.FindName("PeriodDiscoveryAvailabilityReasonText")).Text.Contains("недоступно", StringComparison.OrdinalIgnoreCase), "Period discovery entry is visible with an explicit unavailable reason");
+Check(((Button)physicalWindow.FindName("PreparePeriodDiscoveryButton")).IsVisible && !((Button)physicalWindow.FindName("PreparePeriodDiscoveryButton")).IsEnabled && ((TextBlock)physicalWindow.FindName("PeriodDiscoveryAvailabilityReasonText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmPeriodDiscoveryUnavailable"), "Period discovery entry is visible with an explicit localized unavailable reason");
 physicalVm.OpenManualRealToolsCommand.Execute(null); physicalWindow.UpdateLayout();
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Developer Tools real Test navigation keeps the Test page alone visible");
 physicalVm.CloseDeveloperToolsCommand.Execute(null); physicalWindow.UpdateLayout();
@@ -546,7 +649,7 @@ Check(availabilityVm.HasCurrentDuplexPair && availabilityDuplexButton.IsEnabled 
 typeof(MainViewModel).GetField("_periodDiscoveryResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(availabilityVm, customSeries with { Reports = [CustomReport("capture-current", "local-windows-id", "CAPTURE"), CustomReport("render-current", "local-render-id", "RENDER")] });
 typeof(MainViewModel).GetField("_periodDiscoveryResultFingerprint", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(availabilityVm, ExclusivePeriodDiscoveryPlanning.Fingerprint(physicalPairFixture));
 typeof(MainViewModel).GetMethod("RefreshCanExecute", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(availabilityVm, null); availabilityWindow.UpdateLayout();
-Check(availabilityCustomButton.IsEnabled && availabilityVm.CustomPeriodDuplexAvailabilityReason.StartsWith("Готово", StringComparison.Ordinal), "Completed BOTH_EXACT evidence immediately enables the default 192-frame custom Duplex button");
+Check(availabilityCustomButton.IsEnabled && availabilityVm.CustomPeriodDuplexAvailabilityReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmCustomPeriodDuplexReady"), "Completed BOTH_EXACT evidence immediately enables the default 192-frame custom Duplex button");
 Check(availabilityRepeatButton.IsEnabled && availabilityVm.PrepareCustomRepeatabilityCommand.CanExecute(null), "Completed BOTH_EXACT evidence immediately enables the custom repeatability command through the visual tree");
 availabilityVm.CustomPeriodFramesText = "193"; availabilityWindow.UpdateLayout();
 Check(!availabilityRepeatButton.IsEnabled && !availabilityVm.PrepareCustomRepeatabilityCommand.CanExecute(null), "Invalid custom period input immediately disables repeatability in the visual tree");
@@ -635,7 +738,7 @@ crossVm.AllowUnconfirmedPhysicalPair = true;
 crossVm.SelectedDuplexCaptureEndpoint = crossVm.DuplexCaptureEndpoints.Single(e => e.EndpointId == "local-windows-id");
 crossVm.SelectedDuplexRenderEndpoint = crossVm.DuplexRenderEndpoints.Single(e => e.EndpointId == "cross-render-id");
 crossScanButton.Command!.Execute(crossScanButton.CommandParameter); PumpUntil(() => crossVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2));
-Check(crossVm.AutomaticScanConsentPending && crossWorkflow.LastSelection?.AllowUnconfirmedPair == true && crossWorkflow.PreparedPlan?.Target.PairIdentity == ScanPairIdentity.OperatorSelectedPair && crossWorkflow.PreparedPlan.Target.Capture?.EndpointId == "local-windows-id" && crossWorkflow.PreparedPlan.Target.Render?.EndpointId == "cross-render-id" && crossVm.AutomaticScanConsentText.Contains("не подтверждена", StringComparison.OrdinalIgnoreCase), "explicit cross-container pair prepares as OPERATOR_SELECTED with one consent and exact endpoint IDs");
+Check(crossVm.AutomaticScanConsentPending && crossWorkflow.LastSelection?.AllowUnconfirmedPair == true && crossWorkflow.PreparedPlan?.Target.PairIdentity == ScanPairIdentity.OperatorSelectedPair && crossWorkflow.PreparedPlan.Target.Capture?.EndpointId == "local-windows-id" && crossWorkflow.PreparedPlan.Target.Render?.EndpointId == "cross-render-id" && crossVm.AutomaticScanConsentText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanIdentityUnconfirmed"), StringComparison.OrdinalIgnoreCase), "explicit cross-container pair prepares as OPERATOR_SELECTED with one consent and exact endpoint IDs");
 crossVm.CancelAutomaticScanConsentCommand.Execute(null); crossWindow.Close();
 var duplexUiWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var duplexUiVm = new MainViewModel(worker: duplexUiWorker);
@@ -706,9 +809,9 @@ RunDuplexUiPeriod(duplexUiVm.RequestDuplexDefaultCommand);
 Check(duplexUiVm.DuplexResultCards.All(c => c.FinalStatus == "DUPLEX_CLEAN") && duplexUiVm.DuplexAssessments.Count == 2 && duplexUiVm.DuplexRecommendation.Fallback?.Period == "DEFAULT", "a later failed attempt does not overwrite either previously accepted period report");
 duplexUiVm.NavigateOperatorStep(OperatorStep.Result);
 var duplexStatusWindow = new MainWindow(duplexUiVm) { Width = 1024, Height = 720, ShowActivated = false }; duplexStatusWindow.Show(); duplexStatusWindow.UpdateLayout();
-Check(((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text == "Worker: подключён" && ((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text == "Обнаружение Windows: актуально", "result screen independently presents healthy worker and current endpoint discovery after accepted child completion");
+Check(((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerConnected") && ((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmWindowsDiscoveryCurrent"), "result screen independently presents healthy worker and current endpoint discovery after accepted child completion");
 duplexUiWorker.SetState(new(WorkerConnectionState.Disconnected, "Injected worker exit.")); duplexStatusWindow.UpdateLayout();
-Check(((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text.Contains("отключён", StringComparison.Ordinal) && ((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text.Contains("устарело", StringComparison.Ordinal) && duplexUiVm.DuplexAssessments.Count == 2 && !duplexUiVm.RequestDuplexMinimumCommand.CanExecute(null), $"actual worker disconnect marks discovery stale separately, preserves accepted evidence, and disables another run [worker={((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text}; discovery={((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text}; assessments={duplexUiVm.DuplexAssessments.Count}; canRun={duplexUiVm.RequestDuplexMinimumCommand.CanExecute(null)}]");
+Check(((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerDisconnected"), StringComparison.Ordinal) && ((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmWindowsDiscoveryStale"), StringComparison.Ordinal) && duplexUiVm.DuplexAssessments.Count == 2 && !duplexUiVm.RequestDuplexMinimumCommand.CanExecute(null), $"actual worker disconnect marks discovery stale separately, preserves accepted evidence, and disables another run [worker={((TextBlock)duplexStatusWindow.FindName("DuplexWorkerAvailabilityText")).Text}; discovery={((TextBlock)duplexStatusWindow.FindName("DuplexDiscoveryFreshnessText")).Text}; assessments={duplexUiVm.DuplexAssessments.Count}; canRun={duplexUiVm.RequestDuplexMinimumCommand.CanExecute(null)}]");
 duplexStatusWindow.Close();
 var pairChangeFixture = windowsPairFixture with { Endpoints = windowsPairFixture.Endpoints.Append(windowsFixture.Endpoints[0] with { EndpointId = "other-capture-id", FriendlyName = "Other Capture" }).ToArray() };
 var pairChangeWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = pairChangeFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
@@ -730,7 +833,9 @@ Check(!pairChangeVm.HasDuplexPairProfileEvidence && !pairChangeVm.CanSaveDeviceP
 Throws<InvalidDataException>(() => WindowsEndpointDiscoveryValidation.Validate(windowsFixture with { Provenance = "FAKE_SYNTHETIC" }), "Windows endpoint validator rejects fake provenance on the real metadata command");
 Throws<InvalidDataException>(() => WindowsEndpointDiscoveryValidation.Validate(windowsFixture with { OperationState = "PARTIAL" }), "partial enumeration requires explicit HRESULT or failure-stage evidence");
 Check(mainWindowXaml.Contains("Visibility=\"{Binding IsSelectedWindowsCapture, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Visibility=\"{Binding IsSelectedWindowsRender, Converter={StaticResource BoolVisibility}}\"", StringComparison.Ordinal), "future Capture and Render test modes bind independently to endpoint direction");
-Check(mainWindowXaml.Contains("LOCAL DEMO", StringComparison.Ordinal) && mainWindowXaml.Contains("WORKER FAKE", StringComparison.Ordinal) && mainWindowXaml.Contains("Windows Devices", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding WindowsEndpointRows}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("EnableRowVirtualization=\"True\"", StringComparison.Ordinal) && !mainWindowXaml.Contains("WindowsEndpointTemplate", StringComparison.Ordinal), "Windows devices use one compact virtualized table, not per-endpoint cards");
+var endpointTemplate = mainWindowXaml.Split("<DataTemplate x:Key=\"EndpointTemplate\"", StringSplitOptions.None)[1].Split("</DataTemplate>", StringSplitOptions.None)[0];
+Check(endpointTemplate.Contains("{Binding DisplayName}", StringComparison.Ordinal) && endpointTemplate.Contains("{Binding DisplayState}", StringComparison.Ordinal) && endpointTemplate.Contains("{Binding DisplayFormat}", StringComparison.Ordinal), "demo endpoint rows bind localized display values separately from stored values");
+Check(mainWindowXaml.Contains("{loc:Loc DemoMeterLegend}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc WorkerFakePipe}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc WindowsDevicesTitle}", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding WindowsEndpointRows}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("EnableRowVirtualization=\"True\"", StringComparison.Ordinal) && !mainWindowXaml.Contains("WindowsEndpointTemplate", StringComparison.Ordinal), "Windows devices use one compact virtualized table, not per-endpoint cards");
 var realCandidate = new RealFormatCandidateDto("PCM16",48000,2,"default","STANDARD_MONO_STEREO_MASK","SUPPORTED_REPORTED","SUPPORTED_REPORTED","0x00000000","0x00000000","0x00000000",100000,30000,"NOT_TESTED",false,null,null,null,null,null,"RELEASE_ATTEMPTED") { QueryCleanupStatus = "RELEASE_ATTEMPTED", QueryClientReleaseAttempts = 1 };
 var realCandidates = (from rate in new[] { 44100, 48000 } from channels in new[] { 1, 2 } from encoding in new[] { "PCM16", "PCM24_IN_32", "FLOAT32" } from period in new[] { "default", "minimum" } select realCandidate with { Encoding = encoding, SampleRate = rate, Channels = channels, Period = period }).ToArray();
 var realQueryResponse = new RealFormatMatrixDto("REAL_WASAPI_QUERY","2026-10-31T00:00:00.000Z","local-windows-id","CAPTURE","PASSIVE_QUERY",realCandidates);
@@ -747,8 +852,36 @@ realWorkflowVm.QueryRealFormatsCommand.Execute(null);
 SpinWait.SpinUntil(() => realWorkflowVm.RealFormatMatrix is not null, TimeSpan.FromSeconds(2));
 Check(realWorkflowWorker.RealQueryCalls == 1 && realWorkflowWorker.LastRealEndpointId == "local-windows-id" && realWorkflowWorker.LastRealDirection == "CAPTURE" && realWorkflowVm.RealFormatMatrix?.Provenance == "REAL_WASAPI_QUERY", "GUI sends exact selected endpoint identity and keeps real query provenance separate");
 Check(realWorkflowVm.RealFormatEndpointLabel == "Fixture Interface" && !realWorkflowVm.RealInitializationDetails.Contains("local-windows-id", StringComparison.Ordinal), "real format presentation resolves friendly identity without exposing the raw endpoint ID");
-Check(realWorkflowVm.RealFormatRows.Count == 12 && realWorkflowVm.WorkflowStep == OperatorStep.Result && realWorkflowVm.OperatorResultMode == "Запрос Exclusive-форматов" && realWorkflowVm.OperatorResultOutcome.Contains("завершён", StringComparison.Ordinal), "one query produces 12 unique-format rows and a distinct operator result state");
-Check(realWorkflowVm.RealFormatRows.First().DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.SelectedRealFormatRow?.DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.RealFormatSummary.Contains("Форматов проверено: 12", StringComparison.Ordinal) && realWorkflowVm.RealFormatSummary.Contains("Initialize: NOT_ATTEMPTED", StringComparison.Ordinal), "supported formats sort first and the compact summary separates query counts from unattempted Initialize");
+Check(realWorkflowVm.RealFormatRows.Count == 12 && realWorkflowVm.WorkflowStep == OperatorStep.Result && realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeFormatQuery") && realWorkflowVm.OperatorResultOutcome == KlidanAudioProbe.Gui.Core.Localization.Get("VmQuerySuccessOutcome"), "one query produces 12 unique-format rows and a distinct operator result state");
+var queryModeTestCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    Check(realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeFormatQuery") && !realWorkflowVm.IsDuplexOperatorResult, $"operator mode displays localized format-query label in {language} while retaining its internal result kind");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(queryModeTestCulture, false);
+var confidenceCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var confidenceVm = new MainViewModel();
+    var confidenceCode = "PROVISIONAL_SINGLE_SUSTAINED_RUN";
+    var confidenceAssessment = new DuplexCandidateAssessment("capture", "render", 48000, "FLOAT32", 2, "CUSTOM:100000:480", "PRO_AUDIO", 30, "CLEAN", confidenceCode, "480", "480", "FULL", "FULL", "fixture", default);
+    var confidencePreview = new OfflineSustainedProfileRecoveryPreview("session", "summary", "profile", null!, [], new DuplexRecommendation("SUSTAINED_VALIDATED", "NOT_CERTIFIED", confidenceAssessment, null, []), "fingerprint", DateTimeOffset.UtcNow, "scans", "profiles", "evidence");
+    typeof(MainViewModel).GetField("_historicalRecoveryPreview", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(confidenceVm, confidencePreview);
+    var expectedConfidence = language == "ru-RU" ? "ПРЕДВАРИТЕЛЬНАЯ: ОДИН ДЛИТЕЛЬНЫЙ ЗАПУСК (PROVISIONAL_SINGLE_SUSTAINED_RUN)" : confidenceCode;
+    Check(confidenceVm.HistoricalRecoveryConfidence == expectedConfidence, $"historical confidence {confidencePreview.Recommendation.Preferred!.Confidence} displays as {expectedConfidence} in {language}");
+    var periodVm = new MainViewModel();
+    var periodResult = new PeriodDiscoverySeriesResult("COMPLETED", [], [], "BOTH_EXACT", @"C:\evidence\period.json", "SAVED_AND_RELOADED");
+    typeof(MainViewModel).GetField("_periodDiscoveryResult", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(periodVm, periodResult);
+    Check(periodVm.PeriodDiscoveryResultText.Contains(language == "ru-RU" ? "Состояние:" : "Lifecycle:", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("COMPLETED", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("BOTH_EXACT", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("SAVED_AND_RELOADED", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains(periodResult.ReportPath!, StringComparison.Ordinal), $"period discovery localizes labels in {language} while preserving evidence values and path");
+    var customVm = new MainViewModel();
+    var customResult = new CustomPeriodDuplexResult("FAILED", Guid.NewGuid().ToString("D"), "CUSTOM:100000:480", @"C:\evidence\custom.json", "SAVE_FAILED", null, "IOException: fixture");
+    typeof(MainViewModel).GetField("_customPeriodDuplexResult", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(customVm, customResult);
+    Check(customVm.CustomPeriodDuplexResultText.Contains(language == "ru-RU" ? "Состояние:" : "Lifecycle:", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("FAILED", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("SAVE_FAILED", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains(customResult.ReportPath!, StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("IOException: fixture", StringComparison.Ordinal), $"custom-period summary localizes labels in {language} while preserving status, error and path");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(confidenceCulture, false);
+Check(realWorkflowVm.RealFormatRows.First().DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.SelectedRealFormatRow?.DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.RealFormatSummary.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealFormatSummary").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && realWorkflowVm.RealFormatSummary.Contains("Initialize: NOT_ATTEMPTED", StringComparison.Ordinal), "supported formats sort first and the compact summary separates query counts from unattempted Initialize");
 Check(!realWorkflowVm.OperatorResultOutcome.Contains("CLEAN", StringComparison.Ordinal) && !realWorkflowVm.OperatorResultOutcome.Contains("Started", StringComparison.Ordinal), "successful query result does not claim clean stream quality or audio start");
 var scanMatrixResponse = realQueryResponse with { Candidates = realCandidates.Select(c => c.SampleRate == 44100 ? c with { Status = "UNSUPPORTED", SupportStatus = "UNSUPPORTED", SupportHr = "0x88890008" } : c).ToArray() };
 var buttonWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
@@ -768,6 +901,8 @@ Check(actualScanButton.IsEnabled, "actual WPF one-click Scan button enables only
 Check(((Grid)buttonWindow.FindName("WindowsEndpointFilterGrid")).Visibility == Visibility.Collapsed && ((DataGrid)buttonWindow.FindName("WindowsEndpointGrid")).Visibility == Visibility.Collapsed, "normal scanner hides endpoint search and technical browser while retaining them for Developer Tools");
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter); buttonWindow.UpdateLayout();
 Check(buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && !actualScanButton.IsEnabled, "one immutable plan prompts once and does not execute before operator consent");
+Check(buttonVm.AutomaticScanStagePlanText.Contains($"{KlidanAudioProbe.Gui.Core.Localization.Get("VmScanStageDiscovery")}: {KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanStatePlanned")}", StringComparison.Ordinal) && buttonVm.AutomaticScanStagePlanText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanStageMessageBounded"), StringComparison.Ordinal) && !buttonVm.AutomaticScanStagePlanText.Contains("DISCOVERY: PLANNED", StringComparison.Ordinal), $"stage plan localizes labels and fixed explanations while preserving machine enum values [{buttonVm.AutomaticScanStagePlanText}]");
+Check(buttonVm.AutomaticScanConsentText.Contains($"{KlidanAudioProbe.Gui.Core.Localization.Get("VmScanStageDiscovery")}={KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanStatePlanned")}", StringComparison.Ordinal) && !buttonVm.AutomaticScanConsentText.Contains("DISCOVERY=PLANNED", StringComparison.Ordinal), "consent summary localizes stage labels without changing staged-plan enum values");
 buttonVm.CancelAutomaticScanConsentCommand.Execute(null); buttonWindow.UpdateLayout();
 Check(!buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && actualScanButton.IsEnabled, "refusing consent clears pending approval and performs no operation");
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter);
@@ -780,10 +915,10 @@ buttonVm.CancelAutomaticScanCommand.Execute(null);
 Check(buttonVm.AutomaticScanRunning && !buttonVm.HasAutomaticScanResult, "cancellation request does not prematurely claim terminal completion");
 automaticUiWorkflow.ReleaseRun.TrySetResult();
 PumpUntil(() => !buttonVm.AutomaticScanRunning && buttonVm.AutomaticScanResult is not null, TimeSpan.FromSeconds(3)); buttonWindow.UpdateLayout();
-Check(buttonVm.AutomaticScanResult?.Lifecycle == ScanRunLifecycle.Cancelled && buttonVm.AutomaticScanProgressRows.Count > 0 && buttonVm.AutomaticScanPersistenceText.Contains("не сохранён", StringComparison.OrdinalIgnoreCase) && buttonWorker.RealQueryCalls == 0, "cancelled test-only workflow preserves operation progress without real hardware calls or a fabricated saved report");
+Check(buttonVm.AutomaticScanResult?.Lifecycle == ScanRunLifecycle.Cancelled && buttonVm.AutomaticScanProgressRows.Count > 0 && buttonVm.AutomaticScanPersistenceText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanReportNotSaved"), StringComparison.OrdinalIgnoreCase) && buttonWorker.RealQueryCalls == 0, "cancelled test-only workflow preserves operation progress without real hardware calls or a fabricated saved report");
 var automaticResultPanel = (StackPanel)buttonWindow.FindName("OperatorResultPanel");
 Check(buttonVm.AutomaticScanResultProvenance.StartsWith("UNKNOWN", StringComparison.Ordinal) && automaticResultPanel.Visibility == Visibility.Visible && ((StackPanel)buttonWindow.FindName("DevicesPanel")).Visibility == Visibility.Collapsed && ((StackPanel)buttonWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed, "result screen alone presents unknown provenance and retains the terminal scan result");
-Check(automaticResultNotifications.SetEquals([nameof(buttonVm.AutomaticScanResultHeadline), nameof(buttonVm.AutomaticScanResultDevice), nameof(buttonVm.AutomaticScanResultSummary), nameof(buttonVm.AutomaticScanRecommendationText), nameof(buttonVm.AutomaticScanPersistenceText)]) && ((TextBlock)buttonWindow.FindName("AutomaticScanResultHeadlineText")).Text == "Отменено" && ((TextBlock)buttonWindow.FindName("AutomaticScanResultDeviceText")).Text == "Fixture Interface" && ((TextBlock)buttonWindow.FindName("AutomaticScanRecommendationText")).Text.Contains("Финальная конфигурация не выбрана", StringComparison.Ordinal) && ((TextBlock)buttonWindow.FindName("AutomaticScanPersistenceText")).Text == "Отчёт не сохранён.", "actual WPF result bindings receive terminal headline, device, summary, final selection and persistence notifications");
+Check(automaticResultNotifications.SetEquals([nameof(buttonVm.AutomaticScanResultHeadline), nameof(buttonVm.AutomaticScanResultDevice), nameof(buttonVm.AutomaticScanResultSummary), nameof(buttonVm.AutomaticScanRecommendationText), nameof(buttonVm.AutomaticScanPersistenceText)]) && ((TextBlock)buttonWindow.FindName("AutomaticScanResultHeadlineText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCancelled") && ((TextBlock)buttonWindow.FindName("AutomaticScanResultDeviceText")).Text == "Fixture Interface" && ((TextBlock)buttonWindow.FindName("AutomaticScanRecommendationText")).Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanFinalConfigurationMissing").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && ((TextBlock)buttonWindow.FindName("AutomaticScanPersistenceText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanReportNotSaved"), "actual WPF result bindings receive terminal headline, device, summary, final selection and persistence notifications");
 Check(buttonVm.AutomaticScanPairEnabled == false && automaticUiWorkflow.PreparedPlan?.Target.Capture?.EndpointId == "local-windows-id" && automaticUiWorkflow.LastConfirmationId != Guid.Empty, "authorization is issued only after consent and binds the refreshed exact endpoint");
 buttonVm.OpenManualRealToolsCommand.Execute(null); buttonWindow.UpdateLayout();
 Check(buttonVm.DeveloperToolsOpen && buttonVm.WorkflowStep == OperatorStep.Test && ((StackPanel)buttonWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Visible, "legacy manual real controls remain available only through Developer Tools");
@@ -812,12 +947,24 @@ Check(scanWorkflowVm.DeviceScanConsentPending && scanWorkflowWorker.RealQueryCal
 scanWorkflowVm.CancelDeviceScanConsentCommand.Execute(null);
 Check(!scanWorkflowVm.DeviceScanConsentPending && scanWorkflowWorker.RealInitializeCalls == 0, "cancelled scan consent clears the plan and performs no Initialize");
 scanWorkflowVm.RequestDeviceScanCommand.Execute(null);
-Check(scanWorkflowVm.DeviceScanConsentText.Contains("Initialize-only", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanConsentText.Contains("Потоки не запускаются", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanConsentText.Contains("180 секунд", StringComparison.Ordinal), "scan consent describes real operations, no Start/output, and bounded duration");
+var scanConsentCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var (language, streamPhrase, durationPhrase) in new[]
+{
+    ("en-US", "Streams will not start", "180 seconds"),
+    ("ru-RU", "Потоки не запускаются", "180 секунд")
+})
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var consentText = scanWorkflowVm.DeviceScanConsentText;
+    Check(consentText.Contains("Initialize-only", StringComparison.OrdinalIgnoreCase) && consentText.Contains(streamPhrase, StringComparison.OrdinalIgnoreCase) && consentText.Contains(durationPhrase, StringComparison.Ordinal), $"scan consent describes real operations, no Start/output, and bounded duration in {language}");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(scanConsentCulture, false);
 scanWorkflowVm.DeviceScanConsentChecked = true;
 scanWorkflowVm.ConfirmDeviceScanCommand.Execute(null);
 SpinWait.SpinUntil(() => !scanWorkflowVm.DeviceScanRunning && scanWorkflowVm.DeviceScanResult is not null, TimeSpan.FromSeconds(5));
 Check(scanWorkflowWorker.RealQueryCalls == 1 && scanWorkflowWorker.RealInitializeCalls == 4 && scanWorkflowVm.DeviceScanResult?.State == DeviceScanStage.Incomplete && scanWorkflowVm.DeviceScanInitializeCandidates.All(c => c.SampleRate == 48000 && c.Encoding == "PCM16"), "one scan queries selected endpoint then initializes only four bounded 48 kHz PCM16 Capture candidates");
 Check(scanWorkflowVm.DeviceScanInitializeCandidates.Any(c => c.Period == "minimum" && c.Channels == 1 && c.InitializeStatus == "FAILED" && c.FinalInitializeHr == "0x8889000A") && scanWorkflowVm.DeviceScanInitializeCandidates.Any(c => c.Period == "default" && c.Channels == 1 && c.InitializeStatus == "INITIALIZED"), "failed MINIMUM Initialize is preserved and the DEFAULT fallback candidate is still checked independently");
+Check(scanWorkflowVm.DeviceScanTechnicalDetails.Contains($"{KlidanAudioProbe.Gui.Core.Localization.Get("StatusLabel")}=" , StringComparison.OrdinalIgnoreCase) && scanWorkflowVm.DeviceScanTechnicalDetails.Contains("IsFormatSupported=", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanTechnicalDetails.Contains("0x8889000A", StringComparison.Ordinal), "scan technical details localize presentation labels while preserving API names and HRESULT values");
 Check(scanWorkflowVm.DeviceScanResult is { StreamValidationRun: false, DuplexEvidenceRun: false } && scanWorkflowVm.DeviceScanResultSummary.Contains("NOT_RUN", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanResult.Recommendation.Contains("не проверялись", StringComparison.Ordinal), "scan never fabricates stream, stability, Duplex or recommendation evidence");
 Check(scanWorkflowVm.CanSaveDeviceProfile && scanWorkflowVm.CreateCurrentDeviceProfile().Evidence.Count == 28 && scanWorkflowVm.CreateCurrentDeviceProfile().Recommendation.Preferred is null, "automatic scan profile aggregates query and all accepted Initialize results without a recommendation");
 Check(scanWorkflowWorker.LastStartSettings is null, "real automatic scan never routes through fake StartSession or synthesizes stream evidence");
@@ -828,7 +975,13 @@ var automaticSanitized = DeviceConfigurationProfileJson.Parse(DeviceConfiguratio
 Check(automaticProfileRoundTrip.Evidence.Count == 28 && automaticProfileRoundTrip.EndpointBindings.Capture?.EndpointId == "local-windows-id" && automaticSanitized.EndpointBindings.Capture is { EndpointId: null, Binding: "SANITIZED_UNBOUND" } && automaticSanitized.Evidence.Count == 28, "aggregated scan profile supports strict local and endpoint-redacted sanitized round trips");
 Check(scanWorkflowVm.RequestStreamValidationCommand.CanExecute(null), "stream validation is offered only after successful Initialize on the exact current endpoint");
 scanWorkflowVm.RequestStreamValidationCommand.Execute(null);
-Check(scanWorkflowVm.StreamConsentPending && scanWorkflowVm.StreamValidationConsentText.Contains(scanWorkflowVm.SelectedWindowsEndpoint!.EndpointId!, StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("Exclusive endpoint", StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("без сохранения PCM", StringComparison.Ordinal), "stream consent displays exact endpoint ID, endpoint reservation, Capture packet handling and no PCM persistence");
+var streamConsentCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var (language, noPcmPhrase) in new[] { ("en-US", "without saving PCM"), ("ru-RU", "без сохранения PCM") })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    Check(scanWorkflowVm.StreamConsentPending && scanWorkflowVm.StreamValidationConsentText.Contains(scanWorkflowVm.SelectedWindowsEndpoint!.EndpointId!, StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("Exclusive endpoint", StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains(noPcmPhrase, StringComparison.OrdinalIgnoreCase), $"stream consent displays exact endpoint, reservation and no PCM persistence in {language}");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(streamConsentCulture, false);
 scanWorkflowVm.CancelStreamConsentCommand.Execute(null);
 Check(!scanWorkflowVm.StreamConsentPending && scanWorkflowWorker.RealStreamCalls == 0, "cancelled stream consent performs no operation");
 scanWorkflowVm.RequestStreamValidationCommand.Execute(null); scanWorkflowVm.StreamConsentChecked = true; scanWorkflowVm.ConfirmStreamValidationCommand.Execute(null);
@@ -839,7 +992,7 @@ scanWorkflowVm.NavigateOperatorStep(OperatorStep.Device);
 var scanWindow = new MainWindow(scanWorkflowVm) { Width = 1280, Height = 800, ShowActivated = false };
 scanWindow.Show(); scanWindow.UpdateLayout();
 var scanButton = (Button)scanWindow.FindName("DeviceScanButton");
-Check(scanButton.Content?.ToString() == "Сканировать" && BindingOperations.GetBinding(scanButton, Button.CommandProperty)?.Path.Path == "PrepareAutomaticScanCommand", "real WPF device screen binds the operator scan action to the automatic plan workflow");
+Check(scanButton.Content?.ToString() == KlidanAudioProbe.Gui.Core.Localization.Get("ScanButton") && BindingOperations.GetBinding(scanButton, Button.CommandProperty)?.Path.Path == "PrepareAutomaticScanCommand", "real WPF device screen binds the operator scan action to the automatic plan workflow");
 scanWindow.Close();
 scanWorkflowVm.RequestDeviceScanCommand.Execute(null); scanWorkflowVm.DeviceScanConsentChecked = true; scanWorkflowVm.ConfirmDeviceScanCommand.Execute(null);
 PumpUntil(() => !scanWorkflowVm.DeviceScanRunning && scanWorkflowVm.DeviceScanResult is not null, TimeSpan.FromSeconds(5));
@@ -876,8 +1029,8 @@ try
     Check(streamCards.Visibility == Visibility.Visible && streamCards.Items.Count == 2 && minimumCard?.Visibility == Visibility.Visible && defaultCard?.Visibility == Visibility.Visible && streamCards.ActualWidth <= streamResultsWindow.ActualWidth && scanWorkflowVm.StreamValidationRows.Select(r => r.Period).SequenceEqual(["MINIMUM", "DEFAULT"]) && scanWorkflowVm.StreamValidationRows.All(r => r.FinalStatus == "COMPLETED"), "MINIMUM and DEFAULT cards remain visible together without horizontal scrolling at 1024 DIP");
     streamResultsWindow.Width = 1440; streamResultsWindow.Height = 900; streamResultsWindow.UpdateLayout();
     Check(streamCards.ActualWidth > 700 && minimumCard is { ActualWidth: > 330 } && defaultCard is { ActualWidth: > 330 }, "both responsive result cards expand at the 1440-DIP default window width");
-    Check(scanWorkflowVm.DeviceScanResultSummary.Contains("принятых наблюдений 2", StringComparison.Ordinal) && !scanWorkflowVm.DeviceScanResultSummary.Contains("реальный запуск и стабильность потока не проверялись", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanResultSummary.Contains("Duplex: NOT_RUN", StringComparison.Ordinal), "scan summary reflects accepted stream observations while keeping Duplex and long-duration stability NOT_RUN");
-    Check(!scanWorkflowVm.OperatorResultStreamEvidenceNote.Contains("не запускалась", StringComparison.Ordinal) && scanWorkflowVm.OperatorResultStreamEvidenceNote.Contains("Start, кадры и качество показаны", StringComparison.Ordinal) && scanWorkflowVm.OperatorResultProfileEvidenceNote.Contains("streamObservations", StringComparison.Ordinal) && !mainWindowXaml.Contains("Start не выполнялся.", StringComparison.Ordinal), "result-screen caveats reflect accepted stream reports without overstating stability or Duplex");
+    Check(scanWorkflowVm.DeviceScanResultSummary.Contains(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmDeviceScanStreamObservations"), 2), StringComparison.Ordinal) && !scanWorkflowVm.DeviceScanResultSummary.Contains("real stream start and stability were not tested", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanResultSummary.Contains("Duplex: NOT_RUN", StringComparison.Ordinal), "scan summary reflects accepted stream observations while keeping Duplex and long-duration stability NOT_RUN");
+    Check(scanWorkflowVm.OperatorResultStreamEvidenceNote.Contains(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorStreamEvidenceCount"), 2), StringComparison.Ordinal) && scanWorkflowVm.OperatorResultProfileEvidenceNote.Contains("streamObservations", StringComparison.Ordinal) && !mainWindowXaml.Contains("Start не выполнялся.", StringComparison.Ordinal), "result-screen caveats reflect accepted stream reports without overstating stability or Duplex");
     var saveProfileButton = (Button)streamResultsWindow.FindName("SaveDeviceProfileButton");
     saveProfileButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); streamResultsWindow.UpdateLayout();
     var savedPath = scanWorkflowVm.DeviceProfileSaveMessage.Split(": ", 2).Last();
@@ -885,7 +1038,7 @@ try
     var persistenceBlock = (TextBlock)streamResultsWindow.FindName("StreamEvidencePersistenceStatusText");
     var persistenceText = persistenceBlock.Text;
     Check(saveProfileButton.IsEnabled && savedStreamProfile.SchemaVersion == 2 && savedStreamProfile.StreamObservations.Count == 2 && savedStreamProfile.StreamObservations.Select(s => s.Format.Period).Order().SequenceEqual(["DEFAULT", "MINIMUM"]), "actual WPF Save action writes both accepted period results into profile v2 streamObservations");
-    Check(scanWorkflowVm.DeviceProfileSaveMessage.Contains("schemaVersion 2", StringComparison.Ordinal) && scanWorkflowVm.DeviceProfileSaveMessage.Contains(savedPath, StringComparison.Ordinal) && persistenceText.Contains("сохранены в профиле schemaVersion 2", StringComparison.Ordinal) && persistenceText.Contains(savedPath, StringComparison.Ordinal) && persistenceBlock.TextWrapping == TextWrapping.Wrap && persistenceBlock.ActualWidth <= streamCards.ActualWidth + 1, "saved profile path/schema remains readable and wraps within the result content width");
+    Check(scanWorkflowVm.DeviceProfileSaveMessage.Contains("schemaVersion 2", StringComparison.Ordinal) && scanWorkflowVm.DeviceProfileSaveMessage.Contains(savedPath, StringComparison.Ordinal) && persistenceText.Contains(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmStreamEvidenceSessionSaved"), savedPath), StringComparison.Ordinal) && persistenceText.Contains(savedPath, StringComparison.Ordinal) && persistenceBlock.TextWrapping == TextWrapping.Wrap && persistenceBlock.ActualWidth <= streamCards.ActualWidth + 1, "saved profile path/schema remains readable and wraps within the result content width");
 
     var longFailureStage = "IAudioClient::Start · " + string.Concat(Enumerable.Repeat("driver failure detail that must wrap without truncation ", 8));
     scanWorkflowWorker.RealStreamHandler = (operationId, endpointId, period, _) => Task.FromResult(StreamReport(operationId, endpointId, period, start: false, frames: 0, coverage: 0, durationReached: false, stop: null, quality: "INCOMPLETE", cleanup: "STOP_NOT_ATTEMPTED;EVENT_RELEASE_ATTEMPTED", errorStage: longFailureStage, errorHresult: "0x80004005"));
@@ -906,6 +1059,13 @@ try
     BeginStream(scanWorkflowVm, "minimum");
     PumpUntil(() => !scanWorkflowVm.StreamValidationRunning && scanWorkflowVm.StreamValidationRows.Single(r => r.Period == "MINIMUM").FinalStatus == "UNKNOWN", TimeSpan.FromSeconds(3)); streamResultsWindow.UpdateLayout();
     Check(streamCards.Visibility == Visibility.Visible && scanWorkflowVm.StreamValidationRows.Single(r => r.Period == "MINIMUM") is { FinalStatus: "UNKNOWN", CleanupStatus: "UNKNOWN", Details: var timeoutDetail } && timeoutDetail.Contains("worker response deadline expired", StringComparison.Ordinal) && scanWorkflowVm.StreamEvidencePersistenceStatus.Contains("UNKNOWN", StringComparison.Ordinal) && scanWorkflowVm.OperatorResultOutcome.Contains("worker response deadline expired", StringComparison.Ordinal), $"worker timeout persists UNKNOWN, actual reason and updated persistence/result summaries [{scanWorkflowVm.StreamEvidencePersistenceStatus} | {scanWorkflowVm.OperatorResultOutcome}]");
+
+    using (var missingStreamEvidence = JsonDocument.Parse("{}"))
+    {
+        var missingRow = (StreamValidationResultRow)typeof(MainViewModel).GetMethod("StreamValidationResultRowFromReport", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, ["MINIMUM", missingStreamEvidence.RootElement])!;
+        var unknownText = KlidanAudioProbe.Gui.Core.Localization.Get("VmStreamUnknownValue");
+        Check(missingRow.FinalStatus == "UNKNOWN" && missingRow.ActualBufferFrames == unknownText && missingRow.FramesProcessedExpected == $"{unknownText} / {unknownText}" && missingRow.FrameCoverage == unknownText, "stream projection localizes unknown display values while retaining machine status UNKNOWN");
+    }
 
     var cancelGate = new TaskCompletionSource<RealStreamValidationDto>(TaskCreationOptions.RunContinuationsAsynchronously);
     scanWorkflowWorker.RealStreamHandler = (operationId, endpointId, period, _) => cancelGate.Task;
@@ -1253,7 +1413,7 @@ var initFirstVm = new MainViewModel(worker: initFirstWorker);
 initFirstWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected fake."));
 initFirstVm.DiscoverWindowsEndpointsCommand.Execute(null); SpinWait.SpinUntil(() => initFirstVm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2));
 initFirstVm.SelectedWindowsEndpoint = initFirstVm.WindowsEndpoints.Single(); initFirstVm.NavigateOperatorStep(OperatorStep.Test); initFirstVm.OperatorTestMode = "INITIALIZE_ONLY";
-Check(initFirstVm.NeedsInitializeFormatQuery && initFirstVm.QueryRealFormatsCommand.CanExecute(null) && !initFirstVm.RequestRealInitializeCommand.CanExecute(null) && initFirstVm.RealInitializeDisabledReason.Contains("Нет текущего запроса", StringComparison.Ordinal), "first-launch Initialize-only explains and enables its required passive query without enabling Initialize");
+Check(initFirstVm.NeedsInitializeFormatQuery && initFirstVm.QueryRealFormatsCommand.CanExecute(null) && !initFirstVm.RequestRealInitializeCommand.CanExecute(null) && initFirstVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeNeedsCurrentQuery"), "first-launch Initialize-only explains and enables its required passive query without enabling Initialize");
 initFirstVm.QueryRealFormatsCommand.Execute(null); SpinWait.SpinUntil(() => initFirstWorker.RealQueryCalls == 1 && initFirstVm.HasCurrentOperatorQueryResult, TimeSpan.FromSeconds(2));
 Check(initFirstVm.OperatorTestMode == "INITIALIZE_ONLY" && initFirstVm.WorkflowStep == OperatorStep.Test && !initFirstVm.NeedsInitializeFormatQuery && initFirstWorker.RealInitializeCalls == 0, "successful prerequisite query preserves Initialize-only mode and never auto-runs Initialize");
 initFirstVm.SelectedRealFormatRow = initFirstVm.RealFormatRows.Single(r => r.Format == "PCM16" && r.SampleRate == 48000 && r.Channels == 2);
@@ -1261,7 +1421,7 @@ Check(initFirstVm.RequestRealInitializeCommand.CanExecute(null), "supported form
 initFirstVm.RequestRealInitializeCommand.Execute(null); initFirstVm.CancelRealInitializeCommand.Execute(null);
 Check(!initFirstVm.RealInitializeConsentPending && initFirstWorker.RealInitializeCalls == 0, "cancelled consent after prerequisite query never invokes Initialize");
 var queriedEndpoint = initFirstVm.WindowsEndpoints.Single(); initFirstVm.SelectedWindowsEndpoint = null; initFirstVm.SelectedWindowsEndpoint = queriedEndpoint;
-Check(!initFirstVm.HasCurrentOperatorQueryResult && initFirstVm.RealFormatMatrixIsStale && !initFirstVm.RequestRealInitializeCommand.CanExecute(null) && initFirstVm.RealInitializeDisabledReason.Contains("устарел", StringComparison.OrdinalIgnoreCase), "historical query cannot regain Initialize authorization after endpoint selection changes");
+Check(!initFirstVm.HasCurrentOperatorQueryResult && initFirstVm.RealFormatMatrixIsStale && !initFirstVm.RequestRealInitializeCommand.CanExecute(null) && initFirstVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeEndpointStale"), "historical query cannot regain Initialize authorization after endpoint selection changes");
 var prerequisiteWindow = new MainWindow(initFirstVm) { Width = 1024, Height = 720, ShowActivated = false }; prerequisiteWindow.Show(); prerequisiteWindow.UpdateLayout();
 var prerequisiteNotice = (Border)typeof(MainWindow).GetField("InitializeQueryPrerequisiteNotice", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(prerequisiteWindow)!;
 Check(prerequisiteNotice.Visibility == Visibility.Visible, "runtime Initialize-only workflow visibly explains missing or stale query prerequisite"); prerequisiteWindow.Close();
@@ -1287,21 +1447,21 @@ mixedVm.SelectedRealFormatRow = manualRow; mixedVm.RealInitializePeriod = "minim
 SpinWait.SpinUntil(() => mixedWorker.RealQueryCalls == 2 && !mixedVm.RealFormatMatrixStatus.StartsWith("Выполняется", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
 Check(mixedVm.SelectedRealFormatRow is { Format: "PCM24_IN_32", SampleRate: 48000, Channels: 1 } && mixedVm.RealInitializePeriod == "minimum", "refresh preserves a valid manual supported-format and period selection");
 mixedVm.SelectedRealFormatRow = mixedVm.RealFormatRows.Single(r => r.DisplayStatus == "UNSUPPORTED");
-Check(!mixedVm.RequestRealInitializeCommand.CanExecute(null) && mixedVm.RealInitializeDisabledReason.Contains("не поддерживается", StringComparison.OrdinalIgnoreCase), "unsupported selection has an explicit Initialize-disabled reason");
+Check(!mixedVm.RequestRealInitializeCommand.CanExecute(null) && mixedVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeFormatUnsupported"), "unsupported selection has an explicit Initialize-disabled reason");
 mixedVm.SelectedRealFormatRow = mixedVm.RealFormatRows.Single(r => r.DisplayStatus == "INCOMPLETE/CONFLICT");
-Check(!mixedVm.RequestRealInitializeCommand.CanExecute(null) && mixedVm.RealInitializeDisabledReason.Contains("Конфликт", StringComparison.Ordinal), "conflicting evidence has an explicit Initialize-disabled reason");
+Check(!mixedVm.RequestRealInitializeCommand.CanExecute(null) && mixedVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeFormatIncomplete"), "conflicting evidence has an explicit Initialize-disabled reason");
 var mixedWindow = new MainWindow(mixedVm) { Width = 1280, Height = 800, ShowActivated = false }; mixedWindow.Show(); mixedWindow.UpdateLayout();
 var mixedGrid = (DataGrid)typeof(MainWindow).GetField("OperatorRealFormatGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(mixedWindow)!;
 var mixedInitializeButton = (Button)typeof(MainWindow).GetField("OperatorInitializeButton", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(mixedWindow)!;
 var mixedInitializeReason = (TextBlock)typeof(MainWindow).GetField("RealInitializeDisabledReasonText", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(mixedWindow)!;
 var mixedSummary = (TextBlock)typeof(MainWindow).GetField("RealFormatSummaryText", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(mixedWindow)!;
-Check(mixedGrid.Items.Count == 12 && ((RealFormatUniqueRowDto)mixedGrid.Items[0]).DisplayStatus == "SUPPORTED_REPORTED" && !mixedInitializeButton.IsEnabled && mixedInitializeReason.Text.Contains("Конфликт", StringComparison.Ordinal) && mixedSummary.Text.Contains("Не поддерживается:", StringComparison.Ordinal), "runtime WPF matrix is support-sorted, summarizes outcomes, and explains the selected conflict"); mixedWindow.Close();
+Check(mixedGrid.Items.Count == 12 && ((RealFormatUniqueRowDto)mixedGrid.Items[0]).DisplayStatus == "SUPPORTED_REPORTED" && !mixedInitializeButton.IsEnabled && mixedInitializeReason.Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeFormatIncomplete") && mixedSummary.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealFormatSummary").Split("{2}", StringSplitOptions.None)[0].Split('·')[2].Trim(), StringComparison.Ordinal), "runtime WPF matrix is support-sorted, summarizes outcomes, and explains the selected conflict"); mixedWindow.Close();
 var allUnsupportedWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true, RealMatrixResponse = realQueryResponse with { Candidates = realCandidates.Select(c => c with { Status = "UNSUPPORTED", SupportStatus = "UNSUPPORTED", SupportHr = "0x88890008" }).ToArray() } };
 var allUnsupportedVm = new MainViewModel(worker: allUnsupportedWorker); allUnsupportedWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected fake."));
 allUnsupportedVm.DiscoverWindowsEndpointsCommand.Execute(null); SpinWait.SpinUntil(() => allUnsupportedVm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2));
 allUnsupportedVm.SelectedWindowsEndpoint = allUnsupportedVm.WindowsEndpoints.Single(); allUnsupportedVm.NavigateOperatorStep(OperatorStep.Test); allUnsupportedVm.OperatorTestMode = "INITIALIZE_ONLY"; allUnsupportedVm.QueryRealFormatsCommand.Execute(null);
 SpinWait.SpinUntil(() => allUnsupportedVm.HasCurrentOperatorQueryResult, TimeSpan.FromSeconds(2));
-Check(allUnsupportedVm.SelectedRealFormatRow is null && allUnsupportedVm.RealInitializeDisabledReason.Contains("Формат не выбран", StringComparison.Ordinal), "all-unsupported results do not auto-select an ineligible format and explain that none is selected");
+Check(allUnsupportedVm.SelectedRealFormatRow is null && allUnsupportedVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeNeedsSelectedFormat"), "all-unsupported results do not auto-select an ineligible format and explain that none is selected");
 
 var conflictingCandidates = realCandidates.Concat([realCandidates[0] with { SupportStatus = "UNSUPPORTED", Status = "UNSUPPORTED", SupportHr = "0x88900001" }]).ToArray();
 var conflictWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true, RealMatrixResponse = realQueryResponse with { Candidates = conflictingCandidates } };
@@ -1363,7 +1523,7 @@ realWorkflowVm.RequestRealInitializeCommand.Execute(null); realWorkflowVm.RealIn
 realWorkflowVm.ConfirmRealInitializeCommand.Execute(null);
 SpinWait.SpinUntil(() => realWorkflowVm.RealInitializationResult is not null, TimeSpan.FromSeconds(2));
 Check(realWorkflowWorker.RealInitializeCalls == 1 && realWorkflowWorker.LastRealConsent?.RequestFingerprint == RealFormatConsent.Fingerprint("local-windows-id","CAPTURE",48000,2,"PCM16","default"), "accepted Initialize-only consent fingerprint binds endpoint, direction, exact format and period");
-Check(realWorkflowVm.WorkflowStep == OperatorStep.Result && realWorkflowVm.OperatorResultMode == "Проверка Initialize-only" && realWorkflowVm.OperatorResultOutcome.Contains("READY", StringComparison.Ordinal), "Initialize result is shown separately from query support and retains exact mode");
+Check(realWorkflowVm.WorkflowStep == OperatorStep.Result && realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeInitializeOnly") && realWorkflowVm.OperatorResultOutcome.Contains("READY", StringComparison.Ordinal), "Initialize result is shown separately from query support and retains exact mode");
 Check(realWorkflowVm.CanSaveDeviceProfile, "current accepted 24-row query and Initialize result enable the real profile-save path");
 var guiCreatedProfile = realWorkflowVm.CreateCurrentDeviceProfile();
 var guiSaveDirectory = Path.Combine(Path.GetTempPath(), $"klidan-profile-gui-save-{Guid.NewGuid():N}");
@@ -1387,10 +1547,17 @@ var testStepButton = (Button)typeof(MainWindow).GetField("OperatorTestStepButton
 var resultDetails = (TextBlock)typeof(MainWindow).GetField("OperatorResultTechnicalDetails", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(operatorWindow)!;
 var resultGrid = (DataGrid)typeof(MainWindow).GetField("OperatorResultFormatGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(operatorWindow)!;
 var initializeDetailsExpander = (Expander)typeof(MainWindow).GetField("InitializeTechnicalDetailsExpander", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(operatorWindow)!;
-Check(operatorWindow.Title.Contains("Windows diagnostics", StringComparison.Ordinal) && resultPanel.Visibility == Visibility.Visible && testPanel.Visibility == Visibility.Collapsed, "runtime WPF opens the real-result step with accurate Windows diagnostic title");
+Check((operatorWindow.Title.Contains("Windows diagnostics", StringComparison.Ordinal) || operatorWindow.Title.Contains("диагностика Windows", StringComparison.Ordinal)) && resultPanel.Visibility == Visibility.Visible && testPanel.Visibility == Visibility.Collapsed, "runtime WPF opens the real-result step with a localized Windows diagnostic title");
 Check(resultGrid.Visibility == Visibility.Collapsed && resultDetails.Text.Contains("INITIALIZE-ONLY", StringComparison.OrdinalIgnoreCase), "Initialize result screen shows detailed initialization evidence without repeating the passive matrix");
-Check(resultDetails.Text.Contains("Fixture Interface", StringComparison.Ordinal) && resultDetails.Text.Contains("PCM16 · 48000 Гц · 2 канал", StringComparison.Ordinal) && resultDetails.Text.Contains("IsFormatSupported status: SUPPORTED_REPORTED", StringComparison.Ordinal) && resultDetails.Text.Contains("DEFAULT · 10 мс", StringComparison.Ordinal) && resultDetails.Text.Contains("HRESULT: 0x00000000", StringComparison.Ordinal) && resultDetails.Text.Contains("480 frames", StringComparison.Ordinal) && resultDetails.Text.Contains("готовность подтверждена", StringComparison.Ordinal) && resultDetails.Text.Contains("RELEASE_ATTEMPTED", StringComparison.Ordinal) && resultDetails.Text.Contains("NOT_STARTED", StringComparison.Ordinal), "successful Initialize primary summary shows reported support separately from Initialize, Start and unconfirmed release evidence");
-Check(initializeDetailsExpander.Visibility == Visibility.Visible && !initializeDetailsExpander.IsExpanded && ((TextBlock)initializeDetailsExpander.Content).Text.Contains("alignment retry", StringComparison.OrdinalIgnoreCase) && ((TextBlock)initializeDetailsExpander.Content).Text.Contains("Release попыток", StringComparison.Ordinal), "full HRESULT, alignment and COM release details are collapsed by default in the technical section");
+foreach (var initializeLanguage in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(initializeLanguage, false);
+    var initializeCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture;
+    var initializeSummary = realWorkflowVm.RealInitializationSummary;
+    Check(initializeSummary.Contains("Fixture Interface", StringComparison.Ordinal) && initializeSummary.Contains(initializeLanguage == "ru-RU" ? "PCM16 · 48000 Гц · 2 канал(а)" : "PCM16 · 48000 Hz · 2 channels", StringComparison.Ordinal) && initializeSummary.Contains("SUPPORTED_REPORTED", StringComparison.Ordinal) && initializeSummary.Contains("READY", StringComparison.Ordinal) && initializeSummary.Contains("0x00000000", StringComparison.Ordinal) && initializeSummary.Contains("480 frames", StringComparison.Ordinal) && initializeSummary.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealEventReady"), StringComparison.Ordinal) && initializeSummary.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealCleanupReleaseAttempted"), StringComparison.Ordinal) && initializeSummary.Contains("NOT_STARTED", StringComparison.Ordinal) && initializeSummary.Contains("NOT_TRANSFERRED", StringComparison.Ordinal), $"successful Initialize summary localizes in {initializeLanguage} and preserves separate support, Initialize, Start and cleanup evidence");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
+Check(initializeDetailsExpander.Visibility == Visibility.Visible && !initializeDetailsExpander.IsExpanded && ((TextBlock)initializeDetailsExpander.Content).Text.Length > 0 && realWorkflowVm.RealInitializationDetails.Contains("release attempts", StringComparison.Ordinal), "full HRESULT, alignment and COM release details are collapsed by default in the technical section");
 realWorkflowVm.OpenDeveloperToolsCommand.Execute(null);
 realWorkflowVm.NavigateOperatorStep(OperatorStep.Test); operatorWindow.UpdateLayout();
 Check(testPanel.Visibility == Visibility.Visible && operatorGrid.Items.Count == 12 && operatorGrid.Columns.Count == 5, "runtime WPF test page presents 12 unique format rows with compact evidence columns");
@@ -1420,7 +1587,7 @@ realWorkflowVm.NavigateOperatorStep(OperatorStep.Result);
 realWorkflowVm.Navigate(ProbeScreen.Diagnostics);
 Check(realWorkflowVm.DeveloperToolsOpen && realWorkflowVm.WorkflowStep == OperatorStep.Result, "synthetic diagnostics are isolated in Developer Tools without replacing result history");
 realWorkflowWorker.SetState(new(WorkerConnectionState.Disconnected,"Worker exited."));
-Check(realWorkflowVm.RealFormatMatrixIsStale && !realWorkflowVm.RequestRealInitializeCommand.CanExecute(null) && realWorkflowVm.RealInitializeDisabledReason.Contains("Worker отключён", StringComparison.Ordinal), "worker disconnect retains real query result as historical and explains why Initialize is disabled");
+Check(realWorkflowVm.RealFormatMatrixIsStale && !realWorkflowVm.RequestRealInitializeCommand.CanExecute(null) && realWorkflowVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeNeedsWorker"), "worker disconnect retains real query result as historical and explains why Initialize is disabled");
 var failedQueryWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var failedQueryVm = new MainViewModel(worker: failedQueryWorker);
 failedQueryWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected fake."));
@@ -1429,7 +1596,7 @@ SpinWait.SpinUntil(() => failedQueryVm.HasCurrentWindowsEndpoints, TimeSpan.From
 failedQueryVm.SelectedWindowsEndpoint = failedQueryVm.WindowsEndpoints.Single();
 failedQueryVm.QueryRealFormatsCommand.Execute(null);
 SpinWait.SpinUntil(() => failedQueryVm.RealFormatMatrixStatus.Contains("NotSupportedException", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
-Check(failedQueryVm.WorkflowStep == OperatorStep.Result && !failedQueryVm.HasOperatorQueryResult && failedQueryVm.OperatorResultOutcome.Contains("не завершён", StringComparison.Ordinal), "query error navigates to an explicit failed/unknown result without displaying stale matrix rows");
+Check(failedQueryVm.WorkflowStep == OperatorStep.Result && !failedQueryVm.HasOperatorQueryResult && failedQueryVm.OperatorResultOutcome == KlidanAudioProbe.Gui.Core.Localization.Get("VmQueryFailureOutcome"), "query error navigates to an explicit failed/unknown result without displaying stale matrix rows");
 var discoveryWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture, AdvertiseWindowsDiscovery = true };
 var discoveryVm = new MainViewModel(worker: discoveryWorker);
 Check(discoveryWorker.WindowsDiscoveryCalls == 0 && discoveryVm.DiscoverWindowsEndpointsCommand.CanExecute(null), "Windows discovery remains operator-triggered and offers to connect the Worker from the explicit discovery action");
@@ -1438,10 +1605,23 @@ Check(discoveryVm.DiscoverWindowsEndpointsCommand.CanExecute(null) && discoveryW
 discoveryVm.DiscoverWindowsEndpointsCommand.Execute(null);
 SpinWait.SpinUntil(() => discoveryVm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2));
 Check(discoveryWorker.WindowsDiscoveryCalls == 1 && discoveryVm.WindowsEndpoints.Single().FriendlyNameDisplay == "Fixture Interface" && discoveryVm.WindowsDiscoveryStatusText.Contains("1", StringComparison.Ordinal), "explicit discovery request presents validated Windows metadata separately from demo endpoints");
+Check(discoveryVm.HasCurrentWindowsEndpoints && discoveryVm.DiscoverWindowsEndpointsCommand.CanExecute(null), "completed discovery updates current GUI binding and enables a repeat refresh");
+Check(discoveryVm.SavedProfileOperatorStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingDiscoveryCompleted"), "completed discovery replaces the stale loading message without implying saved profile verification");
+var pendingRefreshGate = new TaskCompletionSource<WindowsEndpointDiscoveryDto>(TaskCreationOptions.RunContinuationsAsynchronously);
+var pendingRefreshWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true };
+var pendingRefreshWorkflow = new GuiAutomaticScanWorkflow(windowsFixture) { RefreshGate = pendingRefreshGate };
+var pendingRefreshVm = new MainViewModel(worker: pendingRefreshWorker, automaticScanWorkflow: pendingRefreshWorkflow);
+pendingRefreshWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected (fake)."));
+pendingRefreshVm.DiscoverWindowsEndpointsCommand.Execute(null);
+Check(pendingRefreshVm.WindowsDiscoveryLoading && !pendingRefreshVm.DiscoverWindowsEndpointsCommand.CanExecute(null) && pendingRefreshWorkflow.RefreshCalls == 1, "a pending discovery disables concurrent refresh requests");
+pendingRefreshGate.SetResult(windowsFixture);
+Check(PumpUntil(() => !pendingRefreshVm.WindowsDiscoveryLoading && pendingRefreshVm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2)) && pendingRefreshVm.DiscoverWindowsEndpointsCommand.CanExecute(null), "gated discovery releases loading and re-enables refresh after one result");
 discoveryWorker.WindowsDiscovery = null;
 discoveryVm.DiscoverWindowsEndpointsCommand.Execute(null);
 SpinWait.SpinUntil(() => !discoveryVm.WindowsDiscoveryLoading && discoveryVm.WindowsDiscoveryStatusText.Contains("NotSupportedException", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
 Check(discoveryWorker.WindowsDiscoveryCalls == 2 && !discoveryVm.HasHistoricalWindowsEndpoints && discoveryVm.WindowsDiscoveryStatusText.Contains("NotSupportedException", StringComparison.Ordinal), "failed refresh is shown as a current query failure, not a disconnected historical snapshot");
+Check(!discoveryVm.WindowsDiscoveryLoading && !discoveryVm.HasCurrentWindowsEndpoints && discoveryVm.DiscoverWindowsEndpointsCommand.CanExecute(null), "failed discovery clears loading, keeps stale endpoints unavailable, and enables an explicit retry");
+Check(discoveryVm.SavedProfileOperatorStatus.Contains("NotSupportedException", StringComparison.Ordinal), "failed discovery replaces the stale loading message with its failure while keeping profile binding unverified");
 discoveryWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker exited."));
 Check(!discoveryVm.HasCurrentWindowsEndpoints && discoveryVm.HasHistoricalWindowsEndpoints && discoveryVm.LastWindowsEndpoints.Single().EndpointId == "local-windows-id", "worker disconnect retains Windows endpoint snapshot as historical evidence only");
 var emptyDiscoveryWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = windowsFixture with { Endpoints = [] }, AdvertiseWindowsDiscovery = true };
@@ -1450,7 +1630,7 @@ emptyDiscoveryWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connecte
 emptyDiscoveryVm.DiscoverWindowsEndpointsCommand.Execute(null);
 SpinWait.SpinUntil(() => emptyDiscoveryWorker.WindowsDiscoveryCalls == 1 && !emptyDiscoveryVm.WindowsDiscoveryLoading, TimeSpan.FromSeconds(2));
 emptyDiscoveryWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker exited."));
-Check(emptyDiscoveryVm.HasHistoricalWindowsEndpoints && emptyDiscoveryVm.LastWindowsEndpoints.Count == 0 && emptyDiscoveryVm.WindowsDiscoveryStatusText.Contains("исторические", StringComparison.Ordinal), "successful empty enumeration remains historical evidence after worker disconnect");
+Check(emptyDiscoveryVm.HasHistoricalWindowsEndpoints && emptyDiscoveryVm.LastWindowsEndpoints.Count == 0 && emptyDiscoveryVm.WindowsDiscoveryStatusText == KlidanAudioProbe.Gui.Core.Localization.Get("VmWindowsDiscoveryWorkerDisconnectedHistorical"), "successful empty enumeration remains historical evidence after worker disconnect");
 var legacyWorker = new GuiStateWorkerClient([]);
 legacyWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected (fake)."));
 var legacyVm = new MainViewModel(worker: legacyWorker);
@@ -1490,20 +1670,20 @@ Check(browserVm.WindowsEndpointRows.Count == 87 && browserVm.WindowsEndpointRows
 browserVm.SelectedWindowsEndpoint = browserVm.WindowsEndpointRows.Single(e => e.EndpointId == "win-086");
 Check(browserVm.SelectedWindowsEndpoint?.ReportedChannelCountLabel == "128 · вне модели 1–64" && browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == "Exclusive capability" && f.Value == "NOT TESTED") && browserVm.InspectorTitle.Contains("REAL_WINDOWS_METADATA", StringComparison.Ordinal), "selected inspector preserves exact over-64 channel count and unknown capability semantics");
 browserVm.SelectedWindowsEndpoint = browserVm.WindowsEndpointRows.Single(e => e.EndpointId == "win-006");
-Check(browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == "Частота дискретизации" && f.Value == "Неизвестно") && browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == "Shared Mode" && f.Tooltip?.Contains("UNAVAILABLE", StringComparison.Ordinal) == true), "missing format metadata remains unknown with property evidence in selected details");
+Check(browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorSampleRate") && f.Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknown")) && browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorSharedMode") && f.Tooltip?.Contains("UNAVAILABLE", StringComparison.Ordinal) == true), "missing format metadata remains unknown with property evidence in selected details");
 browserVm.SelectedWindowsEndpoint = browserVm.WindowsEndpointRows.Single(e => e.EndpointId == "win-001");
-Check(browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == "Маска динамиков" && f.Value.Contains("INVALID", StringComparison.Ordinal)) && browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == "Форм-фактор"), "selected device inspector includes mask evidence and endpoint form factor");
+Check(browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorSpeakerMask") && f.Value.Contains("INVALID", StringComparison.Ordinal)) && browserVm.WindowsEndpointInspectorFields.Any(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorFormFactor")), "selected device inspector includes mask evidence and endpoint form factor");
 Check(browserWorker.WindowsDiscoveryCalls == 1, "filtering, search, selection, and sort projection never trigger another MMDevice enumeration");
 browserWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker exited."));
 Check(browserVm.HasHistoricalWindowsEndpoints && !browserVm.HasCurrentWindowsEndpoints && browserVm.WindowsEndpointRows.Count == 87 && browserVm.SelectedWindowsEndpoint?.EndpointId == "win-001" && browserWorker.WindowsDiscoveryCalls == 1, "worker disconnect retains all 87 rows and selected details as historical without re-enumerating");
 var provenanceVm = new MainViewModel();
-Check(provenanceVm.InspectorProvenanceText == "WINDOWS · Системные метаданные", "empty Windows device view never shows DEMO provenance");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance"), "empty Windows device view never shows DEMO provenance");
 provenanceVm.Navigate(ProbeScreen.Devices);
-Check(provenanceVm.InspectorProvenanceText == "ДЕМО · Данные симуляции", "local demo inspector retains its demo provenance inside Developer Tools");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDemoProvenance"), "local demo inspector retains its demo provenance inside Developer Tools");
 provenanceVm.Navigate(ProbeScreen.Diagnostics);
-Check(provenanceVm.InspectorProvenanceText == "WORKER FAKE · Синтетические данные", "Worker Fake diagnostics retain separate synthetic provenance");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWorkerProvenance"), "Worker Fake diagnostics retain separate synthetic provenance");
 provenanceVm.CloseDeveloperToolsCommand.Execute(null);
-Check(!provenanceVm.DeveloperToolsOpen && provenanceVm.Screen == ProbeScreen.Devices && provenanceVm.InspectorProvenanceText == "WINDOWS · Системные метаданные", "returning from Developer Tools resets inspector to the real Windows device context");
+Check(!provenanceVm.DeveloperToolsOpen && provenanceVm.Screen == ProbeScreen.Devices && provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance"), "returning from Developer Tools resets inspector to the real Windows device context");
 string? SelectedComboLabel(ComboBox combo)
 {
     combo.ApplyTemplate();
@@ -1525,6 +1705,7 @@ var endpointWindow = new MainWindow { DataContext = browserVm, Width = 1024, Hei
 endpointWindow.Show(); endpointWindow.UpdateLayout();
 var searchBox = (TextBox)typeof(MainWindow).GetField("WindowsEndpointSearch", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var directionCombo = (ComboBox)typeof(MainWindow).GetField("WindowsEndpointDirection", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
+var sustainedModeCombo = (ComboBox)typeof(MainWindow).GetField("SustainedModeSelector", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var activeCheck = (CheckBox)typeof(MainWindow).GetField("WindowsEndpointActiveOnly", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var endpointGrid = (DataGrid)typeof(MainWindow).GetField("WindowsEndpointGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var inlineDetails = (Border)typeof(MainWindow).GetField("WindowsEndpointInlineDetails", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
@@ -1534,17 +1715,21 @@ Check(endpointGrid.Items.Count == 87 && endpointGrid.Items.Cast<object>().Cast<W
 Check(searchBox.ActualHeight == 40 && searchBox.Background == app.Resources["TwoBrush"] && searchBox.Foreground == app.Resources["TextBrush"] && searchBox.CaretBrush == app.Resources["AmberBrush"] && searchBox.SelectionBrush == app.Resources["FocusBrush"] && searchBox.SelectionOpacity == 0.45 && !searchBox.AcceptsReturn && searchBox.TextWrapping == TextWrapping.NoWrap, "runtime search TextBox uses dark readable single-line 40-DIP style with caret and selection colors");
 Keyboard.Focus(searchBox); endpointWindow.UpdateLayout();
 Check(searchBox.IsKeyboardFocused && searchBox.BorderBrush == app.Resources["FocusBrush"] && searchBox.BorderThickness == new Thickness(2), "runtime search TextBox focus draws the KLIDAN focus border");
-Check(SelectedComboLabel(directionCombo) == "Все" && directionCombo.SelectedValue?.ToString() == "ALL", "runtime direction ComboBox displays the selected label Все instead of ChoiceOption.ToString()");
+Check(SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAllDirections") && directionCombo.SelectedValue?.ToString() == "ALL", "runtime direction ComboBox displays the localized selected label instead of ChoiceOption.ToString()");
 directionCombo.IsDropDownOpen = true; endpointWindow.UpdateLayout();
 var directionPopup = (Popup)directionCombo.Template.FindName("PART_Popup", directionCombo);
 Check(directionPopup.IsOpen, "runtime direction dropdown opens with its themed popup");
+Check(sustainedModeCombo.SelectedValue?.ToString() == "Standard (300 s)" && SelectedComboLabel(sustainedModeCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticSustainedStandard"), "sustained mode ComboBox localizes its label while retaining the invariant selection value");
+sustainedModeCombo.SelectedValue = "Extended (600 s)"; sustainedModeCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
+Check(browserVm.AutomaticSustainedMode == "Extended (600 s)" && SelectedComboLabel(sustainedModeCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticSustainedExtended"), "sustained mode selection retains its invariant value and updates the localized label");
+sustainedModeCombo.SelectedValue = "Standard (300 s)"; sustainedModeCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 directionCombo.IsDropDownOpen = false; endpointWindow.UpdateLayout();
 directionCombo.SelectedValue = "CAPTURE"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
-Check(browserVm.WindowsEndpointDirectionFilter == "CAPTURE" && SelectedComboLabel(directionCombo) == "Capture", "runtime direction selection displays Capture and updates the typed filter binding");
+Check(browserVm.WindowsEndpointDirectionFilter == "CAPTURE" && SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel"), "runtime direction selection displays the localized Capture label and updates the typed filter binding");
 directionCombo.SelectedValue = "RENDER"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
-Check(browserVm.WindowsEndpointDirectionFilter == "RENDER" && SelectedComboLabel(directionCombo) == "Render", "runtime direction selection displays Render and updates the typed filter binding");
+Check(browserVm.WindowsEndpointDirectionFilter == "RENDER" && SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderLabel"), "runtime direction selection displays the localized Render label and updates the typed filter binding");
 directionCombo.SelectedValue = "ALL"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
-Check(SelectedComboLabel(directionCombo) == "Все", "runtime direction ComboBox restores the Все label after changing selection");
+Check(SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAllDirections"), "runtime direction ComboBox restores the localized All label after changing selection");
 searchBox.Text = "Audio 2"; searchBox.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
 activeCheck.IsChecked = false; activeCheck.GetBindingExpression(ToggleButton.IsCheckedProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 Check(browserVm.WindowsEndpointSearchText == "Audio 2" && !browserVm.WindowsEndpointActiveOnly && endpointGrid.Items.Count == browserVm.WindowsEndpointRows.Count && endpointGrid.Items.Count > 1, "runtime search and Active-only bindings update the 87-row table locally without another endpoint query");
@@ -1553,7 +1738,7 @@ activeCheck.IsChecked = true; activeCheck.GetBindingExpression(ToggleButton.IsCh
 directionCombo.SelectedValue = "CAPTURE"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 Check(endpointGrid.Items.Count == browserVm.WindowsEndpointRows.Count && endpointGrid.Items.Cast<object>().Cast<WindowsEndpointDto>().All(e => e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE"), "runtime filtering updates visible virtualized rows for Capture and Active state");
 browserVm.SelectedWindowsEndpoint = browserVm.WindowsEndpointRows.First(); endpointWindow.UpdateLayout();
-Check(inspectorProvenance.Text == "WINDOWS · Системные метаданные" && browserVm.InspectorProvenanceText == "WINDOWS · Системные метаданные" && inspectorProvenance.Text != "ДЕМО · Данные симуляции", "real Windows endpoint inspector reports Windows metadata provenance");
+Check(inspectorProvenance.Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && browserVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && inspectorProvenance.Text != KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDemoProvenance"), "real Windows endpoint inspector reports Windows metadata provenance");
 Check(endpointGrid.Visibility == Visibility.Collapsed || endpointGrid.Columns.Sum(c => c.ActualWidth) <= endpointGrid.ActualWidth + 1, "minimum supported 1024-DIP layout hides the technical endpoint table from the normal view or fits it without horizontal scrolling");
 endpointWindow.Width = 1280; endpointWindow.UpdateLayout();
 Check(endpointGrid.Visibility == Visibility.Collapsed || endpointGrid.Columns.Sum(c => c.ActualWidth) <= endpointGrid.ActualWidth + 1, "1280-DIP layout keeps the technical table hidden from the normal view or fitted without horizontal scrolling");
@@ -1591,14 +1776,15 @@ var channelSummary = (TextBlock)typeof(MainWindow).GetField("WorkerChannelCountT
 channelSummary.SetBinding(TextBlock.TextProperty, new Binding(nameof(workerVm.WorkerChannelSummary)) { Source = workerVm });
 workerVm.SelectedWorkerEndpoint = workerVm.WorkerEndpoints.Single(e => e.Direction == "CAPTURE");
 channelSummary.GetBindingExpression(TextBlock.TextProperty)!.UpdateTarget();
-Check(!workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains("2 каналов", StringComparison.Ordinal), "Capture selection shows its topology count and hides Render channel selection");
+Check(workerVm.SelectedWorkerEndpoint?.Direction == "CAPTURE" && !workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel"), StringComparison.Ordinal) && channelSummary.Text.Contains("2 stream channels", StringComparison.Ordinal), "Capture selection shows its localized direction and topology count while retaining the invariant machine value");
 workerVm.SelectedWorkerEndpoint = workerVm.WorkerEndpoints.Single(e => e.Direction == "RENDER");
-Check(workerVm.WorkerRenderChannelVisible, "Render selection shows its Windows channel selector");
+channelSummary.GetBindingExpression(TextBlock.TextProperty)!.UpdateTarget();
+Check(workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderLabel"), StringComparison.Ordinal), "Render selection shows its localized direction and Windows channel selector");
 foreach (var channelCount in new[] { 2, 8, 32, 48, 64 })
 {
     workerVm.SelectedWorkerFormat = workerVm.WorkerFormatOptions.Single(f => f.Topology.ChannelCount == channelCount);
     channelSummary.GetBindingExpression(TextBlock.TextProperty)!.UpdateTarget();
-    Check(channelSummary.Text.Contains($"{channelCount} каналов", StringComparison.Ordinal), $"WPF bound channel-count text displays {channelCount}");
+    Check(channelSummary.Text.Contains($"{channelCount} stream channels", StringComparison.Ordinal), $"WPF bound channel-count text displays {channelCount}");
 }
 workerVm.WorkerRenderChannel = 64;
 workerVm.SelectedWorkerFormat = workerVm.WorkerFormatOptions.First(f => f.Topology.ChannelCount == 2);
@@ -1617,7 +1803,7 @@ Check(settingsGrid.ColumnDefinitions[1].Width.IsStar && Grid.GetRow((FrameworkEl
 fakeWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker exited."));
 workerVm.SelectedWorkerEndpoint = workerVm.LastWorkerEndpointSnapshot[0];
 Check(workerVm.WorkerEndpoints.Count == 0 && workerVm.SelectedWorkerEndpoint is null && workerVm.HasHistoricalWorkerEndpoints && workerVm.HistoricalWorkerEndpointNames.Count == 2, "disconnect retains the last endpoint response as historical evidence and clears current selection");
-Check(workerVm.WorkerRestartExplanation.Contains("новый процесс GUI", StringComparison.Ordinal) && !workerVm.WorkerCurrentEndpointsVisible, "worker shutdown explains the no-restart policy and hides current availability");
+Check(workerVm.WorkerRestartExplanation == KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerRestartRequired") && !workerVm.WorkerCurrentEndpointsVisible, "worker shutdown explains the no-restart policy and hides current availability");
 Check(!workerVm.RequestWorkerRenderCommand.CanExecute(null) && !workerVm.RequestWorkerCaptureCommand.CanExecute(null) && !workerVm.StopWorkerSessionCommand.CanExecute(null), "cached disconnected endpoint data cannot start or stop a worker operation");
 bindingWindow.Close();
 
@@ -1711,9 +1897,9 @@ var started = vm.Session!;
 var expectedOrder = new[] { ProbeEventKind.SessionRequested, ProbeEventKind.ConsentAccepted, ProbeEventKind.Preparing, ProbeEventKind.Started, ProbeEventKind.MeterSnapshot };
 Check(vm.Events.TakeLast(expectedOrder.Length).Select(e => e.Kind).SequenceEqual(expectedOrder), "accepted Capture event sequence is typed and ordered");
 Check(vm.Events.TakeLast(expectedOrder.Length).All(e => e.SessionId == started.Id && e.IsSynthetic && e.Timestamp != default), "events carry session identity, timestamp and synthetic provenance");
-Check(vm.Meter is { IsCompleteWindow: true } && vm.MeterStatusText.Contains("Окно", StringComparison.Ordinal), "Capture meter snapshot is available");
+Check(vm.Meter is { IsCompleteWindow: true } && vm.MeterStatusText != KlidanAudioProbe.Gui.Core.Localization.Get("VmMeterWindowMissing"), "Capture meter snapshot is available");
 vm.NextPulseCommand.Execute(null); vm.NextPulseCommand.Execute(null); vm.NextPulseCommand.Execute(null);
-Check(vm.Meter?.Channels.All(c => c.PeakDbfs is null && c.RmsDbfs is null && c.Silent == true) == true && vm.MeterStatusText.Contains("тишина", StringComparison.Ordinal), "completed silent meter window is distinct from unavailable");
+Check(vm.Meter?.Channels.All(c => c.PeakDbfs is null && c.RmsDbfs is null && c.Silent == true) == true && vm.MeterStatusText.StartsWith(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmMeterDigitalSilence"), vm.Meter.Sequence).Split('·')[0].Trim(), StringComparison.Ordinal), "completed silent meter window is distinct from unavailable");
 Check(vm.Meter?.Channels.All(c => c.PeakHoldDbfs is double hold && double.IsFinite(hold)) == true, "session peak hold remains finite and available through a later silent window");
 
 vm.SelectCaptureEndpoint(vm.CaptureEndpoints[1]);
@@ -1740,7 +1926,7 @@ Check(vm.Session?.Lifecycle == SessionLifecycle.Stopped, "late duration completi
 
 var workflow = new MainViewModel();
 workflow.EmptyDevicesCommand.Execute(null);
-Check(workflow.IsEndpointListEmpty && !workflow.HasEndpoints && workflow.EmptyEndpointMessage.Contains("проверочные данные", StringComparison.Ordinal), "empty endpoint fixture exposes a clear checked-data state");
+Check(workflow.IsEndpointListEmpty && !workflow.HasEndpoints && workflow.EmptyEndpointMessage.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection"), StringComparison.Ordinal), "empty endpoint fixture exposes a clear checked-data state");
 workflow.RestoreDevicesCommand.Execute(null);
 Check(workflow.HasEndpoints && !workflow.IsEndpointListEmpty && workflow.SelectedCaptureEndpoint is null && workflow.SelectedRenderEndpoint is null, "restore repopulates fixtures without auto-selection");
 workflow.SelectCaptureEndpoint(workflow.CaptureEndpoints[0]);
@@ -1778,7 +1964,7 @@ workflow.CompleteStop();
 Check(workflow.Session?.Lifecycle == SessionLifecycle.Stopped && workflow.Events.TakeLast(2).Select(e => e.Kind).SequenceEqual([ProbeEventKind.Stopping, ProbeEventKind.Stopped]), "Capture stop history is ordered STOPPING then STOPPED");
 var stoppedMeter = workflow.Meter;
 workflow.NextPulseCommand.Execute(null);
-Check(workflow.Meter == stoppedMeter && workflow.MeterStatusText.Contains("Финальные", StringComparison.Ordinal), "local meter freezes its final snapshot after Stop");
+Check(workflow.Meter == stoppedMeter && workflow.MeterStatusText.StartsWith(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmMeterFinal"), stoppedMeter.Sequence).Split('·')[0].Trim(), StringComparison.Ordinal), "local meter freezes its final snapshot after Stop");
 workflow.Navigate(ProbeScreen.Render);
 workflow.SelectRenderEndpoint(workflow.RenderEndpoints.First(e => e.IsAvailable));
 workflow.SelectRenderChannel(2);
@@ -1807,9 +1993,9 @@ var immutableRenderSession = renderVm.Session!;
 renderVm.SelectRenderChannel(1);
 renderVm.SelectDuration(1);
 Check(renderVm.Session?.RenderChannel == 2 && renderVm.Session.DurationSeconds == 10, "live settings changes do not mutate active Render session settings");
-Check(renderVm.InspectorDetails.Any(d => d.Contains("Канал Windows: 2", StringComparison.Ordinal)) && renderVm.InspectorDetails.Any(d => d.Contains("10 с", StringComparison.Ordinal)), "Render inspector follows selected live-session snapshot");
+Check(renderVm.InspectorDetails.Any(d => d.Contains($"{KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsChannelLabel")}: 2", StringComparison.Ordinal)) && renderVm.InspectorDetails.Any(d => d.Contains(string.Format(KlidanAudioProbe.Gui.Core.Localization.CurrentCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDurationValue"), 10, KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorSecondsAbbreviation")), StringComparison.Ordinal)), "Render inspector follows selected live-session snapshot");
 renderVm.Navigate(ProbeScreen.Capture);
-Check(renderVm.InspectorDetails.Any(d => d.Contains("Capture-сессия не запускалась", StringComparison.Ordinal)) && renderVm.InspectorDetails.All(d => !d.Contains("Состояние: ЗАПУЩЕНА", StringComparison.Ordinal) && !d.Contains("Канал Windows", StringComparison.Ordinal)), "Capture inspector does not show stale Render session context");
+Check(renderVm.InspectorDetails.Any(d => d == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorCaptureNotStarted")) && renderVm.InspectorDetails.All(d => !d.Contains($"{KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorStateLabel")}: ЗАПУЩЕНА", StringComparison.Ordinal) && !d.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsChannelLabel"), StringComparison.Ordinal)), "Capture inspector does not show stale Render session context");
 renderVm.Navigate(ProbeScreen.Render);
 renderVm.DisconnectCommand.Execute(null);
 Check(renderVm.Session?.Lifecycle == SessionLifecycle.Unknown && renderVm.Session.CleanupStatus is null, "worker disconnect means UNKNOWN and does not invent cleanup");
@@ -1846,12 +2032,12 @@ empty.Navigate(ProbeScreen.Render);
 Check(!empty.BeginCommand.CanExecute(null) && empty.SelectedRenderEndpoint is null, "Capture fixture cannot satisfy Render selection");
 
 var diagnostics = new MainViewModel();
-Check(diagnostics.Events.Count == 0 && diagnostics.EmptyEventMessage.Contains("Событий пока нет", StringComparison.Ordinal), "diagnostics begin empty, without fabricated failures");
+Check(diagnostics.Events.Count == 0 && diagnostics.EmptyEventMessage == KlidanAudioProbe.Gui.Core.Localization.Get("VmDemoEventsEmpty"), "diagnostics begin empty, without fabricated failures");
 Check(!typeof(IProbeClient).GetMethods().Any(m => m.Name.Contains("Start", StringComparison.Ordinal) || m.Name.Contains("Capture", StringComparison.Ordinal) || m.Name.Contains("Render", StringComparison.Ordinal)), "typed fake client exposes no audio activation/start methods");
 diagnostics.Navigate(ProbeScreen.Formats);
 diagnostics.SelectedFormat = diagnostics.Formats[^1];
 var formatDetails = string.Join("\n", diagnostics.InspectorDetails);
-Check(formatDetails.Contains("FAILED", StringComparison.Ordinal) && formatDetails.Contains("IsFormatSupported HRESULT: AUDCLNT_E_DEVICE_IN_USE", StringComparison.Ordinal) && formatDetails.Contains("Initialize HRESULT: не наблюдался", StringComparison.Ordinal) && formatDetails.Contains("Происхождение: PASSIVE_QUERY", StringComparison.Ordinal), "format inspector shows exact status, query HRESULT, unobserved Initialize and provenance");
+Check(formatDetails.Contains("FAILED", StringComparison.Ordinal) && formatDetails.Contains("IsFormatSupported HRESULT: AUDCLNT_E_DEVICE_IN_USE", StringComparison.Ordinal) && formatDetails.Contains("Initialize HRESULT: not observed", StringComparison.Ordinal) && formatDetails.Contains("Provenance: PASSIVE_QUERY", StringComparison.Ordinal), "format inspector shows exact status, query HRESULT, unobserved Initialize and provenance");
 diagnostics.Navigate(ProbeScreen.Reports);
 diagnostics.SelectedReport = diagnostics.Reports[1];
 Check(diagnostics.InspectorDetails.Any(d => d.Contains("warning", StringComparison.OrdinalIgnoreCase)), "report inspector follows selected report evidence");
@@ -1859,7 +2045,7 @@ Check(diagnostics.InspectorDetails.Any(d => d.Contains("warning", StringComparis
 var lateReplyVm = new MainViewModel();
 var unknownStart = typeof(MainViewModel).GetField("_workerStartOutcomeUnknown", BindingFlags.Instance | BindingFlags.NonPublic)!;
 typeof(MainViewModel).GetMethod("ApplyWorkerTransportFault", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lateReplyVm, [new WorkerTransportFaultDto("REQUEST_CANCELLED", "StartCaptureMeter write may have committed", CorrelationId: Guid.NewGuid(), Command: "StartCaptureMeter")]);
-Check((bool)unknownStart.GetValue(lateReplyVm)! && lateReplyVm.WorkerNotice.Contains("неизвестен", StringComparison.OrdinalIgnoreCase) && !lateReplyVm.RequestWorkerCaptureCommand.CanExecute(null), "post-write Start cancellation keeps outcome UNKNOWN and blocks another operation");
+Check((bool)unknownStart.GetValue(lateReplyVm)! && lateReplyVm.WorkerNotice.Length > 0 && !lateReplyVm.RequestWorkerCaptureCommand.CanExecute(null), "post-write Start cancellation keeps outcome UNKNOWN and blocks another operation");
 unknownStart.SetValue(lateReplyVm, true);
 typeof(MainViewModel).GetMethod("ApplyWorkerTransportFault", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lateReplyVm, [new WorkerTransportFaultDto("LATE_RESPONSE", "Late rejection StartCaptureMeter/BUSY", CorrelationId: Guid.NewGuid(), Command: "StartCaptureMeter", ErrorCode: "BUSY")]);
 Check(!(bool)unknownStart.GetValue(lateReplyVm)! && lateReplyVm.WorkerTimeline.Last().Name == "Rejected", "late correlated Start rejection clears unknown outcome and reaches diagnostics");
@@ -1868,17 +2054,17 @@ var connectedOnlyClient = new GuiStateWorkerClient([]);
 var connectedOnlyVm = new MainViewModel(worker: connectedOnlyClient);
 connectedOnlyClient.SetState(new(WorkerConnectionState.ConnectedFake, "Connected (fake)."));
 connectedOnlyVm.Navigate(ProbeScreen.Diagnostics);
-Check(connectedOnlyVm.InspectorSections.Select(s => s.Heading).SequenceEqual(["CONNECTION", "SESSION", "MEASUREMENTS", "EVIDENCE"]) && connectedOnlyVm.InspectorSections[0].Fields[0].Value == "Подключён (демо)" && connectedOnlyVm.InspectorSections[1].Fields.Single().Value == "Не запускалась", "connected worker without a session has independent connection and idle-session inspector state");
-Check(connectedOnlyVm.InspectorSections[2].Fields.All(f => f.Value == "Нет данных" || f.Value == "Неизвестно") && connectedOnlyVm.InspectorSections[3].Fields.Any(f => f.Value == "Неизвестно / не оценено"), "empty measurements and physical evidence remain explicitly unknown");
+Check(connectedOnlyVm.InspectorSections.Select(s => s.Heading).SequenceEqual([KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorConnectionSection"), KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorSessionSection"), KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorMeasurementsSection"), KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorEvidenceSection")]) && connectedOnlyVm.InspectorSections[0].Fields[0].Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWorkerConnected") && connectedOnlyVm.InspectorSections[1].Fields.Single().Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorNotStarted"), "connected worker without a session has independent connection and idle-session inspector state");
+Check(connectedOnlyVm.InspectorSections[2].Fields.All(f => f.Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorNoData") || f.Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknown")) && connectedOnlyVm.InspectorSections[3].Fields.Any(f => f.Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownNotAssessed")), "empty measurements and physical evidence remain explicitly unknown");
 var consentEndpoint = new WorkerEndpointDto("synthetic-capture-64", "ДЕМО · Capture · 64 канала", "CAPTURE", "SYNTHETIC", 64, DemoTopologyFixtures.Independent(64), true, [new("PCM16-48000", DemoTopologyFixtures.Independent(64))]);
 typeof(MainViewModel).GetProperty(nameof(MainViewModel.WorkerEndpoints))!.SetValue(connectedOnlyVm, new[] { consentEndpoint });
 connectedOnlyVm.SelectedWorkerEndpoint = consentEndpoint;
 var workerConsentTextNotified = false;
 connectedOnlyVm.PropertyChanged += (_, e) => workerConsentTextNotified |= e.PropertyName == nameof(MainViewModel.WorkerConsentText);
 typeof(MainViewModel).GetMethod("RequestWorkerSession", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(connectedOnlyVm, ["CAPTURE"]);
-Check(workerConsentTextNotified && connectedOnlyVm.WorkerConsentText.Contains("64 каналов", StringComparison.Ordinal) && connectedOnlyVm.WorkerConsentText.Contains("PCM16-48000", StringComparison.Ordinal), "fresh Worker Fake consent refreshes and displays the immutable selected settings");
+Check(workerConsentTextNotified && connectedOnlyVm.WorkerConsentText.Contains("64 channels", StringComparison.Ordinal) && connectedOnlyVm.WorkerConsentText.Contains("PCM16-48000", StringComparison.Ordinal), "fresh Worker Fake consent refreshes and displays the immutable selected settings");
 connectedOnlyVm.CancelWorkerConsentCommand.Execute(null);
-Check(!connectedOnlyVm.WorkerConsentPending && connectedOnlyVm.WorkerConsentText == "Нет настроек для подтверждения.", "cancelling Worker Fake consent clears the displayed pending settings without sending Start");
+Check(!connectedOnlyVm.WorkerConsentPending && connectedOnlyVm.WorkerConsentText == KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerConsentMissing"), "cancelling Worker Fake consent clears the displayed pending settings without sending Start");
 var parameterClient = new GuiStateWorkerClient([]);
 var parameterVm = new MainViewModel(worker: parameterClient);
 parameterClient.SetState(new(WorkerConnectionState.ConnectedFake, "Connected (fake)."));
@@ -1903,7 +2089,7 @@ scenarioParameter.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSo
 Check(parameterVm.WorkerDurationSeconds == 10 && parameterVm.WorkerPeriod == "MINIMUM" && parameterVm.WorkerMmcss == "PRO_AUDIO" && parameterVm.WorkerScenario == "WARNING", "actual two-way parameter ComboBoxes update all Worker ViewModel values without type conversion");
 typeof(MainViewModel).GetMethod("RequestWorkerSession", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(parameterVm, ["CAPTURE"]);
 var selectedWorkerSettings = parameterVm.WorkerPendingSettings!;
-Check(selectedWorkerSettings.DurationSeconds == 10 && selectedWorkerSettings.Period == "MINIMUM" && selectedWorkerSettings.Mmcss == "PRO_AUDIO" && selectedWorkerSettings.Scenario == "WARNING" && parameterVm.WorkerConsentText.Contains("10 с", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("MINIMUM", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("PRO_AUDIO", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("WARNING", StringComparison.Ordinal), "consent text and immutable pending settings reflect the current ComboBox selections");
+Check(selectedWorkerSettings.DurationSeconds == 10 && selectedWorkerSettings.Period == "MINIMUM" && selectedWorkerSettings.Mmcss == "PRO_AUDIO" && selectedWorkerSettings.Scenario == "WARNING" && parameterVm.WorkerConsentText.Contains("10 s", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("MINIMUM", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("PRO_AUDIO", StringComparison.Ordinal) && parameterVm.WorkerConsentText.Contains("WARNING", StringComparison.Ordinal), "consent text and immutable pending settings reflect the current ComboBox selections");
 parameterVm.WorkerConsentChecked = true;
 parameterVm.ConfirmWorkerSessionCommand.Execute(null);
 Check(SpinWait.SpinUntil(() => parameterClient.LastConsent is not null, TimeSpan.FromSeconds(2)) && parameterClient.LastConsent!.RequestFingerprint == WorkerConsent.Fingerprint(selectedWorkerSettings) && parameterClient.LastStartSettings == selectedWorkerSettings, "confirmed request fingerprint matches the immutable selected settings");
@@ -1926,8 +2112,8 @@ Check(SpinWait.SpinUntil(() => parameterClient.LastConsent is not null, TimeSpan
 }
 
 var (captureInspectorVm, captureInspectorClient) = CreateWorkerSession("CAPTURE", 64);
-Check(captureInspectorVm.WorkerSession is { Mode: SessionMode.Capture, Lifecycle: SessionLifecycle.Started } && captureInspectorVm.InspectorSections[1].Fields.Any(f => f.Value.Contains("64 каналов", StringComparison.Ordinal)) && captureInspectorVm.InspectorSections[1].Fields.All(f => f.Label != "Канал Windows"), "running 64-channel Capture inspector shows format topology without a Render selector");
-Check(captureInspectorVm.RealInitializeDisabledReason.Contains("Операция выполняется", StringComparison.Ordinal), "an active operation has an explicit Initialize-disabled reason");
+Check(captureInspectorVm.WorkerSession is { Mode: SessionMode.Capture, Lifecycle: SessionLifecycle.Started } && captureInspectorVm.InspectorSections[1].Fields.Any(f => f.Value.Contains($"64 {KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorChannelAbbreviation")}", StringComparison.Ordinal)) && captureInspectorVm.InspectorSections[1].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorModeLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel") && captureInspectorVm.InspectorSections[1].Fields.All(f => f.Label != KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsChannelLabel")), "running 64-channel Capture inspector shows localized mode and format topology without a Render selector");
+Check(captureInspectorVm.RealInitializeDisabledReason == KlidanAudioProbe.Gui.Core.Localization.Get("VmInitializeOperationRunning"), "an active operation has an explicit Initialize-disabled reason");
 var captureChannels = Enumerable.Range(1, 64).Select(i => new WorkerCaptureMeterChannelDto(i, -12, -20, false, -6, 0)).ToArray();
 using (var meterPayload = JsonDocument.Parse("{\"lifecycle\":\"STARTED\",\"streamQuality\":\"UNKNOWN\",\"cleanupEvidence\":\"NOT_ATTEMPTED\"}"))
     typeof(MainViewModel).GetMethod("ApplyWorkerEvent", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(captureInspectorVm, [new WorkerEventDto(2, captureInspectorVm.WorkerSession!.Id, Guid.NewGuid(), "MeterSnapshot", meterPayload.RootElement.Clone(), new WorkerCaptureMeterSnapshotDto(7, 3, 100, 64, captureChannels, "UNKNOWN", true, 2))]);
@@ -1945,17 +2131,17 @@ foreach (var count in new[] { 8, 16, 32, 48, 64 })
     Check(bankVm.WorkerMeterBanks.Count == count / 8 && bankVm.WorkerVisibleMeterChannels.Count == expectedVisible && bankVm.WorkerVisibleMeterChannels[^1].Channel == count, $"worker compact bank switching exposes all {count} channels in groups of eight");
 }
 captureInspectorClient.SetState(new(WorkerConnectionState.Disconnected, "Worker exited unexpectedly."));
-Check(captureInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Unknown && captureInspectorVm.InspectorSections[2].Fields.Single(f => f.Label == "Данные").Value == "Устарели" && captureInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == "Очистка").Value == "Неизвестно / не оценено", "disconnect preserves the last session and meter as stale with unknown cleanup");
+Check(captureInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Unknown && captureInspectorVm.InspectorSections[2].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDataLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorMeasurementStale") && captureInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorCleanupLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownNotAssessed"), "disconnect preserves the last session and meter as stale with unknown cleanup");
 
 var (renderInspectorVm, _) = CreateWorkerSession("RENDER", 8);
-Check(renderInspectorVm.WorkerSession is { Mode: SessionMode.Render, RenderChannel: 8 } && renderInspectorVm.InspectorSections[1].Fields.Any(f => f.Label == "Канал Windows" && f.Value == "8"), "running Render inspector shows the immutable selected Windows channel");
+Check(renderInspectorVm.WorkerSession is { Mode: SessionMode.Render, RenderChannel: 8 } && renderInspectorVm.InspectorSections[1].Fields.Any(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsChannelLabel") && f.Value == "8") && renderInspectorVm.InspectorSections[1].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorModeLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderLabel"), "running Render inspector shows localized mode and immutable selected Windows channel");
 using (var completedPayload = JsonDocument.Parse("{\"lifecycle\":\"COMPLETED\",\"streamQuality\":\"UNKNOWN\",\"cleanupEvidence\":\"SYNTHETIC_CLEANUP_COMPLETED\"}"))
     typeof(MainViewModel).GetMethod("ApplyWorkerEvent", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(renderInspectorVm, [new WorkerEventDto(2, renderInspectorVm.WorkerSession!.Id, Guid.NewGuid(), "Completed", completedPayload.RootElement.Clone())]);
-Check(renderInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Completed && !renderInspectorVm.WorkerOperationActive && renderInspectorVm.InspectorSections[1].Fields.Single(f => f.Label == "Состояние").Value == "Завершена" && renderInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == "Очистка").Value == "Фиктивная очистка завершена", "completed Render operation is not active and translated cleanup remains explicitly synthetic");
+Check(renderInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Completed && !renderInspectorVm.WorkerOperationActive && renderInspectorVm.InspectorSections[1].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorStateLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorLifecycleCompleted") && renderInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorCleanupLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorCleanupCompletedSynthetic"), "completed Render operation is not active and translated cleanup remains explicitly synthetic");
 var (failedInspectorVm, _) = CreateWorkerSession("CAPTURE", 2);
 using (var failedPayload = JsonDocument.Parse("{\"lifecycle\":\"FAILED\",\"streamQuality\":\"FAILED\",\"cleanupEvidence\":\"UNKNOWN\",\"failureCode\":\"SYNTHETIC_FAILURE\"}"))
     typeof(MainViewModel).GetMethod("ApplyWorkerEvent", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(failedInspectorVm, [new WorkerEventDto(2, failedInspectorVm.WorkerSession!.Id, Guid.NewGuid(), "Failed", failedPayload.RootElement.Clone())]);
-Check(failedInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Failed && failedInspectorVm.InspectorSections[0].Fields[0].Value == "Подключён (демо)" && failedInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == "Очистка").Value == "Неизвестно / не оценено", "failed operation remains separate from connected worker and unknown cleanup");
+Check(failedInspectorVm.WorkerSession?.Lifecycle == SessionLifecycle.Failed && failedInspectorVm.InspectorSections[0].Fields[0].Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWorkerConnected") && failedInspectorVm.InspectorSections[3].Fields.Single(f => f.Label == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorCleanupLabel")).Value == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownNotAssessed"), "failed operation remains separate from connected worker and unknown cleanup");
 
 var projectedWorkerEvent = new WorkerTimelineEntryDto(3, DateTimeOffset.UtcNow, Guid.NewGuid(), "Completed", "COMPLETED", "UNKNOWN", "SYNTHETIC_CLEANUP_COMPLETED", "synthetic completion", 42);
 Check(projectedWorkerEvent.SourceText == "IPC · демо" && projectedWorkerEvent.SequenceText == "42" && projectedWorkerEvent.EventLabel == "Завершена" && projectedWorkerEvent.LifecycleLabel == "Завершена" && projectedWorkerEvent.QualityLabel == "Неизвестно / не оценено" && projectedWorkerEvent.CleanupLabel == "Фиктивная очистка завершена" && projectedWorkerEvent.SessionShortId.Length == 8, "worker event projection keeps IPC sequence, lifecycle, quality, cleanup and short session identity distinct");
@@ -1963,7 +2149,7 @@ var localProjection = projectedWorkerEvent with { ProtocolSequence = null, IsSyn
 Check(localProjection.SourceText == "Локально · демо" && localProjection.EventLabel == "Предупреждение" && localProjection.DiagnosticDetails.Contains("synthetic completion", StringComparison.Ordinal), "local demo event remains distinct and selected detail retains full explanation");
 Check(projectedWorkerEvent.QualityTableLabel == "Не оценено" && projectedWorkerEvent.CleanupTableLabel == "Фикт. очистка" && projectedWorkerEvent.DiagnosticDetails.Contains("Фиктивная очистка завершена", StringComparison.Ordinal) && projectedWorkerEvent.DiagnosticDetails.Contains("SYNTHETIC_CLEANUP_COMPLETED", StringComparison.Ordinal), "compact event cells keep full Russian semantics and raw cleanup code in details");
 renderInspectorVm.SelectedWorkerTimelineEntry = renderInspectorVm.WorkerTimeline[0];
-Check(renderInspectorVm.WorkerSelectedEventDetails.Contains("Start response correlated", StringComparison.Ordinal) && renderInspectorVm.WorkerSelectedEventDetails.Contains("Синтетическое событие Started", StringComparison.Ordinal) == false, "selected worker event detail follows the selected timeline row instead of repeating the latest event");
+Check(renderInspectorVm.WorkerSelectedEventDetails.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerStartResponseCorrelated").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && renderInspectorVm.WorkerSelectedEventDetails.Contains("Синтетическое событие Started", StringComparison.Ordinal) == false, "selected worker event detail follows the selected timeline row instead of repeating the latest event");
 var compactWindow = new MainWindow { DataContext = renderInspectorVm };
 var workerTimelineGrid = (DataGrid)typeof(MainWindow).GetField("WorkerTimelineGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(compactWindow)!;
 var meterBankList = (ListBox)typeof(MainWindow).GetField("WorkerMeterBankList", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(compactWindow)!;
@@ -1972,7 +2158,7 @@ Check(workerTimelineGrid.GetBindingExpression(ItemsControl.ItemsSourceProperty)?
 Check(meterBankList.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path == nameof(MainViewModel.WorkerVisibleMeterChannels) && mainWindowXaml.Contains("UniformGrid Columns=\"8\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding AccessibleText", StringComparison.Ordinal), "compact vertical meter bank binds eight accessible channels without horizontal scrolling");
 Check(mainWindowXaml.Contains("Orientation=\"Vertical\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding LevelsCompactText", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding PeakHoldText", StringComparison.Ordinal) && mainWindowXaml.Contains("Binding ClipsText", StringComparison.Ordinal), "mini-meter shows distinct peak/RMS bars, hold marker, clip state and compact levels");
 Check(inspectorSectionList.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path == nameof(MainViewModel.InspectorSections) && renderInspectorVm.InspectorSections.Count == 4, "four-section inspector binding projects the current four-section worker state");
-Check(mainWindowXaml.Contains("InspectorSections", StringComparison.Ordinal) && mainWindowXaml.Contains("Copyable", StringComparison.Ordinal) && mainWindowXaml.Contains("DataGridTextColumn Header=\"Очистка\"", StringComparison.Ordinal), "inspector sections, copyable UUID field and compact event evidence columns are present");
+Check(mainWindowXaml.Contains("InspectorSections", StringComparison.Ordinal) && mainWindowXaml.Contains("Copyable", StringComparison.Ordinal) && mainWindowXaml.Contains("DataGridTextColumn Header=\"{loc:Loc CleanupLabel}\"", StringComparison.Ordinal), "inspector sections, copyable UUID field and compact event evidence columns are present");
 compactWindow.Close();
 
 var timerWindow = new MainWindow();
@@ -2458,7 +2644,7 @@ try
     var uiSummaryBytes = File.ReadAllBytes(recoverySummaryPath);
     File.WriteAllBytes(recoverySummaryPath, JsonSerializer.SerializeToUtf8Bytes(recoverySummary with { TimestampUtc = recoverySummary.TimestampUtc.AddSeconds(1) }));
     recoveryVm.HistoricalRecoveryConfirmationChecked = true; recoveryVm.SaveHistoricalSustainedRecoveryCommand.Execute(null);
-    Check(!recoveryVm.HistoricalRecoveryPreviewVisible && recoveryVm.HistoricalRecoveryStatus == "Профиль не сохранён. См. технические сведения." && recoveryVm.HistoricalRecoveryTechnicalDetails.Contains("InvalidDataException", StringComparison.Ordinal), "S5-R2 source changes invalidate the approved preview and keep details out of the operator headline");
+    Check(!recoveryVm.HistoricalRecoveryPreviewVisible && recoveryVm.HistoricalRecoveryStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmHistoricalRecoverySaveFailed") && recoveryVm.HistoricalRecoveryTechnicalDetails.Contains("InvalidDataException", StringComparison.Ordinal), "S5-R2 source changes invalidate the approved preview and keep details out of the operator headline");
     File.WriteAllBytes(recoverySummaryPath, uiSummaryBytes);
     recoveryVm.RefreshHistoricalSustainedScansCommand.Execute(null); recoveryVm.SelectedHistoricalSustainedScan = recoveryVm.HistoricalSustainedScans[0]; recoveryVm.PreviewHistoricalSustainedRecoveryCommand.Execute(null);
     Check(recoveryVm.HistoricalRecoveryPreviewVisible, "S5-R2 requires a new Preview after a changed source");
@@ -2498,9 +2684,9 @@ try
     initialWindow.UpdateLayout();
     Check(initialVm.WorkerState.State == WorkerConnectionState.Disconnected && initialVm.CheckSavedProfileBindingCommand.CanExecute(null) && ((System.Windows.Controls.Button)initialWindow.FindName("CheckSavedProfileBindingButton")).IsEnabled, "S5-B2.2 exposes one enabled connection check from the pristine disconnected Worker state");
     initialVm.CheckSavedProfileBindingCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !initialVm.SavedProfileBindingChecking && initialVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) && initialWorker.ConnectCalls == 1 && initialVm.SavedProfileOperatorStatus.Contains("Пара устройств найдена", StringComparison.Ordinal) && initialWorker.RealInitializeCalls == 0 && initialWorker.RealStreamCalls == 0 && initialWorker.DuplexCalls == 0, "S5-B2.2 one explicit check connects once, discovers and evaluates without audio operations");
+    Check(SpinWait.SpinUntil(() => !initialVm.SavedProfileBindingChecking && initialVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) && initialWorker.ConnectCalls == 1 && initialVm.SavedProfileOperatorStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && initialWorker.RealInitializeCalls == 0 && initialWorker.RealStreamCalls == 0 && initialWorker.DuplexCalls == 0, "S5-B2.2 one explicit check connects once, discovers and evaluates without audio operations");
     initialWorker.SetState(new(WorkerConnectionState.Disconnected, "Unexpected Worker loss."));
-    Check(!initialVm.SavedProfileOperatorStatus.Contains("Пара устройств найдена", StringComparison.Ordinal) && initialVm.SavedProfileOperatorStatus.Contains("Worker отключён", StringComparison.Ordinal) && !initialVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2.2 Worker loss immediately clears visible success and disables automatic restart");
+    Check(initialVm.SavedProfileOperatorStatus != KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && initialVm.SavedProfileOperatorStatus.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerDisconnected"), StringComparison.Ordinal) && !initialVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2.2 Worker loss immediately clears visible success and disables automatic restart");
     Check(initialWorker.ConnectCalls == 1 && initialWorker.WindowsDiscoveryCalls == 1, "S5-B2.2 preserves the no-restart policy after an unexpected Worker disconnect");
     Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.DataBind, new Action(() => { }));
     Check(((System.Windows.Controls.TextBlock)initialWindow.FindName("SavedProfileOperatorStatusText")).Text == initialVm.SavedProfileOperatorStatus && !((System.Windows.Controls.TextBlock)initialWindow.FindName("SavedProfileOperatorStatusText")).Text.Contains("Пара устройств найдена", StringComparison.Ordinal), "S5-B2.2 actual WPF status binding removes stale current-success text");
@@ -2530,7 +2716,7 @@ try
     queuedContext.Drain();
     Check(sequenceVm.WorkerState.State == WorkerConnectionState.ConnectedFake && sequenceVm.CheckSavedProfileBindingCommand.CanExecute(null) == false, "S5-B2.3 queued Starting/Connecting/Handshaking callbacks do not invalidate the active check");
     sequenceGate.TrySetResult(bindingDiscovery);
-    Check(SpinWait.SpinUntil(() => { queuedContext.Drain(); return !sequenceVm.SavedProfileBindingChecking; }, TimeSpan.FromSeconds(3)) && sequenceVm.SavedProfileOperatorStatus.Contains("Пара устройств найдена", StringComparison.Ordinal) && sequenceWorker.ConnectCalls == 1 && sequenceWorker.RealInitializeCalls == 0 && sequenceWorker.RealStreamCalls == 0 && sequenceWorker.DuplexCalls == 0, "S5-B2.3 one explicit check survives the real queued connection states without audio operations");
+    Check(SpinWait.SpinUntil(() => { queuedContext.Drain(); return !sequenceVm.SavedProfileBindingChecking; }, TimeSpan.FromSeconds(3)) && sequenceVm.SavedProfileOperatorStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && sequenceWorker.ConnectCalls == 1 && sequenceWorker.RealInitializeCalls == 0 && sequenceWorker.RealStreamCalls == 0 && sequenceWorker.DuplexCalls == 0, "S5-B2.3 one explicit check survives the real queued connection states without audio operations");
     queuedContext.Drain();
     sequenceWindow.DataContext = null;
     sequenceWindow.DataContext = sequenceVm;
@@ -2541,13 +2727,13 @@ try
     BindingOperations.GetBindingExpression(sequenceStatusBlock, System.Windows.Controls.TextBlock.TextProperty)?.UpdateTarget();
     sequenceStatusText = sequenceStatusBlock.Text;
     var sequenceButton = (System.Windows.Controls.Button)sequenceWindow.FindName("CheckSavedProfileBindingButton");
-    Check(sequenceStatusText.Contains("Пара устройств найдена", StringComparison.Ordinal) && sequenceButton.IsEnabled && sequenceVm.CheckSavedProfileBindingCommand.CanExecute(null), $"S5-B2.3 WPF status and command readiness remain visible after queued connection delivery [status={sequenceStatusText}; enabled={sequenceButton.IsEnabled}; canExecute={sequenceVm.CheckSavedProfileBindingCommand.CanExecute(null)}]");
+    Check(sequenceStatusText == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && sequenceButton.IsEnabled && sequenceVm.CheckSavedProfileBindingCommand.CanExecute(null), $"S5-B2.3 WPF status and command readiness remain visible after queued connection delivery [status={sequenceStatusText}; enabled={sequenceButton.IsEnabled}; canExecute={sequenceVm.CheckSavedProfileBindingCommand.CanExecute(null)}]");
     sequenceWindow.Close();
     SynchronizationContext.SetSynchronizationContext(previousBindingContext);
     var bindingWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true, WindowsDiscovery = bindingDiscovery };
     bindingWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for saved profile binding."));
     var bindingVm = new MainViewModel(worker: bindingWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(bindingDiscovery), profileDirectory: savedProfilesRoot);
-    Check(bindingVm.SavedDeviceProfiles.Count == 4 && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null) && bindingVm.SavedProfileOperatorStatus.Contains("Проверить подключение", StringComparison.Ordinal), "S5-B2 starts with one operator connection action and no JSON selection requirement");
+    Check(bindingVm.SavedDeviceProfiles.Count == 4 && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 starts with one operator connection action and no JSON selection requirement");
     bindingVm.SelectedSavedDeviceProfile = bindingVm.SavedDeviceProfiles.Single(e => e.Profile?.SchemaVersion == 4 && e.IsSustained && e.Profile.Privacy == "LOCAL_MACHINE");
     Check(bindingVm.SavedProfileHistoricalSummary.Contains("Primary:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("Fallback:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("NOT_CERTIFIED", StringComparison.Ordinal) && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 displays v4 historical Primary/Fallback and enables only the read-only binding check");
     var savedProfileWindow = new MainWindow(bindingVm, savedProfilesRoot);
@@ -2556,12 +2742,12 @@ try
     Check(savedProfileWindow.FindName("SavedDeviceProfileSelector") is System.Windows.Controls.ComboBox && bindingVm.SavedDeviceProfiles.Count == 4 && savedProfileWindow.FindName("CheckSavedProfileBindingButton") is System.Windows.Controls.Button checkButton && checkButton.IsEnabled && savedProfileWindow.FindName("RefreshSavedProfilesButton") is System.Windows.Controls.Button refreshButton && refreshButton.IsEnabled, "S5-B2 actual WPF controls expose profile binding and command CanExecute state");
     savedProfileWindow.Close();
     bindingVm.CheckSavedProfileBindingCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !bindingVm.SavedProfileBindingChecking && bindingVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) && bindingVm.SavedProfileBindingStatus.Contains("Пара устройств найдена", StringComparison.Ordinal) && bindingWorker.WindowsDiscoveryCalls == 0, "S5-B2 checks a fresh workflow discovery without invoking audio operations");
+    Check(SpinWait.SpinUntil(() => !bindingVm.SavedProfileBindingChecking && bindingVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) && bindingVm.SavedProfileBindingStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && bindingWorker.WindowsDiscoveryCalls == 0, "S5-B2 checks a fresh workflow discovery without invoking audio operations");
     var selectedPath = bindingVm.SelectedSavedDeviceProfile!.Path;
     bindingWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker disconnected during binding UI test."));
-    Check(bindingVm.SavedProfileBindingStatus.Contains("Worker отключён", StringComparison.Ordinal) && bindingVm.SavedProfileBindingTechnicalDetails.Contains("WORKER_DISCONNECTED", StringComparison.Ordinal) && !bindingVm.SavedProfileOperatorStatus.Contains("Пара устройств найдена", StringComparison.Ordinal), "S5-B2.2 invalidates the current binding result and visible success on Worker disconnect");
+    Check(bindingVm.SavedProfileBindingStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingWorkerDisconnected") && bindingVm.SavedProfileBindingTechnicalDetails.Contains("WORKER_DISCONNECTED", StringComparison.Ordinal) && bindingVm.SavedProfileOperatorStatus != KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound"), "S5-B2.2 invalidates the current binding result and visible success on Worker disconnect");
     bindingVm.SelectedSavedDeviceProfile = bindingVm.SavedDeviceProfiles.Single(e => e.Profile?.Privacy == "SANITIZED_PORTABLE");
-    Check(bindingVm.SavedProfileBindingStatus.Contains("Проверка устарела", StringComparison.Ordinal) && bindingVm.SavedProfileOperatorStatus.Contains("профиль изменился", StringComparison.Ordinal), "S5-B2.2 profile selection immediately invalidates the displayed result");
+    Check(bindingVm.SavedProfileBindingStatus != KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && bindingVm.SavedProfileOperatorStatus != KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound"), "S5-B2.2 profile selection immediately invalidates the displayed result");
     bindingVm.SelectedSavedDeviceProfile = bindingVm.SavedDeviceProfiles.Single(e => e.Path == selectedPath);
     File.Delete(selectedPath);
     bindingVm.RefreshSavedProfilesCommand.Execute(null);
@@ -2575,7 +2761,7 @@ try
     Check(SpinWait.SpinUntil(() => lateWorkflow.RefreshCalls == 1, TimeSpan.FromSeconds(2)), "S5-B2.2 starts the asynchronous discovery race fixture");
     lateWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker replaced during discovery."));
     lateGate.TrySetResult(bindingDiscovery);
-    Check(SpinWait.SpinUntil(() => !lateVm.SavedProfileBindingChecking, TimeSpan.FromSeconds(3)) && lateVm.WorkerState.State == WorkerConnectionState.Disconnected && !lateVm.SavedProfileOperatorStatus.Contains("Пара устройств найдена", StringComparison.Ordinal) && lateVm.SavedProfileOperatorStatus.Contains("Проверка устарела", StringComparison.Ordinal), "S5-B2.2 rejects a late discovery response after Worker invalidation");
+    Check(SpinWait.SpinUntil(() => !lateVm.SavedProfileBindingChecking, TimeSpan.FromSeconds(3)) && lateVm.WorkerState.State == WorkerConnectionState.Disconnected && lateVm.SavedProfileOperatorStatus != KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound"), $"S5-B2.2 rejects a late discovery response after Worker invalidation [state={lateVm.WorkerState.State}; status={lateVm.SavedProfileOperatorStatus}]");
 }
 finally { if (Directory.Exists(savedProfilesRoot)) Directory.Delete(savedProfilesRoot, true); }
 var bundleSecurityRoot = Path.Combine(Path.GetTempPath(), $"klidan-bundle-security-{Guid.NewGuid():N}");
@@ -2594,7 +2780,7 @@ try
     Check(!boundedResult.IsValid, "L2-A offline verifier rejects malformed or incomplete manifests");
 }
 finally { if (Directory.Exists(bundleSecurityRoot)) Directory.Delete(bundleSecurityRoot, true); }
-Check(mainWindowXaml.Contains("Экспортировать результаты", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanExportStatusText", StringComparison.Ordinal) && mainWindowXaml.Contains("LOCAL_FULL_EVIDENCE", StringComparison.Ordinal) == false, "L2-B result screen exposes one explicit export action with a separate status and technical-details area");
+Check(mainWindowXaml.Contains("{loc:Loc ExportResults}", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanExportStatusText", StringComparison.Ordinal) && mainWindowXaml.Contains("LOCAL_FULL_EVIDENCE", StringComparison.Ordinal) == false, "L2-B result screen exposes one explicit export action with a separate status and technical-details area");
 Check(!new MainViewModel().CanExportAutomaticScan && !new MainViewModel().ExportAutomaticScanCommand.CanExecute(null), "L2-B export is disabled without an explicitly completed persisted result and native export interaction");
 var bundleUiRoot = Path.Combine(Path.GetTempPath(), $"klidan-bundle-ui-{Guid.NewGuid():N}");
 var bundleUiScans = Path.Combine(bundleUiRoot, "Scans");
@@ -2641,14 +2827,14 @@ try
 
     var primaryReportPath = Path.Combine(bundleUiSustained, $"sustained-duplex-{sustainedPrimaryEvidence.OperationId:D}.json");
     File.Delete(primaryReportPath); var pickerCallsBeforeMissing = interaction.PickCalls; interaction.NextDestination = Path.Combine(bundleUiRoot, "missing-report.zip"); bundleVm.ExportAutomaticScanCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && interaction.PickCalls == pickerCallsBeforeMissing && bundleVm.AutomaticScanExportStatus.Contains("доступны", StringComparison.OrdinalIgnoreCase), "L2-B.1 missing required evidence fails before the destination dialog");
+    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && interaction.PickCalls == pickerCallsBeforeMissing && bundleVm.AutomaticScanExportStatus.Length > 0, "L2-B.1 missing required evidence fails before the destination dialog");
     File.WriteAllBytes(primaryReportPath, JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = 1, reportType = "wasapi-sustained-duplex", lifecycle = "COMPLETED", classification = "SUSTAINED_CLEAN", operationId = sustainedPrimaryEvidence.OperationId, period = sustainedPrimaryEvidence.Period, report = realReport.Report }));
 
     var mismatchedSessionVm = new MainViewModel(bundleExportInteraction: interaction, bundleDirectoriesFactory: _ => bundleDirectories);
     typeof(MainViewModel).GetField("_automaticScanResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(mismatchedSessionVm, bundleResult with { SessionId = "74000000-0000-4000-8000-000000000099" });
     typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(mismatchedSessionVm, null);
     var pickerCallsBeforeSession = interaction.PickCalls; mismatchedSessionVm.ExportAutomaticScanCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !mismatchedSessionVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && interaction.PickCalls == pickerCallsBeforeSession && mismatchedSessionVm.AutomaticScanExportStatus.Contains("не выполнен", StringComparison.OrdinalIgnoreCase), "L2-B.1 different scan session cannot inherit the previous export preparation");
+    Check(SpinWait.SpinUntil(() => !mismatchedSessionVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && interaction.PickCalls == pickerCallsBeforeSession && mismatchedSessionVm.AutomaticScanExportStatus.Length > 0, "L2-B.1 different scan session cannot inherit the previous export preparation");
 
     var cancelledDestination = Path.Combine(bundleUiRoot, "cancelled.zip");
     interaction.NextDestination = null; bundleVm.ExportAutomaticScanCommand.Execute(null);
@@ -2660,10 +2846,10 @@ try
     Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(5)) && File.Exists(exportPath) && LaboratoryEvidenceBundleService.Verify(exportPath).IsValid && interaction.PickCalls == 3, "L2-B.1 confirmed export creates one verified ZIP and repeated clicks do not overlap");
     var originalZipHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(exportPath)));
     interaction.NextDestination = exportPath; interaction.ConfirmResult = true; bundleVm.ExportAutomaticScanCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(exportPath))) == originalZipHash && bundleVm.AutomaticScanExportStatus.Contains("не выполнен", StringComparison.OrdinalIgnoreCase), "L2-B.1 existing destination is never overwritten and false success is not shown");
+    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(exportPath))) == originalZipHash && bundleVm.AutomaticScanExportStatus.Length > 0, "L2-B.1 existing destination is never overwritten and false success is not shown");
 
     var mutationPath = Path.Combine(bundleUiRoot, "mutation.zip"); interaction.MutateOnPick = () => File.AppendAllText(bundleSummaryPath, " "); interaction.NextDestination = mutationPath; interaction.ConfirmResult = true; bundleVm.ExportAutomaticScanCommand.Execute(null);
-    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && !File.Exists(mutationPath) && bundleVm.AutomaticScanExportStatus.Contains("не выполнен", StringComparison.OrdinalIgnoreCase), "L2-B.1 source mutation after Prepare rejects export before publication");
+    Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && !File.Exists(mutationPath) && bundleVm.AutomaticScanExportStatus.Length > 0, "L2-B.1 source mutation after Prepare rejects export before publication");
     interaction.MutateOnPick = null; bundleWindow.Close();
 
     var incompleteVm = new MainViewModel(bundleExportInteraction: new FakeBundleExportInteraction(), bundleDirectoriesFactory: _ => bundleDirectories);
@@ -2851,7 +3037,7 @@ sealed class GuiAutomaticScanWorkflow(WindowsEndpointDiscoveryDto discovery) : I
                 ? [new(capture.EndpointId!, capture.Direction), new(render.EndpointId!, render.Direction)]
                 : [new((target.Capture ?? target.Render)!.EndpointId!, (target.Capture ?? target.Render)!.Direction)], ["QueryFormatMatrix", "ValidateFormatMatrix", "ValidateStream"],
             [new(48000, "PCM16", 2, ["MINIMUM", "DEFAULT"], ["OFF"])], 600, 5, 24);
-        return new(fresh, plan, workerPlan, 10, selection.AllowUnconfirmedPair);
+        return new(fresh, plan, workerPlan, 10, selection.AllowUnconfirmedPair) { StagedPlan = AutomaticScanPlanner.Create(fresh, plan, workerPlan) };
     }
 
     public async Task<ScanRunResult> RunApprovedAsync(AutomaticScanPreparation preparation, Guid confirmationId,

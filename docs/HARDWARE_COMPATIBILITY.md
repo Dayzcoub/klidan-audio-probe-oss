@@ -2,6 +2,9 @@
 
 This matrix records operator evidence only. It is not a certification list,
 does not promise driver compatibility, and does not measure physical RTL.
+The rows below are historical operator summaries, not validation of the current
+Preview source. Physical audio QA was not performed in the L10N-5 final QA pass.
+There is no physical RTL certification; `AudioHost` remains `NOT_CERTIFIED`.
 
 | Device | Evidence scope | Result |
 |---|---|---|

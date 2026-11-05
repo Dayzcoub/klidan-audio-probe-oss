@@ -18,12 +18,12 @@ The D0 design baseline, D1 approval and D2 shell were delivered on separate bran
 
 ## Codex implementation brief for docs-only handoff
 ```
-Repository: Dayzcoub/klidan-audio-probe
+Repository: KLIDAN Audio Probe OSS
 Objective: Preserve the owner-approved v0.1 visual design baseline and document D0 status.
 Keep design requirements separate from the undecided D1 UI/Core architecture.
 Copy the complete original kit under docs/gui/ and record status reconciliation/governance.
 Do NOT implement UI code, change CMake/native audio, add dependencies or activate devices.
-Retain provenance references to main KLIDAN DesignTokens/Colors.xaml and Spacing.xaml.
+Use only design resources and provenance that are present in this public repository; do not add private upstream references.
 Add a small PROPOSED, NOT DECIDED ADR stub for the UI/Core boundary.
 Validate links, token JSON syntax, document consistency, Russian copy, and git diff --check.
 Commit/push in isolated docs branch; no PR or merge.

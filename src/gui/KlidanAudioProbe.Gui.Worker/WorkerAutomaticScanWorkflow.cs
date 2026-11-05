@@ -15,7 +15,11 @@ public sealed class WorkerAutomaticScanWorkflow(NativeWorkerClient worker) : IAu
             await worker.ConnectAsync(cancellationToken).ConfigureAwait(false);
         if (worker.State.State != WorkerConnectionState.ConnectedFake)
             throw new InvalidOperationException($"Worker недоступен: {worker.State.Message}");
+        EndpointDiscoveryQaTrace.Write("workflow-request", state: worker.State.State.ToString(), exitCode: worker.State.ExitCode);
+        System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=request-sent workerState={0}", worker.State.State);
         var discovery = await worker.ListWindowsEndpointsAsync(cancellationToken).ConfigureAwait(false);
+        EndpointDiscoveryQaTrace.Write("workflow-response", state: worker.State.State.ToString(), exitCode: worker.State.ExitCode);
+        System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=response-received endpointCount={0} workerState={1}", discovery.Endpoints.Count, worker.State.State);
         WindowsEndpointDiscoveryValidation.Validate(discovery, worker.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal));
         return discovery;
     }

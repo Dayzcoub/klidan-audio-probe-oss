@@ -736,6 +736,26 @@ bool WorkerProcessAlive(int pid) { try { using var process = Process.GetProcessB
 await WaitUntilAsync(() => !WorkerProcessAlive(timeoutPid), TimeSpan.FromSeconds(3));
 Check(timeoutClient.State.State == WorkerConnectionState.Disconnected && timeoutFaults.Any(f => f.Stage == "DUPLEX_SUPERVISION_TIMEOUT"), "Duplex response timeout tears down the GUI-owned worker job and preserves UNKNOWN operation/cleanup state");
 await timeoutClient.DisposeAsync();
+Check(NativeWorkerClient.ResponseTimeoutForTest("ListWindowsEndpoints") == TimeSpan.FromSeconds(5), "Windows endpoint discovery response timeout is explicitly bounded to five seconds");
+Environment.SetEnvironmentVariable("KLIDAN_TEST_FORMAT_SCENARIO", "HOLD_DISCOVERY");
+var discoveryTimeoutClient = new NativeWorkerClient(formatFixtureWorker) { ResponseTimeoutOverrideForTest = TimeSpan.FromMilliseconds(100) };
+var discoveryTimeoutFaults = new List<WorkerTransportFaultDto>(); discoveryTimeoutClient.TransportFault += discoveryTimeoutFaults.Add;
+try
+{
+    await discoveryTimeoutClient.ConnectAsync();
+    var discoveryPid = discoveryTimeoutClient.State.ProcessId ?? throw new InvalidOperationException("Discovery timeout fixture has no Worker process ID.");
+    await ThrowsAsync<TimeoutException>(() => discoveryTimeoutClient.ListWindowsEndpointsAsync(), "endpoint discovery response timeout returns a bounded failure");
+    Check(discoveryTimeoutClient.State.State == WorkerConnectionState.ConnectedFake && WorkerProcessAlive(discoveryPid) && discoveryTimeoutFaults.Any(f => f.Stage == "RESPONSE_TIMEOUT"), "discovery timeout leaves only an idle connected Worker; late results cannot be mistaken for current discovery");
+    await Task.Delay(400);
+    discoveryTimeoutClient.ResponseTimeoutOverrideForTest = null;
+    using var afterTimeout = await discoveryTimeoutClient.SendForTestAsync("ListWindowsEndpoints", new { });
+    Check(afterTimeout.RootElement.GetProperty("status").GetString() == "OK", "a later bounded discovery response is correlated independently after timeout");
+}
+finally
+{
+    await discoveryTimeoutClient.DisposeAsync();
+    Environment.SetEnvironmentVariable("KLIDAN_TEST_FORMAT_SCENARIO", null);
+}
 var closePlan = new WorkerScanPlan(scanEndpoints, ["ValidateStream"], [new(48_000, "PCM16", 2, ["MINIMUM"], ["OFF"])], 60, 1, 1);
 Environment.SetEnvironmentVariable("KLIDAN_TEST_CLOSE_SCENARIO", "NO_RESPONSE");
 var closeTimeoutClient = new NativeWorkerClient(formatFixtureWorker) { ResponseTimeoutOverrideForTest = TimeSpan.FromMilliseconds(250) };
@@ -1182,6 +1202,7 @@ static class TestNativePipeWorker
             }
             if (command == "ListWindowsEndpoints")
             {
+                if (Environment.GetEnvironmentVariable("KLIDAN_TEST_FORMAT_SCENARIO") == "HOLD_DISCOVERY") { await Task.Delay(350); }
                 var evidence = new { hresult = 0, state = "AVAILABLE" };
                 await Respond(command, correlation, null, "OK", new
                 {

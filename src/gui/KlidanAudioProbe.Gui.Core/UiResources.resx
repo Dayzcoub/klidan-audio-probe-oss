@@ -1,0 +1,1255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>KLIDAN Audio Probe · Windows diagnostics</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="DeveloperTools" xml:space="preserve"><value>Developer Tools · real + synthetic</value></data>
+  <data name="DeveloperToolsHidden" xml:space="preserve"><value>Developer Tools are disabled. Start with --developer-tools.</value></data>
+  <data name="WindowsDiagnostics" xml:space="preserve"><value>Windows diagnostics · explicit actions only</value></data>
+  <data name="DeviceStep" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="TestStep" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="ResultStep" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="ReturnToWindows" xml:space="preserve"><value>Return to Windows diagnostics</value></data>
+  <data name="LanguageRestartNotice" xml:space="preserve"><value>Language preference saved. Restart the GUI to apply it safely.</value></data>
+  <data name="ProductName" xml:space="preserve"><value>KLIDAN</value></data>
+  <data name="ProductSuffix" xml:space="preserve"><value> AUDIO PROBE</value></data>
+  <data name="WindowsDiagnosticsSuffix" xml:space="preserve"><value>  ·  WINDOWS DIAGNOSTICS</value></data>
+  <data name="LanguageSelection" xml:space="preserve"><value>Language / Language selection</value></data>
+  <data name="WindowControls" xml:space="preserve"><value>Window controls</value></data>
+  <data name="Minimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="MaximizeRestore" xml:space="preserve"><value>Maximize or restore</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="CheckSection" xml:space="preserve"><value>CHECK</value></data>
+  <data name="DeveloperSection" xml:space="preserve"><value>DEVELOPER</value></data>
+  <data name="DeviceStepLabel" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="TestStepLabel" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="ResultStepLabel" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="DeveloperToolsNav" xml:space="preserve"><value>Developer Tools · real + synthetic</value></data>
+  <data name="LocalDevices" xml:space="preserve"><value>Local devices</value></data>
+  <data name="LocalFormats" xml:space="preserve"><value>Local formats</value></data>
+  <data name="CaptureDemo" xml:space="preserve"><value>Capture demo</value></data>
+  <data name="RenderDemo" xml:space="preserve"><value>Render demo</value></data>
+  <data name="EvidenceLibrary" xml:space="preserve"><value>Evidence library</value></data>
+  <data name="WorkerFakeIpc" xml:space="preserve"><value>Worker Fake / IPC</value></data>
+  <data name="ManualRealOperations" xml:space="preserve"><value>Manual real operations</value></data>
+  <data name="ReturnToWindowsNav" xml:space="preserve"><value>Return to Windows diagnostics</value></data>
+  <data name="TestSelectionTitle" xml:space="preserve"><value>Test selection</value></data>
+  <data name="DuplexTestTitle" xml:space="preserve"><value>Duplex test</value></data>
+  <data name="QueryParametersTitle" xml:space="preserve"><value>Query parameters</value></data>
+  <data name="AutomaticScanTitle" xml:space="preserve"><value>Automatic Scan</value></data>
+  <data name="ResultTitle" xml:space="preserve"><value>Test result</value></data>
+  <data name="DetailsHeader" xml:space="preserve"><value>Details</value></data>
+  <data name="WindowsAudioDevicesTitle" xml:space="preserve"><value>Windows audio devices</value></data>
+  <data name="EndpointListTitle" xml:space="preserve"><value>Endpoint list</value></data>
+  <data name="WindowsDevicesTitle" xml:space="preserve"><value>Windows Devices · real system metadata</value></data>
+  <data name="SavedProfileTitle" xml:space="preserve"><value>Saved device profile</value></data>
+  <data name="SavedProfileDiagnosticsTitle" xml:space="preserve"><value>Advanced profile diagnostics</value></data>
+  <data name="HistoricalRecoveryTitle" xml:space="preserve"><value>Restore profile from previous measurements</value></data>
+  <data name="PhysicalDeviceTitle" xml:space="preserve"><value>Physical device</value></data>
+  <data name="SustainedValidationTitle" xml:space="preserve"><value>Sustained validation</value></data>
+  <data name="PhysicalGroupingTitle" xml:space="preserve"><value>Physical grouping · technical details</value></data>
+  <data name="FormatsTitle" xml:space="preserve"><value>Formats</value></data>
+  <data name="CaptureChannelsTitle" xml:space="preserve"><value>Input channels</value></data>
+  <data name="RenderChannelsTitle" xml:space="preserve"><value>Output channels</value></data>
+  <data name="WorkerEventsTitle" xml:space="preserve"><value>WORKER FAKE events · IPC and local actions</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="ConfirmAndStart" xml:space="preserve"><value>Confirm and start</value></data>
+  <data name="TestMinimum" xml:space="preserve"><value>Test MINIMUM</value></data>
+  <data name="TestDefault" xml:space="preserve"><value>Test DEFAULT</value></data>
+  <data name="StopBoth" xml:space="preserve"><value>Stop both sides</value></data>
+  <data name="RequestFormats" xml:space="preserve"><value>Query Exclusive formats</value></data>
+  <data name="CheckInitialization" xml:space="preserve"><value>Check initialization</value></data>
+  <data name="BackDevice" xml:space="preserve"><value>Back · device</value></data>
+  <data name="ToResults" xml:space="preserve"><value>Go to results</value></data>
+  <data name="OpenReportFolder" xml:space="preserve"><value>Open report folder</value></data>
+  <data name="ExportResults" xml:space="preserve"><value>Export results</value></data>
+  <data name="StartTest" xml:space="preserve"><value>Start test</value></data>
+  <data name="Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="SaveKlidanProfile" xml:space="preserve"><value>Save profile for KLIDAN</value></data>
+  <data name="RepeatTest" xml:space="preserve"><value>Repeat this test</value></data>
+  <data name="OtherTest" xml:space="preserve"><value>Another test on this device</value></data>
+  <data name="TestModeHeading" xml:space="preserve"><value>TEST MODE</value></data>
+  <data name="TestModeAccessible" xml:space="preserve"><value>Test mode</value></data>
+  <data name="TestModeDescription" xml:space="preserve"><value>Available: passive Exclusive IsFormatSupported and a separate Initialize-only test. Initialize may briefly occupy the endpoint; Start and PCM are not used.</value></data>
+  <data name="InitializeQueryPrerequisite" xml:space="preserve"><value>Initialize-only requires a current format query for the selected endpoint. Run it here, then select a supported format and DEFAULT/MINIMUM. Initialize does not start automatically.</value></data>
+  <data name="FutureCaptureMeter" xml:space="preserve"><value>Future · Live Capture Meter · unavailable</value></data>
+  <data name="FutureRenderTest" xml:space="preserve"><value>Future · Live Render Channel Test · unavailable</value></data>
+  <data name="RealDuplexTest" xml:space="preserve"><value>Real duplex test</value></data>
+  <data name="DuplexPairDescription" xml:space="preserve"><value>The exact selected Capture / Render pair. Each period requires separate, fresh confirmation.</value></data>
+  <data name="DuplexNewConfirmation" xml:space="preserve"><value>New confirmation · Duplex</value></data>
+  <data name="DuplexConsent" xml:space="preserve"><value>I authorize exactly this simultaneous Exclusive test</value></data>
+  <data name="DuplexRunning" xml:space="preserve"><value>RUNNING · awaiting structured report</value></data>
+  <data name="DuplexResultsAccessible" xml:space="preserve"><value>MINIMUM and DEFAULT duplex results</value></data>
+  <data name="DuplexBuffers" xml:space="preserve"><value>Buffers · Capture / Render</value></data>
+  <data name="DuplexFrames" xml:space="preserve"><value>Frames · Capture / Render</value></data>
+  <data name="DuplexCoverage" xml:space="preserve"><value>Coverage · Capture / Render</value></data>
+  <data name="DuplexQuality" xml:space="preserve"><value>Quality · Capture / Render / Duplex</value></data>
+  <data name="DuplexFaultDetails" xml:space="preserve"><value>Faults, Stop, cleanup and details</value></data>
+  <data name="ConcurrentTimeMs" xml:space="preserve"><value>Concurrent time, ms</value></data>
+  <data name="ReportLabel" xml:space="preserve"><value>Report</value></data>
+  <data name="QueryChannelCountsLabel" xml:space="preserve"><value>Channel counts (comma-separated, 1–64)</value></data>
+  <data name="QueryChannelCountsAccessible" xml:space="preserve"><value>Requested channel counts</value></data>
+  <data name="FormatResultsSummary" xml:space="preserve"><value>Format results summary</value></data>
+  <data name="UniqueFormatResults" xml:space="preserve"><value>Unique REAL_WASAPI_QUERY results</value></data>
+  <data name="FormatColumn" xml:space="preserve"><value>Format</value></data>
+  <data name="HertzColumn" xml:space="preserve"><value>Hz</value></data>
+  <data name="ChannelsColumn" xml:space="preserve"><value>Ch.</value></data>
+  <data name="QueryStatusColumn" xml:space="preserve"><value>Query status</value></data>
+  <data name="UniqueFormatDescription" xml:space="preserve"><value>Each row represents one unique format and one IsFormatSupported query. The period is selected only for Initialize-only.</value></data>
+  <data name="SelectSupportedFormat" xml:space="preserve"><value>Select a format with SUPPORTED_REPORTED for Initialize-only</value></data>
+  <data name="InitializePeriodAccessible" xml:space="preserve"><value>Initialize-only period</value></data>
+  <data name="InitializeUnavailableReason" xml:space="preserve"><value>Reason Initialize-only is unavailable</value></data>
+  <data name="InitializeNewConfirmation" xml:space="preserve"><value>New confirmation · one Initialize attempt</value></data>
+  <data name="InitializeConsent" xml:space="preserve"><value>I authorize one Exclusive Initialize with these exact settings</value></data>
+  <data name="PhysicalRtlNotMeasured" xml:space="preserve"><value>Physical RTL is not measured. AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="StopRequestCancel" xml:space="preserve"><value>Stop / request cancellation</value></data>
+  <data name="CancellationPendingDescription" xml:space="preserve"><value>A cancellation request does not confirm that the driver has stopped. State and cleanup update only after the Worker responds.</value></data>
+  <data name="ToResult" xml:space="preserve"><value>To result</value></data>
+  <data name="BackToDevice" xml:space="preserve"><value>Back to device</value></data>
+  <data name="DeviceLabel" xml:space="preserve"><value>Device</value></data>
+  <data name="ScanLabel" xml:space="preserve"><value>Scan</value></data>
+  <data name="ExportTechnicalDetails" xml:space="preserve"><value>Export technical details</value></data>
+  <data name="PhysicalLatencyPrefix" xml:space="preserve"><value>Physical latency: </value></data>
+  <data name="OperationsAndTechnicalDetails" xml:space="preserve"><value>Operations and technical details</value></data>
+  <data name="SelectedDuplexResult" xml:space="preserve"><value>Selected Capture / Render pair result</value></data>
+  <data name="SavedDuplexResults" xml:space="preserve"><value>Saved MINIMUM and DEFAULT duplex results</value></data>
+  <data name="BuffersInitializeCr" xml:space="preserve"><value>Buffers C/R · Initialize C/R</value></data>
+  <data name="StartCoverageCr" xml:space="preserve"><value>Start C/R · coverage C/R</value></data>
+  <data name="QualityCrDuplex" xml:space="preserve"><value>Quality C/R/Duplex</value></data>
+  <data name="AutomaticScanResult" xml:space="preserve"><value>Automatic scan · result</value></data>
+  <data name="ScanInitializeCandidates" xml:space="preserve"><value>Automatic scan candidate initialization</value></data>
+  <data name="ChannelsLabel" xml:space="preserve"><value>Channels</value></data>
+  <data name="PeriodLabel" xml:space="preserve"><value>Period</value></data>
+  <data name="BufferLabel" xml:space="preserve"><value>Buffer</value></data>
+  <data name="StreamTestDescription" xml:space="preserve"><value>The stream test runs separately only after Initialize succeeds. Capture reads packets without saving PCM; Render sends digital silence.</value></data>
+  <data name="TestSelectedPeriodStream" xml:space="preserve"><value>Test the selected period stream · 5 seconds</value></data>
+  <data name="StreamConsentHeading" xml:space="preserve"><value>Separate consent to start a real stream</value></data>
+  <data name="StreamConsent" xml:space="preserve"><value>I authorize one selected Capture/Render stream</value></data>
+  <data name="StreamResultsAccessible" xml:space="preserve"><value>Stream test results: separate MINIMUM and DEFAULT cards</value></data>
+  <data name="BufferPrefix" xml:space="preserve"><value>Buffer: </value></data>
+  <data name="FramesSuffix" xml:space="preserve"><value> frames</value></data>
+  <data name="FinalStatus" xml:space="preserve"><value>Final status</value></data>
+  <data name="FramesExpected" xml:space="preserve"><value>Frames / expected</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
+  <data name="StreamQuality" xml:space="preserve"><value>Stream quality</value></data>
+  <data name="FaultCounters" xml:space="preserve"><value>Fault counters</value></data>
+  <data name="ReasonDetails" xml:space="preserve"><value>Reason / details</value></data>
+  <data name="ErrorResultDetails" xml:space="preserve"><value>Error or result details</value></data>
+  <data name="ScanTechnicalData" xml:space="preserve"><value>Automatic scan technical data · HRESULT, periods, buffer, cleanup</value></data>
+  <data name="ExclusiveFormatResults" xml:space="preserve"><value>Unique Exclusive format results</value></data>
+  <data name="FullResultsTechnicalData" xml:space="preserve"><value>Full results and technical data</value></data>
+  <data name="InitializeTechnicalDiagnostics" xml:space="preserve"><value>Technical diagnostics · HRESULT, alignment retry, COM release</value></data>
+  <data name="InitializeTechnicalDetails" xml:space="preserve"><value>Initialize-only technical details</value></data>
+  <data name="SaveAcceptedRealResults" xml:space="preserve"><value>Saves only accepted real results. Pair profile v3 may contain a provisional Probe recommendation; AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="SaveDeviceProfileForKlidan" xml:space="preserve"><value>Save a local device configuration profile for KLIDAN</value></data>
+  <data name="SelectAnotherDevice" xml:space="preserve"><value>Select another device</value></data>
+  <data name="SelectActiveEndpoint" xml:space="preserve"><value>Select the exact active endpoint. Discovery starts only after the operator acts.</value></data>
+  <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Test data</value></data>
+  <data name="VmDemoEndpointDisplayName" xml:space="preserve"><value>DEMO · Simulation data · {0} · {1} channels</value></data>
+  <data name="VmDemoAvailable" xml:space="preserve"><value>Demo · available</value></data>
+  <data name="VmDemoDisabled" xml:space="preserve"><value>Demo · disabled</value></data>
+  <data name="VmDemoKilohertz" xml:space="preserve"><value>kHz</value></data>
+  <data name="InputCapture" xml:space="preserve"><value>Input · Capture</value></data>
+  <data name="OutputRender" xml:space="preserve"><value>Output · Render</value></data>
+  <data name="EmptyList" xml:space="preserve"><value>Empty list</value></data>
+  <data name="EmptyDeviceList" xml:space="preserve"><value>Empty device list</value></data>
+  <data name="DemoOnlyDevices" xml:space="preserve"><value>Real devices are not enumerated. Only test data is used.</value></data>
+  <data name="RestoreDemo" xml:space="preserve"><value>Restore demo</value></data>
+  <data name="DemoDeviceList" xml:space="preserve"><value>Demo device list</value></data>
+  <data name="RowSelectionRetained" xml:space="preserve"><value>The selected row is retained when focus changes.</value></data>
+  <data name="PhysicalJackMappingUnknown" xml:space="preserve"><value>Physical jack mapping: UNKNOWN</value></data>
+  <data name="WorkerFakeSynthetic" xml:space="preserve"><value>WORKER FAKE · Developer Tools only · synthetic operations</value></data>
+  <data name="OpenWorkerFakeDiagnostics" xml:space="preserve"><value>Open WORKER FAKE diagnostics</value></data>
+  <data name="MetadataAndScanConsent" xml:space="preserve"><value>System metadata retrieval and automatic scanning run only after explicit action and confirmation.</value></data>
+  <data name="FindRefreshDevices" xml:space="preserve"><value>Find / refresh devices</value></data>
+  <data name="SavedDeviceProfile" xml:space="preserve"><value>Saved device profile</value></data>
+  <data name="CheckSavedBinding" xml:space="preserve"><value>Refresh real devices and check the saved binding without starting audio.</value></data>
+  <data name="CheckConnection" xml:space="preserve"><value>Check connection</value></data>
+  <data name="CheckSavedDeviceConnection" xml:space="preserve"><value>Check saved device connection</value></data>
+  <data name="ProfileSelectionDiagnostics" xml:space="preserve"><value>Profile selection and technical details are for diagnostics; conflicting profiles are never selected automatically.</value></data>
+  <data name="AdvancedSavedProfileSelection" xml:space="preserve"><value>Advanced saved profile selection</value></data>
+  <data name="RefreshProfiles" xml:space="preserve"><value>Refresh profiles</value></data>
+  <data name="CheckTechnicalDetails" xml:space="preserve"><value>Check technical details</value></data>
+  <data name="RecoverProfileFromHistory" xml:space="preserve"><value>Recover a profile from previous measurements</value></data>
+  <data name="LocalCompletedMeasurementsOnly" xml:space="preserve"><value>Only local completed measurements are used. Audio is not started; recovery is not automatic.</value></data>
+  <data name="HistoricalMeasurementSelection" xml:space="preserve"><value>Historical measurement selection</value></data>
+  <data name="RefreshPreviousMeasurements" xml:space="preserve"><value>Refresh previous measurements</value></data>
+  <data name="TechnicalInformation" xml:space="preserve"><value>Technical information</value></data>
+  <data name="CheckOldMeasurements" xml:space="preserve"><value>Check old measurements</value></data>
+  <data name="VerifiedResult" xml:space="preserve"><value>Verified result</value></data>
+  <data name="ConfirmNewV4Profile" xml:space="preserve"><value>I confirm creation of a NEW local v4 profile from historical data</value></data>
+  <data name="RecoveryLimitations" xml:space="preserve"><value>Nothing is started; source reports are unchanged; this is not current runtime certification; AudioHost is not configured automatically.</value></data>
+  <data name="SaveRecoveredProfile" xml:space="preserve"><value>Save recovered profile</value></data>
+  <data name="PhysicalAudioDeviceSelection" xml:space="preserve"><value>Physical audio device selection</value></data>
+  <data name="AmbiguousCaptureRender" xml:space="preserve"><value>If ambiguous, select Capture and Render below. Loopback does not replace an analog input.</value></data>
+  <data name="SustainedTestMode" xml:space="preserve"><value>Sustained test mode</value></data>
+  <data name="ScanButton" xml:space="preserve"><value>Scan</value></data>
+  <data name="PrepareAutomaticScan" xml:space="preserve"><value>Prepare automatic scan of the selected device</value></data>
+  <data name="ScanPlanConfirmation" xml:space="preserve"><value>One confirmation for the scan plan</value></data>
+  <data name="ScanPlanConsent" xml:space="preserve"><value>I authorize the listed operations for these exact endpoints and settings</value></data>
+  <data name="ConfirmWholeScanPlan" xml:space="preserve"><value>Confirm the entire unchanged scan plan once</value></data>
+  <data name="ConfirmAndScan" xml:space="preserve"><value>Confirm and scan</value></data>
+  <data name="RealWorkerScanning" xml:space="preserve"><value>SCANNING · real Worker</value></data>
+  <data name="DriverCancellationNote" xml:space="preserve"><value>A cancellation request does not mean an unresponsive driver call has stopped. The result and cleanup are shown after the worker responds.</value></data>
+  <data name="LatestAutomaticResult" xml:space="preserve"><value>Latest automatic result</value></data>
+  <data name="DisconnectedWorkerHistory" xml:space="preserve"><value>Last response from disconnected worker · historical data</value></data>
+  <data name="SearchEndpointByName" xml:space="preserve"><value>Search Windows endpoints by name</value></data>
+  <data name="SearchDeviceByName" xml:space="preserve"><value>Search devices by name</value></data>
+  <data name="DirectionFilter" xml:space="preserve"><value>Direction filter</value></data>
+  <data name="ActiveOnly" xml:space="preserve"><value>Active only</value></data>
+  <data name="ShowActiveEndpoints" xml:space="preserve"><value>Show only active Windows endpoints</value></data>
+  <data name="RealWindowsEndpoints" xml:space="preserve"><value>Real Windows endpoints · REAL_WINDOWS_METADATA</value></data>
+  <data name="InputOutput" xml:space="preserve"><value>Input/output</value></data>
+  <data name="StateLabel" xml:space="preserve"><value>State</value></data>
+  <data name="SelectRowForDetails" xml:space="preserve"><value>Select a row for technical details</value></data>
+  <data name="SelectedEndpointDetails" xml:space="preserve"><value>Selected Windows endpoint details</value></data>
+  <data name="SelectedDeviceDetails" xml:space="preserve"><value>Selected device details</value></data>
+  <data name="ExplicitDuplexPair" xml:space="preserve"><value>Explicitly select a Capture + Render pair for Duplex</value></data>
+  <data name="ScanExplicitPair" xml:space="preserve"><value>Scan the explicitly selected Capture and Render pair</value></data>
+  <data name="ContinueSelectTest" xml:space="preserve"><value>Continue · select test</value></data>
+  <data name="ExplicitScanPairSelection" xml:space="preserve"><value>Explicit Capture Render pair selection for automatic scanning</value></data>
+  <data name="SelectScanPair" xml:space="preserve"><value>Select a pair to scan</value></data>
+  <data name="NoConfirmedUniquePair" xml:space="preserve"><value>Windows did not confirm a unique pair. Explicitly select active Capture and Render endpoints; similar names are not used for grouping.</value></data>
+  <data name="AllowCrossGroupPair" xml:space="preserve"><value>Allow an explicit pair from different physical groups</value></data>
+  <data name="AllowUnconfirmedPhysicalPair" xml:space="preserve"><value>Allow a pair without confirmed common physical identity</value></data>
+  <data name="UnconfirmedPhysicalPairWarning" xml:space="preserve"><value>Warning: Windows did not confirm that Capture and Render belong to the same physical device. The pair will be marked OPERATOR_SELECTED and requires separate confirmation.</value></data>
+  <data name="DuplexCaptureEndpoint" xml:space="preserve"><value>Duplex pair: Capture endpoint</value></data>
+  <data name="DuplexRenderEndpoint" xml:space="preserve"><value>Duplex pair: Render endpoint</value></data>
+  <data name="UnknownDeviceAndRouting" xml:space="preserve"><value>Device match: UNKNOWN if Windows does not provide a confirmed common identity. Physical routing: UNKNOWN.</value></data>
+  <data name="RepeatabilityStep3" xml:space="preserve"><value>Step 3 · after selecting exact Capture and Render endpoints</value></data>
+  <data name="RepeatabilityAvailabilityReason" xml:space="preserve"><value>Repeatability availability reason</value></data>
+  <data name="PrepareRepeatabilityQa" xml:space="preserve"><value>Prepare repeatability QA</value></data>
+  <data name="RepeatabilityStep4" xml:space="preserve"><value>Step 4 · one confirmation for all six operations</value></data>
+  <data name="RepeatabilityPlanConsent" xml:space="preserve"><value>I authorize the entire immutable repeatability plan</value></data>
+  <data name="RepeatabilityStep5" xml:space="preserve"><value>Step 5 · Repeatability in progress</value></data>
+  <data name="RequestCancellation" xml:space="preserve"><value>Request cancellation</value></data>
+  <data name="ResultsStep6" xml:space="preserve"><value>Step 6 · Results</value></data>
+  <data name="RealExclusivePeriodDiscovery" xml:space="preserve"><value>Real Exclusive period discovery</value></data>
+  <data name="PeriodDiscoveryHeading" xml:space="preserve"><value>C4.2A · Period discovery</value></data>
+  <data name="PeriodDiscoveryAvailabilityReason" xml:space="preserve"><value>Period discovery availability reason</value></data>
+  <data name="DiscoverPeriods" xml:space="preserve"><value>Discover periods</value></data>
+  <data name="CandidatePlanConfirmation" xml:space="preserve"><value>One confirmation for the complete immutable candidate plan</value></data>
+  <data name="InitializeCandidatesConsent" xml:space="preserve"><value>I authorize only the listed Initialize-only candidates</value></data>
+  <data name="SequentialDiscovery" xml:space="preserve"><value>Discovery runs sequentially</value></data>
+  <data name="OneCustomDuplexOperation" xml:space="preserve"><value>One custom-period Duplex operation</value></data>
+  <data name="CustomDuplexHeading" xml:space="preserve"><value>C4.2B.1 · One custom-period Duplex operation</value></data>
+  <data name="CustomDuplexPrerequisite" xml:space="preserve"><value>Only after COMPLETED REAL C4.2A BOTH_EXACT; Capture discarded, Render silence, 5 seconds, MMCSS OFF, no routing.</value></data>
+  <data name="PeriodFrames" xml:space="preserve"><value>Period, frames:</value></data>
+  <data name="Prepare" xml:space="preserve"><value>Prepare</value></data>
+  <data name="SeparateConfirmationBeforeStart" xml:space="preserve"><value>Separate confirmation before start</value></data>
+  <data name="CustomDuplexConsent" xml:space="preserve"><value>I authorize exactly one listed custom-period Duplex operation</value></data>
+  <data name="DuplexInProgress" xml:space="preserve"><value>Duplex in progress</value></data>
+  <data name="PrepareFiveRuns" xml:space="preserve"><value>Prepare 5 runs</value></data>
+  <data name="WholeSeriesConfirmation" xml:space="preserve"><value>One confirmation for the entire series</value></data>
+  <data name="FiveCustomDuplexConsent" xml:space="preserve"><value>I authorize five sequential custom-period Duplex operations</value></data>
+  <data name="ConfirmStartSeries" xml:space="preserve"><value>Confirm and start series</value></data>
+  <data name="RepeatabilityInProgress" xml:space="preserve"><value>Repeatability in progress</value></data>
+  <data name="DemoFormatMatrixSummary" xml:space="preserve"><value>12 formats · 24 period results · test data</value></data>
+  <data name="RealWasapiExclusiveFormats" xml:space="preserve"><value>REAL WASAPI · Exclusive formats of the selected Windows endpoint</value></data>
+  <data name="ChannelCandidates" xml:space="preserve"><value>Channel candidates (1–64, up to 32 values):</value></data>
+  <data name="RealQueryResults" xml:space="preserve"><value>REAL_WASAPI_QUERY results</value></data>
+  <data name="StatusLabel" xml:space="preserve"><value>Status</value></data>
+  <data name="NewConfirmationRequired" xml:space="preserve"><value>New confirmation required</value></data>
+  <data name="SelectedInitializeConsent" xml:space="preserve"><value>I authorize one Exclusive Initialize with the selected settings</value></data>
+  <data name="ConfirmAndCheck" xml:space="preserve"><value>Confirm and check</value></data>
+  <data name="InitializeLimitations" xml:space="preserve"><value>Initialize does not call Start or transmit PCM. The result does not prove stream startup or audio observation.</value></data>
+  <data name="FormatMatrix" xml:space="preserve"><value>Format matrix</value></data>
+  <data name="EncodingLabel" xml:space="preserve"><value>Encoding</value></data>
+  <data name="FrequencyHz" xml:space="preserve"><value>Frequency, Hz</value></data>
+  <data name="DefaultPeriod" xml:space="preserve"><value>Period: default</value></data>
+  <data name="MinimumPeriod" xml:space="preserve"><value>Period: minimum</value></data>
+  <data name="DriverSupportLimitations" xml:space="preserve"><value>Driver support does not mean Initialize, stream startup or audio observation.</value></data>
+  <data name="CaptureMeterDemo" xml:space="preserve"><value>Capture meter · test windows only</value></data>
+  <data name="ChannelMeters" xml:space="preserve"><value>Channel meters</value></data>
+  <data name="CaptureChannelBank" xml:space="preserve"><value>Capture channel bank</value></data>
+  <data name="InputChannelBank" xml:space="preserve"><value>Input channel bank</value></data>
+  <data name="EightCaptureLevels" xml:space="preserve"><value>Current levels of eight Capture channels</value></data>
+  <data name="StreamIntegrity" xml:space="preserve"><value>Stream integrity</value></data>
+  <data name="StateQualitySeparate" xml:space="preserve"><value>Stream state and quality are shown separately.</value></data>
+  <data name="CoverageFaultsUnknown" xml:space="preserve"><value>Coverage and faults: unknown until session data is received.</value></data>
+  <data name="StartCaptureSimulation" xml:space="preserve"><value>Start Capture simulation</value></data>
+  <data name="NextWindow" xml:space="preserve"><value>Next window</value></data>
+  <data name="ChannelTestSimulation" xml:space="preserve"><value>Channel test · simulation without playback</value></data>
+  <data name="DemoOutputSettings" xml:space="preserve"><value>Output settings · demo</value></data>
+  <data name="ChannelBank" xml:space="preserve"><value>Channel bank</value></data>
+  <data name="WindowsChannelBank" xml:space="preserve"><value>Windows channel bank</value></data>
+  <data name="WindowsChannel" xml:space="preserve"><value>Windows channel</value></data>
+  <data name="WindowsChannelSelection" xml:space="preserve"><value>Windows channel selection</value></data>
+  <data name="Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="DemoDuration" xml:space="preserve"><value>Demo duration</value></data>
+  <data name="DemoSignalDescription" xml:space="preserve"><value>Signal: 997 Hz · no higher than −36 dBFS · sine with pauses</value></data>
+  <data name="PhysicalRoutingUnknown" xml:space="preserve"><value>Physical routing: UNKNOWN</value></data>
+  <data name="DemoNoSound" xml:space="preserve"><value>DEMO · No sound is played.</value></data>
+  <data name="PhysicalMapping" xml:space="preserve"><value>Physical mapping</value></data>
+  <data name="PhysicalOutputUnknown" xml:space="preserve"><value>UNKNOWN · physical output was not tested</value></data>
+  <data name="DigitalSimulationLimit" xml:space="preserve"><value>Digital simulation does not confirm a DAC signal or audibility.</value></data>
+  <data name="StartRenderSimulation" xml:space="preserve"><value>Start Render simulation</value></data>
+  <data name="DemoSimulationData" xml:space="preserve"><value>DEMO · Simulation data</value></data>
+  <data name="DemoTestData" xml:space="preserve"><value>DEMO · Test data</value></data>
+  <data name="WindowsExplicitActions" xml:space="preserve"><value>Windows diagnostics · explicit actions only</value></data>
+  <data name="RefreshIndex" xml:space="preserve"><value>Refresh index</value></data>
+  <data name="LocalRebuildableIndex" xml:space="preserve"><value>Local rebuildable index. Historical records are read-only and do not authorize active operations.</value></data>
+  <data name="ExactEndpointIdentityFilter" xml:space="preserve"><value>Exact endpoint identity filter</value></data>
+  <data name="ReportTypeFilter" xml:space="preserve"><value>Report type filter</value></data>
+  <data name="RealOrSynthetic" xml:space="preserve"><value>REAL or SYNTHETIC</value></data>
+  <data name="ComparisonMode" xml:space="preserve"><value>Comparison mode</value></data>
+  <data name="HistoricalEvidenceLimit" xml:space="preserve"><value>Historical record: observed evidence is not the current device state.</value></data>
+  <data name="OpenOriginalFile" xml:space="preserve"><value>Open original file</value></data>
+  <data name="Diagnostics" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="SyntheticModelActions" xml:space="preserve"><value>Actual actions of the current synthetic model</value></data>
+  <data name="WorkerFakePipe" xml:space="preserve"><value>WORKER FAKE · real Named Pipe · no audio devices</value></data>
+  <data name="NativeWorkerState" xml:space="preserve"><value>Native Worker state</value></data>
+  <data name="StartWorkerFake" xml:space="preserve"><value>Start worker fake</value></data>
+  <data name="QuerySyntheticDevices" xml:space="preserve"><value>Query synthetic devices</value></data>
+  <data name="ShutDownWorker" xml:space="preserve"><value>Shut down worker</value></data>
+  <data name="RemoteWorkerFakeResponses" xml:space="preserve"><value>Remote WORKER FAKE responses</value></data>
+  <data name="SyntheticWorkerDevice" xml:space="preserve"><value>Synthetic worker device</value></data>
+  <data name="LastDisconnectedWorkerResponse" xml:space="preserve"><value>Last response from disconnected worker</value></data>
+  <data name="HistoricalDisconnectedResponse" xml:space="preserve"><value>Historical response from disconnected worker</value></data>
+  <data name="FormatAndTopology" xml:space="preserve"><value>Format and its topology</value></data>
+  <data name="SyntheticStreamFormat" xml:space="preserve"><value>Synthetic stream format</value></data>
+  <data name="SelectedWorkerFormatTopology" xml:space="preserve"><value>Topology and channel count of the selected worker format</value></data>
+  <data name="WindowsRenderChannel" xml:space="preserve"><value>Windows channel for Render</value></data>
+  <data name="WindowsRenderSessionChannel" xml:space="preserve"><value>Windows channel for the Render session</value></data>
+  <data name="WorkerFakeDuration" xml:space="preserve"><value>Worker fake duration</value></data>
+  <data name="WorkerFakePeriod" xml:space="preserve"><value>Worker fake period</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Scenario</value></data>
+  <data name="WorkerFakeScenario" xml:space="preserve"><value>Worker fake scenario</value></data>
+  <data name="RequestCapture" xml:space="preserve"><value>Request Capture</value></data>
+  <data name="RequestRender" xml:space="preserve"><value>Request Render</value></data>
+  <data name="StopWorker" xml:space="preserve"><value>STOP WORKER</value></data>
+  <data name="ActiveFakeSettingsImmutable" xml:space="preserve"><value>Active fake session settings are immutable:</value></data>
+  <data name="ImmutableWorkerSettings" xml:space="preserve"><value>Immutable worker session settings</value></data>
+  <data name="WorkerPhysicalMappingUnknown" xml:space="preserve"><value>Physical channel mapping: UNKNOWN · no PCM is generated and no devices are activated.</value></data>
+  <data name="PhysicalRoutingUnknownLower" xml:space="preserve"><value>Physical routing: unknown</value></data>
+  <data name="WorkerMeterChannelBank" xml:space="preserve"><value>Worker meter channel bank</value></data>
+  <data name="EightWorkerChannelBank" xml:space="preserve"><value>Eight-channel worker bank</value></data>
+  <data name="WorkerFakeEventLog" xml:space="preserve"><value>Worker fake event log</value></data>
+  <data name="TimeLabel" xml:space="preserve"><value>Time</value></data>
+  <data name="SourceLabel" xml:space="preserve"><value>Source</value></data>
+  <data name="EventLabel" xml:space="preserve"><value>Event</value></data>
+  <data name="QualityLabel" xml:space="preserve"><value>Quality</value></data>
+  <data name="CleanupLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="SessionLabel" xml:space="preserve"><value>Session</value></data>
+  <data name="SelectedWorkerEventDetails" xml:space="preserve"><value>Selected worker event details</value></data>
+  <data name="LocalDemoNoPipe" xml:space="preserve"><value>LOCAL DEMO · local D2 model · does not use Named Pipe</value></data>
+  <data name="LocalScenariosLimit" xml:space="preserve"><value>The local scenarios below change only ViewModel state. They are not worker events and do not prove device operation.</value></data>
+  <data name="LocalDemoWarning" xml:space="preserve"><value>LOCAL DEMO warning</value></data>
+  <data name="LocalDemoError" xml:space="preserve"><value>LOCAL DEMO error</value></data>
+  <data name="LocalDemoDeviceLoss" xml:space="preserve"><value>LOCAL DEMO device loss</value></data>
+  <data name="DisconnectLocalDemo" xml:space="preserve"><value>Disconnect LOCAL DEMO</value></data>
+  <data name="LocalDemoTimeline" xml:space="preserve"><value>Local demo timeline</value></data>
+  <data name="StopWorkerFakeSession" xml:space="preserve"><value>Stop worker fake session</value></data>
+  <data name="StopLocal" xml:space="preserve"><value>STOP LOCAL</value></data>
+  <data name="StopLocalDemoSession" xml:space="preserve"><value>Stop local demo session</value></data>
+  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>WINDOWS DIAGNOSTICS · operations run only on explicit action</value></data>
+  <data name="WorkerFakeSessionState" xml:space="preserve"><value>Worker fake session state</value></data>
+  <data name="DemoSessionConfirmation" xml:space="preserve"><value>Demo session confirmation</value></data>
+  <data name="DemoSimulationConsent" xml:space="preserve"><value>I understand that only a demo simulation will start.</value></data>
+  <data name="WorkerFakeConfirmation" xml:space="preserve"><value>WORKER FAKE confirmation</value></data>
+  <data name="WorkerFakeLimitations" xml:space="preserve"><value>Worker performs only a synthetic operation. There is no WASAPI, PCM recording or physical test.</value></data>
+  <data name="FakeSettingsConsent" xml:space="preserve"><value>I confirm these exact fake session settings.</value></data>
+  <data name="ConfirmStartFake" xml:space="preserve"><value>Confirm fake start</value></data>
+  <data name="SyntheticFixturesHeading" xml:space="preserve"><value>SYNTHETIC / TEST FIXTURES</value></data>
+  <data name="RealWindowsDiagnosticsHeading" xml:space="preserve"><value>REAL WINDOWS DIAGNOSTICS</value></data>
+  <data name="DuplexRepeatabilityQa" xml:space="preserve"><value>Duplex repeatability QA</value></data>
+  <data name="DuplexRepeatabilityHeading" xml:space="preserve"><value>C4.1 · Duplex repeatability QA</value></data>
+  <data name="InitializeOnlyPairDescription" xml:space="preserve"><value>Real Windows Diagnostics · exact Capture/Render pair · Initialize-only</value></data>
+  <data name="BoundedRepeatabilityHeading" xml:space="preserve"><value>C4.2B.2 · bounded repeatability</value></data>
+  <data name="EvidenceComparisonMode" xml:space="preserve"><value>Evidence comparison mode</value></data>
+  <data name="EvidenceLibraryRecords" xml:space="preserve"><value>Evidence Library records</value></data>
+  <data name="TypeColumn" xml:space="preserve"><value>Type</value></data>
+  <data name="PeriodColumn" xml:space="preserve"><value>Period</value></data>
+  <data name="ModeColumn" xml:space="preserve"><value>Mode</value></data>
+  <data name="LocalTimeColumn" xml:space="preserve"><value>Local time</value></data>
+  <data name="UtcColumn" xml:space="preserve"><value>UTC</value></data>
+  <data name="ProvenanceColumn" xml:space="preserve"><value>Provenance</value></data>
+  <data name="StatusColumn" xml:space="preserve"><value>Status</value></data>
+  <data name="LifecycleQualityColumn" xml:space="preserve"><value>Lifecycle / quality</value></data>
+  <data name="NormalizedDuplexComparisons" xml:space="preserve"><value>Normalized Duplex comparisons</value></data>
+  <data name="ConfigurationColumn" xml:space="preserve"><value>Configuration</value></data>
+  <data name="RunsColumn" xml:space="preserve"><value>Runs</value></data>
+  <data name="CaptureCoverageColumn" xml:space="preserve"><value>Capture coverage</value></data>
+  <data name="RenderCoverageColumn" xml:space="preserve"><value>Render coverage</value></data>
+  <data name="DeveloperToolsDescription" xml:space="preserve"><value>DEVELOPER TOOLS · real Windows diagnostics + synthetic fixtures</value></data>
+  <data name="InitializeCaptureRender" xml:space="preserve"><value>Initialize · Capture / Render</value></data>
+  <data name="StartCaptureRender" xml:space="preserve"><value>Start · Capture / Render</value></data>
+  <data name="FaultsLabel" xml:space="preserve"><value>Faults</value></data>
+  <data name="StopCleanupLabel" xml:space="preserve"><value>Stop / cleanup</value></data>
+  <data name="AudioHostNotCertifiedSuffix" xml:space="preserve"><value> · AudioHost: NOT_CERTIFIED</value></data>
+  <data name="WindowsRealWasapi" xml:space="preserve"><value>WINDOWS · REAL WASAPI</value></data>
+  <data name="FaultStopCleanup" xml:space="preserve"><value>Faults, Stop, cleanup</value></data>
+  <data name="InitializeLabel" xml:space="preserve"><value>Initialize</value></data>
+  <data name="EventColumn" xml:space="preserve"><value>Event</value></data>
+  <data name="CleanupTechnicalLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="StartLabel" xml:space="preserve"><value>Start</value></data>
+  <data name="StopLabel" xml:space="preserve"><value>Stop</value></data>
+  <data name="RealEvidencePhysicalRtl" xml:space="preserve"><value>Evidence: REAL · AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="CaptureEndpointLabel" xml:space="preserve"><value>Capture endpoint</value></data>
+  <data name="RenderEndpointLabel" xml:space="preserve"><value>Render endpoint</value></data>
+  <data name="DemoMeterLegend" xml:space="preserve"><value>Peak · RMS · Hold · LOCAL DEMO</value></data>
+  <data name="EvidenceLibraryTitle" xml:space="preserve"><value>Evidence Library</value></data>
+  <data name="FormatTableColumn" xml:space="preserve"><value>Format</value></data>
+  <data name="CaptureP99" xml:space="preserve"><value>Capture P99</value></data>
+  <data name="RenderP99" xml:space="preserve"><value>Render P99</value></data>
+  <data name="MmcssWorkerFake" xml:space="preserve"><value>MMCSS worker fake</value></data>
+  <data name="FakeOnlyBadge" xml:space="preserve"><value>D3-A2A · fake only</value></data>
+  <data name="WindowsChannelFormat" xml:space="preserve"><value>Windows channel {0}</value></data>
+  <data name="SessionIdFormat" xml:space="preserve"><value>Session {0:D}</value></data>
+  <data name="PreferredFormat" xml:space="preserve"><value>Preferred: {0}</value></data>
+  <data name="FallbackFormat" xml:space="preserve"><value>Fallback: {0}</value></data>
+  <data name="ConfidenceFormat" xml:space="preserve"><value>Confidence: {0}</value></data>
+  <data name="SessionNotStarted" xml:space="preserve"><value>Session has not started</value></data>
+  <data name="QualityUnknown" xml:space="preserve"><value>Quality unknown</value></data>
+  <data name="NoFakeSession" xml:space="preserve"><value>No fake session</value></data>
+  <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 seconds; Extended: 600 seconds. Both modes run only after confirmation of the complete plan.</value></data>
+  <data name="VmOperatorResultProvenanceEmpty" xml:space="preserve"><value>REAL_WASAPI_QUERY · no data</value></data>
+  <data name="VmOperatorResultOutcomeEmpty" xml:space="preserve"><value>No result has been received.</value></data>
+  <data name="VmSyntheticBuildNotice" xml:space="preserve"><value>This build uses synthetic data.</value></data>
+  <data name="VmHistoricalRecoveryChooseMeasurement" xml:space="preserve"><value>Select a completed historical measurement.</value></data>
+  <data name="VmSavedProfileCheckConnection" xml:space="preserve"><value>Select “Check connection” to refresh devices and find a saved profile.</value></data>
+  <data name="VmSavedProfileNoHistorySelected" xml:space="preserve"><value>No historical configuration is selected.</value></data>
+  <data name="VmSavedProfileCheckLimitation" xml:space="preserve"><value>This check does not apply settings or start audio.</value></data>
+  <data name="VmStreamNotValidated" xml:space="preserve"><value>Stream has not been validated.</value></data>
+  <data name="VmDeviceScanNotStarted" xml:space="preserve"><value>Scan has not started.</value></data>
+  <data name="VmAutomaticScanNotStarted" xml:space="preserve"><value>Scan has not started.</value></data>
+  <data name="VmAutomaticScanExportNotPrepared" xml:space="preserve"><value>Export has not been prepared.</value></data>
+  <data name="VmAutomaticScanExportDetailsMissing" xml:space="preserve"><value>Export technical details are unavailable.</value></data>
+  <data name="VmDuplexNotStarted" xml:space="preserve"><value>Duplex has not started.</value></data>
+  <data name="VmDuplexRepeatabilityNotStarted" xml:space="preserve"><value>Repeatability QA has not started.</value></data>
+  <data name="VmCustomRepeatabilityNotStarted" xml:space="preserve"><value>Custom-period repeatability has not started.</value></data>
+  <data name="VmPeriodDiscoveryNotStarted" xml:space="preserve"><value>Period discovery has not started.</value></data>
+  <data name="VmWorkflowDeviceStep" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="VmWorkflowTestStep" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="VmWorkflowResultStep" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="VmOperatorExclusiveFormatQuery" xml:space="preserve"><value>Query Exclusive formats</value></data>
+  <data name="VmOperatorInitializeOnly" xml:space="preserve"><value>Initialize-only check</value></data>
+  <data name="VmDefaultPeriod" xml:space="preserve"><value>Standard (DEFAULT)</value></data>
+  <data name="VmMinimumPeriod" xml:space="preserve"><value>Minimum (MINIMUM)</value></data>
+  <data name="VmInitializeNeedsWorker" xml:space="preserve"><value>Worker is disconnected. Connect the worker to continue.</value></data>
+  <data name="VmInitializeEndpointStale" xml:space="preserve"><value>The endpoint is stale or unavailable. Refresh the list and select an active device.</value></data>
+  <data name="VmInitializeOperationRunning" xml:space="preserve"><value>An operation is running. Wait for it to finish.</value></data>
+  <data name="VmInitializeNeedsCurrentQuery" xml:space="preserve"><value>There is no current format query for the selected endpoint. Run the query.</value></data>
+  <data name="VmInitializeNeedsSelectedFormat" xml:space="preserve"><value>No format is selected. Choose a row marked SUPPORTED_REPORTED.</value></data>
+  <data name="VmInitializeFormatIncomplete" xml:space="preserve"><value>Evidence conflicts or is incomplete. This format cannot be initialized.</value></data>
+  <data name="VmInitializeFormatUnsupported" xml:space="preserve"><value>The selected format is unsupported or its query failed for Initialize-only.</value></data>
+  <data name="VmInitializePeriodUnavailable" xml:space="preserve"><value>No usable format result exists for the selected period.</value></data>
+  <data name="VmInitializeAwaitingConsent" xml:space="preserve"><value>Waiting for fresh confirmation or cancellation.</value></data>
+  <data name="VmInitializeWorkerCapabilityMissing" xml:space="preserve"><value>The connected worker does not support Initialize-only.</value></data>
+  <data name="VmAutomaticScanPlanNotPrepared" xml:space="preserve"><value>The staged plan has not been prepared.</value></data>
+  <data name="VmAutomaticScanCandidatesAwaitQuery" xml:space="preserve"><value>Candidates appear after FORMAT_QUERY; Probe limitations do not mean the device is incompatible.</value></data>
+  <data name="VmAutomaticScanUnavailable" xml:space="preserve"><value>Automatic scanning is unavailable in this window.</value></data>
+  <data name="VmAutomaticScanPreviousOutcomeUnknown" xml:space="preserve"><value>The previous operation did not reach a confirmed outcome. Close and restart the application.</value></data>
+  <data name="VmAutomaticScanInProgress" xml:space="preserve"><value>Scan in progress; new operations are blocked.</value></data>
+  <data name="VmAutomaticScanCancelOtherConsent" xml:space="preserve"><value>Cancel the other pending confirmation first.</value></data>
+  <data name="VmAutomaticScanChooseUnconfirmedPair" xml:space="preserve"><value>Explicitly select Capture and Render; shared physical identity is unconfirmed.</value></data>
+  <data name="VmAutomaticScanChoosePairEndpoints" xml:space="preserve"><value>Explicitly select Capture and Render endpoints for a paired scan.</value></data>
+  <data name="VmAutomaticScanCheckUnconfirmedPair" xml:space="preserve"><value>The explicitly selected pair will be checked; shared physical identity is unconfirmed.</value></data>
+  <data name="VmAutomaticScanCheckExactPair" xml:space="preserve"><value>Only the explicitly selected exact endpoint pair will be checked.</value></data>
+  <data name="VmAutomaticScanChooseCaptureOrPair" xml:space="preserve"><value>Select an active Capture endpoint for a partial scan, or allow an explicit pair.</value></data>
+  <data name="VmAutomaticScanChooseRenderOrPair" xml:space="preserve"><value>Select an active Render endpoint for a partial scan, or allow an explicit pair.</value></data>
+  <data name="VmAutomaticScanChooseActiveEndpoint" xml:space="preserve"><value>Select an available active endpoint in the current physical group.</value></data>
+  <data name="VmAutomaticScanPlanBoundToEndpoint" xml:space="preserve"><value>The plan will be limited to the selected endpoint and refreshed Windows discovery.</value></data>
+  <data name="VmAutomaticScanResultMissing" xml:space="preserve"><value>No result has been received.</value></data>
+  <data name="VmAutomaticScanCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmAutomaticScanPartiallyCompleted" xml:space="preserve"><value>Partially completed</value></data>
+  <data name="VmAutomaticScanCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="VmAutomaticScanFailed" xml:space="preserve"><value>Did not complete</value></data>
+  <data name="VmAutomaticScanOutcomeUnknown" xml:space="preserve"><value>Outcome unknown</value></data>
+  <data name="VmAutomaticScanProvenanceUnknown" xml:space="preserve"><value>UNKNOWN · operation source is unknown.</value></data>
+  <data name="VmAutomaticScanProvenanceDemo" xml:space="preserve"><value>DEMO · Simulation data (UI check only).</value></data>
+  <data name="VmAutomaticScanProvenanceReal" xml:space="preserve"><value>REAL WASAPI · accepted results.</value></data>
+  <data name="VmAutomaticScanProvenanceMixed" xml:space="preserve"><value>Mixed or unknown provenance · recommendation is not considered real.</value></data>
+  <data name="VmAutomaticScanSaveUnknown" xml:space="preserve"><value>The outcome of the new scan is unknown; saving this result is unconfirmed.</value></data>
+  <data name="VmAutomaticScanSaveUnconfirmed" xml:space="preserve"><value>Automatic save is unconfirmed: the operation result is unavailable.</value></data>
+  <data name="VmAutomaticScanReportNotSaved" xml:space="preserve"><value>Report not saved.</value></data>
+  <data name="VmChooseActiveWindowsDevice" xml:space="preserve"><value>Select an active Windows device.</value></data>
+  <data name="VmDeviceScanPlanBound" xml:space="preserve"><value>The plan is limited to the selected active endpoint; the device will not be switched automatically.</value></data>
+  <data name="VmConnectWorker" xml:space="preserve"><value>Connect the worker.</value></data>
+  <data name="VmRefreshWindowsDevices" xml:space="preserve"><value>Refresh the list of real Windows devices.</value></data>
+  <data name="VmChooseCaptureOrRenderEndpoint" xml:space="preserve"><value>Select an active Capture or Render endpoint.</value></data>
+  <data name="VmSelectedEndpointInactive" xml:space="preserve"><value>The selected endpoint is inactive.</value></data>
+  <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>The connected worker does not support the required real operations.</value></data>
+  <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Wait for the current operation to finish or cancel the pending confirmation.</value></data>
+  <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>No scan details are available.</value></data>
+  <data name="VmWorkerLabel" xml:space="preserve"><value>Worker</value></data>
+  <data name="VmWorkerConnected" xml:space="preserve"><value>Worker: connected</value></data>
+  <data name="VmWorkerDisconnected" xml:space="preserve"><value>disconnected</value></data>
+  <data name="VmWorkerStarting" xml:space="preserve"><value>starting</value></data>
+  <data name="VmWorkerConnecting" xml:space="preserve"><value>connecting</value></data>
+  <data name="VmWorkerHandshaking" xml:space="preserve"><value>negotiating protocol</value></data>
+  <data name="VmWorkerStopping" xml:space="preserve"><value>stopping</value></data>
+  <data name="VmWorkerIncompatible" xml:space="preserve"><value>incompatible</value></data>
+  <data name="VmWorkerError" xml:space="preserve"><value>error</value></data>
+  <data name="VmWindowsDiscoveryCurrent" xml:space="preserve"><value>Windows discovery: current</value></data>
+  <data name="VmWindowsDiscoveryRefreshing" xml:space="preserve"><value>Windows discovery: refreshing</value></data>
+  <data name="VmWindowsDiscoveryError" xml:space="preserve"><value>Windows discovery: error · {0}</value></data>
+  <data name="VmWindowsDiscoveryStale" xml:space="preserve"><value>Windows discovery: stale or not performed</value></data>
+  <data name="VmEndpointListEmpty" xml:space="preserve"><value>{0} list is empty. Only demo data is available; select “Return to demo”.</value></data>
+  <data name="VmChooseDemoEndpoint" xml:space="preserve"><value>Select an available row for a demo session.</value></data>
+  <data name="VmEvidenceLibraryStatus" xml:space="preserve"><value>{0} records shown · {1} valid · {2} invalid/unsupported retained as diagnostics.</value></data>
+  <data name="VmSelectEvidenceRecord" xml:space="preserve"><value>Select an evidence record.</value></data>
+  <data name="VmSelectDuplexRecord" xml:space="preserve"><value>Select a Duplex record to compare compatible historical runs.</value></data>
+  <data name="VmUtcLabel" xml:space="preserve"><value>UTC</value></data>
+  <data name="VmLocalLabel" xml:space="preserve"><value>Local</value></data>
+  <data name="VmIdentityLabel" xml:space="preserve"><value>Identity</value></data>
+  <data name="VmOriginalLabel" xml:space="preserve"><value>Original</value></data>
+  <data name="VmRepeatabilityWorkflowUnavailable" xml:space="preserve"><value>Repeatability workflow is unavailable.</value></data>
+  <data name="VmRepeatabilityWorkerOutcomeUnknown" xml:space="preserve"><value>Worker operation outcome is UNKNOWN; restart the Worker before reuse.</value></data>
+  <data name="VmRepeatabilityWorkerDisconnected" xml:space="preserve"><value>Worker is not connected.</value></data>
+  <data name="VmRepeatabilityRefreshDiscovery" xml:space="preserve"><value>Refresh Windows discovery before preparing repeatability.</value></data>
+  <data name="VmRepeatabilityChoosePair" xml:space="preserve"><value>Select one active Capture and one active Render endpoint.</value></data>
+  <data name="VmRepeatabilityOperationActive" xml:space="preserve"><value>Another scan or audio operation is active or unresolved.</value></data>
+  <data name="VmRepeatabilityAwaitingConsent" xml:space="preserve"><value>Another operation is awaiting operator consent.</value></data>
+  <data name="VmRepeatabilityReady" xml:space="preserve"><value>Ready: exact active Capture/Render pair and current Worker discovery.</value></data>
+  <data name="VmRepeatabilitySelectExactEndpoints" xml:space="preserve"><value>Select exact Capture and Render endpoints.</value></data>
+  <data name="VmRepeatabilityResultMissing" xml:space="preserve"><value>No repeatability result has been received.</value></data>
+  <data name="VmReportLabel" xml:space="preserve"><value>Report</value></data>
+  <data name="VmNotSaved" xml:space="preserve"><value>not saved</value></data>
+  <data name="VmNotConfirmed" xml:space="preserve"><value>unconfirmed</value></data>
+  <data name="VmPeriodDiscoveryReady" xml:space="preserve"><value>Ready: current exact Capture/Render pair and current Windows discovery.</value></data>
+  <data name="VmPeriodMatrixMissing" xml:space="preserve"><value>Matrix has not been received.</value></data>
+  <data name="VmReportNotSaved" xml:space="preserve"><value>Report has not been saved.</value></data>
+  <data name="VmPeriodDiscoveryResultMissing" xml:space="preserve"><value>Period discovery has not completed.</value></data>
+  <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Ready: exactly one selected custom period will run.</value></data>
+  <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Complete REAL C4.2A period discovery first and select the current endpoint pair.</value></data>
+  <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex has not completed.</value></data>
+  <data name="VmPeriodDiscoveryUnavailable" xml:space="preserve"><value>Period discovery is unavailable in this window.</value></data>
+  <data name="VmWorkerDisconnectedMessage" xml:space="preserve"><value>Worker is disconnected.</value></data>
+  <data name="VmPeriodDiscoveryWorkerCapabilitiesMissing" xml:space="preserve"><value>The connected Worker does not support passive preflight and custom-period Initialize.</value></data>
+  <data name="VmPeriodDiscoveryPriorOutcomeUnknown" xml:space="preserve"><value>The previous operation outcome is UNKNOWN; safe Worker reuse is blocked.</value></data>
+  <data name="VmPeriodDiscoveryRefreshWindows" xml:space="preserve"><value>Refresh Windows discovery before period discovery.</value></data>
+  <data name="VmPeriodDiscoverySelectExactPair" xml:space="preserve"><value>Select exact active Capture and Render endpoints.</value></data>
+  <data name="VmPeriodDiscoveryOperationActive" xml:space="preserve"><value>Another operation is active or has not reached a confirmed safe completion.</value></data>
+  <data name="VmPeriodDiscoveryAwaitingConsent" xml:space="preserve"><value>Another confirmation is awaiting a decision.</value></data>
+  <data name="VmPeriodDiscoveryNeedsCurrentPair" xml:space="preserve"><value>A current exact pair and fresh Windows discovery are required.</value></data>
+  <data name="VmPeriodDiscoveryPlanPrepared" xml:space="preserve"><value>Immutable candidate plan prepared; one explicit approval is required.</value></data>
+  <data name="VmPeriodDiscoveryPreparationFailed" xml:space="preserve"><value>Period discovery unavailable: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalDiscarded" xml:space="preserve"><value>Discovery, Worker, or exact pair changed; approval was discarded.</value></data>
+  <data name="VmPeriodDiscoveryApprovalAccepted" xml:space="preserve"><value>Approval accepted; probing exact candidates sequentially.</value></data>
+  <data name="VmPeriodDiscoveryOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · period discovery outcome is not confirmed: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalCancelled" xml:space="preserve"><value>Period discovery approval cancelled.</value></data>
+  <data name="VmPeriodDiscoveryCancellationRequested" xml:space="preserve"><value>Cancellation requested; unresolved native cleanup will stop the series as UNKNOWN.</value></data>
+  <data name="VmPeriodPlanDiscardedGroupChanged" xml:space="preserve"><value>Physical device group changed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryRefreshed" xml:space="preserve"><value>Windows discovery refreshed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Exact Capture/Render selection changed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Discovery is refreshing; the previous period plan was discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker disconnected or session identity changed; period plan discarded.</value></data>
+  <data name="VmCustomRepeatabilityPlanMissing" xml:space="preserve"><value>After C4.2A, select a valid custom period.</value></data>
+  <data name="VmCustomRepeatabilityPlanRunCount" xml:space="preserve"><value>{0} sequential runs · {1}</value></data>
+  <data name="VmCustomRepeatabilityPlanTiming" xml:space="preserve"><value>5 seconds each · {0} ms pause · MMCSS OFF</value></data>
+  <data name="VmCustomRepeatabilityPlanSafety" xml:space="preserve"><value>Capture data is discarded; Render sends silence only; no routing.</value></data>
+  <data name="VmCustomRepeatabilityResultMissing" xml:space="preserve"><value>Custom-period repeatability has not completed.</value></data>
+  <data name="VmRealFormatQueryNotRun" xml:space="preserve"><value>Real Exclusive query has not been run.</value></data>
+  <data name="VmRealFormatHistoryStale" xml:space="preserve"><value>HISTORICAL RESULT · Worker, discovery, or selected endpoint changed.</value></data>
+  <data name="VmRealFormatQuerySummary" xml:space="preserve"><value>REAL_WASAPI_QUERY · {0} unique formats. IsFormatSupported is called once per format; periods are not queried independently.</value></data>
+  <data name="VmWindowsEndpointLocalIdHidden" xml:space="preserve"><value>Windows endpoint · local identifier hidden</value></data>
+  <data name="VmRealFormatConflictHeader" xml:space="preserve"><value>INCOMPLETE/CONFLICT · Initialize-only is blocked.</value></data>
+  <data name="VmRealFormatCandidateSelectForDetails" xml:space="preserve"><value>Select a period result to view HRESULT and technical details.</value></data>
+  <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only has not been run.</value></data>
+  <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize temporarily reserves the selected device. Only {0}, {1}, {2} Hz, {3} channel(s), {4} period will be checked. Start and PCM transfer will not be invoked.</value></data>
+  <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Select an exact result for a supported format.</value></data>
+  <data name="VmAllDirections" xml:space="preserve"><value>All</value></data>
+  <data name="VmWindowsEndpointCounts" xml:space="preserve"><value>Total: {0} · shown: {1} · active Capture: {2} · active Render: {3}</value></data>
+  <data name="VmWindowsEndpointsEnumerating" xml:space="preserve"><value>Enumerating Windows endpoints…</value></data>
+  <data name="VmWindowsDiscoveryPartial" xml:space="preserve"><value>Partial result: {0} endpoints, {1} errors.</value></data>
+  <data name="VmWindowsEndpointsNoneFound" xml:space="preserve"><value>No Windows endpoints found.</value></data>
+  <data name="VmWindowsEndpointsReceived" xml:space="preserve"><value>Received Windows endpoints: {0}.</value></data>
+  <data name="VmWindowsDiscoveryWorkerDisconnectedHistorical" xml:space="preserve"><value>Last response from disconnected Worker · historical data; current availability unknown.</value></data>
+  <data name="VmWindowsDiscoveryRequestFailed" xml:space="preserve"><value>Request failed: {0}</value></data>
+  <data name="VmWindowsDiscoveryNotRequested" xml:space="preserve"><value>Not requested. Automatic discovery is disabled.</value></data>
+  <data name="VmSavedProfileBindingNotChecked" xml:space="preserve"><value>Connection has not been checked.</value></data>
+  <data name="VmSavedProfileMatchesNone" xml:space="preserve"><value>No matches.</value></data>
+  <data name="VmWorkerRestartRequired" xml:space="preserve"><value>Automatic restart is disabled. Start a new GUI process to reconnect.</value></data>
+  <data name="VmWorkerRenderMeterHeading" xml:space="preserve"><value>Render · synthetic model of intended digital output</value></data>
+  <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · synthetic per-channel levels</value></data>
+  <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Measurement: {0} · source: {1}</value></data>
+  <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>No profile selected.</value></data>
+  <data name="VmWorkerMeterStale" xml:space="preserve"><value>STALE · last synthetic observation retained; no new data.</value></data>
+  <data name="VmWorkerMeterSnapshotMissing" xml:space="preserve"><value>No meter snapshot has been received.</value></data>
+  <data name="VmWorkerMeterFinalWindowMissing" xml:space="preserve"><value>FINAL · snapshot {0} contains no completed window; levels are unknown.</value></data>
+  <data name="VmWorkerMeterFinalData" xml:space="preserve"><value>FINAL synthetic data · snapshot {0} · {1} channels; quality and cleanup are unconfirmed.</value></data>
+  <data name="VmWorkerMeterStopping" xml:space="preserve"><value>STOPPING · snapshot {0} is frozen until the terminal event.</value></data>
+  <data name="VmWorkerMeterWindowMissing" xml:space="preserve"><value>No completed window · levels are unknown; this does not mean silence.</value></data>
+  <data name="VmWorkerMeterLive" xml:space="preserve"><value>LIVE · synthetic snapshot {0} · window {1} · {2} channels · not an audio measurement.</value></data>
+  <data name="VmWorkerMeterRenderMode" xml:space="preserve"><value>Render · digital output model</value></data>
+  <data name="VmWorkerMeterNoSession" xml:space="preserve"><value>No session</value></data>
+  <data name="VmWorkerMeterFormatUnknown" xml:space="preserve"><value>Format and duration unknown</value></data>
+  <data name="VmWorkerMeterSnapshotNoData" xml:space="preserve"><value>Snapshot: no data</value></data>
+  <data name="VmWorkerMeterCoalescedNoData" xml:space="preserve"><value>Coalesced: no data</value></data>
+  <data name="VmWorkerEventsMissing" xml:space="preserve"><value>No events.</value></data>
+  <data name="VmWorkerTimelineEmpty" xml:space="preserve"><value>No fake Worker events yet.</value></data>
+  <data name="VmDemoEventsEmpty" xml:space="preserve"><value>No events yet. Start a synthetic session or choose a scenario.</value></data>
+  <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Select an available demo device first.</value></data>
+  <data name="VmInspectorDetails" xml:space="preserve"><value>Details</value></data>
+  <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Simulation data</value></data>
+  <data name="VmWorkerPeriodDefault" xml:space="preserve"><value>Default (DEFAULT)</value></data>
+  <data name="VmWorkerPeriodMinimum" xml:space="preserve"><value>Minimum (MINIMUM)</value></data>
+  <data name="VmWorkerMmcssOff" xml:space="preserve"><value>Disabled (OFF)</value></data>
+  <data name="VmWorkerMmcssProAudio" xml:space="preserve"><value>Pro Audio (PRO_AUDIO)</value></data>
+  <data name="VmWorkerScenarioNormal" xml:space="preserve"><value>Normal session</value></data>
+  <data name="VmWorkerScenarioSilent" xml:space="preserve"><value>Silence only</value></data>
+  <data name="VmWorkerScenarioNoWindow" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmWorkerScenarioWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="VmWorkerScenarioFailure" xml:space="preserve"><value>Synthetic failure</value></data>
+  <data name="VmWorkerScenarioDeviceLoss" xml:space="preserve"><value>Device loss (fake)</value></data>
+  <data name="VmDurationOneSecond" xml:space="preserve"><value>1 second</value></data>
+  <data name="VmDurationThreeSeconds" xml:space="preserve"><value>3 seconds</value></data>
+  <data name="VmDurationFiveSeconds" xml:space="preserve"><value>5 seconds</value></data>
+  <data name="VmDurationTenSeconds" xml:space="preserve"><value>10 seconds</value></data>
+  <data name="VmDemoRenderConfirmation" xml:space="preserve"><value>Confirm simulated output: {0}, Windows channel {1}, {2} s. No sound will be played.</value></data>
+  <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Confirm simulated Capture: {0}, {1} s. No real capture occurs.</value></data>
+  <data name="VmInspectorWindowsProvenance" xml:space="preserve"><value>WINDOWS · System metadata</value></data>
+  <data name="VmInspectorWorkerProvenance" xml:space="preserve"><value>WORKER FAKE · Synthetic data</value></data>
+  <data name="VmInspectorWindowsDeviceTitle" xml:space="preserve"><value>Windows audio device · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorDemoDeviceTitle" xml:space="preserve"><value>Device · demo</value></data>
+  <data name="VmInspectorEndpointsNotRequested" xml:space="preserve"><value>Real endpoints have not been queried or selected.</value></data>
+  <data name="VmInspectorConnectWorkerForDiscovery" xml:space="preserve"><value>Connect the worker, then refresh the Windows list manually.</value></data>
+  <data name="VmInspectorPassiveDemoList" xml:space="preserve"><value>Passive list · demo data</value></data>
+  <data name="VmInspectorFormatTitle" xml:space="preserve"><value>Format · test results</value></data>
+  <data name="VmInspectorFormatNotSelected" xml:space="preserve"><value>No format selected.</value></data>
+  <data name="VmInspectorCaptureTitle" xml:space="preserve"><value>Capture session · demo</value></data>
+  <data name="VmInspectorCaptureNotStarted" xml:space="preserve"><value>Capture session has not started.</value></data>
+  <data name="VmInspectorRenderTitle" xml:space="preserve"><value>Output settings · demo</value></data>
+  <data name="VmInspectorRenderNotStarted" xml:space="preserve"><value>Render session has not started.</value></data>
+  <data name="VmInspectorReportsTitle" xml:space="preserve"><value>Test results · demo</value></data>
+  <data name="VmInspectorReportNotSelected" xml:space="preserve"><value>No report selected.</value></data>
+  <data name="VmInspectorWorkerTitle" xml:space="preserve"><value>Fake Worker details</value></data>
+  <data name="VmInspectorWorkerSessionNotStarted" xml:space="preserve"><value>Worker session has not started.</value></data>
+  <data name="VmInspectorWorkerEventsMissing" xml:space="preserve"><value>No Worker events yet.</value></data>
+  <data name="VmInspectorDemoDiagnosticsTitle" xml:space="preserve"><value>Diagnostics · demo</value></data>
+  <data name="VmInspectorWindowsSectionTitle" xml:space="preserve"><value>Windows endpoint · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorMeasurementStale" xml:space="preserve"><value>Stale</value></data>
+  <data name="VmInspectorMeasurementFinal" xml:space="preserve"><value>Final</value></data>
+  <data name="VmInspectorMeasurementMissing" xml:space="preserve"><value>No data</value></data>
+  <data name="VmInspectorMeasurementWindowMissing" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmInspectorMeasurementCurrent" xml:space="preserve"><value>Current</value></data>
+  <data name="VmInspectorWorkerConnected" xml:space="preserve"><value>Connected (demo)</value></data>
+  <data name="VmInspectorWorkerStarting" xml:space="preserve"><value>Starting</value></data>
+  <data name="VmInspectorWorkerConnecting" xml:space="preserve"><value>Connecting</value></data>
+  <data name="VmInspectorWorkerNegotiating" xml:space="preserve"><value>Negotiating protocol</value></data>
+  <data name="VmInspectorWorkerStopping" xml:space="preserve"><value>Disconnecting</value></data>
+  <data name="VmInspectorWorkerIncompatible" xml:space="preserve"><value>Incompatible</value></data>
+  <data name="VmInspectorWorkerFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmInspectorWorkerDisconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="VmInspectorStateLabel" xml:space="preserve"><value>State</value></data>
+  <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Transport</value></data>
+  <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Provenance</value></data>
+  <data name="VmInspectorReasonLabel" xml:space="preserve"><value>Reason</value></data>
+  <data name="VmInspectorModeLabel" xml:space="preserve"><value>Mode</value></data>
+  <data name="VmInspectorEndpointLabel" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="VmInspectorFormatLabel" xml:space="preserve"><value>Format</value></data>
+  <data name="VmInspectorWindowsChannelLabel" xml:space="preserve"><value>Windows channel</value></data>
+  <data name="VmInspectorDurationLabel" xml:space="preserve"><value>Duration</value></data>
+  <data name="VmInspectorIdLabel" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorFullUuidLabel" xml:space="preserve"><value>Full UUID</value></data>
+  <data name="VmInspectorSessionLabel" xml:space="preserve"><value>Session</value></data>
+  <data name="VmInspectorSnapshotLabel" xml:space="preserve"><value>Snapshot</value></data>
+  <data name="VmInspectorDataLabel" xml:space="preserve"><value>Data</value></data>
+  <data name="VmInspectorChannelsLabel" xml:space="preserve"><value>Channels</value></data>
+  <data name="VmInspectorCoalescingLabel" xml:space="preserve"><value>Coalescing</value></data>
+  <data name="VmInspectorStreamQualityLabel" xml:space="preserve"><value>Stream quality</value></data>
+  <data name="VmInspectorCleanupLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="VmInspectorPhysicalRoutingLabel" xml:space="preserve"><value>Physical routing</value></data>
+  <data name="VmInspectorObservationLabel" xml:space="preserve"><value>Observation</value></data>
+  <data name="VmInspectorConnectionSection" xml:space="preserve"><value>CONNECTION</value></data>
+  <data name="VmInspectorSessionSection" xml:space="preserve"><value>SESSION</value></data>
+  <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>MEASUREMENTS</value></data>
+  <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>EVIDENCE</value></data>
+  <data name="VmInspectorWorkerTransport" xml:space="preserve"><value>Local Windows Named Pipe · protocol 1.0</value></data>
+  <data name="VmInspectorWorkerSyntheticProvenance" xml:space="preserve"><value>Worker Fake · synthetic data</value></data>
+  <data name="VmInspectorWorkerRealDevicesNotUsed" xml:space="preserve"><value>Real audio devices are not used.</value></data>
+  <data name="VmInspectorUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="VmInspectorNotStarted" xml:space="preserve"><value>Not started</value></data>
+  <data name="VmInspectorNoData" xml:space="preserve"><value>No data</value></data>
+  <data name="VmInspectorSnapshotsCoalesced" xml:space="preserve"><value>{0} snapshots</value></data>
+  <data name="VmInspectorQualityClean" xml:space="preserve"><value>Clean · synthetic model</value></data>
+  <data name="VmInspectorQualityWarning" xml:space="preserve"><value>Warning · synthetic model</value></data>
+  <data name="VmInspectorQualityFailed" xml:space="preserve"><value>Failed · synthetic model</value></data>
+  <data name="VmInspectorUnknownNotAssessed" xml:space="preserve"><value>Unknown / not assessed</value></data>
+  <data name="VmInspectorCleanupCompletedSynthetic" xml:space="preserve"><value>Simulated cleanup completed</value></data>
+  <data name="VmInspectorCleanupNotAttempted" xml:space="preserve"><value>Not attempted</value></data>
+  <data name="VmInspectorSyntheticNoRealAudioMeasured" xml:space="preserve"><value>Synthetic model · no real audio was measured</value></data>
+  <data name="VmInspectorLifecyclePreparing" xml:space="preserve"><value>Preparing</value></data>
+  <data name="VmInspectorLifecycleReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="VmInspectorLifecycleStarted" xml:space="preserve"><value>Started</value></data>
+  <data name="VmInspectorLifecycleStopping" xml:space="preserve"><value>Stopping</value></data>
+  <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmCaptureInputDirection" xml:space="preserve"><value>input (Capture)</value></data>
+  <data name="VmRenderOutputDirection" xml:space="preserve"><value>output (Render)</value></data>
+  <data name="VmInspectorDirectionLabel" xml:space="preserve"><value>Direction</value></data>
+  <data name="VmPeriodDefaultLabel" xml:space="preserve"><value>Period: standard</value></data>
+  <data name="VmPeriodMinimumLabel" xml:space="preserve"><value>Period: minimum</value></data>
+  <data name="VmFormatStatusSupported" xml:space="preserve"><value>✓ Supported</value></data>
+  <data name="VmFormatStatusUnsupported" xml:space="preserve"><value>× No</value></data>
+  <data name="VmFormatStatusFailed" xml:space="preserve"><value>! Failed</value></data>
+  <data name="VmFormatStatusUnknown" xml:space="preserve"><value>? Unknown</value></data>
+  <data name="VmFormatStatusNotTested" xml:space="preserve"><value>? Not tested</value></data>
+  <data name="VmFormatStatusInitialized" xml:space="preserve"><value>✓ Initialized</value></data>
+  <data name="VmFormatStatusReady" xml:space="preserve"><value>✓ Ready</value></data>
+  <data name="VmPeriodStatusFormat" xml:space="preserve"><value>Status: {0}</value></data>
+  <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
+  <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
+  <data name="VmPeriodProvenance" xml:space="preserve"><value>Provenance: {0}</value></data>
+  <data name="VmInspectorMixerFormatLabel" xml:space="preserve"><value>Mix format</value></data>
+  <data name="VmInspectorWindowsChannelsLabel" xml:space="preserve"><value>Windows channels</value></data>
+  <data name="VmInspectorPhysicalConnectorsLabel" xml:space="preserve"><value>Physical connectors</value></data>
+  <data name="VmInspectorDeviceLabel" xml:space="preserve"><value>Device</value></data>
+  <data name="VmInspectorMeterLabel" xml:space="preserve"><value>Meter</value></data>
+  <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Physical match</value></data>
+  <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Connection</value></data>
+  <data name="VmInspectorEventLabel" xml:space="preserve"><value>Event</value></data>
+  <data name="VmScanCommandQuery" xml:space="preserve"><value>format query</value></data>
+  <data name="VmScanCommandInitialize" xml:space="preserve"><value>Initialize-only</value></data>
+  <data name="VmScanCommandStream" xml:space="preserve"><value>Capture/Render stream check</value></data>
+  <data name="VmScanCommandDuplex" xml:space="preserve"><value>coordinated Duplex check</value></data>
+  <data name="VmScanStageDiscovery" xml:space="preserve"><value>Check selected devices</value></data>
+  <data name="VmScanStageQuery" xml:space="preserve"><value>Format query</value></data>
+  <data name="VmScanStageInitialize" xml:space="preserve"><value>Initialize</value></data>
+  <data name="VmScanStageStream" xml:space="preserve"><value>Stream validation</value></data>
+  <data name="VmScanStageDuplex" xml:space="preserve"><value>Duplex</value></data>
+  <data name="VmScanStagePeriodDiscovery" xml:space="preserve"><value>Period discovery</value></data>
+  <data name="VmScanStageCustomDuplex" xml:space="preserve"><value>Custom Duplex</value></data>
+  <data name="VmScanStageRepeatability" xml:space="preserve"><value>Repeatability</value></data>
+  <data name="VmScanStageEvaluate" xml:space="preserve"><value>Evaluate results</value></data>
+  <data name="VmScanStageSave" xml:space="preserve"><value>Save report</value></data>
+  <data name="VmScanStageComplete" xml:space="preserve"><value>Complete</value></data>
+  <data name="VmScanLifecycleCompleted" xml:space="preserve"><value>COMPLETED</value></data>
+  <data name="VmScanLifecycleIncomplete" xml:space="preserve"><value>INCOMPLETE</value></data>
+  <data name="VmScanLifecycleCancelled" xml:space="preserve"><value>CANCELLED</value></data>
+  <data name="VmScanLifecycleFailed" xml:space="preserve"><value>FAILED</value></data>
+  <data name="VmScanLifecycleUnknown" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmOperationLifecyclePending" xml:space="preserve"><value>PENDING</value></data>
+  <data name="VmOperationLifecycleRunning" xml:space="preserve"><value>RUNNING</value></data>
+  <data name="VmOperationLifecycleCompleted" xml:space="preserve"><value>COMPLETED</value></data>
+  <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>SKIPPED</value></data>
+  <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>FAILED</value></data>
+  <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmNavigateNeedEndpoint" xml:space="preserve"><value>Select an active device or an exact Capture/Render pair first.</value></data>
+  <data name="VmNavigateNeedRealTest" xml:space="preserve"><value>Run a real test first.</value></data>
+  <data name="VmDemoDeviceUnavailable" xml:space="preserve"><value>Select an available demo device on the Devices screen and open its mode.</value></data>
+  <data name="VmDemoStarted" xml:space="preserve"><value>Simulation started. Real devices are not used.</value></data>
+  <data name="VmDemoStartCancelled" xml:space="preserve"><value>Start cancelled; the session did not begin.</value></data>
+  <data name="VmWorkerFakeNotStarted" xml:space="preserve"><value>Worker fake mode has not started.</value></data>
+  <data name="VmWorkerConfirmationRequested" xml:space="preserve"><value>Worker fake confirmation requested: {0}, {1}, {2} channels.</value></data>
+  <data name="VmWorkerStartRejected" xml:space="preserve"><value>Worker fake rejected Start: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomeUnknown" xml:space="preserve"><value>Start result is unknown: {0}: {1}</value></data>
+  <data name="VmWorkerConsentCancelled" xml:space="preserve"><value>Worker fake start cancelled before the command was sent.</value></data>
+  <data name="VmWorkerStopAccepted" xml:space="preserve"><value>Stop accepted. This confirmation does not mean completion or cleanup.</value></data>
+  <data name="VmWorkerSettingsAccepted" xml:space="preserve"><value>Worker fake accepted the immutable session settings {0:D}.</value></data>
+  <data name="VmWorkerEventQueueOverflow" xml:space="preserve"><value>UI event queue overflowed. Operation state is UNKNOWN; new data is not displayed.</value></data>
+  <data name="VmWorkerTransportFault" xml:space="preserve"><value>Worker transport: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Start result is unknown. New operations are blocked until a late reply or Worker disconnect.</value></data>
+  <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Late Worker reply: Start was rejected ({0}).</value></data>
+  <data name="VmRepeatabilityPlanPrepared" xml:space="preserve"><value>Repeatability plan prepared; one explicit confirmation is required.</value></data>
+  <data name="VmRepeatabilityPlanFailed" xml:space="preserve"><value>Repeatability plan was not prepared: {0}: {1}</value></data>
+  <data name="VmRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or exact endpoints changed. Confirmation was cleared; prepare the plan again.</value></data>
+  <data name="VmRepeatabilityApprovalAccepted" xml:space="preserve"><value>Confirmation accepted; registering a bounded Worker session.</value></data>
+  <data name="VmRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · repeatability session outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmRepeatabilityApprovalCancelled" xml:space="preserve"><value>Repeatability confirmation cancelled.</value></data>
+  <data name="VmRepeatabilityPlanChanged" xml:space="preserve"><value>Repeatability confirmation cleared because the selected plan changed.</value></data>
+  <data name="VmRepeatabilityCancellationRequested" xml:space="preserve"><value>Repeatability cancellation requested; the active native operation must confirm stop or remain UNKNOWN.</value></data>
+  <data name="VmRepeatabilityDiscoveryUpdating" xml:space="preserve"><value>Discovery is refreshing; previous repeatability confirmation was cleared.</value></data>
+  <data name="VmRepeatabilityWorkerChanged" xml:space="preserve"><value>Worker disconnected or session identity changed; repeatability confirmation was cleared.</value></data>
+  <data name="VmCustomRepeatabilityPlanPrepared" xml:space="preserve"><value>Five custom-period operations are planned; one explicit confirmation is required.</value></data>
+  <data name="VmCustomRepeatabilityPlanFailed" xml:space="preserve"><value>Repeatability plan was not prepared: {0}: {1}</value></data>
+  <data name="VmCustomRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or endpoints changed; confirmation was cleared.</value></data>
+  <data name="VmCustomRepeatabilityApprovalCancelled" xml:space="preserve"><value>Custom repeatability confirmation cancelled.</value></data>
+  <data name="VmCustomRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · custom repeatability outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexPlanPrepared" xml:space="preserve"><value>Plan prepared; one explicit confirmation is required before starting.</value></data>
+  <data name="VmCustomPeriodDuplexPreparationFailed" xml:space="preserve"><value>Custom-period Duplex is unavailable: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexAuthorizationInvalidated" xml:space="preserve"><value>Discovery, Worker, or endpoints changed; confirmation was cleared.</value></data>
+  <data name="VmCustomPeriodDuplexApprovalAccepted" xml:space="preserve"><value>Confirmation accepted; one custom-period Duplex operation is running.</value></data>
+  <data name="VmCustomPeriodDuplexOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · custom-period Duplex outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexApprovalCancelled" xml:space="preserve"><value>Custom-period Duplex confirmation cancelled.</value></data>
+  <data name="VmCustomPeriodDuplexCancellationRequested" xml:space="preserve"><value>Cancellation requested; the next run is blocked if cleanup is unconfirmed.</value></data>
+  <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Fresh confirmation required · {0} · 5 s · MMCSS OFF.</value></data>
+  <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Duplex confirmation cancelled; operation was not sent.</value></data>
+  <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Cancellation sent to Worker; waiting for coordinated Stop on both sides and the final report.</value></data>
+  <data name="VmOperatorStreamEvidenceNone" xml:space="preserve"><value>Stream validation has not run: Start and frame servicing were not observed.</value></data>
+  <data name="VmOperatorStreamEvidenceCount" xml:space="preserve"><value>Accepted stream validation reports: {0}. Start, frames, and quality are shown separately below; long-term stability, Duplex, and physical routing are unconfirmed.</value></data>
+  <data name="VmOperatorProfileEvidenceNoStreams" xml:space="preserve"><value>The profile contains only results received so far and does not confirm Start, PCM observation, stability, Duplex, or physical routing. No recommendation is produced.</value></data>
+  <data name="VmOperatorProfileEvidenceWithStreams" xml:space="preserve"><value>Profile v2 includes accepted streamObservations after a successful save. They do not confirm long-term stability, Duplex, physical routing, or AudioHost QA; no recommendation is produced.</value></data>
+  <data name="VmStreamEvidenceNotRun" xml:space="preserve"><value>Stream results: NOT_RUN; no streamObservations.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotSaved" xml:space="preserve"><value>Last attempt {0}: {1}; no accepted report, attempt not saved.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotInProfile" xml:space="preserve"><value>Last attempt {0}: {1}; profile schemaVersion {2} does not contain it as a streamObservation: {3}</value></data>
+  <data name="VmStreamEvidencePreviousSavedLatestNotIncluded" xml:space="preserve"><value>Previous accepted observations are saved in profile schemaVersion 2; latest attempt {0}: {1} is not included: {2}</value></data>
+  <data name="VmStreamEvidenceSessionSaved" xml:space="preserve"><value>Results accepted in this session and saved in profile schemaVersion 2: {0}</value></data>
+  <data name="VmStreamEvidenceSessionAttemptNotSaved" xml:space="preserve"><value>Results accepted in this session ({0}); latest attempt {1}: {2}; current set is not saved in profile v2.</value></data>
+  <data name="VmStreamEvidenceSessionNotSaved" xml:space="preserve"><value>Results accepted in this session ({0}); these results have not been saved in profile v2.</value></data>
+  <data name="VmStreamValidationConsent" xml:space="preserve"><value>{0} · {1} · ID: {2} · 48 kHz PCM16 · {3} channels · {4} · up to 5 seconds. The Exclusive endpoint will be temporarily occupied. Capture reads microphone packets without saving PCM; Render sends digital silence only. Physical sound/routing is not measured.</value></data>
+  <data name="VmStreamValidationSelectInitializedCandidate" xml:space="preserve"><value>Select a successfully initialized candidate.</value></data>
+  <data name="VmStreamValidationAuthorizationRequired" xml:space="preserve"><value>Fresh separate authorization is required for each period.</value></data>
+  <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>A current successful Initialize result for the exact selected endpoint and a connected worker are required.</value></data>
+  <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
+  <data name="VmPeriodEvidenceAccessibleText" xml:space="preserve"><value>{0}. IsFormatSupported HRESULT: {1}. Initialize HRESULT: {2}. Provenance: {3}.</value></data>
+  <data name="VmScanOutcome" xml:space="preserve"><value>{0} · support and Initialize are reported separately. Stream start, stability, and Duplex were not tested.</value></data>
+  <data name="VmQueryInvalidated" xml:space="preserve"><value>A new query is running; the previous matrix is temporarily not current.</value></data>
+  <data name="VmQueryChannelsValidation" xml:space="preserve"><value>Enter 1–32 unique channel counts in the range 1–64, separated by commas.</value></data>
+  <data name="VmQueryDisconnectedConfiguration" xml:space="preserve"><value>The result was not confirmed after the connection was lost.</value></data>
+  <data name="VmQueryDisconnectedError" xml:space="preserve"><value>REAL_WASAPI_QUERY outcome UNKNOWN · worker/discovery disconnected before result acceptance.</value></data>
+  <data name="VmQueryDisconnectedOutcome" xml:space="preserve"><value>The query outcome is unknown; no result was confirmed.</value></data>
+  <data name="VmQuerySuccessOutcome" xml:space="preserve"><value>The query completed; driver support is shown separately and does not mean Initialize or stream start.</value></data>
+  <data name="VmQueryErrorPrefix" xml:space="preserve"><value>REAL_WASAPI_QUERY error:</value></data>
+  <data name="VmQueryHistoricalSuffix" xml:space="preserve"><value> The last successful matrix remains historical and does not authorize Initialize-only.</value></data>
+  <data name="VmQueryFailureOutcome" xml:space="preserve"><value>The query did not complete; the operation outcome is unknown.</value></data>
+  <data name="VmInitializeSelectionChanged" xml:space="preserve"><value>The endpoint or format selection changed; confirmation was cleared.</value></data>
+  <data name="VmInitializeResponseMismatch" xml:space="preserve"><value>Initialize-only response does not match the consented endpoint and exact format.</value></data>
+  <data name="VmInitializeSuccessOutcome" xml:space="preserve"><value>Initialize-only completed · {0}. Stream start and audio observation were not performed.</value></data>
+  <data name="VmInitializeResultMissing" xml:space="preserve"><value>result missing</value></data>
+  <data name="VmInitializeErrorPrefix" xml:space="preserve"><value>Initialize-only: outcome unknown or rejected</value></data>
+  <data name="VmInitializeUnknownOutcome" xml:space="preserve"><value>Initialize outcome UNKNOWN · worker operation may have committed.</value></data>
+  <data name="VmBindingExactFound" xml:space="preserve"><value>Device pair found. Audio configuration must be checked again.</value></data>
+  <data name="VmBindingCaptureMissing" xml:space="preserve"><value>Saved audio input was not found.</value></data>
+  <data name="VmBindingRenderMissing" xml:space="preserve"><value>Saved audio output was not found.</value></data>
+  <data name="VmBindingBothMissing" xml:space="preserve"><value>Saved Capture and Render endpoints were not found.</value></data>
+  <data name="VmBindingEndpointUnavailable" xml:space="preserve"><value>Saved endpoint is disabled or unplugged.</value></data>
+  <data name="VmBindingDiscoveryIncomplete" xml:space="preserve"><value>The device list is incomplete. A match was not confirmed.</value></data>
+  <data name="VmBindingInvalidProvenance" xml:space="preserve"><value>Check rejected: discovery does not have REAL_WINDOWS_METADATA provenance.</value></data>
+  <data name="VmBindingDiscoveryFailed" xml:space="preserve"><value>Device discovery check did not complete.</value></data>
+  <data name="VmBindingProfileInvalid" xml:space="preserve"><value>Profile is damaged or unsupported.</value></data>
+  <data name="VmBindingUnboundProfile" xml:space="preserve"><value>Profile is not bound to this computer.</value></data>
+  <data name="VmBindingIdentityAmbiguous" xml:space="preserve"><value>Exact endpoint identities are ambiguous.</value></data>
+  <data name="VmBindingMetadataContradiction" xml:space="preserve"><value>Available metadata conflicts with the saved binding.</value></data>
+  <data name="VmBindingMetadataInsufficient" xml:space="preserve"><value>Device metadata is unavailable or insufficient.</value></data>
+  <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Check is stale: Worker disconnected.</value></data>
+  <data name="VmBindingInvalidated" xml:space="preserve"><value>Check is stale: its inputs changed.</value></data>
+  <data name="VmBindingNotRun" xml:space="preserve"><value>Check was not performed.</value></data>
+  <data name="VmBindingInvalidWorker" xml:space="preserve"><value>Check is stale: Worker disconnected or changed.</value></data>
+  <data name="VmBindingAvailabilityUnknown" xml:space="preserve"><value>Current device availability is unknown.</value></data>
+  <data name="VmBindingReconnectWorker" xml:space="preserve"><value>Reconnect Worker only after a normal new start; the previous check is no longer valid.</value></data>
+  <data name="VmBindingInvalidProfileSelection" xml:space="preserve"><value>Check is stale: the selected profile changed.</value></data>
+  <data name="VmBindingNotConfirmed" xml:space="preserve"><value>The current match was not confirmed.</value></data>
+  <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Repeat the check for the selected profile.</value></data>
+  <data name="VmBindingRediscovery" xml:space="preserve"><value>Check is stale: the device list is being refreshed.</value></data>
+  <data name="VmBindingDiscoveryCompleted" xml:space="preserve"><value>Device list refreshed. Saved profile binding remains unverified.</value></data>
+  <data name="VmEndpointRefreshFailure" xml:space="preserve"><value>Device refresh failed: {0}. Saved profile binding remains unverified.</value></data>
+  <data name="VmBindingCheckAfterDiscovery" xml:space="preserve"><value>Check saved profile binding separately if needed.</value></data>
+  <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>The previous result does not apply to the new discovery.</value></data>
+  <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Wait for the complete device list, then repeat the check.</value></data>
+  <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Check is stale: the current device list is no longer confirmed.</value></data>
+  <data name="VmBindingRetryAfterRefresh" xml:space="preserve"><value>Repeat the check after refreshing Worker and the device list.</value></data>
+  <data name="VmBindingFreshMetadataRequired" xml:space="preserve"><value>Check rejected: fresh device discovery lacks REAL_WINDOWS_METADATA provenance.</value></data>
+  <data name="VmBindingMissingEndpointUnknown" xml:space="preserve"><value>A missing endpoint cannot be considered definitively absent.</value></data>
+  <data name="VmBindingRetryFullMetadataDiscovery" xml:space="preserve"><value>Repeat the check after complete REAL_WINDOWS_METADATA discovery.</value></data>
+  <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>No saved profile was found for this device pair.</value></data>
+  <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>This does not mean the device is incompatible.</value></data>
+  <data name="VmBindingExactIdOnly" xml:space="preserve"><value>The check matches exact IDs only and does not apply settings.</value></data>
+  <data name="VmDiscoveryWorkerDisconnected" xml:space="preserve"><value>Worker is not connected</value></data>
+  <data name="VmDiscoverySuccess" xml:space="preserve"><value>Windows endpoint metadata received: {0} · REAL_WINDOWS_METADATA. No audio streams were started.</value></data>
+  <data name="VmDiscoveryFailure" xml:space="preserve"><value>Could not retrieve Windows endpoint metadata: {0}.</value></data>
+  <data name="VmInspectorHertz" xml:space="preserve"><value>Hz</value></data>
+  <data name="VmInspectorBits" xml:space="preserve"><value> bits</value></data>
+  <data name="VmInspectorFriendlyName" xml:space="preserve"><value>Full name</value></data>
+  <data name="VmInspectorDirection" xml:space="preserve"><value>Direction</value></data>
+  <data name="VmInspectorFormFactor" xml:space="preserve"><value>Form factor</value></data>
+  <data name="VmInspectorSharedMode" xml:space="preserve"><value>Shared Mode</value></data>
+  <data name="VmInspectorSampleRate" xml:space="preserve"><value>Sample rate</value></data>
+  <data name="VmInspectorContainerBits" xml:space="preserve"><value>Container / valid bits</value></data>
+  <data name="VmInspectorReportedChannels" xml:space="preserve"><value>Reported channels</value></data>
+  <data name="VmInspectorTopology" xml:space="preserve"><value>Topology</value></data>
+  <data name="VmInspectorSpeakerMask" xml:space="preserve"><value>Speaker mask</value></data>
+  <data name="VmInspectorPropertyAvailability" xml:space="preserve"><value>Property availability / HRESULT</value></data>
+  <data name="VmInspectorPropertyAvailabilityDetails" xml:space="preserve"><value>{0}: {1}; {2}: {3}; {4}: {5}; {6}: {7}</value></data>
+  <data name="VmInspectorId" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorName" xml:space="preserve"><value>name</value></data>
+  <data name="VmInspectorState" xml:space="preserve"><value>state</value></data>
+  <data name="VmInspectorFormat" xml:space="preserve"><value>format</value></data>
+  <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Physical match</value></data>
+  <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
+  <data name="VmInspectorSharedMetadataNotTested" xml:space="preserve"><value>Shared Mode metadata · Exclusive capability NOT TESTED</value></data>
+  <data name="VmInspectorUnknownUpper" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmInspectorChannelAbbreviation" xml:space="preserve"><value>channels</value></data>
+  <data name="VmInspectorSecondsAbbreviation" xml:space="preserve"><value>s</value></data>
+  <data name="VmInspectorCleanupUnknownNoData" xml:space="preserve"><value>UNKNOWN / no data</value></data>
+  <data name="VmInspectorNotSelected" xml:space="preserve"><value>not selected</value></data>
+  <data name="VmInspectorDemoSimulation" xml:space="preserve"><value>DEMO · Simulated data</value></data>
+  <data name="VmInspectorWorkerDataSynthetic" xml:space="preserve"><value>all Worker data is synthetic.</value></data>
+  <data name="VmInspectorSessionValue" xml:space="preserve"><value>Session: {0}</value></data>
+  <data name="VmInspectorStateValue" xml:space="preserve"><value>State: {0}</value></data>
+  <data name="VmInspectorQualityValue" xml:space="preserve"><value>Stream quality: {0}</value></data>
+  <data name="VmInspectorNotAssessed" xml:space="preserve"><value>not assessed</value></data>
+  <data name="VmInspectorLastEvent" xml:space="preserve"><value>Last event: #{0} {1} · {2:HH:mm:ss.fff}</value></data>
+  <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>No events yet.</value></data>
+  <data name="VmInspectorNoEvents" xml:space="preserve"><value>No events.</value></data>
+  <data name="VmDuplexPairChanged" xml:space="preserve"><value>The pair or settings changed; new consent is required.</value></data>
+  <data name="VmDuplexRunning" xml:space="preserve"><value>RUNNING · {0} · up to 5 seconds on the exact pair; Capture discards data and Render sends silence.</value></data>
+  <data name="VmDuplexBindingChanged" xml:space="preserve"><value>The pair or Worker changed during Duplex; the current result is unknown and cannot authorize a profile recommendation.</value></data>
+  <data name="VmDuplexFailureStatus" xml:space="preserve"><value>{0} · {1}: {2}. {3}</value></data>
+  <data name="VmDuplexCleanupUnconfirmed" xml:space="preserve"><value>Stop/cleanup was not confirmed.</value></data>
+  <data name="VmStreamCancellationAccepted" xml:space="preserve"><value>Cancellation was accepted by Worker; waiting for Stop and the final report.</value></data>
+  <data name="VmStreamConsentInvalidated" xml:space="preserve"><value>The target or settings changed; consent was cleared.</value></data>
+  <data name="VmStreamUnknownValue" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmStreamAwaitingWorkerResult" xml:space="preserve"><value>Waiting for the Worker result.</value></data>
+  <data name="VmStreamProgress" xml:space="preserve"><value>Running real {0} stream · {1} · up to 5 seconds.</value></data>
+  <data name="VmStreamRunning" xml:space="preserve"><value>{0}: RUNNING · {1} · waiting for the final report.</value></data>
+  <data name="VmStreamBindingChanged" xml:space="preserve"><value>Worker or exact endpoint binding changed; the stream outcome cannot be accepted as current.</value></data>
+  <data name="VmStreamResultOutcome" xml:space="preserve"><value>{0} stream: {1}; Start={2}; frames={3}; quality={4}. {5}</value></data>
+  <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Long-term Stability and Duplex: NOT_RUN.</value></data>
+  <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
+  <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
+  <data name="VmScanAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or the exact endpoint changed. Refresh devices and prepare consent again.</value></data>
+  <data name="VmScanExportInvalidatedByNewScan" xml:space="preserve"><value>A new scan started; the previous export preparation was cleared.</value></data>
+  <data name="VmScanConsentAccepted" xml:space="preserve"><value>Consent accepted; a bounded Worker session is being registered.</value></data>
+  <data name="VmScanExportNeedsFreshValidation" xml:space="preserve"><value>A new scan result was received; export completeness must be checked separately.</value></data>
+  <data name="VmScanOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · Worker session outcome or closure was not confirmed: {0}: {1}</value></data>
+  <data name="VmScanConsentCancelled" xml:space="preserve"><value>Consent was cancelled; no Worker operations were started.</value></data>
+  <data name="VmScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. The current driver call may not be interruptible; Worker is expected to report the outcome and cleanup.</value></data>
+  <data name="VmExportPreparing" xml:space="preserve"><value>Validating and exporting results…</value></data>
+  <data name="VmExportScanChanged" xml:space="preserve"><value>Export cancelled: the scan result changed.</value></data>
+  <data name="VmExportSourceValidationPassed" xml:space="preserve"><value>Source completeness and identities passed validation.</value></data>
+  <data name="VmExportSourceReportsUnavailable" xml:space="preserve"><value>Not all source reports are available.</value></data>
+  <data name="VmExportReady" xml:space="preserve"><value>Results are ready to export.</value></data>
+  <data name="VmExportCancelledUnchanged" xml:space="preserve"><value>Export cancelled. Source data was not changed.</value></data>
+  <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>The archive contains technical device and computer identifiers. It is not intended for public release. Create a LOCAL_FULL_EVIDENCE archive?</value></data>
+  <data name="VmExportVerified" xml:space="preserve"><value>Archive created and verified successfully: {0}</value></data>
+  <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Export failed. Source data was not changed.</value></data>
+  <data name="VmDemoSessionRequested" xml:space="preserve"><value>Demo session requested for {0} on {1}.</value></data>
+  <data name="VmDemoConsentAccepted" xml:space="preserve"><value>Operator confirmed the demo simulation.</value></data>
+  <data name="VmDemoPreparing" xml:space="preserve"><value>Synthetic preparation.</value></data>
+  <data name="VmDemoSessionRunning" xml:space="preserve"><value>Synthetic session is running.</value></data>
+  <data name="VmDemoSessionStarted" xml:space="preserve"><value>Synthetic session started.</value></data>
+  <data name="VmDemoConsentCancelled" xml:space="preserve"><value>Operator cancelled consent; the session was not started.</value></data>
+  <data name="VmDemoStopping" xml:space="preserve"><value>Stopping (simulation)…</value></data>
+  <data name="VmDemoStopRequested" xml:space="preserve"><value>Stop requested for the demo session.</value></data>
+  <data name="VmDemoStopped" xml:space="preserve"><value>Stopped (simulation).</value></data>
+  <data name="VmDemoSessionStopped" xml:space="preserve"><value>Demo session stopped.</value></data>
+  <data name="VmDemoDurationCompleted" xml:space="preserve"><value>Simulation completed after the configured duration; quality was not assessed.</value></data>
+  <data name="VmDemoDurationEvent" xml:space="preserve"><value>Synthetic duration completed; quality is unknown.</value></data>
+  <data name="VmDemoDigitalSilence" xml:space="preserve"><value>Digital silence</value></data>
+  <data name="VmDemoCompletedWindow" xml:space="preserve"><value>Completed window</value></data>
+  <data name="VmDemoMeterSnapshot" xml:space="preserve"><value>Synthetic data snapshot #{0}.</value></data>
+  <data name="VmDemoWorkerDisconnected" xml:space="preserve"><value>Worker disconnected; Stop and cleanup are unknown.</value></data>
+  <data name="VmDemoConnectionLost" xml:space="preserve"><value>Connection lost; Stop and cleanup state is unknown.</value></data>
+  <data name="VmDemoSessionFailure" xml:space="preserve"><value>Synthetic preparation/session failure.</value></data>
+  <data name="VmDemoScenarioFailure" xml:space="preserve"><value>Synthetic scenario failure.</value></data>
+  <data name="VmDemoCaptureTimingWarning" xml:space="preserve"><value>Synthetic Capture timing warning.</value></data>
+  <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Capture timestamp integrity warning.</value></data>
+  <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Synthetic device loss; quality is unknown.</value></data>
+  <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Synthetic device loss; cleanup is unknown.</value></data>
+  <data name="VmWorkerRenderMeterInterpretation" xml:space="preserve"><value>Windows channel {0} · remaining channels are intentionally digitally silent. This models intent, not DAC/speaker measurement; physical routing is UNKNOWN.</value></data>
+  <data name="VmWorkerCaptureMeterInterpretation" xml:space="preserve"><value>Synthetic window levels; PCM, Capture endpoints, and microphone are not used.</value></data>
+  <data name="VmWorkerMeterBankRange" xml:space="preserve"><value>Channels {0}–{1}</value></data>
+  <data name="VmWorkerMeterDigitalSilence" xml:space="preserve"><value>Digital silence</value></data>
+  <data name="VmWorkerMeterSyntheticWindow" xml:space="preserve"><value>Synthetic window</value></data>
+  <data name="VmWorkerMeterNoMeasurement" xml:space="preserve"><value>No measurement</value></data>
+  <data name="VmWorkerMeterIntendedSilence" xml:space="preserve"><value>Intended digital silence</value></data>
+  <data name="VmWorkerMeterIntendedModelLevel" xml:space="preserve"><value>Intended level · model</value></data>
+  <data name="VmWorkerMeterNoCompletedWindow" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmWorkerMeterFormatSummary" xml:space="preserve"><value>{0} · {1} Hz · {2} channels · {3} s</value></data>
+  <data name="VmWorkerMeterSnapshotSummary" xml:space="preserve"><value>Snapshot {0} · {1} channels</value></data>
+  <data name="VmWorkerMeterCoalescedSummary" xml:space="preserve"><value>Coalesced: {0}</value></data>
+  <data name="VmWorkerConsentSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} channels · period {4} · MMCSS {5} · {6} s · scenario {7} · Windows channel {8}. Synthetic operation only; physical match UNKNOWN.</value></data>
+  <data name="VmWorkerMeterNotApplicable" xml:space="preserve"><value>not applicable</value></data>
+  <data name="VmWorkerConsentMissing" xml:space="preserve"><value>No settings to confirm.</value></data>
+  <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} channels · topology {4} · period {5} · MMCSS {6} · {7} s · Windows channel {8} · {9}</value></data>
+  <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Unknown: session has not yet been accepted by Worker.</value></data>
+  <data name="VmOperatorResultDetails" xml:space="preserve"><value>{0}
+{1}
+Configuration: {2}
+Unique formats: {3}. Driver support does not mean Initialize or audio start.</value></data>
+  <data name="VmOperatorQueryNotRun" xml:space="preserve"><value>The real query has not been run yet.</value></data>
+  <data name="VmStreamEvidenceRunningSummary" xml:space="preserve"><value>Stream: RUNNING; {0} observations accepted; current attempt has not been saved.</value></data>
+  <data name="VmAutomaticScanCandidatesSummary" xml:space="preserve"><value>Candidates: {0}; eligible for testing: {1}; Initialize accepted: {2}; not tested: {3}; UNKNOWN: {4}.</value></data>
+  <data name="VmAutomaticScanPlanMissing" xml:space="preserve"><value>The plan has not been prepared yet.</value></data>
+  <data name="VmAutomaticScanActiveUnavailable" xml:space="preserve"><value>Active stream time: 0 s (unavailable)</value></data>
+  <data name="VmAutomaticScanActiveBound" xml:space="preserve"><value>Total active stream time: at most {0} s</value></data>
+  <data name="VmAutomaticScanIdentityUnconfirmed" xml:space="preserve"><value>Capture/Render physical pairing is unconfirmed; the pair was explicitly selected by the operator.</value></data>
+  <data name="VmAutomaticScanIdentityCurrent" xml:space="preserve"><value>Physical pairing is limited to the current Windows identity check.</value></data>
+  <data name="VmAutomaticScanStagesSaved" xml:space="preserve"><value>The staged plan will be saved in the result.</value></data>
+  <data name="VmAutomaticScanConsentSummary" xml:space="preserve"><value>{0}
+{1}
+Operations: {2}. Candidate format: 48 kHz PCM16, periods MINIMUM, DEFAULT and confirmed CUSTOM; MMCSS OFF and PRO_AUDIO are checked separately. Sustained mode: {3}. {4}; plan limit: at most {5} operations and {6} s wall-clock. Worker session: up to {7} s and {8} operations per batch. Stages: {9}. Exclusive access may temporarily interrupt other applications. Capture packets are read and discarded; no PCM is recorded. Render sends digital silence only. No physical routing, test tone, or RTL. A nonresponsive driver may leave the operation outcome UNKNOWN.</value></data>
+  <data name="VmAutomaticScanResultScanning" xml:space="preserve"><value>SCANNING · {0}</value></data>
+  <data name="VmAutomaticScanResultUnknown" xml:space="preserve"><value>UNKNOWN · {0}</value></data>
+  <data name="VmAutomaticScanRecommendationMissing" xml:space="preserve"><value>No recommendation.</value></data>
+  <data name="VmAutomaticScanRecommendationSelected" xml:space="preserve"><value>Selection {0}: {1} · {2} kHz {3} · {4}/{5} frames · MMCSS {6} · {7} s · {8}. Fallback: {9}. AudioHost: NOT_CERTIFIED. {10}</value></data>
+  <data name="VmAutomaticScanFinalConfigurationMissing" xml:space="preserve"><value>No final configuration was selected. {0} AudioHost: NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanLatencyNotMeasured" xml:space="preserve"><value>Not measured</value></data>
+  <data name="VmAutomaticScanWorkerOutcomeUnconfirmed" xml:space="preserve"><value>Worker outcome was not confirmed.</value></data>
+  <data name="VmAutomaticScanDataMissing" xml:space="preserve"><value>Data is missing.</value></data>
+  <data name="VmAutomaticScanPersistenceFailed" xml:space="preserve"><value>SAVE_FAILED · summary was not saved: {0}</value></data>
+  <data name="VmAutomaticScanProfileNotCreated" xml:space="preserve"><value>Summary saved, but profile was not created: {0}
+Reason: {1}</value></data>
+  <data name="VmAutomaticScanSavedAndReloaded" xml:space="preserve"><value>Summary and profile saved and reloaded: {0}
+Profiles: {1}</value></data>
+  <data name="VmAutomaticScanProfileNotCreatedShort" xml:space="preserve"><value>profile not created</value></data>
+  <data name="VmAutomaticScanSaveStatus" xml:space="preserve"><value>Save: {0} · {1}</value></data>
+  <data name="VmAutomaticScanErrorUnavailable" xml:space="preserve"><value>reason unavailable</value></data>
+  <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>unknown path</value></data>
+  <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>state unconfirmed</value></data>
+  <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Technical details are unavailable.</value></data>
+  <data name="VmDeviceScanConsent" xml:space="preserve"><value>Device: {0} · {1}. Passively query the existing format matrix (44.1/48 kHz, PCM16/PCM24-in-32/Float32), then run up to {2} Initialize-only checks for supported 48 kHz PCM16 candidates only (Capture: channels 1/2; Render: channel 2). Streams will not start, PCM will not be transferred, and no sound will be played. Initialize may temporarily occupy the Exclusive endpoint. Total limit: {3} seconds. Stream, stability, and Duplex are not confirmed.</value></data>
+  <data name="VmDeviceScanResultSummary" xml:space="preserve"><value>{0} · 48 kHz PCM16: supported reported {1}; Initialize successful {2}, failed/incomplete {3}; Stream: {4}; long-term Stability and Duplex: NOT_RUN.</value></data>
+  <data name="VmDeviceScanStreamObservations" xml:space="preserve"><value>{0} observations accepted</value></data>
+  <data name="VmDeviceProfileSaved" xml:space="preserve"><value>Profile schemaVersion {0} saved: {1}</value></data>
+  <data name="VmWorkerChannelSummary" xml:space="preserve"><value>{0} · {1} · {2} stream channels</value></data>
+  <data name="VmWorkerFormatNotSelected" xml:space="preserve"><value>No format topology selected.</value></data>
+  <data name="VmEndpointCandidateLoopbackExcluded" xml:space="preserve"><value>Excluded: loopback name hint</value></data>
+  <data name="VmEndpointCandidateInactive" xml:space="preserve"><value>Excluded: endpoint inactive or ID unavailable</value></data>
+  <data name="VmEndpointCandidateCaptureExplicit" xml:space="preserve"><value>Explicit selection required: FormFactor unknown or property unavailable</value></data>
+  <data name="VmEndpointCandidateCapture" xml:space="preserve"><value>Capture candidate</value></data>
+  <data name="VmEndpointCandidateRender" xml:space="preserve"><value>Render candidate</value></data>
+  <data name="VmEndpointCandidateUnknownDirection" xml:space="preserve"><value>Excluded: direction unknown</value></data>
+  <data name="VmDuplexConsent" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}
+48 kHz · stereo PCM16 · WASAPI Exclusive · {4} · up to 5 seconds · MMCSS OFF. Both endpoints will be opened Exclusive. Capture packets will be read and discarded; microphone audio is not saved. Render sends digital silence only. No Capture→Render routing or test tone. Cancellation coordinates Stop on both sides; if Worker is lost, cleanup remains UNKNOWN.</value></data>
+  <data name="VmDuplexSelectActivePair" xml:space="preserve"><value>Select active Capture and Render endpoints.</value></data>
+  <data name="VmRepeatabilityPlanEndpoints" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}</value></data>
+  <data name="VmRepeatabilityPlanFormat" xml:space="preserve"><value>48 kHz · {0} · {1} channels</value></data>
+  <data name="VmRepeatabilityPlanOrder" xml:space="preserve"><value>6 runs · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT</value></data>
+  <data name="VmRepeatabilityPlanTimeLimit" xml:space="preserve"><value>5 seconds per operation · 30 seconds total active audio · MMCSS OFF</value></data>
+  <data name="VmRepeatabilityPlanWorkerSession" xml:space="preserve"><value>Worker session: {0} s lifetime, {1} s per operation, at most {2} operations</value></data>
+  <data name="VmRepeatabilityPlanSafetyLimits" xml:space="preserve"><value>Capture data is discarded; Render sends digital silence. Physical RTL and AudioHost activation are excluded.</value></data>
+  <data name="VmMeterWindowMissing" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmMeterStale" xml:space="preserve"><value>Stale · last observation: window {0}; Stop and cleanup are unknown.</value></data>
+  <data name="VmMeterFinal" xml:space="preserve"><value>Final values · window {0}; quality and cleanup were not confirmed.</value></data>
+  <data name="VmMeterStopping" xml:space="preserve"><value>STOPPING · last values are frozen pending the terminal event; window {0}.</value></data>
+  <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Window {0} · digital silence observed</value></data>
+  <data name="VmMeterDemoLive" xml:space="preserve"><value>Window {0} · LIVE · DEMO · Simulated data</value></data>
+  <data name="VmWindowsChannelOption" xml:space="preserve"><value>Windows channel {0}</value></data>
+  <data name="VmRealCandidateConflictDetails" xml:space="preserve"><value>{0}: Status={1}, IsFormatSupported={2}, HRESULT={3}, query cleanup={4}, release attempts={5}</value></data>
+  <data name="VmRealEvidenceNotObserved" xml:space="preserve"><value>not observed</value></data>
+  <data name="VmRealEvidenceUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmRealCandidateFormatDetails" xml:space="preserve"><value>{0} · {1} · {2} Hz · {3} channels · container/valid bits: {4}/{5} · channel mask: {6} · period: {7}</value></data>
+  <data name="VmRealCandidateQueryDetails" xml:space="preserve"><value>Query: Activate {0} · IsFormatSupported {1} ({2}) · GetDevicePeriod {3} · default/minimum {4}/{5} ×100 ns · query cleanup {6}, release attempts {7}</value></data>
+  <data name="VmRealCandidateInitializeDetails" xml:space="preserve"><value>Initialize: {0}, attempted {1} · period API {2}, available {3} · requested {4} ×100 ns · first HRESULT {5}</value></data>
+  <data name="VmRealCandidateAlignmentDetails" xml:space="preserve"><value>Alignment retry: GetBufferSize {0}, frames {1}, Activate {2}, period {3} ×100 ns, Initialize {4} · final {5}</value></data>
+  <data name="VmRealCandidateBufferDetails" xml:space="preserve"><value>Buffer: HRESULT {0}, {1} frames, {2} ×100 ns · event create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7}, release attempts {8}</value></data>
+  <data name="VmRealInitializationDetailsFormat" xml:space="preserve"><value>{0}REAL INITIALIZE-ONLY · {1} · {2} · {3}, {4} Hz, {5} channels, {6}</value></data>
+  <data name="VmRealHistoricalPrefix" xml:space="preserve"><value>HISTORICAL · </value></data>
+  <data name="VmRealFormatUnknown" xml:space="preserve"><value>format unknown</value></data>
+  <data name="VmRealPeriodUnknown" xml:space="preserve"><value>period unknown</value></data>
+  <data name="VmRealInitializationSupportDetails" xml:space="preserve"><value>Support: {0} · IsFormatSupported {1} · Activate {2} · query cleanup {3} ({4} release attempts)</value></data>
+  <data name="VmRealInitializationApiDetails" xml:space="preserve"><value>Initialize: period query {0}, available {1}, requested {2} ×100 ns · first {3} · Alignment retry: GetBufferSize {4} / {5} frames · Activate {6} · retry Initialize {7} · final {8}</value></data>
+  <data name="VmRealInitializationBufferDetails" xml:space="preserve"><value>Buffer: HRESULT {0}, {1} frames / {2} ×100 ns · event: create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7} ({8} release attempts). Start was not called; PCM was not transferred.</value></data>
+  <data name="VmRealRequestedPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} ms</value></data>
+  <data name="VmRealPeriodValueUnknown" xml:space="preserve"><value>period unknown</value></data>
+  <data name="VmRealEventReady" xml:space="preserve"><value>readiness confirmed</value></data>
+  <data name="VmRealEventNotReady" xml:space="preserve"><value>readiness not reached</value></data>
+  <data name="VmRealCleanupReleaseAttempted" xml:space="preserve"><value>RELEASE_ATTEMPTED · release attempted; cleanup not confirmed</value></data>
+  <data name="VmRealInitializationSummary" xml:space="preserve"><value>REAL INITIALIZE-ONLY RESULT
+Device: {0}
+Format: {1} · {2} Hz · {3} channels
+IsFormatSupported status: {4}
+Requested period: {5} · {6}
+Initialize status: {7} · HRESULT: {8}
+Actual buffer: {9} frames
+Event readiness: {10}
+Cleanup evidence: {11}
+Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
+  <data name="VmHistoricalSelectionChanged" xml:space="preserve"><value>Historical measurement selection changed.</value></data>
+  <data name="VmHistoricalRecoveryPreferred" xml:space="preserve"><value>{0} · {1}/{2} frames · {3} · {4} s</value></data>
+  <data name="VmHistoricalRecoveryPreferredMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmHistoricalRecoveryFallback" xml:space="preserve"><value>{0} · {1}/{2} frames</value></data>
+  <data name="VmHistoricalRecoveryFallbackMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmSavedProfilePrimary" xml:space="preserve"><value>{0} · {1} s · {2}</value></data>
+  <data name="VmSavedProfileFallback" xml:space="preserve"><value>{0} · {1} s</value></data>
+  <data name="VmSavedProfileEvidenceSummary" xml:space="preserve"><value>Primary: {0}
+Fallback: {1}
+{2}</value></data>
+  <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · historical short results
+{1}</value></data>
+  <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Only exact endpoint IDs matched in the fresh list. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not revalidated.</value></data>
+  <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>This check does not authorize applying Primary/Fallback or turn historical results into fresh measurements.</value></data>
+  <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>No technical data.</value></data>
+  <data name="VmHistoricalWorkerEndpoint" xml:space="preserve"><value>{0} · {1} · {2} channels · synthetic</value></data>
+  <data name="VmWorkerInitialDisconnected" xml:space="preserve"><value>Worker has not been started.</value></data>
+  <data name="VmHistoricalOperatorSectionMissing" xml:space="preserve"><value>Historical sustained section is missing.</value></data>
+  <data name="VmHistoricalOperatorPrimary" xml:space="preserve"><value>Primary: {0} · MMCSS {1} · {2} s · {3}</value></data>
+  <data name="VmHistoricalOperatorPrimaryNone" xml:space="preserve"><value>Primary: NONE</value></data>
+  <data name="VmHistoricalOperatorFallback" xml:space="preserve"><value>Fallback: {0} · {1} s</value></data>
+  <data name="VmHistoricalOperatorFallbackNone" xml:space="preserve"><value>Fallback: NONE</value></data>
+  <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
+{1}
+{2}</value></data>
+  <data name="VmCustomPeriodDuplexNotStarted" xml:space="preserve"><value>Custom-period Duplex has not been run.</value></data>
+  <data name="VmWorkerFakeOperationFailed" xml:space="preserve"><value>Fake Worker operation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPrepareCommandFailed" xml:space="preserve"><value>Scan preparation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanConfirmCommandUnknown" xml:space="preserve"><value>UNKNOWN · {0}: {1}</value></data>
+  <data name="VmRealFormatSummary" xml:space="preserve"><value>Formats checked: {0} · Supported: {1} · Unsupported: {2} · Failed/incomplete: {3} · Not tested: {4} · Initialize: {5}</value></data>
+  <data name="VmWorkerFakeFixturesReceived" xml:space="preserve"><value>Received {0} Worker Fake test records. Local demo fixtures remain separate.</value></data>
+  <data name="VmWorkerCommandRejected" xml:space="preserve"><value>Command rejected: {0}/{1}: {2}</value></data>
+  <data name="VmWorkerQueryFailed" xml:space="preserve"><value>Worker query failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanRefreshingBeforePlan" xml:space="preserve"><value>Refreshing Windows endpoints before preparing the plan…</value></data>
+  <data name="VmAutomaticScanPlanPreparedConsentRequired" xml:space="preserve"><value>Plan prepared. Operations will start only after your consent.</value></data>
+  <data name="VmAutomaticScanPlanPrepareFailed" xml:space="preserve"><value>Plan preparation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPhysicalGroupChanged" xml:space="preserve"><value>The physical device group changed after discovery; select the device again.</value></data>
+  <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>The physical pair is no longer unambiguous; explicitly select Capture and Render.</value></data>
+  <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>The exact selected endpoint disappeared or became inactive after refresh. Automatic device substitution is disabled.</value></data>
+  <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>The pair changed; the previous assessment and consent were cleared.</value></data>
+  <data name="VmStreamCommandFailed" xml:space="preserve"><value>Stream validation failed: {0}: {1}</value></data>
+  <data name="VmDuplexCommandFailed" xml:space="preserve"><value>Duplex failed or unknown: {0}: {1}</value></data>
+  <data name="VmDeviceProfileCurrentResultRequired" xml:space="preserve"><value>A current, accepted real WASAPI result for the selected active endpoint is required.</value></data>
+  <data name="VmWorkerConsentFingerprintBound" xml:space="preserve"><value>One-time consent was created and bound to the settings fingerprint.</value></data>
+  <data name="VmWorkerSyntheticOperationAccepted" xml:space="preserve"><value>Synthetic operation accepted by Worker.</value></data>
+  <data name="VmDuplexDisconnectedDuringValidation" xml:space="preserve"><value>UNKNOWN · Worker disconnected during Duplex; both sides and cleanup are unknown.</value></data>
+  <data name="VmDuplexHistoricalAfterDisconnect" xml:space="preserve"><value>The latest accepted Duplex results are retained as historical after disconnect. Cleanup and physical routing cannot be inferred from the disconnect.</value></data>
+  <data name="VmWorkerDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker disconnected; Stop and cleanup are unknown.</value></data>
+  <data name="VmWorkerEventCallbackFailed" xml:space="preserve"><value>Worker event handling failed: {0}</value></data>
+  <data name="VmWorkerUiQueueOverflow" xml:space="preserve"><value>UI event queue overflowed; continuation of Worker events was not confirmed.</value></data>
+  <data name="VmWorkerUiQueueOverflowDetails" xml:space="preserve"><value>The bounded control-event queue was exhausted; lifecycle/cleanup are unconfirmed.</value></data>
+  <data name="VmWorkerSnapshotsCoalescedDetails" xml:space="preserve"><value>UI retained only the latest snapshot; {0} pending snapshots were coalesced.</value></data>
+  <data name="VmWorkerSyntheticEventDetail" xml:space="preserve"><value>Synthetic event {0}.</value></data>
+  <data name="VmWorkerEventNotice" xml:space="preserve"><value>Event {0} · IPC sequence {1}.</value></data>
+  <data name="VmWorkerPipeDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker/pipe disconnected; Stop/cleanup are unknown.</value></data>
+  <data name="VmPersistenceLabel" xml:space="preserve"><value>Persistence</value></data>
+  <data name="VmCaptureLabel" xml:space="preserve"><value>Capture</value></data>
+  <data name="VmRenderLabel" xml:space="preserve"><value>Render</value></data>
+  <data name="VmOverallLabel" xml:space="preserve"><value>Overall</value></data>
+  <data name="VmProfileLabel" xml:space="preserve"><value>Profile</value></data>
+  <data name="VmScanSessionLabel" xml:space="preserve"><value>Scan session</value></data>
+  <data name="VmGenerationLabel" xml:space="preserve"><value>Generation</value></data>
+  <data name="VmExactIdsLabel" xml:space="preserve"><value>Exact IDs</value></data>
+  <data name="VmReasonsLabel" xml:space="preserve"><value>Reasons</value></data>
+  <data name="VmLimitationsLabel" xml:space="preserve"><value>Limitations</value></data>
+  <data name="VmFurtherVerificationRequiredLabel" xml:space="preserve"><value>Further verification required</value></data>
+  <data name="VmOperatorModeDuplex" xml:space="preserve"><value>Duplex validation</value></data>
+  <data name="VmOperatorModeDeviceScan" xml:space="preserve"><value>Automatic configuration scan</value></data>
+  <data name="VmOperatorModeFormatQuery" xml:space="preserve"><value>Exclusive format query</value></data>
+  <data name="VmOperatorModeInitializeOnly" xml:space="preserve"><value>Initialize-only validation</value></data>
+  <data name="VmDeviceScanCancellationWaiting" xml:space="preserve"><value>Cancellation requested; waiting for the current Worker call to finish.</value></data>
+  <data name="VmDeviceScanConsentInvalidated" xml:space="preserve"><value>Endpoint, device state, or plan changed; scan confirmation was reset.</value></data>
+  <data name="VmDeviceScanPreflight" xml:space="preserve"><value>Validating the selected active endpoint and approved plan.</value></data>
+  <data name="VmDeviceScanStreamSeparateConsentRequired" xml:space="preserve"><value>Stream was not validated. After successful Initialize, select a period and request separate consent.</value></data>
+  <data name="VmOperatorDuplexConfiguration" xml:space="preserve"><value>48 kHz stereo PCM16 · {0} · 5 seconds · MMCSS OFF</value></data>
+  <data name="VmOperatorDeviceScanConfiguration" xml:space="preserve"><value>48 kHz PCM16 · {0} Initialize-only results</value></data>
+  <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Candidate channel counts: {0} · 44.1/48 kHz · PCM16, PCM24-in-32, Float32</value></data>
+  <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Hz · {2} channels · {3}</value></data>
+  <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Worker result did not match the selected Windows endpoint or passive-query contract.</value></data>
+  <data name="VmHistoricalRecoveryChecking" xml:space="preserve"><value>Checking historical measurements…</value></data>
+  <data name="VmHistoricalRecoveryConfigurationMissing" xml:space="preserve"><value>No verified configuration was found.</value></data>
+  <data name="VmHistoricalRecoveryPreviewReady" xml:space="preserve"><value>Historical measurements passed current rules. Review the result and confirm saving.</value></data>
+  <data name="VmHistoricalRecoveryRejected" xml:space="preserve"><value>Historical measurement verification was rejected. See technical details.</value></data>
+  <data name="VmHistoricalRecoveryProfileCreated" xml:space="preserve"><value>Created new v4 profile: {0:D} · {1:dd.MM.yyyy HH:mm}.</value></data>
+  <data name="VmHistoricalRecoverySaveFailed" xml:space="preserve"><value>Profile was not saved. See technical details.</value></data>
+  <data name="VmHistoricalRecoveryCancelled" xml:space="preserve"><value>Verification cancelled.</value></data>
+  <data name="VmBindingExactIdsOnlyLimitation" xml:space="preserve"><value>Exact Capture/Render IDs matched. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not reverified.</value></data>
+  <data name="VmBindingMultipleProfilesFound" xml:space="preserve"><value>Multiple saved profiles match this device pair. Selection is ambiguous.</value></data>
+  <data name="VmBindingMultipleProfilesChooseManually" xml:space="preserve"><value>No profile was selected automatically; open advanced diagnostics to choose one.</value></data>
+  <data name="VmBindingLegacyMeasurementsFound" xml:space="preserve"><value>Earlier measurements were found. No verified sustained profile is available yet.</value></data>
+  <data name="VmBindingShortResultsNotSustained" xml:space="preserve"><value>Short results are not reinterpreted as a sustained test.</value></data>
+  <data name="VmBindingSustainedValidationRequired" xml:space="preserve"><value>A v4 sustained profile requires a separately validated long-duration test.</value></data>
+  <data name="VmBindingProfileCorruptOrUnsupported" xml:space="preserve"><value>The saved profile is damaged or unsupported.</value></data>
+  <data name="VmBindingMatchingProfileNotFound" xml:space="preserve"><value>No available profile was found for this device pair.</value></data>
+  <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Refresh local profiles and check again.</value></data>
+  <data name="VmBindingCheckFailed" xml:space="preserve"><value>Check did not complete: {0}.</value></data>
+  <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>The current result is unconfirmed.</value></data>
+  <data name="VmAutomaticSustainedStandard" xml:space="preserve"><value>Standard (300 s)</value></data>
+  <data name="VmAutomaticSustainedExtended" xml:space="preserve"><value>Extended (600 s)</value></data>
+  <data name="VmWorkerUnsupportedFakeFormat" xml:space="preserve"><value>Unsupported Worker Fake format.</value></data>
+  <data name="VmWorkerGuiSessionRequestDetail" xml:space="preserve"><value>Request created in the GUI; connection uses the Fake service only.</value></data>
+  <data name="VmWorkerConsentCancelledDetail" xml:space="preserve"><value>Consent cancelled; the Start command was not sent.</value></data>
+  <data name="VmWorkerStopAcceptedAwaitingTerminal" xml:space="preserve"><value>Worker accepted Stop; waiting for the terminal event.</value></data>
+  <data name="VmWorkerWindowClosingCleanupUnknown" xml:space="preserve"><value>Window is closing; terminal cleanup was not observed.</value></data>
+  <data name="VmWorkerWindowCloseStopUnconfirmed" xml:space="preserve"><value>Stop during window close was not confirmed.</value></data>
+  <data name="VmWorkerStateDispatchFailed" xml:space="preserve"><value>Could not dispatch Worker state to the UI: {0}</value></data>
+  <data name="VmWorkerSessionDispatchFailed" xml:space="preserve"><value>Could not dispatch the late response to the UI: {0}</value></data>
+  <data name="VmWorkerStartResponseCorrelated" xml:space="preserve"><value>Start response correlated; Worker operation state {0}.</value></data>
+  <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker disconnected before the terminal event.</value></data>
+  <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Start outcome unknown; no response or terminal cleanup was observed.</value></data>
+  <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>MeterSnapshot event has no validated typed Capture/Render DTO.</value></data>
+  <data name="VmInspectorIpcSequence" xml:space="preserve"><value>IPC sequence</value></data>
+  <data name="VmInspectorSequenceLocal" xml:space="preserve"><value>local</value></data>
+  <data name="VmInspectorWorkerFormatValue" xml:space="preserve"><value>{0} · {1} {2} · {3} {4}</value></data>
+  <data name="VmInspectorDurationValue" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="VmStreamStatusDetail" xml:space="preserve"><value>Period {0}: {1}. {2}</value></data>
+  <data name="VmStreamDetailsStageHresult" xml:space="preserve"><value>Stage: {0}; HRESULT: {1}.</value></data>
+  <data name="VmStreamDetailsCleanReport" xml:space="preserve"><value>Report completed; cleanup contains only explicitly observed stages.</value></data>
+  <data name="VmStreamDetailsQualityAndCleanup" xml:space="preserve"><value>Stream: {0}; durationReached={1}; cleanup: {2}.</value></data>
+  <data name="VmAutomaticScanProgressDetail" xml:space="preserve"><value>Progress: {0} · {1}: {2}</value></data>
+  <data name="VmRepeatabilityProgressStatus" xml:space="preserve"><value>Progress ({0}): {1}</value></data>
+  <data name="VmDeviceScanStageIdle" xml:space="preserve"><value>Idle</value></data>
+  <data name="VmDeviceScanStagePreflight" xml:space="preserve"><value>Preflight</value></data>
+  <data name="VmDeviceScanStagePassiveQuery" xml:space="preserve"><value>Passive format query</value></data>
+  <data name="VmDeviceScanStageCandidateSelection" xml:space="preserve"><value>Candidate selection</value></data>
+  <data name="VmDeviceScanStageActiveInitialize" xml:space="preserve"><value>Active Initialize</value></data>
+  <data name="VmDeviceScanStageStreamValidation" xml:space="preserve"><value>Stream validation</value></data>
+  <data name="VmDeviceScanStageResultAggregation" xml:space="preserve"><value>Result aggregation</value></data>
+  <data name="VmDeviceScanStageCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmDeviceScanStageCancelling" xml:space="preserve"><value>Cancelling</value></data>
+  <data name="VmDeviceScanStageCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="VmDeviceScanStageFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmDeviceScanStageIncomplete" xml:space="preserve"><value>Incomplete</value></data>
+  <data name="VmDeviceScanDetailSupport" xml:space="preserve"><value>support</value></data>
+  <data name="VmDeviceScanDetailFirst" xml:space="preserve"><value>first</value></data>
+  <data name="VmDeviceScanDetailAlignment" xml:space="preserve"><value>alignment</value></data>
+  <data name="VmDeviceScanDetailFrames" xml:space="preserve"><value>frames</value></data>
+  <data name="VmDeviceScanDetailPeriod100ns" xml:space="preserve"><value>period100ns</value></data>
+  <data name="VmDeviceScanDetailFinal" xml:space="preserve"><value>final</value></data>
+  <data name="VmDeviceScanDetailRequestedPeriod" xml:space="preserve"><value>requestedPeriod100ns</value></data>
+  <data name="VmDeviceScanDetailActualPeriod" xml:space="preserve"><value>actualPeriod100ns</value></data>
+  <data name="VmDeviceScanDetailBufferFrames" xml:space="preserve"><value>bufferFrames</value></data>
+  <data name="VmDeviceScanDetailEventReady" xml:space="preserve"><value>eventReady</value></data>
+  <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>releases</value></data>
+  <data name="VmAutomaticScanTimeoutLabel" xml:space="preserve"><value>timeout</value></data>
+  <data name="VmAutomaticScanMillisecondsAbbreviation" xml:space="preserve"><value>ms</value></data>
+  <data name="VmAutomaticScanStageSustained" xml:space="preserve"><value>Sustained validation</value></data>
+  <data name="VmAutomaticScanStageFinalSelection" xml:space="preserve"><value>Final selection</value></data>
+  <data name="VmAutomaticScanStatePlanned" xml:space="preserve"><value>PLANNED</value></data>
+  <data name="VmAutomaticScanStateNotRun" xml:space="preserve"><value>NOT RUN</value></data>
+  <data name="VmAutomaticScanStageMessageExactPair" xml:space="preserve"><value>Runs automatically for an exact Capture/Render pair with current custom-period capability.</value></data>
+  <data name="VmAutomaticScanStageMessageApprovedScope" xml:space="preserve"><value>Runs automatically only for candidates within the approved bounded scope.</value></data>
+  <data name="VmAutomaticScanStageMessageSustained" xml:space="preserve"><value>Runs qualified continuous 60-second screening and bounded Standard/Extended MMCSS validation when exact short evidence qualifies.</value></data>
+  <data name="VmAutomaticScanStageMessageSelection" xml:space="preserve"><value>Evidence-based sustained primary/fallback selection; AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanStageMessageBounded" xml:space="preserve"><value>Bounded stage is included in the immutable scan scope.</value></data>
+  <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Final selection awaits sustained evidence.</value></data>
+  <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>No operation-backed automatic stage was scheduled.</value></data>
+  <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>No operation was scheduled.</value></data>
+  <data name="UiDeviceProfileSaveError" xml:space="preserve"><value>Profile not saved: {0}</value></data>
+  <data name="UiExportZipFilter" xml:space="preserve"><value>ZIP archive (*.zip)|*.zip</value></data>
+  <data name="UiEventSessionRequested" xml:space="preserve"><value>Session requested</value></data>
+  <data name="UiEventConsentAccepted" xml:space="preserve"><value>Consent accepted</value></data>
+  <data name="UiEventConsentCancelled" xml:space="preserve"><value>Consent cancelled</value></data>
+  <data name="UiEventStarted" xml:space="preserve"><value>Started</value></data>
+  <data name="UiEventMeterSnapshot" xml:space="preserve"><value>Meter snapshot</value></data>
+  <data name="UiEventWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="UiEventDeviceLoss" xml:space="preserve"><value>Device lost</value></data>
+  <data name="UiEventWorkerDisconnected" xml:space="preserve"><value>Worker disconnected</value></data>
+  <data name="UiEventUnknown" xml:space="preserve"><value>Unknown event</value></data>
+  <data name="UiEventUnknownWithValue" xml:space="preserve"><value>Unknown event: {0}</value></data>
+  <data name="UiSessionLifecycleStartedDemo" xml:space="preserve"><value>STARTED · demo</value></data>
+  <data name="UiSessionLifecycleStoppingDemo" xml:space="preserve"><value>STOPPING · demo</value></data>
+  <data name="UiSessionLifecycleStoppedDemo" xml:space="preserve"><value>STOPPED · demo</value></data>
+  <data name="UiSessionLifecycleCompletedDemo" xml:space="preserve"><value>COMPLETED · demo</value></data>
+  <data name="UiSessionLifecycleFailedDemo" xml:space="preserve"><value>FAILED · demo</value></data>
+  <data name="UiSessionUnknownWithValue" xml:space="preserve"><value>Unknown: {0}</value></data>
+  <data name="UiEventReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="UiEventStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="UiEventCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="UiEventFailure" xml:space="preserve"><value>Failure</value></data>
+  <data name="VmAutomaticScanSummaryDisplay" xml:space="preserve"><value>{0} · completed {1} · skipped {2} · errors {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmDuplexRecommendationSummary" xml:space="preserve"><value>PROBE_PROVISIONAL · {0} · {1}. AudioHost: NOT_CERTIFIED. {2}</value></data>
+  <data name="VmRecommendationReasonAmbiguousPeriod" xml:space="preserve"><value>Multiple candidates were reported for one period; automatic selection is blocked for ambiguous records.</value></data>
+  <data name="VmRecommendationReasonDifferentPairs" xml:space="preserve"><value>Candidates use different exact endpoint pairs or incompatible settings; they are not ranked together.</value></data>
+  <data name="VmRecommendationReasonMinimumSelected" xml:space="preserve"><value>MINIMUM was selected from clean short Duplex evidence for this exact pair.</value></data>
+  <data name="VmRecommendationReasonNoAudioHostActivation" xml:space="preserve"><value>This recommendation does not authorize AudioHost activation; long-duration and production QA are still required.</value></data>
+  <data name="VmRecommendationReasonDefaultSelected" xml:space="preserve"><value>DEFAULT was selected because MINIMUM lacks independent clean Duplex confirmation.</value></data>
+  <data name="VmRecommendationReasonShortRunOnly" xml:space="preserve"><value>This check is limited to a short run; AudioHost is not certified.</value></data>
+  <data name="VmRecommendationReasonNoCleanCandidate" xml:space="preserve"><value>No candidate has complete clean Duplex evidence for this exact pair.</value></data>
+  <data name="VmRecommendationReasonNoSeparateProof" xml:space="preserve"><value>Format support and separate Capture/Render results do not replace a coordinated Duplex check.</value></data>
+  <data name="VmRepeatabilitySummaryDisplay" xml:space="preserve"><value>Planned: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmRepeatabilityClassClean" xml:space="preserve"><value>repeatably clean</value></data>
+  <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>intermittent anomalies</value></data>
+  <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>repeatably anomalous</value></data>
+  <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>insufficient evidence</value></data>
+  <data name="VmConfidenceHigh" xml:space="preserve"><value>HIGH</value></data>
+  <data name="VmConfidenceMedium" xml:space="preserve"><value>MEDIUM</value></data>
+  <data name="VmConfidenceLow" xml:space="preserve"><value>LOW</value></data>
+  <data name="VmConfidenceNone" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmConfidenceProvisional" xml:space="preserve"><value>PROVISIONAL</value></data>
+  <data name="VmConfidenceProvisionalSingleRun" xml:space="preserve"><value>PROVISIONAL_SINGLE_SUSTAINED_RUN</value></data>
+  <data name="VmConfidenceVerifiedSustained" xml:space="preserve"><value>VERIFIED_SUSTAINED_CLEAN</value></data>
+  <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Lifecycle: {0}\n{1}\nPersistence: {2}\nReport: {3}</value></data>
+  <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Lifecycle: {0}\nPersistence: {1}\nReport: {2}{3}</value></data>
+  <data name="VmErrorDetail" xml:space="preserve"><value>Error: {0}</value></data>
+</root>

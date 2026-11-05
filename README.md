@@ -4,6 +4,8 @@
 
 **Статус:** experimental preview. Реализованы пассивное endpoint discovery, WASAPI Exclusive format query и Initialize-only, bounded Capture/Render stream checks, Duplex, Period Discovery, Repeatability, Sustained Validation, Capture meter, Evidence Library, versioned device profiles и consent-gated Automatic Scan. WPF GUI использует отдельный Native Worker и Named Pipe IPC; рабочий путь Device → Test → Result включает реальный scan orchestration и отдельные synthetic Developer Tools.
 
+**Preview 0.1.0-preview.1:** это предварительное ПО, не прошедшее физическую аудио-проверку в текущем QA-сеансе. Установщик не подписан; Windows SmartScreen может показать предупреждение. Физическая сертификация RTL не выполнялась, `AudioHost` остаётся `NOT_CERTIFIED`. Подробности и ограничения приведены в [release notes](RELEASE_NOTES_v0.1.0-preview.1.md) и [Final QA report](L10N_VISUAL_QA_REPORT.md).
+
 Приложение не является сертификационным инструментом. Оно показывает наблюдения Windows/WASAPI и сохраняет их происхождение; `AudioHost` остаётся `NOT_CERTIFIED`, физические RTL-измерения отсутствуют, а программные transport/clock результаты не следует трактовать как ADC/DAC или акустическую задержку.
 
 ### GUI Design Kit v0.1 — D0
@@ -37,7 +39,7 @@ Device profiles агрегируют exact endpoint-bound evidence, query/Initia
 
 Нужны CMake 3.23+ и Visual Studio 2022 C++ Build Tools с Windows SDK.
 
-Для официальных установщиков используйте страницу [GitHub Releases](https://github.com/Dayzcoub/klidan-audio-probe-oss/releases). На момент подготовки этого snapshot опубликованного release нет; не скачивайте установщики из случайных источников и проверяйте SHA-256 из release notes.
+Публичный Preview пока не опубликован как GitHub Release. Собранный для QA установщик — неподписанный; используйте только явно переданный вам артефакт и сверяйте SHA-256 из его manifest. Возможна предупреждающая страница SmartScreen.
 
 ```powershell
 cmake -S . -B build -A x64

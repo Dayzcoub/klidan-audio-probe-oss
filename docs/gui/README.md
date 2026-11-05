@@ -8,10 +8,10 @@ D1 Architecture A was approved 2026-10-30; see [D1 architecture](D1_ARCHITECTURE
 Provide a consistent visual, interaction, data, accessibility and implementation contract **before** coding the first desktop GUI. Audio Probe is a diagnostic tool, not the game operator console; inherit KLIDAN's visual grammar without copying gaming-specific widgets.
 
 ## Source of visual alignment
-- Approved upstream design-token source (read 2026-10-30): actual brand surfaces, text, accent, status brushes; private path omitted.
-- Approved upstream spacing reference: actual spacing, radii and operator sizing; private path omitted.
-- Approved upstream UI guidance: professional dark console; semantic tokens; states; accessible interaction; private path omitted.
-- `Dayzcoub/klidan-audio-probe/docs/ROADMAP.md` at C1 commit `b19d221`: shipping vs planned capabilities.
+- Public design-token source: `design-tokens.json` and the WPF resources in this repository.
+- Public spacing and accessibility reference: the design-kit documents in this directory.
+- No private upstream source is required to build or distribute the application.
+- [`docs/ROADMAP.md`](../ROADMAP.md): shipping vs planned capabilities in this public repository.
 
 ## Files
 1. `01_PRODUCT_AND_SCOPE.md` — goals, user tasks, scope, feature maturity.
