@@ -1038,4 +1038,30 @@ Initialize status: {7} · HRESULT: {8}
 Event readiness: {10}
 Cleanup evidence: {11}
 Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
+  <data name="VmHistoricalSelectionChanged" xml:space="preserve"><value>Выбор исторического измерения изменён.</value></data>
+  <data name="VmHistoricalRecoveryPreferred" xml:space="preserve"><value>{0} · {1}/{2} frames · {3} · {4} с</value></data>
+  <data name="VmHistoricalRecoveryPreferredMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmHistoricalRecoveryFallback" xml:space="preserve"><value>{0} · {1}/{2} frames</value></data>
+  <data name="VmHistoricalRecoveryFallbackMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmSavedProfilePrimary" xml:space="preserve"><value>{0} · {1} с · {2}</value></data>
+  <data name="VmSavedProfileFallback" xml:space="preserve"><value>{0} · {1} с</value></data>
+  <data name="VmSavedProfileEvidenceSummary" xml:space="preserve"><value>Primary: {0}
+Fallback: {1}
+{2}</value></data>
+  <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · исторические короткие результаты
+{1}</value></data>
+  <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.</value></data>
+  <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.</value></data>
+  <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>Технических данных нет.</value></data>
+  <data name="VmHistoricalWorkerEndpoint" xml:space="preserve"><value>{0} · {1} · {2} каналов · synthetic</value></data>
+  <data name="VmWorkerInitialDisconnected" xml:space="preserve"><value>Worker не запускался.</value></data>
+  <data name="VmHistoricalOperatorSectionMissing" xml:space="preserve"><value>Исторический длительный раздел отсутствует.</value></data>
+  <data name="VmHistoricalOperatorPrimary" xml:space="preserve"><value>Primary: {0} · MMCSS {1} · {2} с · {3}</value></data>
+  <data name="VmHistoricalOperatorPrimaryNone" xml:space="preserve"><value>Primary: NONE</value></data>
+  <data name="VmHistoricalOperatorFallback" xml:space="preserve"><value>Fallback: {0} · {1} с</value></data>
+  <data name="VmHistoricalOperatorFallbackNone" xml:space="preserve"><value>Fallback: NONE</value></data>
+  <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
+{1}
+{2}</value></data>
 </root>

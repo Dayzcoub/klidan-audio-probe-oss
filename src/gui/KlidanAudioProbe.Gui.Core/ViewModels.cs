@@ -679,7 +679,7 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<MeterChannelDto> VisibleMeterChannels => Meter?.Channels.Where(c => c.Channel > _captureBank * 8 && c.Channel <= _captureBank * 8 + 8).ToArray() ?? [];
     public IReadOnlyList<SelectionOption> RenderChannelBanks => Enumerable.Range(0, Math.Max(1, ((SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) + 7) / 8)).Select(bank => new SelectionOption(bank, string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterBankRange"), bank * 8 + 1, Math.Min(bank * 8 + 8, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2)))).ToArray();
     public IReadOnlyList<SelectionOption> RenderChannelOptions => Enumerable.Range(_renderBank * 8 + 1, Math.Min(8, Math.Max(1, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) - _renderBank * 8)).Select(i => new SelectionOption(i, string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsChannelOption"), i))).ToArray();
-    public WorkerStateDto WorkerState { get; private set; } = new(WorkerConnectionState.Disconnected, "Worker не запускался.");
+    public WorkerStateDto WorkerState { get; private set; } = new(WorkerConnectionState.Disconnected, Localization.Get("VmWorkerInitialDisconnected"));
     public IReadOnlyList<WorkerEndpointDto> WorkerEndpoints { get => _workerEndpoints; private set => Set(ref _workerEndpoints, value); }
     public WorkerEndpointDto? SelectedWorkerEndpoint { get => _selectedWorkerEndpoint; set { if (value is not null && !WorkerEndpoints.Contains(value)) return; if (Set(ref _selectedWorkerEndpoint, value)) { _selectedWorkerFormat = value?.FormatTopologies?.FirstOrDefault(); _workerRenderChannel = 1; Changed(nameof(SelectedWorkerFormat)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelCount)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(WorkerRenderChannelVisible)); Changed(nameof(WorkerRenderChannel)); Changed(nameof(WorkerRenderChannelOptions)); RefreshWorkerCommands(); } } }
     public FormatTopologyDto? SelectedWorkerFormat { get => _selectedWorkerFormat; set { if (value is not null && !WorkerFormatOptions.Contains(value)) return; if (Set(ref _selectedWorkerFormat, value)) { if (_workerRenderChannel < 1 || _workerRenderChannel > WorkerChannelCount) _workerRenderChannel = 1; Changed(nameof(WorkerChannelCount)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(WorkerRenderChannel)); Changed(nameof(WorkerRenderChannelOptions)); RefreshWorkerCommands(); } } }
@@ -742,8 +742,8 @@ public sealed class MainViewModel : ViewModel
     public bool PhysicalGroupRequiresExplicitDirection => SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } or { RequiresExplicitRender: true };
     public IReadOnlyList<PhysicalDeviceEndpointDetailDto> PhysicalDeviceGroupDetails => _physicalDeviceGroups
         .SelectMany(group => group.CaptureEndpoints.Concat(group.RenderEndpoints).Select(endpoint => new PhysicalDeviceEndpointDetailDto(
-            group.GroupId, group.DisplayName, endpoint.EndpointId ?? "неизвестен", endpoint.Direction, endpoint.DeviceState,
-            endpoint.FormFactor, endpoint.FormFactorEvidence.State, endpoint.ContainerId ?? "неизвестен", endpoint.ContainerIdEvidence?.State ?? "UNAVAILABLE",
+            group.GroupId, group.DisplayName, endpoint.EndpointId ?? Localization.Get("VmValueUnknown"), endpoint.Direction, endpoint.DeviceState,
+            endpoint.FormFactor, endpoint.FormFactorEvidence.State, endpoint.ContainerId ?? Localization.Get("VmValueUnknown"), endpoint.ContainerIdEvidence?.State ?? "UNAVAILABLE",
             EndpointCandidateReason(endpoint)))).ToArray();
     public bool CanOfferUnconfirmedPhysicalPair => SelectedPhysicalDeviceGroup is { } group && !group.CanAutoSelectPair &&
         WindowsEndpoints.Any(e => e.Direction == "CAPTURE" && PhysicalDeviceGrouping.IsSelectableCapture(e) && PhysicalDeviceGrouping.IsActiveEndpoint(e)) &&
@@ -970,7 +970,7 @@ public sealed class MainViewModel : ViewModel
     public HistoricalSustainedScanEntry? SelectedHistoricalSustainedScan
     {
         get => _selectedHistoricalSustainedScan;
-        set { if (Set(ref _selectedHistoricalSustainedScan, value)) InvalidateHistoricalRecovery("Выбор исторического измерения изменён."); }
+        set { if (Set(ref _selectedHistoricalSustainedScan, value)) InvalidateHistoricalRecovery(Localization.Get("VmHistoricalSelectionChanged")); }
     }
     public string HistoricalRecoveryStatus => _historicalRecoveryStatus;
     public bool HistoricalRecoveryPreviewVisible => _historicalRecoveryPreview is not null;
@@ -979,8 +979,8 @@ public sealed class MainViewModel : ViewModel
     public bool HistoricalRecoveryConfirmationChecked { get => _historicalRecoveryConfirmationChecked; set { if (Set(ref _historicalRecoveryConfirmationChecked, value)) SaveHistoricalSustainedRecoveryCommand.Refresh(); } }
     public string HistoricalRecoveryPreviewDevice => _selectedHistoricalSustainedScan?.DeviceName ?? "—";
     public string HistoricalRecoveryPreviewDates => _historicalRecoveryPreview is null ? "—" : string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryPreviewDates"), _historicalRecoveryPreview.HistoricalMeasurementTimestampUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Localization.CurrentCulture), _selectedHistoricalSustainedScan?.TimestampLabel ?? "—");
-    public string HistoricalRecoveryPreferred => _historicalRecoveryPreview?.Recommendation.Preferred is { } p ? $"{p.Period} · {p.CaptureBufferFrames}/{p.RenderBufferFrames} frames · {p.Mmcss} · {p.DurationSeconds} с" : "NONE";
-    public string HistoricalRecoveryFallback => _historicalRecoveryPreview?.Recommendation.Fallback is { } f ? $"{f.Period} · {f.CaptureBufferFrames}/{f.RenderBufferFrames} frames" : "NONE";
+    public string HistoricalRecoveryPreferred => _historicalRecoveryPreview?.Recommendation.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryPreferred"), p.Period, p.CaptureBufferFrames, p.RenderBufferFrames, p.Mmcss, p.DurationSeconds) : Localization.Get("VmHistoricalRecoveryPreferredMissing");
+    public string HistoricalRecoveryFallback => _historicalRecoveryPreview?.Recommendation.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryFallback"), f.Period, f.CaptureBufferFrames, f.RenderBufferFrames) : Localization.Get("VmHistoricalRecoveryFallbackMissing");
     public string HistoricalRecoveryConfidence => _historicalRecoveryPreview?.Recommendation.Preferred?.Confidence ?? "NONE";
     public string HistoricalRecoveryTechnicalDetails => string.Join("\n", new[] { _selectedHistoricalSustainedScan?.TechnicalDetails, _historicalRecoveryTechnicalError }.Where(s => !string.IsNullOrWhiteSpace(s)));
     public DeviceConfigurationProfileStorage.SavedProfileEntry? SelectedSavedDeviceProfile
@@ -1009,23 +1009,23 @@ public sealed class MainViewModel : ViewModel
             if (profile is null) return SelectedSavedDeviceProfile?.Reason ?? Localization.Get("VmSavedProfileNotSelected");
             if (profile.SchemaVersion == 4 && profile.SustainedSelection is { } sustained)
             {
-                var primary = sustained.Preferred is { } p ? $"{p.Period} · {p.DurationSeconds} с · {p.Confidence}" : "NONE";
-                var fallback = sustained.Fallback is { } f ? $"{f.Period} · {f.DurationSeconds} с" : "NONE";
-                return $"Primary: {primary}\nFallback: {fallback}\nAudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED";
+                var primary = sustained.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfilePrimary"), p.Period, p.DurationSeconds, p.Confidence) : "NONE";
+                var fallback = sustained.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileFallback"), f.Period, f.DurationSeconds) : "NONE";
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileEvidenceSummary"), primary, fallback, Localization.Get("VmSavedProfileEvidenceCaveat"));
             }
-            return $"v{profile.SchemaVersion} · исторические короткие результаты\nAudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED";
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileShortHistory"), profile.SchemaVersion, Localization.Get("VmSavedProfileEvidenceCaveat"));
         }
     }
     public string SavedProfileBindingExplanation => _savedProfileBindingResult?.Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery
-        ? "Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены."
-        : "Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.";
+        ? Localization.Get("VmSavedProfileExactBindingExplanation")
+        : Localization.Get("VmSavedProfileBindingNoRecommendation");
     public string SavedProfileBindingTechnicalDetails => _savedProfileBindingResult is { } result
         ? $"Overall: {result.Overall}\nCapture: {result.Capture}\nRender: {result.Render}\nProfile: {result.SourceProfileId:D}\nScan session: {result.SourceScanSessionId ?? "UNKNOWN"}\nGeneration: {result.DiscoveryGeneration ?? "UNKNOWN"}\nExact IDs: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\nReasons: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\nLimitations: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\nFurther verification required: {result.RequiresFurtherVerification}"
-        : "Технических данных нет.";
-    public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => $"{e.Name} · {e.Direction} · {e.ChannelCount} каналов · synthetic").ToArray();
+        : Localization.Get("VmSavedProfileTechnicalDetailsMissing");
+    public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalWorkerEndpoint"), e.Name, e.Direction, e.ChannelCount)).ToArray();
     public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? Localization.Get("VmWorkerRestartRequired") : string.Empty;
     public int WorkerRenderChannel { get => _workerRenderChannel; set { if (value >= 1 && value <= WorkerChannelCount && Set(ref _workerRenderChannel, value)) RefreshWorkerCommands(); } }
-    public IReadOnlyList<SelectionOption> WorkerRenderChannelOptions => Enumerable.Range(1, WorkerChannelCount).Select(i => new SelectionOption(i, $"Канал Windows {i}")).ToArray();
+    public IReadOnlyList<SelectionOption> WorkerRenderChannelOptions => Enumerable.Range(1, WorkerChannelCount).Select(i => new SelectionOption(i, string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsChannelOption"), i))).ToArray();
     public int WorkerDurationSeconds { get => _workerDurationSeconds; set { if (DurationOptions.Any(o => o.Value == value) && Set(ref _workerDurationSeconds, value)) RefreshWorkerCommands(); } }
     public string WorkerPeriod { get => _workerPeriod; set { if ((value is "DEFAULT" or "MINIMUM") && Set(ref _workerPeriod, value)) RefreshWorkerCommands(); } }
     public string WorkerMmcss { get => _workerMmcss; set { if ((value is "OFF" or "PRO_AUDIO") && Set(ref _workerMmcss, value)) RefreshWorkerCommands(); } }
@@ -2666,10 +2666,10 @@ public sealed class MainViewModel : ViewModel
 
     private static string HistoricalOperatorText(DeviceConfigurationProfile profile)
     {
-        if (profile.SchemaVersion != 4 || profile.SustainedSelection is not { } sustained) return "Исторический длительный раздел отсутствует.";
-        var primary = sustained.Preferred is { } p ? $"Primary: {p.Period} · MMCSS {p.Mmcss} · {p.DurationSeconds} с · {p.Confidence}" : "Primary: NONE";
-        var fallback = sustained.Fallback is { } f ? $"Fallback: {f.Period} · {f.DurationSeconds} с" : "Fallback: NONE";
-        return $"{primary}\n{fallback}\nAudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED";
+        if (profile.SchemaVersion != 4 || profile.SustainedSelection is not { } sustained) return Localization.Get("VmHistoricalOperatorSectionMissing");
+        var primary = sustained.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorPrimary"), p.Period, p.Mmcss, p.DurationSeconds, p.Confidence) : Localization.Get("VmHistoricalOperatorPrimaryNone");
+        var fallback = sustained.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorFallback"), f.Period, f.DurationSeconds) : Localization.Get("VmHistoricalOperatorFallbackNone");
+        return string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorSummary"), primary, fallback, Localization.Get("VmSavedProfileEvidenceCaveat"));
     }
 
     private async Task DiscoverWindowsEndpointsAsync()

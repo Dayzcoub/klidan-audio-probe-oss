@@ -1038,4 +1038,30 @@ Actual buffer: {9} frames
 Event readiness: {10}
 Cleanup evidence: {11}
 Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
+  <data name="VmHistoricalSelectionChanged" xml:space="preserve"><value>Historical measurement selection changed.</value></data>
+  <data name="VmHistoricalRecoveryPreferred" xml:space="preserve"><value>{0} · {1}/{2} frames · {3} · {4} s</value></data>
+  <data name="VmHistoricalRecoveryPreferredMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmHistoricalRecoveryFallback" xml:space="preserve"><value>{0} · {1}/{2} frames</value></data>
+  <data name="VmHistoricalRecoveryFallbackMissing" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmSavedProfilePrimary" xml:space="preserve"><value>{0} · {1} s · {2}</value></data>
+  <data name="VmSavedProfileFallback" xml:space="preserve"><value>{0} · {1} s</value></data>
+  <data name="VmSavedProfileEvidenceSummary" xml:space="preserve"><value>Primary: {0}
+Fallback: {1}
+{2}</value></data>
+  <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · historical short results
+{1}</value></data>
+  <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Only exact endpoint IDs matched in the fresh list. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not revalidated.</value></data>
+  <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>This check does not authorize applying Primary/Fallback or turn historical results into fresh measurements.</value></data>
+  <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>No technical data.</value></data>
+  <data name="VmHistoricalWorkerEndpoint" xml:space="preserve"><value>{0} · {1} · {2} channels · synthetic</value></data>
+  <data name="VmWorkerInitialDisconnected" xml:space="preserve"><value>Worker has not been started.</value></data>
+  <data name="VmHistoricalOperatorSectionMissing" xml:space="preserve"><value>Historical sustained section is missing.</value></data>
+  <data name="VmHistoricalOperatorPrimary" xml:space="preserve"><value>Primary: {0} · MMCSS {1} · {2} s · {3}</value></data>
+  <data name="VmHistoricalOperatorPrimaryNone" xml:space="preserve"><value>Primary: NONE</value></data>
+  <data name="VmHistoricalOperatorFallback" xml:space="preserve"><value>Fallback: {0} · {1} s</value></data>
+  <data name="VmHistoricalOperatorFallbackNone" xml:space="preserve"><value>Fallback: NONE</value></data>
+  <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
+{1}
+{2}</value></data>
 </root>
