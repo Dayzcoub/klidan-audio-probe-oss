@@ -926,4 +926,21 @@
   <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Предупреждение о целостности временных меток Capture.</value></data>
   <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Синтетическая потеря устройства; качество неизвестно.</value></data>
   <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Синтетическая потеря устройства; cleanup неизвестен.</value></data>
+  <data name="VmWorkerRenderMeterInterpretation" xml:space="preserve"><value>Канал Windows {0} · остальные каналы намеренно цифрово беззвучны. Это модель намерения, не измерение ЦАП/громкоговорителей; физическая маршрутизация UNKNOWN.</value></data>
+  <data name="VmWorkerCaptureMeterInterpretation" xml:space="preserve"><value>Синтетические уровни окна; PCM, Capture endpoints и микрофон не используются.</value></data>
+  <data name="VmWorkerMeterBankRange" xml:space="preserve"><value>Каналы {0}–{1}</value></data>
+  <data name="VmWorkerMeterDigitalSilence" xml:space="preserve"><value>Цифровая тишина</value></data>
+  <data name="VmWorkerMeterSyntheticWindow" xml:space="preserve"><value>Синтетическое окно</value></data>
+  <data name="VmWorkerMeterNoMeasurement" xml:space="preserve"><value>Нет измерения</value></data>
+  <data name="VmWorkerMeterIntendedSilence" xml:space="preserve"><value>Намеренная цифровая тишина</value></data>
+  <data name="VmWorkerMeterIntendedModelLevel" xml:space="preserve"><value>Предполагаемый уровень · модель</value></data>
+  <data name="VmWorkerMeterNoCompletedWindow" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmWorkerMeterFormatSummary" xml:space="preserve"><value>{0} · {1} Гц · {2} каналов · {3} с</value></data>
+  <data name="VmWorkerMeterSnapshotSummary" xml:space="preserve"><value>Снимок {0} · {1} каналов</value></data>
+  <data name="VmWorkerMeterCoalescedSummary" xml:space="preserve"><value>Объединено: {0}</value></data>
+  <data name="VmWorkerConsentSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} каналов · период {4} · MMCSS {5} · {6} с · сценарий {7} · канал Windows {8}. Только синтетическая операция; физическое соответствие UNKNOWN.</value></data>
+  <data name="VmWorkerMeterNotApplicable" xml:space="preserve"><value>не применяется</value></data>
+  <data name="VmWorkerConsentMissing" xml:space="preserve"><value>Нет настроек для подтверждения.</value></data>
+  <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} каналов · топология {4} · период {5} · MMCSS {6} · {7} с · канал Windows {8} · {9}</value></data>
+  <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Неизвестно: сессия ещё не принята worker.</value></data>
 </root>

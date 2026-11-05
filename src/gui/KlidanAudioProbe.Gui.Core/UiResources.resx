@@ -926,4 +926,21 @@
   <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Capture timestamp integrity warning.</value></data>
   <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Synthetic device loss; quality is unknown.</value></data>
   <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Synthetic device loss; cleanup is unknown.</value></data>
+  <data name="VmWorkerRenderMeterInterpretation" xml:space="preserve"><value>Windows channel {0} · remaining channels are intentionally digitally silent. This models intent, not DAC/speaker measurement; physical routing is UNKNOWN.</value></data>
+  <data name="VmWorkerCaptureMeterInterpretation" xml:space="preserve"><value>Synthetic window levels; PCM, Capture endpoints, and microphone are not used.</value></data>
+  <data name="VmWorkerMeterBankRange" xml:space="preserve"><value>Channels {0}–{1}</value></data>
+  <data name="VmWorkerMeterDigitalSilence" xml:space="preserve"><value>Digital silence</value></data>
+  <data name="VmWorkerMeterSyntheticWindow" xml:space="preserve"><value>Synthetic window</value></data>
+  <data name="VmWorkerMeterNoMeasurement" xml:space="preserve"><value>No measurement</value></data>
+  <data name="VmWorkerMeterIntendedSilence" xml:space="preserve"><value>Intended digital silence</value></data>
+  <data name="VmWorkerMeterIntendedModelLevel" xml:space="preserve"><value>Intended level · model</value></data>
+  <data name="VmWorkerMeterNoCompletedWindow" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmWorkerMeterFormatSummary" xml:space="preserve"><value>{0} · {1} Hz · {2} channels · {3} s</value></data>
+  <data name="VmWorkerMeterSnapshotSummary" xml:space="preserve"><value>Snapshot {0} · {1} channels</value></data>
+  <data name="VmWorkerMeterCoalescedSummary" xml:space="preserve"><value>Coalesced: {0}</value></data>
+  <data name="VmWorkerConsentSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} channels · period {4} · MMCSS {5} · {6} s · scenario {7} · Windows channel {8}. Synthetic operation only; physical match UNKNOWN.</value></data>
+  <data name="VmWorkerMeterNotApplicable" xml:space="preserve"><value>not applicable</value></data>
+  <data name="VmWorkerConsentMissing" xml:space="preserve"><value>No settings to confirm.</value></data>
+  <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} channels · topology {4} · period {5} · MMCSS {6} · {7} s · Windows channel {8} · {9}</value></data>
+  <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Unknown: session has not yet been accepted by Worker.</value></data>
 </root>

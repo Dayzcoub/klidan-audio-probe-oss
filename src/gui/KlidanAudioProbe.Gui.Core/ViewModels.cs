@@ -1039,14 +1039,14 @@ public sealed class MainViewModel : ViewModel
     public string WorkerNotice { get => _workerNotice; private set => Set(ref _workerNotice, value); }
     public bool WorkerMeterVisible => WorkerSession is not null;
     public string WorkerMeterHeading => WorkerSession?.Mode == SessionMode.Render ? Localization.Get("VmWorkerRenderMeterHeading") : Localization.Get("VmWorkerCaptureMeterHeading");
-    public string WorkerMeterInterpretation => WorkerSession?.Mode == SessionMode.Render ? $"Канал Windows {WorkerSession.RenderChannel} · остальные каналы намеренно цифрово беззвучны. Это модель намерения, не измерение ЦАП/громкоговорителей; физическая маршрутизация UNKNOWN." : "Синтетические уровни окна; PCM, Capture endpoints и микрофон не используются.";
+    public string WorkerMeterInterpretation => WorkerSession?.Mode == SessionMode.Render ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerRenderMeterInterpretation"), WorkerSession.RenderChannel) : Localization.Get("VmWorkerCaptureMeterInterpretation");
     public int WorkerMeterBank { get => _workerMeterBank; set { if (value >= 0 && value < WorkerMeterBanks.Count && Set(ref _workerMeterBank, value)) Changed(nameof(WorkerVisibleMeterChannels)); } }
     public IReadOnlyList<SelectionOption> WorkerMeterBanks
     {
         get
         {
             var count = WorkerSession?.Mode == SessionMode.Render ? _workerRenderMeter?.ChannelCount ?? WorkerSession?.ChannelCount ?? 0 : _workerCaptureMeter?.ChannelCount ?? WorkerSession?.ChannelCount ?? 0;
-            return Enumerable.Range(0, (count + 7) / 8).Select(bank => new SelectionOption(bank, $"Каналы {bank * 8 + 1}–{Math.Min(bank * 8 + 8, count)}")).ToArray();
+            return Enumerable.Range(0, (count + 7) / 8).Select(bank => new SelectionOption(bank, string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterBankRange"), bank * 8 + 1, Math.Min(bank * 8 + 8, count)))).ToArray();
         }
     }
     public IReadOnlyList<MeterChannelDto> WorkerVisibleMeterChannels
@@ -1055,8 +1055,8 @@ public sealed class MainViewModel : ViewModel
         {
             IEnumerable<MeterChannelDto> channels = WorkerSession?.Mode switch
             {
-                SessionMode.Capture => (_workerCaptureMeter?.Channels ?? []).Select(c => new MeterChannelDto(c.Index, c.WindowPeakDbfs, c.WindowRmsDbfs, c.SessionPeakHoldDbfs, c.ClipCount, c.Silent, c.Silent == true ? "Цифровая тишина" : c.Silent == false ? "Синтетическое окно" : "Нет измерения")),
-                SessionMode.Render => (_workerRenderMeter?.Channels ?? []).Select(c => new MeterChannelDto(c.Index, c.IntendedPeakDbfs, c.IntendedRmsDbfs, c.SessionPeakHoldDbfs, c.ClipCount, c.DigitalSilent, c.DigitalSilent == true ? "Намеренная цифровая тишина" : c.DigitalSilent == false ? "Предполагаемый уровень · модель" : "Нет завершённого окна")),
+                SessionMode.Capture => (_workerCaptureMeter?.Channels ?? []).Select(c => new MeterChannelDto(c.Index, c.WindowPeakDbfs, c.WindowRmsDbfs, c.SessionPeakHoldDbfs, c.ClipCount, c.Silent, c.Silent == true ? Localization.Get("VmWorkerMeterDigitalSilence") : c.Silent == false ? Localization.Get("VmWorkerMeterSyntheticWindow") : Localization.Get("VmWorkerMeterNoMeasurement"))),
+                SessionMode.Render => (_workerRenderMeter?.Channels ?? []).Select(c => new MeterChannelDto(c.Index, c.IntendedPeakDbfs, c.IntendedRmsDbfs, c.SessionPeakHoldDbfs, c.ClipCount, c.DigitalSilent, c.DigitalSilent == true ? Localization.Get("VmWorkerMeterIntendedSilence") : c.DigitalSilent == false ? Localization.Get("VmWorkerMeterIntendedModelLevel") : Localization.Get("VmWorkerMeterNoCompletedWindow"))),
                 _ => []
             };
             return channels.Where(c => c.Channel > _workerMeterBank * 8 && c.Channel <= _workerMeterBank * 8 + 8).ToArray();
@@ -1078,15 +1078,15 @@ public sealed class MainViewModel : ViewModel
         }
     }
     public string WorkerMeterModeLabel => WorkerSession?.Mode switch { SessionMode.Capture => "Capture", SessionMode.Render => Localization.Get("VmWorkerMeterRenderMode"), _ => Localization.Get("VmWorkerMeterNoSession") };
-    public string WorkerMeterFormatSummary => _workerSessionSettings is { } s ? $"{s.FormatId} · {s.SampleRate} Гц · {s.ChannelCount} каналов · {s.DurationSeconds} с" : Localization.Get("VmWorkerMeterFormatUnknown");
+    public string WorkerMeterFormatSummary => _workerSessionSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterFormatSummary"), s.FormatId, s.SampleRate, s.ChannelCount, s.DurationSeconds) : Localization.Get("VmWorkerMeterFormatUnknown");
     public string WorkerMeterSnapshotSummary => WorkerSession?.Mode == SessionMode.Render
-        ? _workerRenderMeter is { } r ? $"Снимок {r.SnapshotSequence} · {r.ChannelCount} каналов" : Localization.Get("VmWorkerMeterSnapshotNoData")
-        : _workerCaptureMeter is { } c ? $"Снимок {c.SnapshotSequence} · {c.ChannelCount} каналов" : Localization.Get("VmWorkerMeterSnapshotNoData");
+        ? _workerRenderMeter is { } r ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterSnapshotSummary"), r.SnapshotSequence, r.ChannelCount) : Localization.Get("VmWorkerMeterSnapshotNoData")
+        : _workerCaptureMeter is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterSnapshotSummary"), c.SnapshotSequence, c.ChannelCount) : Localization.Get("VmWorkerMeterSnapshotNoData");
     public string WorkerMeterCoalescingSummary => WorkerSession?.Mode == SessionMode.Render
-        ? _workerRenderMeter is { } r ? $"Объединено: {r.CoalescedSnapshotCount}" : Localization.Get("VmWorkerMeterCoalescedNoData")
-        : _workerCaptureMeter is { } c ? $"Объединено: {c.CoalescedSnapshotCount}" : Localization.Get("VmWorkerMeterCoalescedNoData");
-    public string WorkerConsentText => _workerPendingSettings is { } s ? $"{s.Direction} · {s.EndpointId} · {s.FormatId} · {s.ChannelCount} каналов · период {s.Period} · MMCSS {s.Mmcss} · {s.DurationSeconds} с · сценарий {s.Scenario} · канал Windows {s.RenderChannel?.ToString() ?? "не применяется"}. Только синтетическая операция; физическое соответствие UNKNOWN." : "Нет настроек для подтверждения.";
-    public string WorkerSessionSettingsText => _workerSessionSettings is { } s ? $"{s.Direction} · {s.EndpointId} · {s.FormatId} · {s.ChannelCount} каналов · топология {s.TopologyId} · период {s.Period} · MMCSS {s.Mmcss} · {s.DurationSeconds} с · канал Windows {s.RenderChannel?.ToString() ?? "не применяется"} · {s.Scenario}" : "Неизвестно: сессия ещё не принята worker.";
+        ? _workerRenderMeter is { } r ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterCoalescedSummary"), r.CoalescedSnapshotCount) : Localization.Get("VmWorkerMeterCoalescedNoData")
+        : _workerCaptureMeter is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterCoalescedSummary"), c.CoalescedSnapshotCount) : Localization.Get("VmWorkerMeterCoalescedNoData");
+    public string WorkerConsentText => _workerPendingSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerConsentSummary"), s.Direction, s.EndpointId, s.FormatId, s.ChannelCount, s.Period, s.Mmcss, s.DurationSeconds, s.Scenario, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable")) : Localization.Get("VmWorkerConsentMissing");
+    public string WorkerSessionSettingsText => _workerSessionSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSessionSettingsSummary"), s.Direction, s.EndpointId, s.FormatId, s.ChannelCount, s.TopologyId, s.Period, s.Mmcss, s.DurationSeconds, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable"), s.Scenario) : Localization.Get("VmWorkerSessionSettingsMissing");
     public ObservableCollection<WorkerTimelineEntryDto> WorkerTimeline { get; } = [];
     private WorkerTimelineEntryDto? _selectedWorkerTimelineEntry;
     public WorkerTimelineEntryDto? SelectedWorkerTimelineEntry { get => _selectedWorkerTimelineEntry; set { if (Set(ref _selectedWorkerTimelineEntry, value)) { Changed(nameof(WorkerSelectedEventDetails)); RefreshContext(); } } }
