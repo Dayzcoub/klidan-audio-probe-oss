@@ -348,7 +348,7 @@ LANGUAGE_SWITCH = PASS (preference selection and RU restart verified; prior QA-6
 DEV_TOOLS = NOT_RUN on final build
 GUI_TESTS = PASS (819)
 VISUAL_DEFECTS = 4 corrected; residual count NOT_ESTABLISHED due incomplete matrix
-FINAL_HEAD = pending QA-7 commit
-WORKTREE = pending QA-7 commit
+FINAL_HEAD = f65cc82f62def583493d76fbbff2135071c627d7
+WORKTREE = clean after push
 READY_FOR_MERGE = NO
 ```
