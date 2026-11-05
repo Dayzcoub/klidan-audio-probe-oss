@@ -856,4 +856,19 @@
   <data name="VmInspectorFormat" xml:space="preserve"><value>format</value></data>
   <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Physical match</value></data>
   <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
+  <data name="VmInspectorSharedMetadataNotTested" xml:space="preserve"><value>Shared Mode metadata · Exclusive capability NOT TESTED</value></data>
+  <data name="VmInspectorUnknownUpper" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmInspectorChannelAbbreviation" xml:space="preserve"><value>channels</value></data>
+  <data name="VmInspectorSecondsAbbreviation" xml:space="preserve"><value>s</value></data>
+  <data name="VmInspectorCleanupUnknownNoData" xml:space="preserve"><value>UNKNOWN / no data</value></data>
+  <data name="VmInspectorNotSelected" xml:space="preserve"><value>not selected</value></data>
+  <data name="VmInspectorDemoSimulation" xml:space="preserve"><value>DEMO · Simulated data</value></data>
+  <data name="VmInspectorWorkerDataSynthetic" xml:space="preserve"><value>all Worker data is synthetic.</value></data>
+  <data name="VmInspectorSessionValue" xml:space="preserve"><value>Session: {0}</value></data>
+  <data name="VmInspectorStateValue" xml:space="preserve"><value>State: {0}</value></data>
+  <data name="VmInspectorQualityValue" xml:space="preserve"><value>Stream quality: {0}</value></data>
+  <data name="VmInspectorNotAssessed" xml:space="preserve"><value>not assessed</value></data>
+  <data name="VmInspectorLastEvent" xml:space="preserve"><value>Last event: #{0} {1} · {2:HH:mm:ss.fff}</value></data>
+  <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>No events yet.</value></data>
+  <data name="VmInspectorNoEvents" xml:space="preserve"><value>No events.</value></data>
 </root>

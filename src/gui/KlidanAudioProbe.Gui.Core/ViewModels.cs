@@ -3089,33 +3089,33 @@ public sealed class MainViewModel : ViewModel
                 InspectorDetails = windowsDeviceView && SelectedWindowsEndpoint is { } windows
                     ? WindowsEndpointDetails(windows).Select(f => $"{f.Label}: {f.Value}").ToArray()
                     : windowsDeviceView
-                    ? [Localization.Get("VmInspectorEndpointsNotRequested"), Localization.Get("VmInspectorConnectWorkerForDiscovery"), "Shared Mode metadata · Exclusive capability NOT TESTED"]
+                    ? [Localization.Get("VmInspectorEndpointsNotRequested"), Localization.Get("VmInspectorConnectWorkerForDiscovery"), Localization.Get("VmInspectorSharedMetadataNotTested")]
                     : SelectedEndpoint is { } e
-                    ? [$"{e.Name}", $"{Localization.Get("VmInspectorDirectionLabel")}: {Localization.Get(Direction == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"{Localization.Get("VmInspectorStateLabel")}: {e.State}", $"{Localization.Get("VmInspectorMixerFormatLabel")}: {e.Format}", $"{Localization.Get("VmInspectorWindowsChannelsLabel")}: {e.Channels}", $"{Localization.Get("VmInspectorPhysicalConnectorsLabel")}: НЕИЗВЕСТНО"]
+                    ? [$"{e.Name}", $"{Localization.Get("VmInspectorDirectionLabel")}: {Localization.Get(Direction == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"{Localization.Get("VmInspectorStateLabel")}: {e.State}", $"{Localization.Get("VmInspectorMixerFormatLabel")}: {e.Format}", $"{Localization.Get("VmInspectorWindowsChannelsLabel")}: {e.Channels}", $"{Localization.Get("VmInspectorPhysicalConnectorsLabel")}: {Localization.Get("VmInspectorUnknownUpper")}"]
                     : [EmptyEndpointMessage, Localization.Get("VmInspectorPassiveDemoList")];
                 break;
             case ProbeScreen.Formats:
                 InspectorTitle = Localization.Get("VmInspectorFormatTitle");
                 InspectorDetails = SelectedFormat is { } f
-                    ? [$"{f.Encoding} · {f.SampleRate} Гц · {f.ChannelCount} кан.", .. PeriodDetails(Localization.Get("VmPeriodDefaultLabel"), f.DefaultPeriod), .. PeriodDetails(Localization.Get("VmPeriodMinimumLabel"), f.MinimumPeriod)]
+                    ? [$"{f.Encoding} · {f.SampleRate} {Localization.Get("VmInspectorHertz")} · {f.ChannelCount} {Localization.Get("VmInspectorChannelAbbreviation")}", .. PeriodDetails(Localization.Get("VmPeriodDefaultLabel"), f.DefaultPeriod), .. PeriodDetails(Localization.Get("VmPeriodMinimumLabel"), f.MinimumPeriod)]
                     : [Localization.Get("VmInspectorFormatNotSelected")];
                 break;
             case ProbeScreen.Capture:
                 InspectorTitle = Localization.Get("VmInspectorCaptureTitle");
                 InspectorDetails = Session is { Mode: SessionMode.Capture } s
-                    ? [$"{Localization.Get("VmInspectorDeviceLabel")}: {s.EndpointName}", $"{Localization.Get("VmInspectorStateLabel")}: {s.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {s.Quality}", $"{Localization.Get("VmInspectorDurationLabel")}: {s.DurationSeconds} с", $"{Localization.Get("VmInspectorMeterLabel")}: {MeterStatusText}", $"{Localization.Get("VmInspectorCleanupLabel")}: {s.CleanupStatus ?? "НЕИЗВЕСТНО / нет данных"}"]
-                    : [Localization.Get("VmInspectorCaptureNotStarted"), $"{Localization.Get("VmInspectorDeviceLabel")}: {SelectedCaptureEndpoint?.Name ?? "не выбрано"}", $"{Localization.Get("VmInspectorMeterLabel")}: {MeterStatusText}"];
+                    ? [$"{Localization.Get("VmInspectorDeviceLabel")}: {s.EndpointName}", $"{Localization.Get("VmInspectorStateLabel")}: {s.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {s.Quality}", $"{Localization.Get("VmInspectorDurationLabel")}: {s.DurationSeconds} {Localization.Get("VmInspectorSecondsAbbreviation")}", $"{Localization.Get("VmInspectorMeterLabel")}: {MeterStatusText}", $"{Localization.Get("VmInspectorCleanupLabel")}: {s.CleanupStatus ?? Localization.Get("VmInspectorCleanupUnknownNoData")}"]
+                    : [Localization.Get("VmInspectorCaptureNotStarted"), $"{Localization.Get("VmInspectorDeviceLabel")}: {SelectedCaptureEndpoint?.Name ?? Localization.Get("VmInspectorNotSelected")}", $"{Localization.Get("VmInspectorMeterLabel")}: {MeterStatusText}"];
                 break;
             case ProbeScreen.Render:
                 InspectorTitle = Localization.Get("VmInspectorRenderTitle");
                 InspectorDetails = Session is { Mode: SessionMode.Render } r
-                    ? [$"{Localization.Get("VmInspectorDeviceLabel")}: {r.EndpointName}", $"{Localization.Get("VmInspectorStateLabel")}: {r.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {r.Quality}", $"{Localization.Get("VmInspectorWindowsChannelLabel")}: {r.RenderChannel}", $"{Localization.Get("VmInspectorDurationLabel")}: {r.DurationSeconds} с", $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: НЕИЗВЕСТНО", $"{Localization.Get("VmInspectorCleanupLabel")}: {r.CleanupStatus ?? "НЕИЗВЕСТНО / нет данных"}"]
-                    : [$"{Localization.Get("VmInspectorDeviceLabel")}: {SelectedRenderEndpoint?.Name ?? "не выбрано"}", $"{Localization.Get("VmInspectorWindowsChannelLabel")}: {RenderChannel}", $"{Localization.Get("VmInspectorDurationLabel")}: {DurationSeconds} с", $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: НЕИЗВЕСТНО", Localization.Get("VmInspectorRenderNotStarted")];
+                    ? [$"{Localization.Get("VmInspectorDeviceLabel")}: {r.EndpointName}", $"{Localization.Get("VmInspectorStateLabel")}: {r.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {r.Quality}", $"{Localization.Get("VmInspectorWindowsChannelLabel")}: {r.RenderChannel}", $"{Localization.Get("VmInspectorDurationLabel")}: {r.DurationSeconds} {Localization.Get("VmInspectorSecondsAbbreviation")}", $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: {Localization.Get("VmInspectorUnknownUpper")}", $"{Localization.Get("VmInspectorCleanupLabel")}: {r.CleanupStatus ?? Localization.Get("VmInspectorCleanupUnknownNoData")}"]
+                    : [$"{Localization.Get("VmInspectorDeviceLabel")}: {SelectedRenderEndpoint?.Name ?? Localization.Get("VmInspectorNotSelected")}", $"{Localization.Get("VmInspectorWindowsChannelLabel")}: {RenderChannel}", $"{Localization.Get("VmInspectorDurationLabel")}: {DurationSeconds} {Localization.Get("VmInspectorSecondsAbbreviation")}", $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: {Localization.Get("VmInspectorUnknownUpper")}", Localization.Get("VmInspectorRenderNotStarted")];
                 break;
             case ProbeScreen.Reports:
                 InspectorTitle = Localization.Get("VmInspectorReportsTitle");
                 InspectorDetails = SelectedReport is { } report
-                    ? [$"{report.Name}", $"{Localization.Get("VmInspectorModeLabel")}: {Localization.Get(report.Mode == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"{Localization.Get("VmInspectorStateLabel")}: {report.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {report.Quality}", report.Evidence, "ДЕМО · Данные симуляции"]
+                    ? [$"{report.Name}", $"{Localization.Get("VmInspectorModeLabel")}: {Localization.Get(report.Mode == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"{Localization.Get("VmInspectorStateLabel")}: {report.Lifecycle}", $"{Localization.Get("VmInspectorStreamQualityLabel")}: {report.Quality}", report.Evidence, Localization.Get("VmInspectorDemoSimulation")]
                     : [Localization.Get("VmInspectorReportNotSelected")];
                 break;
             case ProbeScreen.Diagnostics:
@@ -3126,12 +3126,12 @@ public sealed class MainViewModel : ViewModel
                     $"{Localization.Get("VmInspectorStreamQualityLabel")}: {WorkerSession?.Quality.ToString() ?? "UNKNOWN"}",
                     $"{Localization.Get("VmInspectorCleanupLabel")}: {WorkerSession?.CleanupStatus ?? "UNKNOWN"}",
                     WorkerTimeline.LastOrDefault() is { } we ? $"{Localization.Get("VmInspectorEventLabel")}: {we.Name} · IPC sequence {we.ProtocolSequence?.ToString() ?? "локальное"}" : Localization.Get("VmInspectorWorkerEventsMissing"),
-                    $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: UNKNOWN · все worker данные синтетические."
+                    $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: UNKNOWN · {Localization.Get("VmInspectorWorkerDataSynthetic")}"
                 ];
                 break;
             default:
                 InspectorTitle = Localization.Get("VmInspectorDemoDiagnosticsTitle");
-                InspectorDetails = [$"Сессия: {Session?.Id.ToString() ?? "не запускалась"}", $"Состояние: {Session?.Lifecycle.ToString() ?? "не запускалась"}", $"Качество потока: {Session?.Quality.ToString() ?? "не оценивалось"}", LastEvent is { } ev ? $"Последнее событие: №{ev.Sequence} {ev.Kind} · {ev.Timestamp:HH:mm:ss.fff}" : "Событий пока нет.", LastEvent?.Message ?? "Нет событий.", "ДЕМО · Данные симуляции"];
+                InspectorDetails = [string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorSessionValue"), Session?.Id.ToString() ?? Localization.Get("VmInspectorNotStarted")), string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorStateValue"), Session?.Lifecycle.ToString() ?? Localization.Get("VmInspectorNotStarted")), string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorQualityValue"), Session?.Quality.ToString() ?? Localization.Get("VmInspectorNotAssessed")), LastEvent is { } ev ? string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorLastEvent"), ev.Sequence, ev.Kind, ev.Timestamp) : Localization.Get("VmInspectorNoEventsYet"), LastEvent?.Message ?? Localization.Get("VmInspectorNoEvents"), Localization.Get("VmInspectorDemoSimulation")];
                 break;
         }
         InspectorSections = Screen == ProbeScreen.Diagnostics ? BuildWorkerInspectorSections() :

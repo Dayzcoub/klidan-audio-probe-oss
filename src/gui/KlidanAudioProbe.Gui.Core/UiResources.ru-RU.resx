@@ -856,4 +856,19 @@
   <data name="VmInspectorFormat" xml:space="preserve"><value>формат</value></data>
   <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Физическое соответствие</value></data>
   <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
+  <data name="VmInspectorSharedMetadataNotTested" xml:space="preserve"><value>Метаданные Shared Mode · Exclusive capability NOT TESTED</value></data>
+  <data name="VmInspectorUnknownUpper" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmInspectorChannelAbbreviation" xml:space="preserve"><value>кан.</value></data>
+  <data name="VmInspectorSecondsAbbreviation" xml:space="preserve"><value>с</value></data>
+  <data name="VmInspectorCleanupUnknownNoData" xml:space="preserve"><value>НЕИЗВЕСТНО / нет данных</value></data>
+  <data name="VmInspectorNotSelected" xml:space="preserve"><value>не выбрано</value></data>
+  <data name="VmInspectorDemoSimulation" xml:space="preserve"><value>ДЕМО · Данные симуляции</value></data>
+  <data name="VmInspectorWorkerDataSynthetic" xml:space="preserve"><value>все данные Worker синтетические.</value></data>
+  <data name="VmInspectorSessionValue" xml:space="preserve"><value>Сессия: {0}</value></data>
+  <data name="VmInspectorStateValue" xml:space="preserve"><value>Состояние: {0}</value></data>
+  <data name="VmInspectorQualityValue" xml:space="preserve"><value>Качество потока: {0}</value></data>
+  <data name="VmInspectorNotAssessed" xml:space="preserve"><value>не оценивалось</value></data>
+  <data name="VmInspectorLastEvent" xml:space="preserve"><value>Последнее событие: №{0} {1} · {2:HH:mm:ss.fff}</value></data>
+  <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>Событий пока нет.</value></data>
+  <data name="VmInspectorNoEvents" xml:space="preserve"><value>Нет событий.</value></data>
 </root>
