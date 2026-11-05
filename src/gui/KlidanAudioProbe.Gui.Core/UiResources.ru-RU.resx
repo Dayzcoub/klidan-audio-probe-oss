@@ -743,6 +743,31 @@
   <data name="VmWorkerTransportFault" xml:space="preserve"><value>Транспорт worker: {0}: {1}</value></data>
   <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Результат Start неизвестен. Новая операция заблокирована до позднего ответа или отключения worker.</value></data>
   <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Поздний ответ worker: запуск отвергнут ({0}).</value></data>
+  <data name="VmRepeatabilityPlanPrepared" xml:space="preserve"><value>План repeatability подготовлен; требуется одно явное подтверждение.</value></data>
+  <data name="VmRepeatabilityPlanFailed" xml:space="preserve"><value>План repeatability не подготовлен: {0}: {1}</value></data>
+  <data name="VmRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или точные endpoints изменились. Подтверждение сброшено; подготовьте план заново.</value></data>
+  <data name="VmRepeatabilityApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; регистрируется ограниченная по времени Worker session.</value></data>
+  <data name="VmRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход repeatability session не подтверждён: {0}: {1}</value></data>
+  <data name="VmRepeatabilityApprovalCancelled" xml:space="preserve"><value>Подтверждение repeatability отменено.</value></data>
+  <data name="VmRepeatabilityPlanChanged" xml:space="preserve"><value>Подтверждение repeatability сброшено: выбранный план изменился.</value></data>
+  <data name="VmRepeatabilityCancellationRequested" xml:space="preserve"><value>Запрошена отмена repeatability; активная native operation должна подтвердить остановку или остаться UNKNOWN.</value></data>
+  <data name="VmRepeatabilityDiscoveryUpdating" xml:space="preserve"><value>Обнаружение обновляется; прежнее подтверждение repeatability сброшено.</value></data>
+  <data name="VmRepeatabilityWorkerChanged" xml:space="preserve"><value>Worker отключён или изменил идентификатор сессии; подтверждение repeatability сброшено.</value></data>
+  <data name="VmCustomRepeatabilityPlanPrepared" xml:space="preserve"><value>Подготовлен план из пяти custom-period операций; требуется одно явное подтверждение.</value></data>
+  <data name="VmCustomRepeatabilityPlanFailed" xml:space="preserve"><value>План repeatability не подготовлен: {0}: {1}</value></data>
+  <data name="VmCustomRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery или endpoints изменились; подтверждение сброшено.</value></data>
+  <data name="VmCustomRepeatabilityApprovalCancelled" xml:space="preserve"><value>Подтверждение custom repeatability отменено.</value></data>
+  <data name="VmCustomRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход custom repeatability не подтверждён: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexPlanPrepared" xml:space="preserve"><value>План подготовлен; перед запуском требуется отдельное явное подтверждение.</value></data>
+  <data name="VmCustomPeriodDuplexPreparationFailed" xml:space="preserve"><value>Custom-period Duplex недоступен: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexAuthorizationInvalidated" xml:space="preserve"><value>Discovery, Worker или endpoints изменились; подтверждение сброшено.</value></data>
+  <data name="VmCustomPeriodDuplexApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; выполняется одна custom-period Duplex operation.</value></data>
+  <data name="VmCustomPeriodDuplexOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход custom-period Duplex не подтверждён: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexApprovalCancelled" xml:space="preserve"><value>Подтверждение custom-period Duplex отменено.</value></data>
+  <data name="VmCustomPeriodDuplexCancellationRequested" xml:space="preserve"><value>Запрошена отмена; следующий запуск заблокирован, если cleanup не подтверждён.</value></data>
+  <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Требуется свежее подтверждение · {0} · 5 с · MMCSS OFF.</value></data>
+  <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Подтверждение Duplex отменено; операция не отправлялась.</value></data>
+  <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Отмена передана Worker; ожидается координированный Stop обеих сторон и итоговый отчёт.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>

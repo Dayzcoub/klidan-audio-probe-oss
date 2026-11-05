@@ -1918,9 +1918,9 @@ public sealed class MainViewModel : ViewModel
             var freshRender = discovery.Endpoints.Single(e => e.EndpointId == render.EndpointId && e.Direction == "RENDER" && e.DeviceState == "ACTIVE");
             _duplexRepeatabilityPreparation = _duplexRepeatabilityWorkflow.Prepare(discovery, freshCapture, freshRender);
             _duplexRepeatabilityResult = null; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityConsentPending = true;
-            _duplexRepeatabilityStatus = "План repeatability подготовлен; требуется одно явное подтверждение.";
+            _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityPlanPrepared");
         }
-        catch (Exception ex) { _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = $"План repeatability не подготовлен: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanFailed"), ex.GetType().Name, ex.Message); }
         Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityConsentCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh();
     }
 
@@ -1931,40 +1931,40 @@ public sealed class MainViewModel : ViewModel
         var render = preparation.Plan.Target.Render;
         if (WorkerState.State != WorkerConnectionState.ConnectedFake || WorkerState.ProcessId != preparation.WorkerProcessId || AutomaticScanBusy || AutomaticScanConsentPending || WorkerConsentPending || DuplexConsentPending || RealInitializeConsentPending || DeviceScanConsentPending || _streamConsentPending || !_windowsDiscoveryCurrent || _windowsEndpointSnapshot is null || DuplexRepeatabilityPreparation.Fingerprint(_windowsEndpointSnapshot) != preparation.DiscoveryFingerprint || SelectedDuplexCaptureEndpoint?.EndpointId != capture?.EndpointId || SelectedDuplexRenderEndpoint?.EndpointId != render?.EndpointId || SelectedDuplexCaptureEndpoint?.FriendlyName != capture?.FriendlyName || SelectedDuplexRenderEndpoint?.FriendlyName != render?.FriendlyName || SelectedDuplexCaptureEndpoint?.DeviceState != "ACTIVE" || SelectedDuplexRenderEndpoint?.DeviceState != "ACTIVE")
         {
-            CancelDuplexRepeatabilityAuthorization("Worker, discovery или точные endpoints изменились. Подтверждение сброшено; подготовьте план заново.");
+            CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityAuthorizationInvalidated"));
             return;
         }
         _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityRunning = true; _duplexRepeatabilityCancellation = new CancellationTokenSource();
-        _duplexRepeatabilityStatus = "Подтверждение принято; регистрируется bounded Worker session.";
+        _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityApprovalAccepted");
         Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityStatus));
         try
         {
             var result = await _duplexRepeatabilityWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), OnDuplexRepeatabilityProgress, _duplexRepeatabilityCancellation.Token).ConfigureAwait(true);
             _duplexRepeatabilityResult = result; _duplexRepeatabilityStatus = result.PersistenceStatus == "SAVE_FAILED" ? $"SAVE_FAILED · {result.PersistenceError}" : result.Summary;
         }
-        catch (Exception ex) { _duplexRepeatabilityStatus = $"UNKNOWN · repeatability session outcome is not confirmed: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _duplexRepeatabilityRunning = false; _duplexRepeatabilityCancellation?.Dispose(); _duplexRepeatabilityCancellation = null; Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityResultText)); Changed(nameof(DuplexRepeatabilityStatus)); PrepareDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityCommand.Refresh(); }
     }
 
     private void CancelDuplexRepeatabilityConsent()
     {
         if (!_duplexRepeatabilityConsentPending) return;
-        _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = "Подтверждение repeatability отменено.";
+        _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityApprovalCancelled");
         Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh();
     }
 
-    private void CancelDuplexRepeatabilityAuthorization(string message = "Подтверждение repeatability сброшено: выбранный план изменился.")
+    private void CancelDuplexRepeatabilityAuthorization(string? message = null)
     {
         if (!_duplexRepeatabilityConsentPending && _duplexRepeatabilityPreparation is null) return;
         _duplexRepeatabilityConsentPending = false;
         _duplexRepeatabilityConsentChecked = false;
         _duplexRepeatabilityPreparation = null;
-        _duplexRepeatabilityStatus = message;
+        _duplexRepeatabilityStatus = message ?? Localization.Get("VmRepeatabilityPlanChanged");
         Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityStatus));
         ConfirmDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityConsentCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh();
     }
 
-    private void CancelDuplexRepeatability() { if (_duplexRepeatabilityRunning) { _duplexRepeatabilityStatus = "Запрошена отмена repeatability; активная native operation должна подтвердить остановку или остаться UNKNOWN."; _duplexRepeatabilityCancellation?.Cancel(); Changed(nameof(DuplexRepeatabilityStatus)); } }
+    private void CancelDuplexRepeatability() { if (_duplexRepeatabilityRunning) { _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityCancellationRequested"); _duplexRepeatabilityCancellation?.Cancel(); Changed(nameof(DuplexRepeatabilityStatus)); } }
 
     private void OnDuplexRepeatabilityProgress(ScanProgressEvent progress)
     {
@@ -1984,9 +1984,9 @@ public sealed class MainViewModel : ViewModel
             var freshRender = discovery.Endpoints.Single(e => e.EndpointId == render.EndpointId && e.Direction == "RENDER" && e.DeviceState == "ACTIVE");
             _customRepeatabilityPreparation = workflow.PrepareCustom(discovery, freshCapture, freshRender, _periodDiscoveryResult, frames);
             _customRepeatabilityResult = null; _customRepeatabilityConsentChecked = false; _customRepeatabilityConsentPending = true;
-            _customRepeatabilityStatus = "План из пяти custom-period операций подготовлен; требуется одно явное подтверждение.";
+            _customRepeatabilityStatus = Localization.Get("VmCustomRepeatabilityPlanPrepared");
         }
-        catch (Exception ex) { _customRepeatabilityPreparation = null; _customRepeatabilityStatus = $"План repeatability не подготовлен: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _customRepeatabilityPreparation = null; _customRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityPlanFailed"), ex.GetType().Name, ex.Message); }
         Changed(nameof(CustomRepeatabilityConsentPending)); Changed(nameof(CustomRepeatabilityPlanText)); Changed(nameof(CustomRepeatabilityStatus)); ConfirmCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityConsentCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
     }
 
@@ -1994,16 +1994,16 @@ public sealed class MainViewModel : ViewModel
     {
         if (_duplexRepeatabilityWorkflow is not ICustomDuplexRepeatabilityWorkflow workflow || !_customRepeatabilityConsentPending || !_customRepeatabilityConsentChecked || _customRepeatabilityPreparation is not { } preparation || _customRepeatabilityRunning) return;
         if (WorkerState.State != WorkerConnectionState.ConnectedFake || WorkerState.ProcessId != preparation.WorkerProcessId || !_windowsDiscoveryCurrent || _windowsEndpointSnapshot is null || DuplexRepeatabilityPreparation.Fingerprint(_windowsEndpointSnapshot) != preparation.DiscoveryFingerprint || SelectedDuplexCaptureEndpoint?.EndpointId != preparation.Plan.Target.Capture?.EndpointId || SelectedDuplexRenderEndpoint?.EndpointId != preparation.Plan.Target.Render?.EndpointId)
-        { CancelCustomRepeatabilityConsent("Worker, discovery или endpoints изменились; подтверждение сброшено."); return; }
+        { CancelCustomRepeatabilityConsent(Localization.Get("VmCustomRepeatabilityAuthorizationInvalidated")); return; }
         _customRepeatabilityConsentPending = false; _customRepeatabilityConsentChecked = false; _customRepeatabilityRunning = true; _customRepeatabilityCancellation = new CancellationTokenSource();
         Changed(nameof(CustomRepeatabilityConsentPending)); Changed(nameof(CustomRepeatabilityRunning)); PrepareCustomRepeatabilityCommand.Refresh(); ConfirmCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityConsentCommand.Refresh(); CancelCustomRepeatabilityCommand.Refresh();
         try { _customRepeatabilityResult = await workflow.RunCustomApprovedAsync(preparation, Guid.NewGuid(), OnDuplexRepeatabilityProgress, _customRepeatabilityCancellation.Token).ConfigureAwait(true); _customRepeatabilityStatus = _customRepeatabilityResult.Summary; }
-        catch (Exception ex) { _customRepeatabilityStatus = $"UNKNOWN · custom repeatability outcome is not confirmed: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _customRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _customRepeatabilityRunning = false; _customRepeatabilityCancellation?.Dispose(); _customRepeatabilityCancellation = null; Changed(nameof(CustomRepeatabilityRunning)); Changed(nameof(CustomRepeatabilityResultText)); Changed(nameof(CustomRepeatabilityStatus)); PrepareCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityCommand.Refresh(); }
     }
 
-    private void CancelCustomRepeatabilityConsent(string message = "Подтверждение custom repeatability отменено.")
-    { if (!_customRepeatabilityConsentPending) return; _customRepeatabilityConsentPending = false; _customRepeatabilityConsentChecked = false; _customRepeatabilityPreparation = null; _customRepeatabilityStatus = message; Changed(nameof(CustomRepeatabilityConsentPending)); Changed(nameof(CustomRepeatabilityPlanText)); Changed(nameof(CustomRepeatabilityStatus)); ConfirmCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityConsentCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
+    private void CancelCustomRepeatabilityConsent(string? message = null)
+    { if (!_customRepeatabilityConsentPending) return; _customRepeatabilityConsentPending = false; _customRepeatabilityConsentChecked = false; _customRepeatabilityPreparation = null; _customRepeatabilityStatus = message ?? Localization.Get("VmCustomRepeatabilityApprovalCancelled"); Changed(nameof(CustomRepeatabilityConsentPending)); Changed(nameof(CustomRepeatabilityPlanText)); Changed(nameof(CustomRepeatabilityStatus)); ConfirmCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityConsentCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
     private void CancelCustomRepeatability() { if (_customRepeatabilityRunning) _customRepeatabilityCancellation?.Cancel(); }
 
     private bool CanPreparePeriodDiscoveryInternal() => _exclusivePeriodDiscoveryWorkflow is not null && _worker is not null && _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && _worker.Capabilities.Contains("RealExclusiveCustomPeriodInitialize", StringComparer.Ordinal) && WorkerState.State == WorkerConnectionState.ConnectedFake && _windowsDiscoveryCurrent && HasCurrentDuplexPair && !_workerStartOutcomeUnknown && !_automaticScanOutcomeUnknown && !AutomaticScanBusy && !WorkerOperationActive && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning && !_streamValidationRunning && !_duplexValidationRunning && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !AutomaticScanConsentPending && !WorkerConsentPending && !DuplexConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending && !_streamConsentPending && !_periodDiscoveryRunning && !_periodDiscoveryConsentPending;
@@ -2069,26 +2069,26 @@ public sealed class MainViewModel : ViewModel
         try
         {
             _customPeriodDuplexPreparation = _customPeriodDuplexWorkflow.Prepare(_windowsEndpointSnapshot, capture, render, _periodDiscoveryResult, frames);
-            _customPeriodDuplexConsentChecked = false; _customPeriodDuplexConsentPending = true; _customPeriodDuplexStatus = "План подготовлен; требуется отдельное явное подтверждение перед стартом.";
+            _customPeriodDuplexConsentChecked = false; _customPeriodDuplexConsentPending = true; _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexPlanPrepared");
         }
-        catch (Exception ex) { _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = $"Custom-period Duplex недоступен: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomPeriodDuplexPreparationFailed"), ex.GetType().Name, ex.Message); }
         Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
     }
 
     private async Task ConfirmCustomPeriodDuplexAsync()
     {
         if (_customPeriodDuplexWorkflow is null || !_customPeriodDuplexConsentPending || !_customPeriodDuplexConsentChecked || _customPeriodDuplexPreparation is not { } preparation || _windowsEndpointSnapshot is null || SelectedDuplexCaptureEndpoint?.EndpointId != preparation.Capture.EndpointId || SelectedDuplexRenderEndpoint?.EndpointId != preparation.Render.EndpointId || ExclusivePeriodDiscoveryPlanning.Fingerprint(_windowsEndpointSnapshot) != preparation.DiscoveryFingerprint || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake)
-        { if (_customPeriodDuplexConsentPending) CancelCustomPeriodDuplexConsent("Discovery, Worker или endpoints изменились; подтверждение сброшено."); return; }
-        _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexRunning = true; _customPeriodDuplexCancellation = new(); _customPeriodDuplexStatus = "Подтверждение принято; выполняется одна custom-period Duplex operation.";
+        { if (_customPeriodDuplexConsentPending) CancelCustomPeriodDuplexConsent(Localization.Get("VmCustomPeriodDuplexAuthorizationInvalidated")); return; }
+        _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexRunning = true; _customPeriodDuplexCancellation = new(); _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexApprovalAccepted");
         Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexRunning)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomRepeatabilityCommand.Refresh();
         try { _customPeriodDuplexResult = await _customPeriodDuplexWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), _customPeriodDuplexCancellation.Token).ConfigureAwait(true); _customPeriodDuplexStatus = _customPeriodDuplexResult.PersistenceStatus; }
-        catch (Exception ex) { _customPeriodDuplexStatus = $"UNKNOWN · исход custom-period Duplex не подтверждён: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _customPeriodDuplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomPeriodDuplexOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _customPeriodDuplexRunning = false; _customPeriodDuplexCancellation?.Dispose(); _customPeriodDuplexCancellation = null; Changed(nameof(CustomPeriodDuplexRunning)); Changed(nameof(CustomPeriodDuplexResultText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); CancelCustomPeriodDuplexCommand.Refresh(); }
     }
 
-    private void CancelCustomPeriodDuplexConsent(string message = "Подтверждение custom-period Duplex отменено.")
-    { _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = message; Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
-    private void CancelCustomPeriodDuplex() { if (_customPeriodDuplexRunning) { _customPeriodDuplexStatus = "Запрошена отмена; если cleanup не подтверждён, следующий запуск блокируется."; _customPeriodDuplexCancellation?.Cancel(); Changed(nameof(CustomPeriodDuplexStatus)); } }
+    private void CancelCustomPeriodDuplexConsent(string? message = null)
+    { _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = message ?? Localization.Get("VmCustomPeriodDuplexApprovalCancelled"); Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
+    private void CancelCustomPeriodDuplex() { if (_customPeriodDuplexRunning) { _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexCancellationRequested"); _customPeriodDuplexCancellation?.Cancel(); Changed(nameof(CustomPeriodDuplexStatus)); } }
 
     private bool CanRequestDuplexValidation() => HasCurrentDuplexPair && _worker is not null && _worker.Capabilities.Contains("RealExclusiveDuplexValidation", StringComparer.Ordinal) && !_duplexValidationRunning && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning && !_streamValidationRunning && !DuplexConsentPending && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending;
     private void RequestDuplexValidation(string period)
@@ -2097,21 +2097,21 @@ public sealed class MainViewModel : ViewModel
         _pendingDuplexPeriod = period;
         _pendingDuplexConsent = new(true, Guid.NewGuid(), DuplexConsent.Fingerprint(capture, render, period, 5, "OFF"));
         DuplexConsentChecked = false; DuplexConsentPending = true;
-        _duplexStatus = $"Ожидается новое подтверждение · {period} · 5 с · MMCSS OFF.";
+        _duplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexConfirmationRequired"), period);
         Changed(nameof(DuplexStatus)); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh(); CancelDuplexConsentCommand.Refresh();
     }
 
     private void CancelDuplexConsent()
     {
         _pendingDuplexConsent = null; _pendingDuplexPeriod = null; DuplexConsentChecked = false; DuplexConsentPending = false;
-        _duplexStatus = "Подтверждение Duplex отменено; операция не отправлялась."; Changed(nameof(DuplexStatus));
+        _duplexStatus = Localization.Get("VmDuplexApprovalCancelled"); Changed(nameof(DuplexStatus));
         CancelDuplexConsentCommand.Refresh(); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh();
     }
 
     private async Task CancelDuplexValidationAsync()
     {
         if (_worker is null || _activeDuplexOperationId is null) return;
-        _duplexStatus = "Отмена передана worker; ожидается координированный Stop обеих сторон и итоговый отчёт."; Changed(nameof(DuplexStatus));
+        _duplexStatus = Localization.Get("VmDuplexCancellationRequested"); Changed(nameof(DuplexStatus));
         await _worker.CancelDuplexValidationAsync(_activeDuplexOperationId);
     }
 
@@ -2681,7 +2681,7 @@ public sealed class MainViewModel : ViewModel
             AutomaticScanPairEnabled ? SelectedDuplexRenderEndpoint?.EndpointId : null,
             SelectedPhysicalDeviceGroup?.GroupId, SelectedPhysicalDeviceGroup?.CanAutoSelectPair == true, AllowUnconfirmedPhysicalPair, AutomaticSustainedMode.StartsWith("Extended", StringComparison.Ordinal));
         if (RealFormatMatrix is not null) _realQueryInvalidated = true;
-        CancelDuplexRepeatabilityAuthorization("Discovery обновляется; прежнее подтверждение repeatability сброшено.");
+        CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityDiscoveryUpdating"));
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryUpdating"));
         _windowsDiscoveryLoading = true;_windowsDiscoveryCurrent = false;_windowsDiscoveryError = null;
         _physicalDeviceGroups = [];
@@ -2894,7 +2894,7 @@ public sealed class MainViewModel : ViewModel
         WorkerState = state;
         Changed(nameof(WorkerState));
         if (state.State != WorkerConnectionState.ConnectedFake || _duplexRepeatabilityPreparation?.WorkerProcessId != state.ProcessId)
-            CancelDuplexRepeatabilityAuthorization("Worker отключён или изменил session identity; подтверждение repeatability сброшено.");
+            CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityWorkerChanged"));
         if (state.State != WorkerConnectionState.ConnectedFake)
             CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedWorkerChanged"));
         if (state.State != WorkerConnectionState.ConnectedFake)

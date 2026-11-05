@@ -743,6 +743,31 @@
   <data name="VmWorkerTransportFault" xml:space="preserve"><value>Worker transport: {0}: {1}</value></data>
   <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Start result is unknown. New operations are blocked until a late reply or Worker disconnect.</value></data>
   <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Late Worker reply: Start was rejected ({0}).</value></data>
+  <data name="VmRepeatabilityPlanPrepared" xml:space="preserve"><value>Repeatability plan prepared; one explicit confirmation is required.</value></data>
+  <data name="VmRepeatabilityPlanFailed" xml:space="preserve"><value>Repeatability plan was not prepared: {0}: {1}</value></data>
+  <data name="VmRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or exact endpoints changed. Confirmation was cleared; prepare the plan again.</value></data>
+  <data name="VmRepeatabilityApprovalAccepted" xml:space="preserve"><value>Confirmation accepted; registering a bounded Worker session.</value></data>
+  <data name="VmRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · repeatability session outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmRepeatabilityApprovalCancelled" xml:space="preserve"><value>Repeatability confirmation cancelled.</value></data>
+  <data name="VmRepeatabilityPlanChanged" xml:space="preserve"><value>Repeatability confirmation cleared because the selected plan changed.</value></data>
+  <data name="VmRepeatabilityCancellationRequested" xml:space="preserve"><value>Repeatability cancellation requested; the active native operation must confirm stop or remain UNKNOWN.</value></data>
+  <data name="VmRepeatabilityDiscoveryUpdating" xml:space="preserve"><value>Discovery is refreshing; previous repeatability confirmation was cleared.</value></data>
+  <data name="VmRepeatabilityWorkerChanged" xml:space="preserve"><value>Worker disconnected or session identity changed; repeatability confirmation was cleared.</value></data>
+  <data name="VmCustomRepeatabilityPlanPrepared" xml:space="preserve"><value>Five custom-period operations are planned; one explicit confirmation is required.</value></data>
+  <data name="VmCustomRepeatabilityPlanFailed" xml:space="preserve"><value>Repeatability plan was not prepared: {0}: {1}</value></data>
+  <data name="VmCustomRepeatabilityAuthorizationInvalidated" xml:space="preserve"><value>Worker, discovery, or endpoints changed; confirmation was cleared.</value></data>
+  <data name="VmCustomRepeatabilityApprovalCancelled" xml:space="preserve"><value>Custom repeatability confirmation cancelled.</value></data>
+  <data name="VmCustomRepeatabilityOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · custom repeatability outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexPlanPrepared" xml:space="preserve"><value>Plan prepared; one explicit confirmation is required before starting.</value></data>
+  <data name="VmCustomPeriodDuplexPreparationFailed" xml:space="preserve"><value>Custom-period Duplex is unavailable: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexAuthorizationInvalidated" xml:space="preserve"><value>Discovery, Worker, or endpoints changed; confirmation was cleared.</value></data>
+  <data name="VmCustomPeriodDuplexApprovalAccepted" xml:space="preserve"><value>Confirmation accepted; one custom-period Duplex operation is running.</value></data>
+  <data name="VmCustomPeriodDuplexOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · custom-period Duplex outcome is unconfirmed: {0}: {1}</value></data>
+  <data name="VmCustomPeriodDuplexApprovalCancelled" xml:space="preserve"><value>Custom-period Duplex confirmation cancelled.</value></data>
+  <data name="VmCustomPeriodDuplexCancellationRequested" xml:space="preserve"><value>Cancellation requested; the next run is blocked if cleanup is unconfirmed.</value></data>
+  <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Fresh confirmation required · {0} · 5 s · MMCSS OFF.</value></data>
+  <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Duplex confirmation cancelled; operation was not sent.</value></data>
+  <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Cancellation sent to Worker; waiting for coordinated Stop on both sides and the final report.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>
