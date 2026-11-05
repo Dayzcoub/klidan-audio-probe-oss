@@ -583,4 +583,20 @@
   <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Select an available demo device first.</value></data>
   <data name="VmInspectorDetails" xml:space="preserve"><value>Details</value></data>
   <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Simulation data</value></data>
+  <data name="VmWorkerPeriodDefault" xml:space="preserve"><value>Default (DEFAULT)</value></data>
+  <data name="VmWorkerPeriodMinimum" xml:space="preserve"><value>Minimum (MINIMUM)</value></data>
+  <data name="VmWorkerMmcssOff" xml:space="preserve"><value>Disabled (OFF)</value></data>
+  <data name="VmWorkerMmcssProAudio" xml:space="preserve"><value>Pro Audio (PRO_AUDIO)</value></data>
+  <data name="VmWorkerScenarioNormal" xml:space="preserve"><value>Normal session</value></data>
+  <data name="VmWorkerScenarioSilent" xml:space="preserve"><value>Silence only</value></data>
+  <data name="VmWorkerScenarioNoWindow" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmWorkerScenarioWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="VmWorkerScenarioFailure" xml:space="preserve"><value>Synthetic failure</value></data>
+  <data name="VmWorkerScenarioDeviceLoss" xml:space="preserve"><value>Device loss (fake)</value></data>
+  <data name="VmDurationOneSecond" xml:space="preserve"><value>1 second</value></data>
+  <data name="VmDurationThreeSeconds" xml:space="preserve"><value>3 seconds</value></data>
+  <data name="VmDurationFiveSeconds" xml:space="preserve"><value>5 seconds</value></data>
+  <data name="VmDurationTenSeconds" xml:space="preserve"><value>10 seconds</value></data>
+  <data name="VmDemoRenderConfirmation" xml:space="preserve"><value>Confirm simulated output: {0}, Windows channel {1}, {2} s. No sound will be played.</value></data>
+  <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Confirm simulated Capture: {0}, {1} s. No real capture occurs.</value></data>
 </root>

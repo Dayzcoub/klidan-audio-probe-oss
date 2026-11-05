@@ -1092,16 +1092,16 @@ public sealed class MainViewModel : ViewModel
     public WorkerTimelineEntryDto? SelectedWorkerTimelineEntry { get => _selectedWorkerTimelineEntry; set { if (Set(ref _selectedWorkerTimelineEntry, value)) { Changed(nameof(WorkerSelectedEventDetails)); RefreshContext(); } } }
     public string WorkerSelectedEventDetails => (SelectedWorkerTimelineEntry ?? WorkerTimeline.LastOrDefault())?.DiagnosticDetails ?? Localization.Get("VmWorkerEventsMissing");
     public string WorkerEmptyTimelineText => WorkerTimeline.Count == 0 ? Localization.Get("VmWorkerTimelineEmpty") : string.Empty;
-    public IReadOnlyList<ChoiceOption> WorkerPeriodOptions { get; } = [new("DEFAULT", "По умолчанию"), new("MINIMUM", "Минимальный")];
-    public IReadOnlyList<ChoiceOption> WorkerMmcssOptions { get; } = [new("OFF", "Выключен"), new("PRO_AUDIO", "Pro Audio")];
-    public IReadOnlyList<ChoiceOption> WorkerScenarioOptions { get; } = [new("NORMAL", "Обычная сессия"), new("ALL_SILENT", "Только тишина"), new("NO_WINDOW", "Нет завершённого окна"), new("WARNING", "Предупреждение"), new("FAILURE", "Синтетическая ошибка"), new("DEVICE_LOSS", "Потеря устройства (fake)")];
-    public IReadOnlyList<SelectionOption> DurationOptions { get; } = [new(1, "1 секунда"), new(3, "3 секунды"), new(5, "5 секунд"), new(10, "10 секунд")];
+    public IReadOnlyList<ChoiceOption> WorkerPeriodOptions { get; } = [new("DEFAULT", Localization.Get("VmWorkerPeriodDefault")), new("MINIMUM", Localization.Get("VmWorkerPeriodMinimum"))];
+    public IReadOnlyList<ChoiceOption> WorkerMmcssOptions { get; } = [new("OFF", Localization.Get("VmWorkerMmcssOff")), new("PRO_AUDIO", Localization.Get("VmWorkerMmcssProAudio"))];
+    public IReadOnlyList<ChoiceOption> WorkerScenarioOptions { get; } = [new("NORMAL", Localization.Get("VmWorkerScenarioNormal")), new("ALL_SILENT", Localization.Get("VmWorkerScenarioSilent")), new("NO_WINDOW", Localization.Get("VmWorkerScenarioNoWindow")), new("WARNING", Localization.Get("VmWorkerScenarioWarning")), new("FAILURE", Localization.Get("VmWorkerScenarioFailure")), new("DEVICE_LOSS", Localization.Get("VmWorkerScenarioDeviceLoss"))];
+    public IReadOnlyList<SelectionOption> DurationOptions { get; } = [new(1, Localization.Get("VmDurationOneSecond")), new(3, Localization.Get("VmDurationThreeSeconds")), new(5, Localization.Get("VmDurationFiveSeconds")), new(10, Localization.Get("VmDurationTenSeconds"))];
     public ObservableCollection<ProbeEventDto> Events { get; }
     public ProbeEventDto? LastEvent => Events.LastOrDefault();
     public string EmptyEventMessage => Events.Count == 0 ? Localization.Get("VmDemoEventsEmpty") : string.Empty;
     public string ConfirmationText => _pending is null ? Localization.Get("VmChooseDemoDeviceFirst") : _pending.Mode == SessionMode.Render
-        ? $"Подтвердите симуляцию выхода: {_pending.Endpoint.Name}, канал Windows {_pending.RenderChannel}, {_pending.DurationSeconds} с. Звук не воспроизводится."
-        : $"Подтвердите симуляцию Capture: {_pending.Endpoint.Name}, {_pending.DurationSeconds} с. Реального захвата нет.";
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmDemoRenderConfirmation"), _pending.Endpoint.Name, _pending.RenderChannel, _pending.DurationSeconds)
+        : string.Format(Localization.CurrentCulture, Localization.Get("VmDemoCaptureConfirmation"), _pending.Endpoint.Name, _pending.DurationSeconds);
     public string InspectorTitle { get; private set; } = Localization.Get("VmInspectorDetails");
     public string InspectorProvenanceText { get; private set; } = Localization.Get("VmInspectorDemoProvenance");
     public IReadOnlyList<string> InspectorDetails { get; private set; } = [];

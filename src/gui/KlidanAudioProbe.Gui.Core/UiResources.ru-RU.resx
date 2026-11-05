@@ -583,4 +583,20 @@
   <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Сначала выберите доступное демонстрационное устройство.</value></data>
   <data name="VmInspectorDetails" xml:space="preserve"><value>Сведения</value></data>
   <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Данные симуляции</value></data>
+  <data name="VmWorkerPeriodDefault" xml:space="preserve"><value>Стандартный (DEFAULT)</value></data>
+  <data name="VmWorkerPeriodMinimum" xml:space="preserve"><value>Минимальный (MINIMUM)</value></data>
+  <data name="VmWorkerMmcssOff" xml:space="preserve"><value>Отключён (OFF)</value></data>
+  <data name="VmWorkerMmcssProAudio" xml:space="preserve"><value>Pro Audio (PRO_AUDIO)</value></data>
+  <data name="VmWorkerScenarioNormal" xml:space="preserve"><value>Обычная сессия</value></data>
+  <data name="VmWorkerScenarioSilent" xml:space="preserve"><value>Только тишина</value></data>
+  <data name="VmWorkerScenarioNoWindow" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmWorkerScenarioWarning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="VmWorkerScenarioFailure" xml:space="preserve"><value>Синтетическая ошибка</value></data>
+  <data name="VmWorkerScenarioDeviceLoss" xml:space="preserve"><value>Потеря устройства (fake)</value></data>
+  <data name="VmDurationOneSecond" xml:space="preserve"><value>1 секунда</value></data>
+  <data name="VmDurationThreeSeconds" xml:space="preserve"><value>3 секунды</value></data>
+  <data name="VmDurationFiveSeconds" xml:space="preserve"><value>5 секунд</value></data>
+  <data name="VmDurationTenSeconds" xml:space="preserve"><value>10 секунд</value></data>
+  <data name="VmDemoRenderConfirmation" xml:space="preserve"><value>Подтвердите симуляцию выхода: {0}, канал Windows {1}, {2} с. Звук не воспроизводится.</value></data>
+  <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Подтвердите симуляцию Capture: {0}, {1} с. Реального захвата нет.</value></data>
 </root>
