@@ -834,4 +834,26 @@
   <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>No saved profile was found for this device pair.</value></data>
   <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>This does not mean the device is incompatible.</value></data>
   <data name="VmBindingExactIdOnly" xml:space="preserve"><value>The check matches exact IDs only and does not apply settings.</value></data>
+  <data name="VmDiscoveryWorkerDisconnected" xml:space="preserve"><value>Worker is not connected</value></data>
+  <data name="VmDiscoverySuccess" xml:space="preserve"><value>Windows endpoint metadata received: {0} · REAL_WINDOWS_METADATA. No audio streams were started.</value></data>
+  <data name="VmDiscoveryFailure" xml:space="preserve"><value>Could not retrieve Windows endpoint metadata: {0}.</value></data>
+  <data name="VmInspectorHertz" xml:space="preserve"><value>Hz</value></data>
+  <data name="VmInspectorBits" xml:space="preserve"><value> bits</value></data>
+  <data name="VmInspectorFriendlyName" xml:space="preserve"><value>Full name</value></data>
+  <data name="VmInspectorDirection" xml:space="preserve"><value>Direction</value></data>
+  <data name="VmInspectorFormFactor" xml:space="preserve"><value>Form factor</value></data>
+  <data name="VmInspectorSharedMode" xml:space="preserve"><value>Shared Mode</value></data>
+  <data name="VmInspectorSampleRate" xml:space="preserve"><value>Sample rate</value></data>
+  <data name="VmInspectorContainerBits" xml:space="preserve"><value>Container / valid bits</value></data>
+  <data name="VmInspectorReportedChannels" xml:space="preserve"><value>Reported channels</value></data>
+  <data name="VmInspectorTopology" xml:space="preserve"><value>Topology</value></data>
+  <data name="VmInspectorSpeakerMask" xml:space="preserve"><value>Speaker mask</value></data>
+  <data name="VmInspectorPropertyAvailability" xml:space="preserve"><value>Property availability / HRESULT</value></data>
+  <data name="VmInspectorPropertyAvailabilityDetails" xml:space="preserve"><value>{0}: {1}; {2}: {3}; {4}: {5}; {6}: {7}</value></data>
+  <data name="VmInspectorId" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorName" xml:space="preserve"><value>name</value></data>
+  <data name="VmInspectorState" xml:space="preserve"><value>state</value></data>
+  <data name="VmInspectorFormat" xml:space="preserve"><value>format</value></data>
+  <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Physical match</value></data>
+  <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
 </root>

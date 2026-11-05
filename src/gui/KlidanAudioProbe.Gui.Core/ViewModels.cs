@@ -2697,20 +2697,20 @@ public sealed class MainViewModel : ViewModel
                 _workerAttempted = true;
                 await _worker.ConnectAsync();
                 ApplyWorkerState(_worker.State);
-                if (WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException($"Worker не подключён: {WorkerState.Message}");
+                if (WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException($"{Localization.Get("VmDiscoveryWorkerDisconnected")}: {WorkerState.Message}");
             }
             var discovery = _automaticScanWorkflow is not null
                 ? await _automaticScanWorkflow.RefreshEndpointsAsync(CancellationToken.None)
                 : await _worker.ListWindowsEndpointsAsync();
             WindowsEndpointDiscoveryValidation.Validate(discovery);
             ApplyAutomaticDiscovery(discovery, selection);
-            WorkerNotice=$"Получены метаданные Windows endpoints: {discovery.Endpoints.Count} · REAL_WINDOWS_METADATA. Аудиопотоки не запускались.";
+            WorkerNotice=string.Format(Localization.CurrentCulture, Localization.Get("VmDiscoverySuccess"), discovery.Endpoints.Count);
         }
         catch(Exception ex)
         {
             InvalidateAutomaticDeviceSelection();
             _windowsDiscoveryError=ex is WorkerCommandException command ? $"{command.Command}/{command.ErrorCode}" : ex.GetType().Name;
-            WorkerNotice=$"Получить метаданные Windows endpoints не удалось: {_windowsDiscoveryError}.";
+            WorkerNotice=string.Format(Localization.CurrentCulture, Localization.Get("VmDiscoveryFailure"), _windowsDiscoveryError);
         }
         finally
         {
@@ -2744,23 +2744,23 @@ public sealed class MainViewModel : ViewModel
     private static IReadOnlyList<InspectorFieldDto> WindowsEndpointDetails(WindowsEndpointDto endpoint)
     {
         var format = endpoint.SharedModeFormat;
-        static string Number(int? value, string unit = "") => value is int number ? $"{number}{unit}" : "Неизвестно";
-        static string Rate(uint? value) => value is uint rate ? $"{rate} Гц" : "Неизвестно";
+        static string Number(int? value, string unit = "") => value is int number ? $"{number}{unit}" : Localization.Get("VmInspectorUnknown");
+        static string Rate(uint? value) => value is uint rate ? $"{rate} {Localization.Get("VmInspectorHertz")}" : Localization.Get("VmInspectorUnknown");
         static string Hresult(WindowsPropertyEvidenceDto evidence) => $"{evidence.State} · HRESULT 0x{unchecked((uint)evidence.Hresult):X8}";
-        var mask = format.SpeakerMask is uint speakerMask ? $"0x{speakerMask:X8}" : "Неизвестно";
+        var mask = format.SpeakerMask is uint speakerMask ? $"0x{speakerMask:X8}" : Localization.Get("VmInspectorUnknown");
         return [
-            new("Полное имя", endpoint.FriendlyNameDisplay),
-            new("Направление", $"{endpoint.DirectionLabel} · {endpoint.DeviceStateLabel}"),
-            new("Форм-фактор", endpoint.FormFactorLabel, Hresult(endpoint.FormFactorEvidence)),
-            new("Shared Mode", endpoint.SharedModeFormatSummary, $"{format.ParseState} · {Hresult(format.Property)}"),
-            new("Частота дискретизации", Rate(format.SampleRate)),
-            new("Контейнер / valid bits", $"{Number(format.BitsPerSample, " бит")} / {Number(format.ValidBitsPerSample, " бит")}"),
-            new("Сообщено каналов", format.ReportedChannelCount is int channels ? $"{channels}" : "Неизвестно"),
-            new("Топология", format.TopologyState),
-            new("Маска динамиков", $"{mask} · {format.SpeakerMaskState}", Hresult(format.Property)),
-            new("Доступность свойств / HRESULT", $"ID: {Hresult(endpoint.EndpointIdEvidence)}; имя: {Hresult(endpoint.FriendlyNameEvidence)}; состояние: {Hresult(endpoint.DeviceStateEvidence)}; формат: {Hresult(format.Property)}"),
-            new("Физическое соответствие", "UNKNOWN"),
-            new("Exclusive capability", "NOT TESTED")
+            new(Localization.Get("VmInspectorFriendlyName"), endpoint.FriendlyNameDisplay),
+            new(Localization.Get("VmInspectorDirection"), $"{endpoint.DirectionLabel} · {endpoint.DeviceStateLabel}"),
+            new(Localization.Get("VmInspectorFormFactor"), endpoint.FormFactorLabel, Hresult(endpoint.FormFactorEvidence)),
+            new(Localization.Get("VmInspectorSharedMode"), endpoint.SharedModeFormatSummary, $"{format.ParseState} · {Hresult(format.Property)}"),
+            new(Localization.Get("VmInspectorSampleRate"), Rate(format.SampleRate)),
+            new(Localization.Get("VmInspectorContainerBits"), $"{Number(format.BitsPerSample, Localization.Get("VmInspectorBits"))} / {Number(format.ValidBitsPerSample, Localization.Get("VmInspectorBits"))}"),
+            new(Localization.Get("VmInspectorReportedChannels"), format.ReportedChannelCount is int channels ? $"{channels}" : Localization.Get("VmInspectorUnknown")),
+            new(Localization.Get("VmInspectorTopology"), format.TopologyState),
+            new(Localization.Get("VmInspectorSpeakerMask"), $"{mask} · {format.SpeakerMaskState}", Hresult(format.Property)),
+            new(Localization.Get("VmInspectorPropertyAvailability"), string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorPropertyAvailabilityDetails"), Localization.Get("VmInspectorId"), Hresult(endpoint.EndpointIdEvidence), Localization.Get("VmInspectorName"), Hresult(endpoint.FriendlyNameEvidence), Localization.Get("VmInspectorState"), Hresult(endpoint.DeviceStateEvidence), Localization.Get("VmInspectorFormat"), Hresult(format.Property))),
+            new(Localization.Get("VmInspectorPhysicalMatch"), "UNKNOWN"),
+            new(Localization.Get("VmInspectorExclusiveCapability"), "NOT TESTED")
         ];
     }
 

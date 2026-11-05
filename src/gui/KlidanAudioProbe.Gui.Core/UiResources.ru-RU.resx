@@ -834,4 +834,26 @@
   <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>Сохранённый профиль для этой пары устройств не найден.</value></data>
   <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>Это не означает несовместимость устройства.</value></data>
   <data name="VmBindingExactIdOnly" xml:space="preserve"><value>Проверка выполняет только сопоставление точных ID и не применяет настройки.</value></data>
+  <data name="VmDiscoveryWorkerDisconnected" xml:space="preserve"><value>Worker не подключён</value></data>
+  <data name="VmDiscoverySuccess" xml:space="preserve"><value>Получены метаданные Windows endpoints: {0} · REAL_WINDOWS_METADATA. Аудиопотоки не запускались.</value></data>
+  <data name="VmDiscoveryFailure" xml:space="preserve"><value>Получить метаданные Windows endpoints не удалось: {0}.</value></data>
+  <data name="VmInspectorHertz" xml:space="preserve"><value>Гц</value></data>
+  <data name="VmInspectorBits" xml:space="preserve"><value> бит</value></data>
+  <data name="VmInspectorFriendlyName" xml:space="preserve"><value>Полное имя</value></data>
+  <data name="VmInspectorDirection" xml:space="preserve"><value>Направление</value></data>
+  <data name="VmInspectorFormFactor" xml:space="preserve"><value>Форм-фактор</value></data>
+  <data name="VmInspectorSharedMode" xml:space="preserve"><value>Shared Mode</value></data>
+  <data name="VmInspectorSampleRate" xml:space="preserve"><value>Частота дискретизации</value></data>
+  <data name="VmInspectorContainerBits" xml:space="preserve"><value>Контейнер / valid bits</value></data>
+  <data name="VmInspectorReportedChannels" xml:space="preserve"><value>Сообщено каналов</value></data>
+  <data name="VmInspectorTopology" xml:space="preserve"><value>Топология</value></data>
+  <data name="VmInspectorSpeakerMask" xml:space="preserve"><value>Маска динамиков</value></data>
+  <data name="VmInspectorPropertyAvailability" xml:space="preserve"><value>Доступность свойств / HRESULT</value></data>
+  <data name="VmInspectorPropertyAvailabilityDetails" xml:space="preserve"><value>{0}: {1}; {2}: {3}; {4}: {5}; {6}: {7}</value></data>
+  <data name="VmInspectorId" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorName" xml:space="preserve"><value>имя</value></data>
+  <data name="VmInspectorState" xml:space="preserve"><value>состояние</value></data>
+  <data name="VmInspectorFormat" xml:space="preserve"><value>формат</value></data>
+  <data name="VmInspectorPhysicalMatch" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="VmInspectorExclusiveCapability" xml:space="preserve"><value>Exclusive capability</value></data>
 </root>
