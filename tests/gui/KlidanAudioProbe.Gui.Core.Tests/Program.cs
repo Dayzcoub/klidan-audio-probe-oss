@@ -796,6 +796,7 @@ Check(((Grid)buttonWindow.FindName("WindowsEndpointFilterGrid")).Visibility == V
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter); buttonWindow.UpdateLayout();
 Check(buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && !actualScanButton.IsEnabled, "one immutable plan prompts once and does not execute before operator consent");
 Check(buttonVm.AutomaticScanStagePlanText.Contains("Проверка выбранных устройств: ЗАПЛАНИРОВАНО", StringComparison.Ordinal) && buttonVm.AutomaticScanStagePlanText.Contains("Этап с ограничениями", StringComparison.Ordinal) && !buttonVm.AutomaticScanStagePlanText.Contains("DISCOVERY: PLANNED", StringComparison.Ordinal), $"stage plan localizes labels and fixed explanations while preserving machine enum values [{buttonVm.AutomaticScanStagePlanText}]");
+Check(buttonVm.AutomaticScanConsentText.Contains("Проверка выбранных устройств=ЗАПЛАНИРОВАНО", StringComparison.Ordinal) && !buttonVm.AutomaticScanConsentText.Contains("DISCOVERY=PLANNED", StringComparison.Ordinal), "consent summary localizes stage labels without changing staged-plan enum values");
 buttonVm.CancelAutomaticScanConsentCommand.Execute(null); buttonWindow.UpdateLayout();
 Check(!buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && actualScanButton.IsEnabled, "refusing consent clears pending approval and performs no operation");
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter);

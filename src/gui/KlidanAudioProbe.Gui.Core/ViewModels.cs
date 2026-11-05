@@ -504,7 +504,7 @@ public sealed class MainViewModel : ViewModel
             var operations = string.Join(", ", prepared.WorkerPlan.AllowedOperations.Select(ScanCommandLabel));
             var active = prepared.MaximumActiveSeconds == 0 ? Localization.Get("VmAutomaticScanActiveUnavailable") : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanActiveBound"), prepared.MaximumActiveSeconds);
             var identity = Localization.Get(prepared.PairPhysicalIdentityUnconfirmed ? "VmAutomaticScanIdentityUnconfirmed" : "VmAutomaticScanIdentityCurrent");
-            var stages = prepared.StagedPlan is { } staged ? string.Join(", ", staged.Stages.Select(s => $"{s.Stage}={s.State}")) : Localization.Get("VmAutomaticScanStagesSaved");
+            var stages = prepared.StagedPlan is { } staged ? string.Join(", ", staged.Stages.Select(s => $"{AutomaticScanStageLabel(s.Stage)}={AutomaticScanStageStateLabel(s.State)}")) : Localization.Get("VmAutomaticScanStagesSaved");
             var sustainedMode = AutomaticSustainedModes.Single(option => option.Value == AutomaticSustainedMode).Label;
             return string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConsentSummary"), string.Join("\n", endpoints), identity, operations, sustainedMode, active, prepared.MaximumTotalOperations, prepared.MaximumWallClockSeconds, prepared.WorkerPlan.LifetimeSeconds, prepared.WorkerPlan.MaximumOperationCount, stages);
         }
