@@ -950,21 +950,21 @@ public sealed class MainViewModel : ViewModel
         get => _windowsEndpointActiveOnly;
         set { if (Set(ref _windowsEndpointActiveOnly, value)) RefreshWindowsEndpointBrowser(); }
     }
-    public IReadOnlyList<ChoiceOption> WindowsEndpointDirectionOptions { get; } = [new("ALL", "Все"), new("CAPTURE", "Capture"), new("RENDER", "Render")];
+    public IReadOnlyList<ChoiceOption> WindowsEndpointDirectionOptions { get; } = [new("ALL", Localization.Get("VmAllDirections")), new("CAPTURE", "Capture"), new("RENDER", "Render")];
     public int WindowsEndpointTotalCount => WindowsEndpointSource.Count;
     public int WindowsEndpointDisplayedCount => WindowsEndpointRows.Count;
     public int WindowsEndpointActiveCaptureCount => WindowsEndpointSource.Count(e => e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE");
     public int WindowsEndpointActiveRenderCount => WindowsEndpointSource.Count(e => e.Direction == "RENDER" && e.DeviceState == "ACTIVE");
-    public string WindowsEndpointCountsText => $"Всего: {WindowsEndpointTotalCount} · показано: {WindowsEndpointDisplayedCount} · активных Capture: {WindowsEndpointActiveCaptureCount} · активных Render: {WindowsEndpointActiveRenderCount}";
+    public string WindowsEndpointCountsText => string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsEndpointCounts"), WindowsEndpointTotalCount, WindowsEndpointDisplayedCount, WindowsEndpointActiveCaptureCount, WindowsEndpointActiveRenderCount);
     public IReadOnlyList<InspectorFieldDto> WindowsEndpointInspectorFields => SelectedWindowsEndpoint is { } e ? WindowsEndpointDetails(e) : [];
     public bool HasCurrentWindowsEndpoints => _windowsDiscoveryCurrent && WindowsEndpoints.Count > 0;
     public bool HasHistoricalWindowsEndpoints => WorkerState.State != WorkerConnectionState.ConnectedFake && _lastWindowsEndpointSnapshot is not null;
     public bool WindowsDiscoveryLoading => _windowsDiscoveryLoading;
-    public string WindowsDiscoveryStatusText => _windowsDiscoveryLoading ? "Перечисление Windows endpoints…" : _windowsDiscoveryCurrent
-        ? _windowsEndpointSnapshot is { OperationState: "PARTIAL" } partial ? $"Частичный результат: {partial.Endpoints.Count} endpoints, ошибок: {partial.Errors.Count}." : WindowsEndpoints.Count == 0 ? "Windows endpoints не обнаружены." : $"Получено Windows endpoints: {WindowsEndpoints.Count}."
-        : HasHistoricalWindowsEndpoints ? "Последний ответ отключённого worker · исторические данные, текущая доступность неизвестна."
-        : _windowsDiscoveryError is not null ? $"Запрос не выполнен: {_windowsDiscoveryError}"
-        : "Не запрашивалось. Автоматический поиск отключён.";
+    public string WindowsDiscoveryStatusText => _windowsDiscoveryLoading ? Localization.Get("VmWindowsEndpointsEnumerating") : _windowsDiscoveryCurrent
+        ? _windowsEndpointSnapshot is { OperationState: "PARTIAL" } partial ? string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsDiscoveryPartial"), partial.Endpoints.Count, partial.Errors.Count) : WindowsEndpoints.Count == 0 ? Localization.Get("VmWindowsEndpointsNoneFound") : string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsEndpointsReceived"), WindowsEndpoints.Count)
+        : HasHistoricalWindowsEndpoints ? Localization.Get("VmWindowsDiscoveryWorkerDisconnectedHistorical")
+        : _windowsDiscoveryError is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsDiscoveryRequestFailed"), _windowsDiscoveryError)
+        : Localization.Get("VmWindowsDiscoveryNotRequested");
     public IReadOnlyList<DeviceConfigurationProfileStorage.SavedProfileEntry> SavedDeviceProfiles => _savedDeviceProfiles;
     public IReadOnlyList<HistoricalSustainedScanEntry> HistoricalSustainedScans => _historicalSustainedScans;
     public HistoricalSustainedScanEntry? SelectedHistoricalSustainedScan
@@ -978,7 +978,7 @@ public sealed class MainViewModel : ViewModel
     public bool HistoricalRecoverySaving => _historicalRecoverySaving;
     public bool HistoricalRecoveryConfirmationChecked { get => _historicalRecoveryConfirmationChecked; set { if (Set(ref _historicalRecoveryConfirmationChecked, value)) SaveHistoricalSustainedRecoveryCommand.Refresh(); } }
     public string HistoricalRecoveryPreviewDevice => _selectedHistoricalSustainedScan?.DeviceName ?? "—";
-    public string HistoricalRecoveryPreviewDates => _historicalRecoveryPreview is null ? "—" : $"Измерение: {_historicalRecoveryPreview.HistoricalMeasurementTimestampUtc.ToLocalTime():dd.MM.yyyy HH:mm} · источник: {_selectedHistoricalSustainedScan?.TimestampLabel ?? "—"}";
+    public string HistoricalRecoveryPreviewDates => _historicalRecoveryPreview is null ? "—" : string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryPreviewDates"), _historicalRecoveryPreview.HistoricalMeasurementTimestampUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Localization.CurrentCulture), _selectedHistoricalSustainedScan?.TimestampLabel ?? "—");
     public string HistoricalRecoveryPreferred => _historicalRecoveryPreview?.Recommendation.Preferred is { } p ? $"{p.Period} · {p.CaptureBufferFrames}/{p.RenderBufferFrames} frames · {p.Mmcss} · {p.DurationSeconds} с" : "NONE";
     public string HistoricalRecoveryFallback => _historicalRecoveryPreview?.Recommendation.Fallback is { } f ? $"{f.Period} · {f.CaptureBufferFrames}/{f.RenderBufferFrames} frames" : "NONE";
     public string HistoricalRecoveryConfidence => _historicalRecoveryPreview?.Recommendation.Preferred?.Confidence ?? "NONE";
@@ -996,17 +996,17 @@ public sealed class MainViewModel : ViewModel
     }
     public bool SavedProfileBindingChecking => _bindingCheckRunning;
     public bool HasSavedProfileBindingAssessment => _savedProfileBindingResult is not null;
-    public string SavedProfileBindingStatus => _savedProfileBindingResult is null ? "Проверка подключения ещё не выполнялась." : BindingStatus(_savedProfileBindingResult);
+    public string SavedProfileBindingStatus => _savedProfileBindingResult is null ? Localization.Get("VmSavedProfileBindingNotChecked") : BindingStatus(_savedProfileBindingResult);
     public string SavedProfileOperatorStatus => _savedProfileOperatorStatus;
     public string SavedProfileOperatorHistory => _savedProfileOperatorHistory;
     public string SavedProfileOperatorLimitation => _savedProfileOperatorLimitation;
-    public string SavedProfileMatchingSummary => _matchingSavedProfiles.Count == 0 ? "Совпадений нет." : string.Join("\n", _matchingSavedProfiles.Select(p => $"{p.OperatorDisplayName} · {p.OperatorTimestampLabel} · {p.OperatorResult}"));
+    public string SavedProfileMatchingSummary => _matchingSavedProfiles.Count == 0 ? Localization.Get("VmSavedProfileMatchesNone") : string.Join("\n", _matchingSavedProfiles.Select(p => $"{p.OperatorDisplayName} · {p.OperatorTimestampLabel} · {p.OperatorResult}"));
     public string SavedProfileHistoricalSummary
     {
         get
         {
             var profile = SelectedSavedDeviceProfile?.Profile;
-            if (profile is null) return SelectedSavedDeviceProfile?.Reason ?? "Профиль не выбран.";
+            if (profile is null) return SelectedSavedDeviceProfile?.Reason ?? Localization.Get("VmSavedProfileNotSelected");
             if (profile.SchemaVersion == 4 && profile.SustainedSelection is { } sustained)
             {
                 var primary = sustained.Preferred is { } p ? $"{p.Period} · {p.DurationSeconds} с · {p.Confidence}" : "NONE";
@@ -1023,7 +1023,7 @@ public sealed class MainViewModel : ViewModel
         ? $"Overall: {result.Overall}\nCapture: {result.Capture}\nRender: {result.Render}\nProfile: {result.SourceProfileId:D}\nScan session: {result.SourceScanSessionId ?? "UNKNOWN"}\nGeneration: {result.DiscoveryGeneration ?? "UNKNOWN"}\nExact IDs: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\nReasons: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\nLimitations: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\nFurther verification required: {result.RequiresFurtherVerification}"
         : "Технических данных нет.";
     public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => $"{e.Name} · {e.Direction} · {e.ChannelCount} каналов · synthetic").ToArray();
-    public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? "Автоматический перезапуск отключён. Для нового подключения запустите новый процесс GUI." : string.Empty;
+    public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? Localization.Get("VmWorkerRestartRequired") : string.Empty;
     public int WorkerRenderChannel { get => _workerRenderChannel; set { if (value >= 1 && value <= WorkerChannelCount && Set(ref _workerRenderChannel, value)) RefreshWorkerCommands(); } }
     public IReadOnlyList<SelectionOption> WorkerRenderChannelOptions => Enumerable.Range(1, WorkerChannelCount).Select(i => new SelectionOption(i, $"Канал Windows {i}")).ToArray();
     public int WorkerDurationSeconds { get => _workerDurationSeconds; set { if (DurationOptions.Any(o => o.Value == value) && Set(ref _workerDurationSeconds, value)) RefreshWorkerCommands(); } }
@@ -1038,7 +1038,7 @@ public sealed class MainViewModel : ViewModel
     public bool WorkerOperationActive => WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started or SessionLifecycle.Stopping;
     public string WorkerNotice { get => _workerNotice; private set => Set(ref _workerNotice, value); }
     public bool WorkerMeterVisible => WorkerSession is not null;
-    public string WorkerMeterHeading => WorkerSession?.Mode == SessionMode.Render ? "Render · синтетическая модель предполагаемого цифрового выхода" : "Capture · синтетические уровни по каналам";
+    public string WorkerMeterHeading => WorkerSession?.Mode == SessionMode.Render ? Localization.Get("VmWorkerRenderMeterHeading") : Localization.Get("VmWorkerCaptureMeterHeading");
     public string WorkerMeterInterpretation => WorkerSession?.Mode == SessionMode.Render ? $"Канал Windows {WorkerSession.RenderChannel} · остальные каналы намеренно цифрово беззвучны. Это модель намерения, не измерение ЦАП/громкоговорителей; физическая маршрутизация UNKNOWN." : "Синтетические уровни окна; PCM, Capture endpoints и микрофон не используются.";
     public int WorkerMeterBank { get => _workerMeterBank; set { if (value >= 0 && value < WorkerMeterBanks.Count && Set(ref _workerMeterBank, value)) Changed(nameof(WorkerVisibleMeterChannels)); } }
     public IReadOnlyList<SelectionOption> WorkerMeterBanks

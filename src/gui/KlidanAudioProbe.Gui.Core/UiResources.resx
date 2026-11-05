@@ -549,4 +549,20 @@
   <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only has not been run.</value></data>
   <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize temporarily reserves the selected device. Only {0}, {1}, {2} Hz, {3} channel(s), {4} period will be checked. Start and PCM transfer will not be invoked.</value></data>
   <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Select an exact result for a supported format.</value></data>
+  <data name="VmAllDirections" xml:space="preserve"><value>All</value></data>
+  <data name="VmWindowsEndpointCounts" xml:space="preserve"><value>Total: {0} · shown: {1} · active Capture: {2} · active Render: {3}</value></data>
+  <data name="VmWindowsEndpointsEnumerating" xml:space="preserve"><value>Enumerating Windows endpoints…</value></data>
+  <data name="VmWindowsDiscoveryPartial" xml:space="preserve"><value>Partial result: {0} endpoints, {1} errors.</value></data>
+  <data name="VmWindowsEndpointsNoneFound" xml:space="preserve"><value>No Windows endpoints found.</value></data>
+  <data name="VmWindowsEndpointsReceived" xml:space="preserve"><value>Received Windows endpoints: {0}.</value></data>
+  <data name="VmWindowsDiscoveryWorkerDisconnectedHistorical" xml:space="preserve"><value>Last response from disconnected Worker · historical data; current availability unknown.</value></data>
+  <data name="VmWindowsDiscoveryRequestFailed" xml:space="preserve"><value>Request failed: {0}</value></data>
+  <data name="VmWindowsDiscoveryNotRequested" xml:space="preserve"><value>Not requested. Automatic discovery is disabled.</value></data>
+  <data name="VmSavedProfileBindingNotChecked" xml:space="preserve"><value>Connection has not been checked.</value></data>
+  <data name="VmSavedProfileMatchesNone" xml:space="preserve"><value>No matches.</value></data>
+  <data name="VmWorkerRestartRequired" xml:space="preserve"><value>Automatic restart is disabled. Start a new GUI process to reconnect.</value></data>
+  <data name="VmWorkerRenderMeterHeading" xml:space="preserve"><value>Render · synthetic model of intended digital output</value></data>
+  <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · synthetic per-channel levels</value></data>
+  <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Measurement: {0} · source: {1}</value></data>
+  <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>No profile selected.</value></data>
 </root>

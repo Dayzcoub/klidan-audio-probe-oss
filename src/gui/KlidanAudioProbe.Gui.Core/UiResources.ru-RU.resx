@@ -549,4 +549,20 @@
   <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only ещё не выполнялся.</value></data>
   <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize временно резервирует выбранное устройство. Проверяется только направление {0}, {1}, {2} Гц, каналов: {3}, период {4}. Start и PCM не запускаются.</value></data>
   <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Выберите точный результат поддерживаемого формата.</value></data>
+  <data name="VmAllDirections" xml:space="preserve"><value>Все</value></data>
+  <data name="VmWindowsEndpointCounts" xml:space="preserve"><value>Всего: {0} · показано: {1} · активных Capture: {2} · активных Render: {3}</value></data>
+  <data name="VmWindowsEndpointsEnumerating" xml:space="preserve"><value>Перечисление Windows endpoints…</value></data>
+  <data name="VmWindowsDiscoveryPartial" xml:space="preserve"><value>Частичный результат: endpoints — {0}, ошибок — {1}.</value></data>
+  <data name="VmWindowsEndpointsNoneFound" xml:space="preserve"><value>Windows endpoints не обнаружены.</value></data>
+  <data name="VmWindowsEndpointsReceived" xml:space="preserve"><value>Получено Windows endpoints: {0}.</value></data>
+  <data name="VmWindowsDiscoveryWorkerDisconnectedHistorical" xml:space="preserve"><value>Последний ответ отключённого Worker · исторические данные, текущая доступность неизвестна.</value></data>
+  <data name="VmWindowsDiscoveryRequestFailed" xml:space="preserve"><value>Запрос не выполнен: {0}</value></data>
+  <data name="VmWindowsDiscoveryNotRequested" xml:space="preserve"><value>Не запрашивалось. Автоматический поиск отключён.</value></data>
+  <data name="VmSavedProfileBindingNotChecked" xml:space="preserve"><value>Проверка подключения ещё не выполнялась.</value></data>
+  <data name="VmSavedProfileMatchesNone" xml:space="preserve"><value>Совпадений нет.</value></data>
+  <data name="VmWorkerRestartRequired" xml:space="preserve"><value>Автоматический перезапуск отключён. Для нового подключения запустите новый процесс GUI.</value></data>
+  <data name="VmWorkerRenderMeterHeading" xml:space="preserve"><value>Render · синтетическая модель предполагаемого цифрового выхода</value></data>
+  <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · синтетические уровни по каналам</value></data>
+  <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Измерение: {0} · источник: {1}</value></data>
+  <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>Профиль не выбран.</value></data>
 </root>
