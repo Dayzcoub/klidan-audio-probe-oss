@@ -1064,4 +1064,19 @@ Fallback: {1}
   <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
 {1}
 {2}</value></data>
+  <data name="VmCustomPeriodDuplexNotStarted" xml:space="preserve"><value>Custom-period Duplex has not been run.</value></data>
+  <data name="VmWorkerFakeOperationFailed" xml:space="preserve"><value>Fake Worker operation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPrepareCommandFailed" xml:space="preserve"><value>Scan preparation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanConfirmCommandUnknown" xml:space="preserve"><value>UNKNOWN · {0}: {1}</value></data>
+  <data name="VmRealFormatSummary" xml:space="preserve"><value>Formats checked: {0} · Supported: {1} · Unsupported: {2} · Failed/incomplete: {3} · Not tested: {4} · Initialize: {5}</value></data>
+  <data name="VmWorkerFakeFixturesReceived" xml:space="preserve"><value>Received {0} Worker Fake test records. Local demo fixtures remain separate.</value></data>
+  <data name="VmWorkerCommandRejected" xml:space="preserve"><value>Command rejected: {0}/{1}: {2}</value></data>
+  <data name="VmWorkerQueryFailed" xml:space="preserve"><value>Worker query failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanRefreshingBeforePlan" xml:space="preserve"><value>Refreshing Windows endpoints before preparing the plan…</value></data>
+  <data name="VmAutomaticScanPlanPreparedConsentRequired" xml:space="preserve"><value>Plan prepared. Operations will start only after your consent.</value></data>
+  <data name="VmAutomaticScanPlanPrepareFailed" xml:space="preserve"><value>Plan preparation failed: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPhysicalGroupChanged" xml:space="preserve"><value>The physical device group changed after discovery; select the device again.</value></data>
+  <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>The physical pair is no longer unambiguous; explicitly select Capture and Render.</value></data>
+  <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>The exact selected endpoint disappeared or became inactive after refresh. Automatic device substitution is disabled.</value></data>
+  <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>The pair changed; the previous assessment and consent were cleared.</value></data>
 </root>

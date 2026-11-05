@@ -211,7 +211,7 @@ public sealed class MainViewModel : ViewModel
     private bool _periodDiscoveryConsentPending, _periodDiscoveryConsentChecked, _periodDiscoveryRunning;
     private CancellationTokenSource? _periodDiscoveryCancellation;
     private string _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryNotStarted");
-    private string _customPeriodFramesText = "192", _customPeriodDuplexStatus = "Custom-period Duplex не запускался.";
+    private string _customPeriodFramesText = "192", _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexNotStarted");
     private CustomPeriodDuplexPreparation? _customPeriodDuplexPreparation;
     private CustomPeriodDuplexResult? _customPeriodDuplexResult;
     private bool _customPeriodDuplexConsentPending, _customPeriodDuplexConsentChecked, _customPeriodDuplexRunning;
@@ -328,11 +328,11 @@ public sealed class MainViewModel : ViewModel
         CancelWorkerConsentCommand = new(CancelWorkerConsent, () => WorkerConsentPending);
         StopWorkerSessionCommand = new(StopWorkerSessionAsync, () => WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started);
         foreach (var command in new[] { ConnectWorkerCommand, QueryWorkerEndpointsCommand, DiscoverWindowsEndpointsCommand, QueryRealFormatsCommand, ConfirmRealInitializeCommand, ConfirmDeviceScanCommand, ShutdownWorkerCommand, ConfirmWorkerSessionCommand, StopWorkerSessionCommand })
-            command.ExecutionFailed += ex => WorkerNotice = $"Операция fake worker не выполнена: {ex.GetType().Name}: {ex.Message}";
+            command.ExecutionFailed += ex => WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerFakeOperationFailed"), ex.GetType().Name, ex.Message);
         ConfirmStreamValidationCommand.ExecutionFailed += ex => _streamValidationStatus = $"Stream validation failed: {ex.GetType().Name}: {ex.Message}";
         ConfirmDuplexValidationCommand.ExecutionFailed += ex => { _duplexStatus = $"Duplex failed/unknown: {ex.GetType().Name}: {ex.Message}"; Changed(nameof(DuplexStatus)); };
-        PrepareAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus($"Сканирование не подготовлено: {ex.GetType().Name}: {ex.Message}");
-        ConfirmAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus($"Исход неизвестен: {ex.GetType().Name}: {ex.Message}");
+        PrepareAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanPrepareCommandFailed"), ex.GetType().Name, ex.Message));
+        ConfirmAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConfirmCommandUnknown"), ex.GetType().Name, ex.Message));
         _bindingWorkerProcessId = WorkerState.ProcessId;
         RefreshSavedProfiles();
         RefreshHistoricalSustainedScans();
@@ -382,7 +382,7 @@ public sealed class MainViewModel : ViewModel
             var failedIncomplete = rows.Count(r => r.DisplayStatus is "FAILED" or "INCOMPLETE/CONFLICT" or "INCOMPLETE");
             var notTested = rows.Count(r => r.DisplayStatus == "NOT_TESTED");
             var initialize = RealInitializationResult?.Candidates.FirstOrDefault()?.InitializeStatus ?? (_realInitializationError is not null ? "UNKNOWN" : "NOT_ATTEMPTED");
-            return $"Форматов проверено: {tested} · Поддерживается: {supported} · Не поддерживается: {unsupported} · Ошибки/неполные: {failedIncomplete} · Не проверено: {notTested} · Initialize: {initialize}";
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmRealFormatSummary"), tested, supported, unsupported, failedIncomplete, notTested, initialize);
         }
     }
     public string RealInitializeDisabledReason
@@ -1527,10 +1527,10 @@ public sealed class MainViewModel : ViewModel
         {
             WorkerEndpoints = await _worker.ListEndpointsAsync();
             LastWorkerEndpointSnapshot = WorkerEndpoints.ToArray();
-            WorkerNotice = $"Получено проверочных данных worker fake: {WorkerEndpoints.Count}. Локальные демо fixtures остаются отдельными.";
+            WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerFakeFixturesReceived"), WorkerEndpoints.Count);
         }
-        catch (WorkerCommandException ex) { WorkerNotice = $"Команда отвергнута: {ex.Command}/{ex.ErrorCode}: {ex.Message}"; }
-        catch (Exception ex) { WorkerNotice = $"Запрос worker не выполнен: {ex.GetType().Name}: {ex.Message}"; }
+        catch (WorkerCommandException ex) { WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerCommandRejected"), ex.Command, ex.ErrorCode, ex.Message); }
+        catch (Exception ex) { WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerQueryFailed"), ex.GetType().Name, ex.Message); }
         Changed(nameof(WorkerEndpoints));
         Changed(nameof(SelectedWorkerEndpoint)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); RefreshWorkerCommands(); RefreshContext();
     }
@@ -1556,7 +1556,7 @@ public sealed class MainViewModel : ViewModel
         _automaticScanPreparation = null;
         AutomaticScanConsentPending = false;
         AutomaticScanConsentChecked = false;
-        SetAutomaticScanStatus("Обновление Windows endpoints перед построением плана…");
+        SetAutomaticScanStatus(Localization.Get("VmAutomaticScanRefreshingBeforePlan"));
         using var refresh = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
         {
@@ -1568,13 +1568,13 @@ public sealed class MainViewModel : ViewModel
             Changed(nameof(AutomaticScanProgressRows));
             AutomaticScanConsentChecked = false;
             AutomaticScanConsentPending = true;
-            SetAutomaticScanStatus("План подготовлен. Операции начнутся только после вашего подтверждения.");
+            SetAutomaticScanStatus(Localization.Get("VmAutomaticScanPlanPreparedConsentRequired"));
             Changed(nameof(AutomaticScanConsentText));
         }
         catch (Exception ex)
         {
             InvalidateAutomaticDeviceSelection();
-            SetAutomaticScanStatus($"План не подготовлен: {ex.GetType().Name}: {ex.Message}");
+            SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanPlanPrepareFailed"), ex.GetType().Name, ex.Message));
         }
         finally { AutomaticScanPreparing = false; }
     }
@@ -1599,12 +1599,12 @@ public sealed class MainViewModel : ViewModel
         if (selection.PhysicalGroupId is not null && refreshedGroup is null)
         {
             InvalidateAutomaticDeviceSelection();
-            throw new InvalidOperationException("Физическая группа устройства изменилась после обнаружения; выберите устройство заново.");
+            throw new InvalidOperationException(Localization.Get("VmAutomaticScanPhysicalGroupChanged"));
         }
         if (selection.RequireUnambiguousPair && refreshedGroup?.CanAutoSelectPair != true)
         {
             InvalidateAutomaticDeviceSelection();
-            throw new InvalidOperationException("Физическая пара больше не является однозначной; выберите Capture и Render явно.");
+            throw new InvalidOperationException(Localization.Get("VmAutomaticScanPairAmbiguous"));
         }
         Set(ref _selectedWindowsEndpoint, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == previousId && e.DeviceState == "ACTIVE"), nameof(SelectedWindowsEndpoint));
         Set(ref _selectedDuplexCapture, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == captureId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE"), nameof(SelectedDuplexCaptureEndpoint));
@@ -1623,7 +1623,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(WindowsEndpointInspectorFields)); Changed(nameof(DeviceScanAvailabilityReason)); Changed(nameof(DuplexDiscoveryFreshness));
         Changed(nameof(AutomaticScanAvailabilityReason)); Changed(nameof(AutomaticScanConsentText));
         if (previousId is not null && SelectedWindowsEndpoint is null || captureId is not null && SelectedDuplexCaptureEndpoint is null || renderId is not null && SelectedDuplexRenderEndpoint is null)
-            throw new InvalidOperationException("Выбранный точный endpoint исчез или стал неактивен после обновления. Автоматическая подмена устройства запрещена.");
+            throw new InvalidOperationException(Localization.Get("VmAutomaticScanEndpointUnavailable"));
         RefreshWindowsEndpointBrowser();
         DiscoverWindowsEndpointsCommand.Refresh();
     }
@@ -1901,7 +1901,7 @@ public sealed class MainViewModel : ViewModel
         _duplexValidations.Clear();
         if (!_automaticScanPairEnabled && SelectedPhysicalDeviceGroup is not null && value is not null)
             SelectedWindowsEndpoint = value;
-        _duplexStatus = "Пара изменилась; прежняя оценка и подтверждение сброшены.";
+        _duplexStatus = Localization.Get("VmDuplexPairInvalidated");
         Changed(capture ? nameof(SelectedDuplexCaptureEndpoint) : nameof(SelectedDuplexRenderEndpoint));
         Changed(nameof(HasCurrentDuplexPair)); Changed(nameof(DuplexConsentText)); Changed(nameof(DuplexAssessments)); Changed(nameof(DuplexResultCards)); Changed(nameof(DuplexRecommendation)); Changed(nameof(DuplexRecommendationSummary)); Changed(nameof(HasDuplexResults)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(DuplexStatus)); Changed(nameof(CanSaveDeviceProfile));
         RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh(); RefreshCanExecute();

@@ -1064,4 +1064,19 @@ Fallback: {1}
   <data name="VmHistoricalOperatorSummary" xml:space="preserve"><value>{0}
 {1}
 {2}</value></data>
+  <data name="VmCustomPeriodDuplexNotStarted" xml:space="preserve"><value>Custom-period Duplex не запускался.</value></data>
+  <data name="VmWorkerFakeOperationFailed" xml:space="preserve"><value>Операция fake worker не выполнена: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPrepareCommandFailed" xml:space="preserve"><value>Сканирование не подготовлено: {0}: {1}</value></data>
+  <data name="VmAutomaticScanConfirmCommandUnknown" xml:space="preserve"><value>UNKNOWN · {0}: {1}</value></data>
+  <data name="VmRealFormatSummary" xml:space="preserve"><value>Форматов проверено: {0} · Поддерживается: {1} · Не поддерживается: {2} · Ошибки/неполные: {3} · Не проверено: {4} · Initialize: {5}</value></data>
+  <data name="VmWorkerFakeFixturesReceived" xml:space="preserve"><value>Получено проверочных данных worker fake: {0}. Локальные демо fixtures остаются отдельными.</value></data>
+  <data name="VmWorkerCommandRejected" xml:space="preserve"><value>Команда отвергнута: {0}/{1}: {2}</value></data>
+  <data name="VmWorkerQueryFailed" xml:space="preserve"><value>Запрос worker не выполнен: {0}: {1}</value></data>
+  <data name="VmAutomaticScanRefreshingBeforePlan" xml:space="preserve"><value>Обновление Windows endpoints перед построением плана…</value></data>
+  <data name="VmAutomaticScanPlanPreparedConsentRequired" xml:space="preserve"><value>План подготовлен. Операции начнутся только после вашего подтверждения.</value></data>
+  <data name="VmAutomaticScanPlanPrepareFailed" xml:space="preserve"><value>План не подготовлен: {0}: {1}</value></data>
+  <data name="VmAutomaticScanPhysicalGroupChanged" xml:space="preserve"><value>Физическая группа устройства изменилась после обнаружения; выберите устройство заново.</value></data>
+  <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>Физическая пара больше не является однозначной; выберите Capture и Render явно.</value></data>
+  <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>Выбранный точный endpoint исчез или стал неактивен после обновления. Автоматическая подмена устройства запрещена.</value></data>
+  <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>Пара изменилась; прежняя оценка и подтверждение сброшены.</value></data>
 </root>
