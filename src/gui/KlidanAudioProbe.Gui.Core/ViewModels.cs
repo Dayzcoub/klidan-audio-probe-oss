@@ -701,7 +701,7 @@ public sealed class MainViewModel : ViewModel
             if (!Set(ref _selectedPhysicalDeviceGroup, value)) return;
             CancelAutomaticScanConsent();
             CancelDuplexRepeatabilityAuthorization();
-            CancelPeriodDiscovery("Physical device group changed; period plan discarded.");
+            CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedGroupChanged"));
             _allowUnconfirmedPhysicalPair = false;
             if (value is { CanAutoSelectPair: true })
             {
@@ -1593,7 +1593,7 @@ public sealed class MainViewModel : ViewModel
         _windowsDiscoveryError = null;
         var refreshedGroups = PhysicalDeviceGrouping.Group(discovery.Endpoints);
         _physicalDeviceGroups = refreshedGroups;
-        CancelPeriodDiscovery("Windows discovery refreshed; period plan discarded.");
+        CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryRefreshed"));
         Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
         var refreshedGroup = refreshedGroups.FirstOrDefault(g => g.GroupId == selection.PhysicalGroupId);
         if (selection.PhysicalGroupId is not null && refreshedGroup is null)
@@ -1894,7 +1894,7 @@ public sealed class MainViewModel : ViewModel
         if (ReferenceEquals(field, value)) return;
         if (AutomaticScanConsentPending) CancelAutomaticScanConsent();
         CancelDuplexRepeatabilityAuthorization();
-        CancelPeriodDiscovery("Exact Capture/Render selection changed; period plan discarded.");
+        CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedPairChanged"));
         field = value;
         if (DuplexConsentPending) CancelDuplexConsent();
         if (_duplexValidationRunning && _activeDuplexOperationId is not null) _ = CancelDuplexValidationAsync();
@@ -2009,15 +2009,15 @@ public sealed class MainViewModel : ViewModel
     private bool CanPreparePeriodDiscoveryInternal() => _exclusivePeriodDiscoveryWorkflow is not null && _worker is not null && _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && _worker.Capabilities.Contains("RealExclusiveCustomPeriodInitialize", StringComparer.Ordinal) && WorkerState.State == WorkerConnectionState.ConnectedFake && _windowsDiscoveryCurrent && HasCurrentDuplexPair && !_workerStartOutcomeUnknown && !_automaticScanOutcomeUnknown && !AutomaticScanBusy && !WorkerOperationActive && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning && !_streamValidationRunning && !_duplexValidationRunning && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !AutomaticScanConsentPending && !WorkerConsentPending && !DuplexConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending && !_streamConsentPending && !_periodDiscoveryRunning && !_periodDiscoveryConsentPending;
     private string PeriodDiscoveryBlockingReason()
     {
-        if (_exclusivePeriodDiscoveryWorkflow is null) return "Исследование периодов недоступно в этом окне.";
-        if (WorkerState.State != WorkerConnectionState.ConnectedFake) return "Worker не подключён.";
-        if (_worker is null || !_worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) || !_worker.Capabilities.Contains("RealExclusiveCustomPeriodInitialize", StringComparer.Ordinal)) return "Подключённый Worker не поддерживает passive preflight и custom-period Initialize.";
-        if (_workerStartOutcomeUnknown || _automaticScanOutcomeUnknown) return "Исход предыдущей операции UNKNOWN; безопасное повторное использование Worker запрещено.";
-        if (!_windowsDiscoveryCurrent) return "Обновите Windows discovery перед исследованием периодов.";
-        if (!HasCurrentDuplexPair) return "Выберите точные активные Capture и Render endpoints.";
-        if (AutomaticScanBusy || WorkerOperationActive || _deviceScanRunning || _realQueryRunning || _realInitializeRunning || _streamValidationRunning || _duplexValidationRunning || _duplexRepeatabilityRunning || _periodDiscoveryRunning) return "Другая операция активна или не разрешила безопасное завершение.";
-        if (AutomaticScanConsentPending || WorkerConsentPending || DuplexConsentPending || RealInitializeConsentPending || DeviceScanConsentPending || _streamConsentPending || _duplexRepeatabilityConsentPending || _periodDiscoveryConsentPending) return "Другое подтверждение ожидает решения.";
-        return "Требуется текущая точная пара и свежая Windows discovery.";
+        if (_exclusivePeriodDiscoveryWorkflow is null) return Localization.Get("VmPeriodDiscoveryUnavailable");
+        if (WorkerState.State != WorkerConnectionState.ConnectedFake) return Localization.Get("VmWorkerDisconnectedMessage");
+        if (_worker is null || !_worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) || !_worker.Capabilities.Contains("RealExclusiveCustomPeriodInitialize", StringComparer.Ordinal)) return Localization.Get("VmPeriodDiscoveryWorkerCapabilitiesMissing");
+        if (_workerStartOutcomeUnknown || _automaticScanOutcomeUnknown) return Localization.Get("VmPeriodDiscoveryPriorOutcomeUnknown");
+        if (!_windowsDiscoveryCurrent) return Localization.Get("VmPeriodDiscoveryRefreshWindows");
+        if (!HasCurrentDuplexPair) return Localization.Get("VmPeriodDiscoverySelectExactPair");
+        if (AutomaticScanBusy || WorkerOperationActive || _deviceScanRunning || _realQueryRunning || _realInitializeRunning || _streamValidationRunning || _duplexValidationRunning || _duplexRepeatabilityRunning || _periodDiscoveryRunning) return Localization.Get("VmPeriodDiscoveryOperationActive");
+        if (AutomaticScanConsentPending || WorkerConsentPending || DuplexConsentPending || RealInitializeConsentPending || DeviceScanConsentPending || _streamConsentPending || _duplexRepeatabilityConsentPending || _periodDiscoveryConsentPending) return Localization.Get("VmPeriodDiscoveryAwaitingConsent");
+        return Localization.Get("VmPeriodDiscoveryNeedsCurrentPair");
     }
     private async Task PreparePeriodDiscoveryAsync()
     {
@@ -2025,31 +2025,31 @@ public sealed class MainViewModel : ViewModel
         try
         {
             _periodDiscoveryPreparation = await _exclusivePeriodDiscoveryWorkflow.PrepareAsync(_windowsEndpointSnapshot, capture, render, CancellationToken.None).ConfigureAwait(true);
-            _periodDiscoveryResult = null; _periodDiscoveryResultFingerprint = null; _periodDiscoveryConsentChecked = false; _periodDiscoveryConsentPending = true; _periodDiscoveryStatus = "Immutable candidate plan prepared; one explicit approval is required.";
+            _periodDiscoveryResult = null; _periodDiscoveryResultFingerprint = null; _periodDiscoveryConsentChecked = false; _periodDiscoveryConsentPending = true; _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryPlanPrepared");
         }
-        catch (Exception ex) { _periodDiscoveryPreparation = null; _periodDiscoveryStatus = $"Period discovery unavailable: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _periodDiscoveryPreparation = null; _periodDiscoveryStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodDiscoveryPreparationFailed"), ex.GetType().Name, ex.Message); }
         Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryPlanText)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmPeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryCommand.Refresh(); PreparePeriodDiscoveryCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
     }
     private async Task ConfirmPeriodDiscoveryAsync()
     {
         if (_exclusivePeriodDiscoveryWorkflow is null || !_periodDiscoveryConsentPending || !_periodDiscoveryConsentChecked || _periodDiscoveryPreparation is not { } preparation || _periodDiscoveryRunning || _windowsEndpointSnapshot is null || SelectedDuplexCaptureEndpoint?.EndpointId != preparation.Capture.EndpointId || SelectedDuplexRenderEndpoint?.EndpointId != preparation.Render.EndpointId || ExclusivePeriodDiscoveryPlanning.Fingerprint(_windowsEndpointSnapshot) != preparation.DiscoveryFingerprint || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake)
         {
-            if (_periodDiscoveryConsentPending) CancelPeriodDiscovery("Discovery, Worker or exact pair changed; approval was discarded.");
+            if (_periodDiscoveryConsentPending) CancelPeriodDiscovery(Localization.Get("VmPeriodDiscoveryApprovalDiscarded"));
             return;
         }
-        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryRunning = true; _periodDiscoveryCancellation = new CancellationTokenSource(); _periodDiscoveryStatus = "Approval accepted; probing exact candidates sequentially.";
+        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryRunning = true; _periodDiscoveryCancellation = new CancellationTokenSource(); _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryApprovalAccepted");
         Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryConsentChecked)); Changed(nameof(PeriodDiscoveryRunning)); Changed(nameof(PeriodDiscoveryStatus));
         try { _periodDiscoveryResult = await _exclusivePeriodDiscoveryWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), message => { _periodDiscoveryStatus = message; Changed(nameof(PeriodDiscoveryStatus)); }, _periodDiscoveryCancellation.Token).ConfigureAwait(true); _periodDiscoveryResultFingerprint = _periodDiscoveryResult.Lifecycle == "COMPLETED" ? preparation.DiscoveryFingerprint : null; _periodDiscoveryStatus = _periodDiscoveryResult.PersistenceStatus; }
-        catch (Exception ex) { _periodDiscoveryResultFingerprint = null; _periodDiscoveryStatus = $"UNKNOWN · period discovery outcome is not confirmed: {ex.GetType().Name}: {ex.Message}"; }
+        catch (Exception ex) { _periodDiscoveryResultFingerprint = null; _periodDiscoveryStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodDiscoveryOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _periodDiscoveryRunning = false; _periodDiscoveryCancellation?.Dispose(); _periodDiscoveryCancellation = null; Changed(nameof(PeriodDiscoveryRunning)); Changed(nameof(PeriodDiscoveryResultText)); Changed(nameof(PeriodDiscoveryMatrixText)); Changed(nameof(PeriodDiscoveryReportPath)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); PreparePeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryRunCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
     }
-    private void CancelPeriodDiscovery(string message = "Period discovery approval cancelled.")
+    private void CancelPeriodDiscovery(string? message = null)
     {
         if (!_periodDiscoveryConsentPending && _periodDiscoveryPreparation is null) return;
-        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryPreparation = null; _periodDiscoveryStatus = message;
+        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryPreparation = null; _periodDiscoveryStatus = message ?? Localization.Get("VmPeriodDiscoveryApprovalCancelled");
         Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryConsentChecked)); Changed(nameof(PeriodDiscoveryPlanText)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmPeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryCommand.Refresh(); PreparePeriodDiscoveryCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
     }
-    private void CancelPeriodDiscoveryRun() { if (_periodDiscoveryRunning) { _periodDiscoveryStatus = "Cancellation requested; unresolved native cleanup will stop the series as UNKNOWN."; _periodDiscoveryCancellation?.Cancel(); Changed(nameof(PeriodDiscoveryStatus)); } }
+    private void CancelPeriodDiscoveryRun() { if (_periodDiscoveryRunning) { _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryCancellationRequested"); _periodDiscoveryCancellation?.Cancel(); Changed(nameof(PeriodDiscoveryStatus)); } }
 
     private bool CanPrepareCustomPeriodDuplexInternal()
     {
@@ -2682,7 +2682,7 @@ public sealed class MainViewModel : ViewModel
             SelectedPhysicalDeviceGroup?.GroupId, SelectedPhysicalDeviceGroup?.CanAutoSelectPair == true, AllowUnconfirmedPhysicalPair, AutomaticSustainedMode.StartsWith("Extended", StringComparison.Ordinal));
         if (RealFormatMatrix is not null) _realQueryInvalidated = true;
         CancelDuplexRepeatabilityAuthorization("Discovery обновляется; прежнее подтверждение repeatability сброшено.");
-        CancelPeriodDiscovery("Discovery обновляется; прежний period plan сброшен.");
+        CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryUpdating"));
         _windowsDiscoveryLoading = true;_windowsDiscoveryCurrent = false;_windowsDiscoveryError = null;
         _physicalDeviceGroups = [];
         Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
@@ -2896,7 +2896,7 @@ public sealed class MainViewModel : ViewModel
         if (state.State != WorkerConnectionState.ConnectedFake || _duplexRepeatabilityPreparation?.WorkerProcessId != state.ProcessId)
             CancelDuplexRepeatabilityAuthorization("Worker отключён или изменил session identity; подтверждение repeatability сброшено.");
         if (state.State != WorkerConnectionState.ConnectedFake)
-            CancelPeriodDiscovery("Worker отключён или изменил session identity; period plan discarded.");
+            CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedWorkerChanged"));
         if (state.State != WorkerConnectionState.ConnectedFake)
         {
             if (_automaticScanRunning) _automaticScanCancellation?.Cancel();

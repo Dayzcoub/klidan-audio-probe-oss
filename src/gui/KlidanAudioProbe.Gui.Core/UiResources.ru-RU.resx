@@ -514,4 +514,25 @@
   <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Готово: будет запущен ровно один выбранный custom period.</value></data>
   <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Сначала завершите REAL C4.2A period discovery и выберите текущую пару endpoint-ов.</value></data>
   <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex ещё не завершён.</value></data>
+  <data name="VmPeriodDiscoveryUnavailable" xml:space="preserve"><value>Исследование периодов недоступно в этом окне.</value></data>
+  <data name="VmWorkerDisconnectedMessage" xml:space="preserve"><value>Worker не подключён.</value></data>
+  <data name="VmPeriodDiscoveryWorkerCapabilitiesMissing" xml:space="preserve"><value>Подключённый Worker не поддерживает passive preflight и custom-period Initialize.</value></data>
+  <data name="VmPeriodDiscoveryPriorOutcomeUnknown" xml:space="preserve"><value>Исход предыдущей операции UNKNOWN; безопасное повторное использование Worker запрещено.</value></data>
+  <data name="VmPeriodDiscoveryRefreshWindows" xml:space="preserve"><value>Обновите Windows discovery перед исследованием периодов.</value></data>
+  <data name="VmPeriodDiscoverySelectExactPair" xml:space="preserve"><value>Выберите точные активные Capture и Render endpoints.</value></data>
+  <data name="VmPeriodDiscoveryOperationActive" xml:space="preserve"><value>Другая операция активна или не разрешила безопасное завершение.</value></data>
+  <data name="VmPeriodDiscoveryAwaitingConsent" xml:space="preserve"><value>Другое подтверждение ожидает решения.</value></data>
+  <data name="VmPeriodDiscoveryNeedsCurrentPair" xml:space="preserve"><value>Требуется текущая точная пара и свежая Windows discovery.</value></data>
+  <data name="VmPeriodDiscoveryPlanPrepared" xml:space="preserve"><value>Подготовлен неизменяемый план кандидатов; требуется отдельное подтверждение.</value></data>
+  <data name="VmPeriodDiscoveryPreparationFailed" xml:space="preserve"><value>Исследование периодов недоступно: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalDiscarded" xml:space="preserve"><value>Discovery, Worker или точная пара изменились; подтверждение сброшено.</value></data>
+  <data name="VmPeriodDiscoveryApprovalAccepted" xml:space="preserve"><value>Подтверждение принято; точные кандидаты проверяются последовательно.</value></data>
+  <data name="VmPeriodDiscoveryOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · исход исследования периодов не подтверждён: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalCancelled" xml:space="preserve"><value>Подтверждение исследования периодов отменено.</value></data>
+  <data name="VmPeriodDiscoveryCancellationRequested" xml:space="preserve"><value>Запрошена отмена; незавершённая native очистка остановит серию со статусом UNKNOWN.</value></data>
+  <data name="VmPeriodPlanDiscardedGroupChanged" xml:space="preserve"><value>Группа физических устройств изменилась; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryRefreshed" xml:space="preserve"><value>Обнаружение Windows обновлено; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Выбор точной пары Capture/Render изменился; план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Обнаружение обновляется; прежний план периодов сброшен.</value></data>
+  <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker отключён или изменил идентификатор сессии; план периодов сброшен.</value></data>
 </root>

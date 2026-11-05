@@ -514,4 +514,25 @@
   <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Ready: exactly one selected custom period will run.</value></data>
   <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Complete REAL C4.2A period discovery first and select the current endpoint pair.</value></data>
   <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex has not completed.</value></data>
+  <data name="VmPeriodDiscoveryUnavailable" xml:space="preserve"><value>Period discovery is unavailable in this window.</value></data>
+  <data name="VmWorkerDisconnectedMessage" xml:space="preserve"><value>Worker is disconnected.</value></data>
+  <data name="VmPeriodDiscoveryWorkerCapabilitiesMissing" xml:space="preserve"><value>The connected Worker does not support passive preflight and custom-period Initialize.</value></data>
+  <data name="VmPeriodDiscoveryPriorOutcomeUnknown" xml:space="preserve"><value>The previous operation outcome is UNKNOWN; safe Worker reuse is blocked.</value></data>
+  <data name="VmPeriodDiscoveryRefreshWindows" xml:space="preserve"><value>Refresh Windows discovery before period discovery.</value></data>
+  <data name="VmPeriodDiscoverySelectExactPair" xml:space="preserve"><value>Select exact active Capture and Render endpoints.</value></data>
+  <data name="VmPeriodDiscoveryOperationActive" xml:space="preserve"><value>Another operation is active or has not reached a confirmed safe completion.</value></data>
+  <data name="VmPeriodDiscoveryAwaitingConsent" xml:space="preserve"><value>Another confirmation is awaiting a decision.</value></data>
+  <data name="VmPeriodDiscoveryNeedsCurrentPair" xml:space="preserve"><value>A current exact pair and fresh Windows discovery are required.</value></data>
+  <data name="VmPeriodDiscoveryPlanPrepared" xml:space="preserve"><value>Immutable candidate plan prepared; one explicit approval is required.</value></data>
+  <data name="VmPeriodDiscoveryPreparationFailed" xml:space="preserve"><value>Period discovery unavailable: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalDiscarded" xml:space="preserve"><value>Discovery, Worker, or exact pair changed; approval was discarded.</value></data>
+  <data name="VmPeriodDiscoveryApprovalAccepted" xml:space="preserve"><value>Approval accepted; probing exact candidates sequentially.</value></data>
+  <data name="VmPeriodDiscoveryOutcomeUnknown" xml:space="preserve"><value>UNKNOWN · period discovery outcome is not confirmed: {0}: {1}</value></data>
+  <data name="VmPeriodDiscoveryApprovalCancelled" xml:space="preserve"><value>Period discovery approval cancelled.</value></data>
+  <data name="VmPeriodDiscoveryCancellationRequested" xml:space="preserve"><value>Cancellation requested; unresolved native cleanup will stop the series as UNKNOWN.</value></data>
+  <data name="VmPeriodPlanDiscardedGroupChanged" xml:space="preserve"><value>Physical device group changed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryRefreshed" xml:space="preserve"><value>Windows discovery refreshed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Exact Capture/Render selection changed; period plan discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Discovery is refreshing; the previous period plan was discarded.</value></data>
+  <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker disconnected or session identity changed; period plan discarded.</value></data>
 </root>
