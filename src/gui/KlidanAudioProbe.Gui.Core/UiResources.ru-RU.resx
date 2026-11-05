@@ -768,6 +768,21 @@
   <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Требуется свежее подтверждение · {0} · 5 с · MMCSS OFF.</value></data>
   <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Подтверждение Duplex отменено; операция не отправлялась.</value></data>
   <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Отмена передана Worker; ожидается координированный Stop обеих сторон и итоговый отчёт.</value></data>
+  <data name="VmOperatorStreamEvidenceNone" xml:space="preserve"><value>Stream validation не запускалась: Start и обслуживание кадров не наблюдались.</value></data>
+  <data name="VmOperatorStreamEvidenceCount" xml:space="preserve"><value>Принятых отчётов stream validation: {0}. Start, кадры и качество показаны отдельно ниже; длительная стабильность, Duplex и физическая маршрутизация не подтверждены.</value></data>
+  <data name="VmOperatorProfileEvidenceNoStreams" xml:space="preserve"><value>Профиль сохраняет только полученные результаты и не подтверждает Start, PCM-наблюдение, стабильность, Duplex или физическую маршрутизацию. Рекомендация не формируется.</value></data>
+  <data name="VmOperatorProfileEvidenceWithStreams" xml:space="preserve"><value>Профиль v2 включает принятые streamObservations при успешном сохранении. Они не подтверждают длительную стабильность, Duplex, физическую маршрутизацию или QA AudioHost; рекомендация не формируется.</value></data>
+  <data name="VmStreamEvidenceNotRun" xml:space="preserve"><value>Результаты потока: NOT_RUN; streamObservations отсутствуют.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotSaved" xml:space="preserve"><value>Последняя попытка {0}: {1}; принятого отчёта нет, попытка не сохранена.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotInProfile" xml:space="preserve"><value>Последняя попытка {0}: {1}; профиль schemaVersion {2} не содержит её как streamObservation: {3}</value></data>
+  <data name="VmStreamEvidencePreviousSavedLatestNotIncluded" xml:space="preserve"><value>Предыдущие принятые наблюдения сохранены в профиле schemaVersion 2; последняя попытка {0}: {1} не включена: {2}</value></data>
+  <data name="VmStreamEvidenceSessionSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии и сохранены в профиле schemaVersion 2: {0}</value></data>
+  <data name="VmStreamEvidenceSessionAttemptNotSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии ({0}); последняя попытка {1}: {2}; текущий набор не сохранён в профиле v2.</value></data>
+  <data name="VmStreamEvidenceSessionNotSaved" xml:space="preserve"><value>Результаты приняты в текущей сессии ({0}); эти результаты ещё не сохранены в профиле v2.</value></data>
+  <data name="VmStreamValidationConsent" xml:space="preserve"><value>{0} · {1} · ID: {2} · 48 кГц PCM16 · каналов: {3} · {4} · до 5 секунд. Exclusive endpoint будет временно занят. Capture читает пакеты микрофона без сохранения PCM; Render передаёт только цифровую тишину. Физический звук/маршрутизация не измеряются.</value></data>
+  <data name="VmStreamValidationSelectInitializedCandidate" xml:space="preserve"><value>Выберите успешно инициализированный кандидат.</value></data>
+  <data name="VmStreamValidationAuthorizationRequired" xml:space="preserve"><value>Свежая отдельная авторизация требуется для каждого периода.</value></data>
+  <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>Нужен текущий результат успешного Initialize для выбранного точного endpoint и подключённый worker.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>

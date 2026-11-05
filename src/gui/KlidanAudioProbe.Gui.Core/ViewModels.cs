@@ -404,11 +404,11 @@ public sealed class MainViewModel : ViewModel
     }
     public string OperatorResultOutcome { get => _operatorResultOutcome; private set => Set(ref _operatorResultOutcome, value); }
     public string OperatorResultStreamEvidenceNote => _streamValidations.Count == 0
-        ? "Stream validation не запускалась: Start и обслуживание кадров не наблюдались."
-        : $"Принятых отчётов stream validation: {_streamValidations.Count}. Start, кадры и качество показаны отдельно ниже; длительная стабильность, Duplex и физическая маршрутизация не подтверждены.";
+        ? Localization.Get("VmOperatorStreamEvidenceNone")
+        : string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorStreamEvidenceCount"), _streamValidations.Count);
     public string OperatorResultProfileEvidenceNote => _streamValidations.Count == 0
-        ? "Профиль сохраняет только полученные результаты и не подтверждает Start, PCM-наблюдение, стабильность, Duplex или физическую маршрутизацию. Рекомендация не формируется."
-        : "Профиль v2 включает принятые streamObservations при успешном сохранении. Они не подтверждают длительную стабильность, Duplex, физическую маршрутизацию или QA AudioHost; рекомендация не формируется.";
+        ? Localization.Get("VmOperatorProfileEvidenceNoStreams")
+        : Localization.Get("VmOperatorProfileEvidenceWithStreams");
     public string OperatorResultDetails => _realInitializationError ?? _realFormatError ?? (RealInitializationResult is not null ? RealInitializationSummary : RealFormatMatrix is not null ? $"{RealFormatMatrixStatus}\n{_operatorResultEndpoint}\nКонфигурация: {_operatorResultConfiguration}\nУникальных форматов: {RealFormatRows.Count}. Поддержка драйвера не является Initialize или запуском аудио." : "Реальный запрос ещё не выполнялся.");
     public string OperatorResultProvenance => _operatorResultProvenance;
     public bool DeviceScanConsentPending { get => _deviceScanConsentPending; private set { if (Set(ref _deviceScanConsentPending, value)) { Changed(nameof(DeviceScanConsentText)); ConfirmDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
@@ -429,30 +429,30 @@ public sealed class MainViewModel : ViewModel
             if (_streamValidations.Count == 0)
             {
                 var attempt = _lastStreamAttemptPeriod is { } lastPeriod ? _streamValidationRows[lastPeriod] : null;
-                if (attempt is null) return "Результаты потока: NOT_RUN; streamObservations отсутствуют.";
+                if (attempt is null) return Localization.Get("VmStreamEvidenceNotRun");
                 return _savedStreamProfilePath is null
-                    ? $"Последняя попытка {attempt.Period}: {attempt.FinalStatus}; принятого отчёта нет, попытка не сохранена."
-                    : $"Последняя попытка {attempt.Period}: {attempt.FinalStatus}; профиль schemaVersion {_savedStreamProfileVersion} не содержит её как streamObservation: {_savedStreamProfilePath}";
+                    ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceLastAttemptNotSaved"), attempt.Period, attempt.FinalStatus)
+                    : string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceLastAttemptNotInProfile"), attempt.Period, attempt.FinalStatus, _savedStreamProfileVersion, _savedStreamProfilePath);
             }
             var currentIds = _streamValidations.Select(s => Guid.Parse(s.OperationId)).ToHashSet();
             if (_streamAttemptedSinceProfileSave && _savedStreamProfileVersion == 2 && _savedStreamProfilePath is not null && currentIds.SetEquals(_savedStreamOperationIds))
             {
                 var latest = _streamValidationRows[_lastStreamAttemptPeriod!];
-                return $"Предыдущие принятые наблюдения сохранены в профиле schemaVersion 2; последняя попытка {latest.Period}: {latest.FinalStatus} не включена: {_savedStreamProfilePath}";
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidencePreviousSavedLatestNotIncluded"), latest.Period, latest.FinalStatus, _savedStreamProfilePath);
             }
             if (!_streamAttemptedSinceProfileSave && _savedStreamProfileVersion == 2 && _savedStreamProfilePath is not null && currentIds.SetEquals(_savedStreamOperationIds))
-                return $"Результаты приняты в текущей сессии и сохранены в профиле schemaVersion 2: {_savedStreamProfilePath}";
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceSessionSaved"), _savedStreamProfilePath);
             if (_streamAttemptedSinceProfileSave)
             {
                 var latest = _streamValidationRows[_lastStreamAttemptPeriod!];
-                return $"Результаты приняты в текущей сессии ({currentIds.Count}); последняя попытка {latest.Period}: {latest.FinalStatus}; текущий набор не сохранён в профиле v2.";
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceSessionAttemptNotSaved"), currentIds.Count, latest.Period, latest.FinalStatus);
             }
-            return $"Результаты приняты в текущей сессии ({currentIds.Count}); эти результаты ещё не сохранены в профиле v2.";
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceSessionNotSaved"), currentIds.Count);
         }
     }
     public string StreamValidationResultsSummary => string.Join(" · ", StreamValidationRows.Select(r => $"{r.Period}: {r.FinalStatus}"));
-    public string StreamValidationConsentText => SelectedWindowsEndpoint is { } e && SelectedStreamCandidate is { } c ? $"{e.FriendlyNameDisplay} · {e.Direction} · ID: {e.EndpointId} · 48 кГц PCM16 · {c.Channels} канала · {c.Period.ToUpperInvariant()} · до 5 секунд. Exclusive endpoint будет временно занят. Capture читает пакеты микрофона без сохранения PCM; Render передаёт только цифровую тишину. Физический звук/маршрутизация не измеряются." : "Выберите успешно инициализированный кандидат.";
-    public string StreamValidationAvailability => CanRequestStreamValidation() ? "Свежая отдельная авторизация требуется для каждого периода." : "Нужен текущий результат успешного Initialize для выбранного точного endpoint и подключённый worker.";
+    public string StreamValidationConsentText => SelectedWindowsEndpoint is { } e && SelectedStreamCandidate is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamValidationConsent"), e.FriendlyNameDisplay, e.Direction, e.EndpointId, c.Channels, c.Period.ToUpperInvariant()) : Localization.Get("VmStreamValidationSelectInitializedCandidate");
+    public string StreamValidationAvailability => Localization.Get(CanRequestStreamValidation() ? "VmStreamValidationAuthorizationRequired" : "VmStreamValidationNeedsCurrentInitialize");
     public bool DeviceScanRunning { get => _deviceScanRunning; private set { if (Set(ref _deviceScanRunning, value)) { CancelDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RequestStreamValidationCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestRealInitializeCommand.Refresh(); Changed(nameof(CanSaveDeviceProfile)); } } }
     public bool AutomaticScanPairEnabled
     {

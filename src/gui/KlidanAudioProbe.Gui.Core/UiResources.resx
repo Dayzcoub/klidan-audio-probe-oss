@@ -768,6 +768,21 @@
   <data name="VmDuplexConfirmationRequired" xml:space="preserve"><value>Fresh confirmation required · {0} · 5 s · MMCSS OFF.</value></data>
   <data name="VmDuplexApprovalCancelled" xml:space="preserve"><value>Duplex confirmation cancelled; operation was not sent.</value></data>
   <data name="VmDuplexCancellationRequested" xml:space="preserve"><value>Cancellation sent to Worker; waiting for coordinated Stop on both sides and the final report.</value></data>
+  <data name="VmOperatorStreamEvidenceNone" xml:space="preserve"><value>Stream validation has not run: Start and frame servicing were not observed.</value></data>
+  <data name="VmOperatorStreamEvidenceCount" xml:space="preserve"><value>Accepted stream validation reports: {0}. Start, frames, and quality are shown separately below; long-term stability, Duplex, and physical routing are unconfirmed.</value></data>
+  <data name="VmOperatorProfileEvidenceNoStreams" xml:space="preserve"><value>The profile contains only results received so far and does not confirm Start, PCM observation, stability, Duplex, or physical routing. No recommendation is produced.</value></data>
+  <data name="VmOperatorProfileEvidenceWithStreams" xml:space="preserve"><value>Profile v2 includes accepted streamObservations after a successful save. They do not confirm long-term stability, Duplex, physical routing, or AudioHost QA; no recommendation is produced.</value></data>
+  <data name="VmStreamEvidenceNotRun" xml:space="preserve"><value>Stream results: NOT_RUN; no streamObservations.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotSaved" xml:space="preserve"><value>Last attempt {0}: {1}; no accepted report, attempt not saved.</value></data>
+  <data name="VmStreamEvidenceLastAttemptNotInProfile" xml:space="preserve"><value>Last attempt {0}: {1}; profile schemaVersion {2} does not contain it as a streamObservation: {3}</value></data>
+  <data name="VmStreamEvidencePreviousSavedLatestNotIncluded" xml:space="preserve"><value>Previous accepted observations are saved in profile schemaVersion 2; latest attempt {0}: {1} is not included: {2}</value></data>
+  <data name="VmStreamEvidenceSessionSaved" xml:space="preserve"><value>Results accepted in this session and saved in profile schemaVersion 2: {0}</value></data>
+  <data name="VmStreamEvidenceSessionAttemptNotSaved" xml:space="preserve"><value>Results accepted in this session ({0}); latest attempt {1}: {2}; current set is not saved in profile v2.</value></data>
+  <data name="VmStreamEvidenceSessionNotSaved" xml:space="preserve"><value>Results accepted in this session ({0}); these results have not been saved in profile v2.</value></data>
+  <data name="VmStreamValidationConsent" xml:space="preserve"><value>{0} · {1} · ID: {2} · 48 kHz PCM16 · {3} channels · {4} · up to 5 seconds. The Exclusive endpoint will be temporarily occupied. Capture reads microphone packets without saving PCM; Render sends digital silence only. Physical sound/routing is not measured.</value></data>
+  <data name="VmStreamValidationSelectInitializedCandidate" xml:space="preserve"><value>Select a successfully initialized candidate.</value></data>
+  <data name="VmStreamValidationAuthorizationRequired" xml:space="preserve"><value>Fresh separate authorization is required for each period.</value></data>
+  <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>A current successful Initialize result for the exact selected endpoint and a connected worker are required.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>
