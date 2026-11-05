@@ -903,4 +903,27 @@
   <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>Архив содержит технические идентификаторы устройств и компьютера. Не предназначен для публичной публикации. Создать LOCAL_FULL_EVIDENCE архив?</value></data>
   <data name="VmExportVerified" xml:space="preserve"><value>Архив создан и успешно проверен: {0}</value></data>
   <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Экспорт не выполнен. Исходные данные не изменены.</value></data>
+  <data name="VmDemoSessionRequested" xml:space="preserve"><value>Запрошена демонстрационная сессия {0} для {1}.</value></data>
+  <data name="VmDemoConsentAccepted" xml:space="preserve"><value>Оператор подтвердил демонстрационную симуляцию.</value></data>
+  <data name="VmDemoPreparing" xml:space="preserve"><value>Синтетическая подготовка.</value></data>
+  <data name="VmDemoSessionRunning" xml:space="preserve"><value>Синтетическая сессия выполняется.</value></data>
+  <data name="VmDemoSessionStarted" xml:space="preserve"><value>Синтетическая сессия запущена.</value></data>
+  <data name="VmDemoConsentCancelled" xml:space="preserve"><value>Оператор отменил подтверждение; сессия не запускалась.</value></data>
+  <data name="VmDemoStopping" xml:space="preserve"><value>Останавливается (симуляция)…</value></data>
+  <data name="VmDemoStopRequested" xml:space="preserve"><value>Запрошена остановка demo-сессии.</value></data>
+  <data name="VmDemoStopped" xml:space="preserve"><value>Остановлено (симуляция).</value></data>
+  <data name="VmDemoSessionStopped" xml:space="preserve"><value>Demo-сессия остановлена.</value></data>
+  <data name="VmDemoDurationCompleted" xml:space="preserve"><value>Симуляция завершена по заданной длительности; качество не оценивалось.</value></data>
+  <data name="VmDemoDurationEvent" xml:space="preserve"><value>Синтетическая длительность завершена; качество неизвестно.</value></data>
+  <data name="VmDemoDigitalSilence" xml:space="preserve"><value>Цифровая тишина</value></data>
+  <data name="VmDemoCompletedWindow" xml:space="preserve"><value>Завершённое окно</value></data>
+  <data name="VmDemoMeterSnapshot" xml:space="preserve"><value>Снимок проверочных данных №{0}.</value></data>
+  <data name="VmDemoWorkerDisconnected" xml:space="preserve"><value>Worker отключён; остановка и очистка неизвестны.</value></data>
+  <data name="VmDemoConnectionLost" xml:space="preserve"><value>Соединение потеряно; состояние Stop и cleanup неизвестно.</value></data>
+  <data name="VmDemoSessionFailure" xml:space="preserve"><value>Синтетическая ошибка подготовки/сессии.</value></data>
+  <data name="VmDemoScenarioFailure" xml:space="preserve"><value>Синтетическая ошибка сценария.</value></data>
+  <data name="VmDemoCaptureTimingWarning" xml:space="preserve"><value>Синтетическое предупреждение времени Capture.</value></data>
+  <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Предупреждение о целостности временных меток Capture.</value></data>
+  <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Синтетическая потеря устройства; качество неизвестно.</value></data>
+  <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Синтетическая потеря устройства; cleanup неизвестен.</value></data>
 </root>

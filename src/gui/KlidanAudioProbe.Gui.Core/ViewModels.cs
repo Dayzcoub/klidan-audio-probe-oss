@@ -1273,7 +1273,7 @@ public sealed class MainViewModel : ViewModel
         var endpoint = mode == SessionMode.Capture ? SelectedCaptureEndpoint! : SelectedRenderEndpoint!;
         _pendingSessionId = Guid.NewGuid();
         _pending = new(_pendingSessionId.Value, mode, endpoint, mode == SessionMode.Render ? RenderChannel : null, DurationSeconds, endpoint.Topology?.ChannelCount ?? endpoint.Channels);
-        Record(_pendingSessionId.Value, ProbeEventKind.SessionRequested, $"Запрошена демонстрационная сессия {ModeLabel(mode)} для {endpoint.Name}.");
+        Record(_pendingSessionId.Value, ProbeEventKind.SessionRequested, string.Format(Localization.CurrentCulture, Localization.Get("VmDemoSessionRequested"), Localization.Get(mode == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection"), endpoint.Name));
         ConfirmPending = true;
         ConsentChecked = false;
         Changed(nameof(ConfirmationText));
@@ -1285,12 +1285,12 @@ public sealed class MainViewModel : ViewModel
         var request = _pending;
         ConfirmPending = false;
         ConsentChecked = false;
-        Record(request.Id, ProbeEventKind.ConsentAccepted, "Оператор подтвердил демонстрационную симуляцию.");
+        Record(request.Id, ProbeEventKind.ConsentAccepted, Localization.Get("VmDemoConsentAccepted"));
         if (request.Mode == SessionMode.Capture) Meter = null;
-        Session = new(request.Id, request.Mode, request.Endpoint.Name, request.RenderChannel, request.DurationSeconds, SessionLifecycle.Preparing, StreamQuality.Unknown, "ДЕМО · Данные симуляции", null, ChannelCount: request.ChannelCount);
-        Record(request.Id, ProbeEventKind.Preparing, "Синтетическая подготовка.");
-        Session = Session with { Lifecycle = SessionLifecycle.Started, Message = "Синтетическая сессия выполняется." };
-        Record(request.Id, ProbeEventKind.Started, "Синтетическая сессия запущена.");
+        Session = new(request.Id, request.Mode, request.Endpoint.Name, request.RenderChannel, request.DurationSeconds, SessionLifecycle.Preparing, StreamQuality.Unknown, Localization.Get("VmInspectorDemoSimulation"), null, ChannelCount: request.ChannelCount);
+        Record(request.Id, ProbeEventKind.Preparing, Localization.Get("VmDemoPreparing"));
+        Session = Session with { Lifecycle = SessionLifecycle.Started, Message = Localization.Get("VmDemoSessionRunning") };
+        Record(request.Id, ProbeEventKind.Started, Localization.Get("VmDemoSessionStarted"));
         Notice = Localization.Get("VmDemoStarted");
         _pending = null;
         _pendingSessionId = null;
@@ -1299,7 +1299,7 @@ public sealed class MainViewModel : ViewModel
 
     private void CancelConfirmation()
     {
-        if (_pendingSessionId is Guid id) Record(id, ProbeEventKind.ConsentCancelled, "Оператор отменил подтверждение; сессия не запускалась.");
+        if (_pendingSessionId is Guid id) Record(id, ProbeEventKind.ConsentCancelled, Localization.Get("VmDemoConsentCancelled"));
         ConfirmPending = false;
         ConsentChecked = false;
         _pending = null;
@@ -1311,20 +1311,20 @@ public sealed class MainViewModel : ViewModel
     private void BeginStop()
     {
         if (Session?.Lifecycle != SessionLifecycle.Started) return;
-        Session = Session with { Lifecycle = SessionLifecycle.Stopping, Message = "Останавливается (симуляция)…" };
-        Record(Session.Id, ProbeEventKind.Stopping, "Запрошена остановка demo-сессии.");
+        Session = Session with { Lifecycle = SessionLifecycle.Stopping, Message = Localization.Get("VmDemoStopping") };
+        Record(Session.Id, ProbeEventKind.Stopping, Localization.Get("VmDemoStopRequested"));
     }
     public void CompleteStop()
     {
         if (Session?.Lifecycle != SessionLifecycle.Stopping) return;
-        Session = Session with { Lifecycle = SessionLifecycle.Stopped, Message = "Остановлено (симуляция).", CleanupStatus = null };
-        Record(Session.Id, ProbeEventKind.Stopped, "Demo-сессия остановлена.");
+        Session = Session with { Lifecycle = SessionLifecycle.Stopped, Message = Localization.Get("VmDemoStopped"), CleanupStatus = null };
+        Record(Session.Id, ProbeEventKind.Stopped, Localization.Get("VmDemoSessionStopped"));
     }
     public void CompleteSimulation()
     {
         if (Session?.Lifecycle != SessionLifecycle.Started) return;
-        Session = Session with { Lifecycle = SessionLifecycle.Completed, Quality = StreamQuality.Unknown, Message = "Симуляция завершена по заданной длительности; качество не оценивалось." };
-        Record(Session.Id, ProbeEventKind.Completed, "Синтетическая длительность завершена; качество неизвестно.");
+        Session = Session with { Lifecycle = SessionLifecycle.Completed, Quality = StreamQuality.Unknown, Message = Localization.Get("VmDemoDurationCompleted") };
+        Record(Session.Id, ProbeEventKind.Completed, Localization.Get("VmDemoDurationEvent"));
     }
     public void CompleteSimulation(Guid expectedSessionId)
     {
@@ -1344,36 +1344,36 @@ public sealed class MainViewModel : ViewModel
             double? windowPeak = silent ? null : peak - channel * 0.25;
             var priorHold = previousHolds.GetValueOrDefault(channel);
             var hold = windowPeak is double current ? priorHold is double prior ? Math.Max(prior, current) : current : priorHold;
-            return new MeterChannelDto(channel, windowPeak, windowPeak is double finitePeak ? finitePeak - 7 : null, hold, 0, silent, silent ? "Цифровая тишина" : "Завершённое окно");
+            return new MeterChannelDto(channel, windowPeak, windowPeak is double finitePeak ? finitePeak - 7 : null, hold, 0, silent, Localization.Get(silent ? "VmDemoDigitalSilence" : "VmDemoCompletedWindow"));
         }).ToArray(), true);
-        Record(Session.Id, ProbeEventKind.MeterSnapshot, $"Снимок проверочных данных №{sequence}.");
+        Record(Session.Id, ProbeEventKind.MeterSnapshot, string.Format(Localization.CurrentCulture, Localization.Get("VmDemoMeterSnapshot"), sequence));
     }
     private void DisconnectWorker()
     {
         if (Session?.Lifecycle != SessionLifecycle.Started) return;
         var id = Session.Id;
-        Session = Session with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, Message = "Worker отключён; остановка и очистка неизвестны.", CleanupStatus = null };
-        Record(id, ProbeEventKind.WorkerDisconnected, "Соединение потеряно; состояние Stop и cleanup неизвестно.");
+        Session = Session with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, Message = Localization.Get("VmDemoWorkerDisconnected"), CleanupStatus = null };
+        Record(id, ProbeEventKind.WorkerDisconnected, Localization.Get("VmDemoConnectionLost"));
     }
     private void FailSession()
     {
         if (Session?.Lifecycle != SessionLifecycle.Started) return;
         var id = Session.Id;
-        Session = Session with { Lifecycle = SessionLifecycle.Failed, Quality = StreamQuality.Failed, Message = "Синтетическая ошибка подготовки/сессии.", CleanupStatus = null };
-        Record(id, ProbeEventKind.Failure, "Синтетическая ошибка сценария.");
+        Session = Session with { Lifecycle = SessionLifecycle.Failed, Quality = StreamQuality.Failed, Message = Localization.Get("VmDemoSessionFailure"), CleanupStatus = null };
+        Record(id, ProbeEventKind.Failure, Localization.Get("VmDemoScenarioFailure"));
     }
     private void CompleteWithWarning()
     {
         if (Session is not { Mode: SessionMode.Capture, Lifecycle: SessionLifecycle.Started }) return;
-        Session = Session with { Quality = StreamQuality.Warning, Message = "Синтетическое предупреждение времени Capture." };
-        Record(Session.Id, ProbeEventKind.Warning, "Предупреждение о целостности временных меток Capture.");
+        Session = Session with { Quality = StreamQuality.Warning, Message = Localization.Get("VmDemoCaptureTimingWarning") };
+        Record(Session.Id, ProbeEventKind.Warning, Localization.Get("VmDemoCaptureTimestampWarning"));
     }
     private void SimulateDeviceLoss()
     {
         if (Session?.Lifecycle != SessionLifecycle.Started) return;
         var id = Session.Id;
-        Session = Session with { Lifecycle = SessionLifecycle.Failed, Quality = StreamQuality.Unknown, Message = "Синтетическая потеря устройства; качество неизвестно.", CleanupStatus = null };
-        Record(id, ProbeEventKind.DeviceLoss, "Синтетическая потеря устройства; cleanup неизвестен.", "AUDCLNT_E_DEVICE_INVALIDATED");
+        Session = Session with { Lifecycle = SessionLifecycle.Failed, Quality = StreamQuality.Unknown, Message = Localization.Get("VmDemoDeviceLoss"), CleanupStatus = null };
+        Record(id, ProbeEventKind.DeviceLoss, Localization.Get("VmDemoDeviceLossEvent"), "AUDCLNT_E_DEVICE_INVALIDATED");
     }
 
     private bool CanBegin()

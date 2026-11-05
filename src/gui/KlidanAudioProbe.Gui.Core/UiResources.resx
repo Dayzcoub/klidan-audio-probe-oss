@@ -903,4 +903,27 @@
   <data name="VmExportPrivacyConfirmation" xml:space="preserve"><value>The archive contains technical device and computer identifiers. It is not intended for public release. Create a LOCAL_FULL_EVIDENCE archive?</value></data>
   <data name="VmExportVerified" xml:space="preserve"><value>Archive created and verified successfully: {0}</value></data>
   <data name="VmExportFailedUnchanged" xml:space="preserve"><value>Export failed. Source data was not changed.</value></data>
+  <data name="VmDemoSessionRequested" xml:space="preserve"><value>Demo session requested for {0} on {1}.</value></data>
+  <data name="VmDemoConsentAccepted" xml:space="preserve"><value>Operator confirmed the demo simulation.</value></data>
+  <data name="VmDemoPreparing" xml:space="preserve"><value>Synthetic preparation.</value></data>
+  <data name="VmDemoSessionRunning" xml:space="preserve"><value>Synthetic session is running.</value></data>
+  <data name="VmDemoSessionStarted" xml:space="preserve"><value>Synthetic session started.</value></data>
+  <data name="VmDemoConsentCancelled" xml:space="preserve"><value>Operator cancelled consent; the session was not started.</value></data>
+  <data name="VmDemoStopping" xml:space="preserve"><value>Stopping (simulation)…</value></data>
+  <data name="VmDemoStopRequested" xml:space="preserve"><value>Stop requested for the demo session.</value></data>
+  <data name="VmDemoStopped" xml:space="preserve"><value>Stopped (simulation).</value></data>
+  <data name="VmDemoSessionStopped" xml:space="preserve"><value>Demo session stopped.</value></data>
+  <data name="VmDemoDurationCompleted" xml:space="preserve"><value>Simulation completed after the configured duration; quality was not assessed.</value></data>
+  <data name="VmDemoDurationEvent" xml:space="preserve"><value>Synthetic duration completed; quality is unknown.</value></data>
+  <data name="VmDemoDigitalSilence" xml:space="preserve"><value>Digital silence</value></data>
+  <data name="VmDemoCompletedWindow" xml:space="preserve"><value>Completed window</value></data>
+  <data name="VmDemoMeterSnapshot" xml:space="preserve"><value>Synthetic data snapshot #{0}.</value></data>
+  <data name="VmDemoWorkerDisconnected" xml:space="preserve"><value>Worker disconnected; Stop and cleanup are unknown.</value></data>
+  <data name="VmDemoConnectionLost" xml:space="preserve"><value>Connection lost; Stop and cleanup state is unknown.</value></data>
+  <data name="VmDemoSessionFailure" xml:space="preserve"><value>Synthetic preparation/session failure.</value></data>
+  <data name="VmDemoScenarioFailure" xml:space="preserve"><value>Synthetic scenario failure.</value></data>
+  <data name="VmDemoCaptureTimingWarning" xml:space="preserve"><value>Synthetic Capture timing warning.</value></data>
+  <data name="VmDemoCaptureTimestampWarning" xml:space="preserve"><value>Capture timestamp integrity warning.</value></data>
+  <data name="VmDemoDeviceLoss" xml:space="preserve"><value>Synthetic device loss; quality is unknown.</value></data>
+  <data name="VmDemoDeviceLossEvent" xml:space="preserve"><value>Synthetic device loss; cleanup is unknown.</value></data>
 </root>
