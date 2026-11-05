@@ -3163,37 +3163,37 @@ public sealed class MainViewModel : ViewModel
             new(Localization.Get("VmInspectorProvenanceLabel"), "Worker Fake · синтетические данные", "Реальные аудиоустройства не используются.")
         };
         if (WorkerState.State is WorkerConnectionState.Failed or WorkerConnectionState.Incompatible || WorkerState.State == WorkerConnectionState.Disconnected && WorkerSession?.Lifecycle == SessionLifecycle.Unknown)
-            connectionFields.Add(new("Причина", WorkerState.Message, WorkerState.State.ToString()));
+            connectionFields.Add(new(Localization.Get("VmInspectorReasonLabel"), WorkerState.Message, WorkerState.State.ToString()));
 
         var sessionFields = new List<InspectorFieldDto>();
         if (WorkerSession is { } session)
         {
-            sessionFields.Add(new("Режим", session.Mode == SessionMode.Capture ? "Capture" : "Render", session.Mode.ToString()));
-            sessionFields.Add(new("Endpoint", settings?.EndpointId ?? session.EndpointName));
-            sessionFields.Add(new("Формат", settings is null ? "Неизвестно" : $"{settings.Encoding} · {settings.SampleRate} Гц · {settings.ChannelCount} каналов", settings?.FormatId));
-            if (session.Mode == SessionMode.Render) sessionFields.Add(new("Канал Windows", settings?.RenderChannel?.ToString() ?? session.RenderChannel?.ToString() ?? "Неизвестно"));
-            sessionFields.Add(new("Длительность", settings is null ? $"{session.DurationSeconds} с" : $"{settings.DurationSeconds} с"));
-            sessionFields.Add(new("Состояние", LifecycleLabel(session.Lifecycle), session.Lifecycle.ToString()));
-            sessionFields.Add(new("ID", session.Id.ToString("N")[..8]));
-            sessionFields.Add(new("Полный UUID", session.Id.ToString("D"), Copyable: true));
+            sessionFields.Add(new(Localization.Get("VmInspectorModeLabel"), session.Mode == SessionMode.Capture ? "Capture" : "Render", session.Mode.ToString()));
+            sessionFields.Add(new(Localization.Get("VmInspectorEndpointLabel"), settings?.EndpointId ?? session.EndpointName));
+            sessionFields.Add(new(Localization.Get("VmInspectorFormatLabel"), settings is null ? "Неизвестно" : $"{settings.Encoding} · {settings.SampleRate} Гц · {settings.ChannelCount} каналов", settings?.FormatId));
+            if (session.Mode == SessionMode.Render) sessionFields.Add(new(Localization.Get("VmInspectorWindowsChannelLabel"), settings?.RenderChannel?.ToString() ?? session.RenderChannel?.ToString() ?? "Неизвестно"));
+            sessionFields.Add(new(Localization.Get("VmInspectorDurationLabel"), settings is null ? $"{session.DurationSeconds} с" : $"{settings.DurationSeconds} с"));
+            sessionFields.Add(new(Localization.Get("VmInspectorStateLabel"), LifecycleLabel(session.Lifecycle), session.Lifecycle.ToString()));
+            sessionFields.Add(new(Localization.Get("VmInspectorIdLabel"), session.Id.ToString("N")[..8]));
+            sessionFields.Add(new(Localization.Get("VmInspectorFullUuidLabel"), session.Id.ToString("D"), Copyable: true));
         }
-        else sessionFields.Add(new("Сессия", "Не запускалась"));
+        else sessionFields.Add(new(Localization.Get("VmInspectorSessionLabel"), "Не запускалась"));
 
         var measurementFields = new List<InspectorFieldDto>
         {
-            new("Снимок", sequence?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Нет данных"),
-            new("Данные", measurementState),
-            new("Каналов", channelCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Неизвестно"),
-            new("Объединение", capture is not null ? $"{capture.CoalescedSnapshotCount} снимков" : render is not null ? $"{render.CoalescedSnapshotCount} снимков" : "Нет данных")
+            new(Localization.Get("VmInspectorSnapshotLabel"), sequence?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Нет данных"),
+            new(Localization.Get("VmInspectorDataLabel"), measurementState),
+            new(Localization.Get("VmInspectorChannelsLabel"), channelCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "Неизвестно"),
+            new(Localization.Get("VmInspectorCoalescingLabel"), capture is not null ? $"{capture.CoalescedSnapshotCount} снимков" : render is not null ? $"{render.CoalescedSnapshotCount} снимков" : "Нет данных")
         };
         var quality = WorkerSession?.Quality switch { StreamQuality.Clean => "Чисто · синтетическая модель", StreamQuality.Warning => "Предупреждение · синтетическая модель", StreamQuality.Failed => "Ошибка · синтетическая модель", _ => "Неизвестно / не оценено" };
         var cleanup = WorkerSession?.CleanupStatus switch { "SYNTHETIC_CLEANUP_COMPLETED" => "Фиктивная очистка завершена", "NOT_ATTEMPTED" => "Не выполнялась", null or "UNKNOWN" => "Неизвестно / не оценено", var code => code };
         return
         [
-            new("CONNECTION", connectionFields),
-            new("SESSION", sessionFields),
-            new("MEASUREMENTS", measurementFields),
-            new("EVIDENCE", [new("Качество потока", quality, WorkerSession?.Quality.ToString()), new("Очистка", cleanup, WorkerSession?.CleanupStatus), new("Физическая маршрутизация", "Неизвестно / не оценено"), new("Наблюдение", "Синтетическая модель · реальный звук не измерялся")])
+            new(Localization.Get("VmInspectorConnectionSection"), connectionFields),
+            new(Localization.Get("VmInspectorSessionSection"), sessionFields),
+            new(Localization.Get("VmInspectorMeasurementsSection"), measurementFields),
+            new(Localization.Get("VmInspectorEvidenceSection"), [new(Localization.Get("VmInspectorStreamQualityLabel"), quality, WorkerSession?.Quality.ToString()), new(Localization.Get("VmInspectorCleanupLabel"), cleanup, WorkerSession?.CleanupStatus), new(Localization.Get("VmInspectorPhysicalRoutingLabel"), "Неизвестно / не оценено"), new(Localization.Get("VmInspectorObservationLabel"), "Синтетическая модель · реальный звук не измерялся")])
         ];
     }
 

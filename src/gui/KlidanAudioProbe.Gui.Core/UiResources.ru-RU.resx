@@ -635,4 +635,25 @@
   <data name="VmInspectorStateLabel" xml:space="preserve"><value>Состояние</value></data>
   <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Транспорт</value></data>
   <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Происхождение</value></data>
+  <data name="VmInspectorReasonLabel" xml:space="preserve"><value>Причина</value></data>
+  <data name="VmInspectorModeLabel" xml:space="preserve"><value>Режим</value></data>
+  <data name="VmInspectorEndpointLabel" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="VmInspectorFormatLabel" xml:space="preserve"><value>Формат</value></data>
+  <data name="VmInspectorWindowsChannelLabel" xml:space="preserve"><value>Канал Windows</value></data>
+  <data name="VmInspectorDurationLabel" xml:space="preserve"><value>Длительность</value></data>
+  <data name="VmInspectorIdLabel" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorFullUuidLabel" xml:space="preserve"><value>Полный UUID</value></data>
+  <data name="VmInspectorSessionLabel" xml:space="preserve"><value>Сессия</value></data>
+  <data name="VmInspectorSnapshotLabel" xml:space="preserve"><value>Снимок</value></data>
+  <data name="VmInspectorDataLabel" xml:space="preserve"><value>Данные</value></data>
+  <data name="VmInspectorChannelsLabel" xml:space="preserve"><value>Каналов</value></data>
+  <data name="VmInspectorCoalescingLabel" xml:space="preserve"><value>Объединение</value></data>
+  <data name="VmInspectorStreamQualityLabel" xml:space="preserve"><value>Качество потока</value></data>
+  <data name="VmInspectorCleanupLabel" xml:space="preserve"><value>Очистка</value></data>
+  <data name="VmInspectorPhysicalRoutingLabel" xml:space="preserve"><value>Физическая маршрутизация</value></data>
+  <data name="VmInspectorObservationLabel" xml:space="preserve"><value>Наблюдение</value></data>
+  <data name="VmInspectorConnectionSection" xml:space="preserve"><value>СОЕДИНЕНИЕ</value></data>
+  <data name="VmInspectorSessionSection" xml:space="preserve"><value>СЕССИЯ</value></data>
+  <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>ИЗМЕРЕНИЯ</value></data>
+  <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>ДАННЫЕ</value></data>
 </root>

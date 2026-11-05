@@ -635,4 +635,25 @@
   <data name="VmInspectorStateLabel" xml:space="preserve"><value>State</value></data>
   <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Transport</value></data>
   <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Provenance</value></data>
+  <data name="VmInspectorReasonLabel" xml:space="preserve"><value>Reason</value></data>
+  <data name="VmInspectorModeLabel" xml:space="preserve"><value>Mode</value></data>
+  <data name="VmInspectorEndpointLabel" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="VmInspectorFormatLabel" xml:space="preserve"><value>Format</value></data>
+  <data name="VmInspectorWindowsChannelLabel" xml:space="preserve"><value>Windows channel</value></data>
+  <data name="VmInspectorDurationLabel" xml:space="preserve"><value>Duration</value></data>
+  <data name="VmInspectorIdLabel" xml:space="preserve"><value>ID</value></data>
+  <data name="VmInspectorFullUuidLabel" xml:space="preserve"><value>Full UUID</value></data>
+  <data name="VmInspectorSessionLabel" xml:space="preserve"><value>Session</value></data>
+  <data name="VmInspectorSnapshotLabel" xml:space="preserve"><value>Snapshot</value></data>
+  <data name="VmInspectorDataLabel" xml:space="preserve"><value>Data</value></data>
+  <data name="VmInspectorChannelsLabel" xml:space="preserve"><value>Channels</value></data>
+  <data name="VmInspectorCoalescingLabel" xml:space="preserve"><value>Coalescing</value></data>
+  <data name="VmInspectorStreamQualityLabel" xml:space="preserve"><value>Stream quality</value></data>
+  <data name="VmInspectorCleanupLabel" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="VmInspectorPhysicalRoutingLabel" xml:space="preserve"><value>Physical routing</value></data>
+  <data name="VmInspectorObservationLabel" xml:space="preserve"><value>Observation</value></data>
+  <data name="VmInspectorConnectionSection" xml:space="preserve"><value>CONNECTION</value></data>
+  <data name="VmInspectorSessionSection" xml:space="preserve"><value>SESSION</value></data>
+  <data name="VmInspectorMeasurementsSection" xml:space="preserve"><value>MEASUREMENTS</value></data>
+  <data name="VmInspectorEvidenceSection" xml:space="preserve"><value>EVIDENCE</value></data>
 </root>
