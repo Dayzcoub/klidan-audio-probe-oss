@@ -871,4 +871,20 @@
   <data name="VmInspectorLastEvent" xml:space="preserve"><value>Последнее событие: №{0} {1} · {2:HH:mm:ss.fff}</value></data>
   <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>Событий пока нет.</value></data>
   <data name="VmInspectorNoEvents" xml:space="preserve"><value>Нет событий.</value></data>
+  <data name="VmDuplexPairChanged" xml:space="preserve"><value>Пара или настройки изменились; требуется новое подтверждение.</value></data>
+  <data name="VmDuplexRunning" xml:space="preserve"><value>RUNNING · {0} · до 5 секунд на точной паре; Capture отбросит данные, Render отправляет тишину.</value></data>
+  <data name="VmDuplexBindingChanged" xml:space="preserve"><value>Пара или Worker изменились во время Duplex; текущий результат неизвестен и не может разрешить рекомендацию профиля.</value></data>
+  <data name="VmDuplexFailureStatus" xml:space="preserve"><value>{0} · {1}: {2}. {3}</value></data>
+  <data name="VmDuplexCleanupUnconfirmed" xml:space="preserve"><value>Stop/cleanup не подтверждены.</value></data>
+  <data name="VmStreamCancellationAccepted" xml:space="preserve"><value>Отмена принята к обработке worker; ожидается Stop и итоговый отчёт.</value></data>
+  <data name="VmStreamConsentInvalidated" xml:space="preserve"><value>Цель или настройки изменились; подтверждение сброшено.</value></data>
+  <data name="VmStreamUnknownValue" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmStreamAwaitingWorkerResult" xml:space="preserve"><value>Ожидание результата worker.</value></data>
+  <data name="VmStreamProgress" xml:space="preserve"><value>Выполняется реальный {0} stream · {1} · до 5 секунд.</value></data>
+  <data name="VmStreamRunning" xml:space="preserve"><value>{0}: RUNNING · {1} · ожидается итоговый отчёт.</value></data>
+  <data name="VmStreamBindingChanged" xml:space="preserve"><value>Worker или привязка к точному endpoint изменились; результат потока нельзя считать текущим.</value></data>
+  <data name="VmStreamResultOutcome" xml:space="preserve"><value>{0} stream: {1}; Start={2}; frames={3}; quality={4}. {5}</value></data>
+  <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Длительная Stability и Duplex: NOT_RUN.</value></data>
+  <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
+  <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
 </root>

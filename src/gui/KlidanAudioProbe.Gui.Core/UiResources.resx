@@ -871,4 +871,20 @@
   <data name="VmInspectorLastEvent" xml:space="preserve"><value>Last event: #{0} {1} · {2:HH:mm:ss.fff}</value></data>
   <data name="VmInspectorNoEventsYet" xml:space="preserve"><value>No events yet.</value></data>
   <data name="VmInspectorNoEvents" xml:space="preserve"><value>No events.</value></data>
+  <data name="VmDuplexPairChanged" xml:space="preserve"><value>The pair or settings changed; new consent is required.</value></data>
+  <data name="VmDuplexRunning" xml:space="preserve"><value>RUNNING · {0} · up to 5 seconds on the exact pair; Capture discards data and Render sends silence.</value></data>
+  <data name="VmDuplexBindingChanged" xml:space="preserve"><value>The pair or Worker changed during Duplex; the current result is unknown and cannot authorize a profile recommendation.</value></data>
+  <data name="VmDuplexFailureStatus" xml:space="preserve"><value>{0} · {1}: {2}. {3}</value></data>
+  <data name="VmDuplexCleanupUnconfirmed" xml:space="preserve"><value>Stop/cleanup was not confirmed.</value></data>
+  <data name="VmStreamCancellationAccepted" xml:space="preserve"><value>Cancellation was accepted by Worker; waiting for Stop and the final report.</value></data>
+  <data name="VmStreamConsentInvalidated" xml:space="preserve"><value>The target or settings changed; consent was cleared.</value></data>
+  <data name="VmStreamUnknownValue" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmStreamAwaitingWorkerResult" xml:space="preserve"><value>Waiting for the Worker result.</value></data>
+  <data name="VmStreamProgress" xml:space="preserve"><value>Running real {0} stream · {1} · up to 5 seconds.</value></data>
+  <data name="VmStreamRunning" xml:space="preserve"><value>{0}: RUNNING · {1} · waiting for the final report.</value></data>
+  <data name="VmStreamBindingChanged" xml:space="preserve"><value>Worker or exact endpoint binding changed; the stream outcome cannot be accepted as current.</value></data>
+  <data name="VmStreamResultOutcome" xml:space="preserve"><value>{0} stream: {1}; Start={2}; frames={3}; quality={4}. {5}</value></data>
+  <data name="VmStreamStabilityDuplexNotRun" xml:space="preserve"><value>Long-term Stability and Duplex: NOT_RUN.</value></data>
+  <data name="VmStreamFailureDetail" xml:space="preserve"><value>{0}: {1}; {2}</value></data>
+  <data name="VmStreamFailureOutcome" xml:space="preserve"><value>{0} stream: {1}. {2} {3}</value></data>
 </root>

@@ -2118,15 +2118,15 @@ public sealed class MainViewModel : ViewModel
     private async Task ConfirmDuplexValidationAsync()
     {
         if (_worker is null || !DuplexConsentPending || !DuplexConsentChecked || _pendingDuplexConsent is not { } consent || _pendingDuplexPeriod is not { } period || SelectedDuplexCaptureEndpoint is not { EndpointId: { } captureId, DeviceState: "ACTIVE" } capture || SelectedDuplexRenderEndpoint is not { EndpointId: { } renderId, DeviceState: "ACTIVE" } render) return;
-        if (!HasCurrentDuplexPair || consent.RequestFingerprint != DuplexConsent.Fingerprint(captureId, renderId, period, 5, "OFF")) { CancelDuplexConsent(); _duplexStatus = "Пара или настройки изменились; требуется новое подтверждение."; Changed(nameof(DuplexStatus)); return; }
+        if (!HasCurrentDuplexPair || consent.RequestFingerprint != DuplexConsent.Fingerprint(captureId, renderId, period, 5, "OFF")) { CancelDuplexConsent(); _duplexStatus = Localization.Get("VmDuplexPairChanged"); Changed(nameof(DuplexStatus)); return; }
         _pendingDuplexConsent = null; _pendingDuplexPeriod = null; DuplexConsentPending = false; DuplexConsentChecked = false;
         var operationId = Guid.NewGuid().ToString("D"); _activeDuplexOperationId = operationId; _duplexValidationRunning = true;
-        _duplexStatus = $"RUNNING · {period} · до 5 секунд на точной паре; Capture отбросит данные, Render отправляет тишину.";
+        _duplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexRunning"), period);
         Changed(nameof(DuplexValidationRunning)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(DuplexStatus)); CancelDuplexValidationCommand.Refresh(); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh();
         try
         {
             var result = await _worker.ValidateDuplexAsync(operationId, captureId, renderId, period, 5, "OFF", consent);
-            if (SelectedDuplexCaptureEndpoint?.EndpointId != captureId || SelectedDuplexRenderEndpoint?.EndpointId != renderId || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException("Pair/worker changed during Duplex; current result is unknown and cannot authorize profile recommendation.");
+            if (SelectedDuplexCaptureEndpoint?.EndpointId != captureId || SelectedDuplexRenderEndpoint?.EndpointId != renderId || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException(Localization.Get("VmDuplexBindingChanged"));
             _duplexValidations[period] = result;
             var assessment = DuplexAssessments.Single(a => a.Period == period);
             _duplexStatus = $"{period}: {assessment.Classification} · Capture {assessment.CaptureCoverage} · Render {assessment.RenderCoverage}. {assessment.Reason}";
@@ -2140,7 +2140,7 @@ public sealed class MainViewModel : ViewModel
         }
         catch (Exception ex)
         {
-            _duplexStatus = $"{(ex is IOException or TimeoutException or OperationCanceledException ? "UNKNOWN" : "FAILED")} · {ex.GetType().Name}: {ex.Message}. Stop/cleanup не подтверждены.";
+            _duplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexFailureStatus"), ex is IOException or TimeoutException or OperationCanceledException ? "UNKNOWN" : "FAILED", ex.GetType().Name, ex.Message, Localization.Get("VmDuplexCleanupUnconfirmed"));
         }
         finally
         {
@@ -2157,7 +2157,7 @@ public sealed class MainViewModel : ViewModel
     private async Task CancelStreamValidationAsync()
     {
         if (_streamValidationCancellation is null || _worker is null || _activeStreamOperationId is null) return;
-        _streamValidationStatus = "Отмена принята к обработке worker; ожидается Stop и итоговый отчёт."; Changed(nameof(StreamValidationStatus));
+        _streamValidationStatus = Localization.Get("VmStreamCancellationAccepted"); Changed(nameof(StreamValidationStatus));
         try { await _worker.CancelStreamValidationAsync(_activeStreamOperationId).ConfigureAwait(false); }
         catch { _streamValidationCancellation.Cancel(); throw; }
     }
@@ -2165,22 +2165,22 @@ public sealed class MainViewModel : ViewModel
     private async Task ConfirmStreamValidationAsync()
     {
         if (!_streamConsentPending || !_streamConsentChecked || _pendingStreamConsent is not { } consent || _worker is null || SelectedWindowsEndpoint is not { EndpointId: { } endpointId, DeviceState: "ACTIVE" } endpoint || SelectedStreamCandidate is not { } candidate) return;
-        if (!CanUseSelectedWindowsEndpoint || WorkerState.State != WorkerConnectionState.ConnectedFake || consent.RequestFingerprint != RealStreamConsent.Fingerprint(endpointId, endpoint.Direction, candidate.Period.ToUpperInvariant(), 5, "OFF")) { CancelStreamConsent(); _streamValidationStatus = "Цель или настройки изменились; подтверждение сброшено."; Changed(nameof(StreamValidationStatus)); return; }
+        if (!CanUseSelectedWindowsEndpoint || WorkerState.State != WorkerConnectionState.ConnectedFake || consent.RequestFingerprint != RealStreamConsent.Fingerprint(endpointId, endpoint.Direction, candidate.Period.ToUpperInvariant(), 5, "OFF")) { CancelStreamConsent(); _streamValidationStatus = Localization.Get("VmStreamConsentInvalidated"); Changed(nameof(StreamValidationStatus)); return; }
         CancelStreamConsent();
         var period = candidate.Period.ToUpperInvariant();
         _lastStreamAttemptPeriod = period;
         _streamAttemptedSinceProfileSave = true;
-        _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "неизвестно", candidate.InitializeStatus, "RUNNING", "неизвестно", "неизвестно", "UNKNOWN", "неизвестно", "RUNNING", "NOT_RUN", "RUNNING", "Ожидание результата worker.");
+        _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Localization.Get("VmStreamUnknownValue"), candidate.InitializeStatus, "RUNNING", Localization.Get("VmStreamUnknownValue"), Localization.Get("VmStreamUnknownValue"), "UNKNOWN", Localization.Get("VmStreamUnknownValue"), "RUNNING", "NOT_RUN", "RUNNING", Localization.Get("VmStreamAwaitingWorkerResult"));
         _streamValidationRunning = true; Changed(nameof(StreamValidationRunning)); Changed(nameof(StreamValidationRows)); RequestStreamValidationCommand.Refresh(); CancelStreamValidationCommand.Refresh();
         _streamValidationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         _activeStreamOperationId = Guid.NewGuid().ToString("D");
-        _streamValidationProgress = $"Выполняется реальный {endpoint.Direction} stream · {period} · до 5 секунд.";
-        _streamValidationStatus = $"{period}: RUNNING · {endpoint.Direction} · ожидается итоговый отчёт.";
+        _streamValidationProgress = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamProgress"), endpoint.Direction, period);
+        _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamRunning"), period, endpoint.Direction);
         Changed(nameof(StreamValidationProgress)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamEvidencePersistenceStatus));
         try
         {
             var result = await _worker.ValidateStreamAsync(_activeStreamOperationId, endpointId, endpoint.Direction, period, 5, "OFF", consent, _streamValidationCancellation.Token);
-            if (result.EndpointId != endpointId || result.Direction != endpoint.Direction || WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException("Worker or exact endpoint binding changed; stream outcome cannot be accepted as current.");
+            if (result.EndpointId != endpointId || result.Direction != endpoint.Direction || WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException(Localization.Get("VmStreamBindingChanged"));
             _streamValidations.Add(result);
             if (_deviceScanResult is { } currentScan && currentScan.EndpointId == endpointId && currentScan.Direction == endpoint.Direction)
                 _deviceScanResult = currentScan with { StreamValidations = _streamValidations.Where(s => s.EndpointId == endpointId && s.Direction == endpoint.Direction).ToArray() };
@@ -2188,7 +2188,7 @@ public sealed class MainViewModel : ViewModel
             var row = StreamValidationResultRowFromReport(period, report);
             _streamValidationRows[period] = row;
             _streamValidationStatus = $"{period}: {row.FinalStatus}. {row.Details}";
-            OperatorResultOutcome = $"{period} stream: {row.FinalStatus}; Start={row.StartOutcome}; frames={row.FramesProcessedExpected}; quality={row.StreamQuality}. Длительная Stability и Duplex: NOT_RUN.";
+            OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamResultOutcome"), period, row.FinalStatus, row.StartOutcome, row.FramesProcessedExpected, row.StreamQuality, Localization.Get("VmStreamStabilityDuplexNotRun"));
             Changed(nameof(DeviceScanResult)); Changed(nameof(DeviceScanResultSummary)); Changed(nameof(StreamValidations)); Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus)); Changed(nameof(OperatorResultStreamEvidenceNote)); Changed(nameof(OperatorResultProfileEvidenceNote)); Changed(nameof(CanSaveDeviceProfile));
         }
         catch (Exception ex)
@@ -2197,10 +2197,10 @@ public sealed class MainViewModel : ViewModel
                 ? commandError.ErrorCode.Contains("TIMEOUT", StringComparison.Ordinal) || commandError.ErrorCode.Contains("UNKNOWN", StringComparison.Ordinal) || commandError.ErrorCode.Contains("DISCONNECT", StringComparison.Ordinal)
                 : ex is TimeoutException or OperationCanceledException or IOException;
             var status = unknown ? "UNKNOWN" : "FAILED";
-            var detail = $"{ex.GetType().Name}: {ex.Message}; Stop/cleanup не подтверждены.";
+            var detail = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamFailureDetail"), ex.GetType().Name, ex.Message, Localization.Get("VmDuplexCleanupUnconfirmed"));
             _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "неизвестно", candidate.InitializeStatus, "UNKNOWN", "неизвестно", "неизвестно", "UNKNOWN", "неизвестно", "UNKNOWN", "UNKNOWN", status, detail);
             _streamValidationStatus = $"{period}: {status}. {detail}";
-            OperatorResultOutcome = $"{period} stream: {status}. {detail} Длительная Stability и Duplex: NOT_RUN.";
+            OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamFailureOutcome"), period, status, detail, Localization.Get("VmStreamStabilityDuplexNotRun"));
             Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus));
         }
         finally
