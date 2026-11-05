@@ -565,4 +565,22 @@
   <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · синтетические уровни по каналам</value></data>
   <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Измерение: {0} · источник: {1}</value></data>
   <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>Профиль не выбран.</value></data>
+  <data name="VmWorkerMeterStale" xml:space="preserve"><value>УСТАРЕЛО · последнее синтетическое наблюдение сохранено; новых данных нет.</value></data>
+  <data name="VmWorkerMeterSnapshotMissing" xml:space="preserve"><value>Снимок измерителя ещё не получен.</value></data>
+  <data name="VmWorkerMeterFinalWindowMissing" xml:space="preserve"><value>ФИНАЛЬНО · снимок {0} не содержит завершённого окна; уровни неизвестны.</value></data>
+  <data name="VmWorkerMeterFinalData" xml:space="preserve"><value>ФИНАЛЬНЫЕ синтетические данные · снимок {0} · каналов: {1}; качество и cleanup не подтверждены.</value></data>
+  <data name="VmWorkerMeterStopping" xml:space="preserve"><value>STOPPING · снимок {0} заморожен до терминального события.</value></data>
+  <data name="VmWorkerMeterWindowMissing" xml:space="preserve"><value>Нет завершённого окна · уровни неизвестны, это не тишина.</value></data>
+  <data name="VmWorkerMeterLive" xml:space="preserve"><value>LIVE · синтетический снимок {0} · окно {1} · каналов: {2} · это не аудиоизмерение.</value></data>
+  <data name="VmWorkerMeterRenderMode" xml:space="preserve"><value>Render · модель цифрового выхода</value></data>
+  <data name="VmWorkerMeterNoSession" xml:space="preserve"><value>Нет сессии</value></data>
+  <data name="VmWorkerMeterFormatUnknown" xml:space="preserve"><value>Формат и длительность неизвестны</value></data>
+  <data name="VmWorkerMeterSnapshotNoData" xml:space="preserve"><value>Снимок: нет данных</value></data>
+  <data name="VmWorkerMeterCoalescedNoData" xml:space="preserve"><value>Объединение: нет данных</value></data>
+  <data name="VmWorkerEventsMissing" xml:space="preserve"><value>События отсутствуют.</value></data>
+  <data name="VmWorkerTimelineEmpty" xml:space="preserve"><value>Событий worker fake пока нет.</value></data>
+  <data name="VmDemoEventsEmpty" xml:space="preserve"><value>Событий пока нет. Запустите синтетическую сессию или выберите сценарий.</value></data>
+  <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Сначала выберите доступное демонстрационное устройство.</value></data>
+  <data name="VmInspectorDetails" xml:space="preserve"><value>Сведения</value></data>
+  <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Данные симуляции</value></data>
 </root>

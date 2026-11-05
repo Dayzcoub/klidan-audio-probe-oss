@@ -565,4 +565,22 @@
   <data name="VmWorkerCaptureMeterHeading" xml:space="preserve"><value>Capture · synthetic per-channel levels</value></data>
   <data name="VmHistoricalRecoveryPreviewDates" xml:space="preserve"><value>Measurement: {0} · source: {1}</value></data>
   <data name="VmSavedProfileNotSelected" xml:space="preserve"><value>No profile selected.</value></data>
+  <data name="VmWorkerMeterStale" xml:space="preserve"><value>STALE · last synthetic observation retained; no new data.</value></data>
+  <data name="VmWorkerMeterSnapshotMissing" xml:space="preserve"><value>No meter snapshot has been received.</value></data>
+  <data name="VmWorkerMeterFinalWindowMissing" xml:space="preserve"><value>FINAL · snapshot {0} contains no completed window; levels are unknown.</value></data>
+  <data name="VmWorkerMeterFinalData" xml:space="preserve"><value>FINAL synthetic data · snapshot {0} · {1} channels; quality and cleanup are unconfirmed.</value></data>
+  <data name="VmWorkerMeterStopping" xml:space="preserve"><value>STOPPING · snapshot {0} is frozen until the terminal event.</value></data>
+  <data name="VmWorkerMeterWindowMissing" xml:space="preserve"><value>No completed window · levels are unknown; this does not mean silence.</value></data>
+  <data name="VmWorkerMeterLive" xml:space="preserve"><value>LIVE · synthetic snapshot {0} · window {1} · {2} channels · not an audio measurement.</value></data>
+  <data name="VmWorkerMeterRenderMode" xml:space="preserve"><value>Render · digital output model</value></data>
+  <data name="VmWorkerMeterNoSession" xml:space="preserve"><value>No session</value></data>
+  <data name="VmWorkerMeterFormatUnknown" xml:space="preserve"><value>Format and duration unknown</value></data>
+  <data name="VmWorkerMeterSnapshotNoData" xml:space="preserve"><value>Snapshot: no data</value></data>
+  <data name="VmWorkerMeterCoalescedNoData" xml:space="preserve"><value>Coalesced: no data</value></data>
+  <data name="VmWorkerEventsMissing" xml:space="preserve"><value>No events.</value></data>
+  <data name="VmWorkerTimelineEmpty" xml:space="preserve"><value>No fake Worker events yet.</value></data>
+  <data name="VmDemoEventsEmpty" xml:space="preserve"><value>No events yet. Start a synthetic session or choose a scenario.</value></data>
+  <data name="VmChooseDemoDeviceFirst" xml:space="preserve"><value>Select an available demo device first.</value></data>
+  <data name="VmInspectorDetails" xml:space="preserve"><value>Details</value></data>
+  <data name="VmInspectorDemoProvenance" xml:space="preserve"><value>DEMO · Simulation data</value></data>
 </root>

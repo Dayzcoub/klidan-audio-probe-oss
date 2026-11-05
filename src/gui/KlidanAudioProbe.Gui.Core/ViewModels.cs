@@ -1069,41 +1069,41 @@ public sealed class MainViewModel : ViewModel
             var count = WorkerSession?.Mode == SessionMode.Render ? _workerRenderMeter?.ChannelCount : _workerCaptureMeter?.ChannelCount;
             var sequence = WorkerSession?.Mode == SessionMode.Render ? _workerRenderMeter?.SnapshotSequence : _workerCaptureMeter?.SnapshotSequence;
             var completed = WorkerSession?.Mode == SessionMode.Render ? _workerRenderMeter?.CompletedWindowIndex : _workerCaptureMeter?.CompletedWindowIndex;
-            if (_workerMeterStale) return "УСТАРЕЛО · последнее синтетическое наблюдение сохранено; новых данных нет.";
-            if (sequence is null) return "Нет полученного снимка измерителя.";
-            if (_workerMeterFinal) return completed is null ? $"ФИНАЛЬНО · снимок {sequence} не содержит завершённого окна; уровни неизвестны." : $"ФИНАЛЬНЫЕ синтетические данные · снимок {sequence} · {count} каналов; качество и cleanup не подтверждены.";
-            if (WorkerSession?.Lifecycle == SessionLifecycle.Stopping) return $"STOPPING · снимок {sequence} заморожен до терминального события.";
-            if (completed is null) return "Нет завершённого окна · уровни неизвестны, это не тишина.";
-            return $"LIVE · синтетический снимок {sequence} · окно {completed} · {count} каналов · не аудиоизмерение.";
+            if (_workerMeterStale) return Localization.Get("VmWorkerMeterStale");
+            if (sequence is null) return Localization.Get("VmWorkerMeterSnapshotMissing");
+            if (_workerMeterFinal) return completed is null ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterFinalWindowMissing"), sequence) : string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterFinalData"), sequence, count);
+            if (WorkerSession?.Lifecycle == SessionLifecycle.Stopping) return string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterStopping"), sequence);
+            if (completed is null) return Localization.Get("VmWorkerMeterWindowMissing");
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterLive"), sequence, completed, count);
         }
     }
-    public string WorkerMeterModeLabel => WorkerSession?.Mode switch { SessionMode.Capture => "Capture", SessionMode.Render => "Render · модель цифрового выхода", _ => "Нет сессии" };
-    public string WorkerMeterFormatSummary => _workerSessionSettings is { } s ? $"{s.FormatId} · {s.SampleRate} Гц · {s.ChannelCount} каналов · {s.DurationSeconds} с" : "Формат и длительность неизвестны";
+    public string WorkerMeterModeLabel => WorkerSession?.Mode switch { SessionMode.Capture => "Capture", SessionMode.Render => Localization.Get("VmWorkerMeterRenderMode"), _ => Localization.Get("VmWorkerMeterNoSession") };
+    public string WorkerMeterFormatSummary => _workerSessionSettings is { } s ? $"{s.FormatId} · {s.SampleRate} Гц · {s.ChannelCount} каналов · {s.DurationSeconds} с" : Localization.Get("VmWorkerMeterFormatUnknown");
     public string WorkerMeterSnapshotSummary => WorkerSession?.Mode == SessionMode.Render
-        ? _workerRenderMeter is { } r ? $"Снимок {r.SnapshotSequence} · {r.ChannelCount} каналов" : "Снимок: нет данных"
-        : _workerCaptureMeter is { } c ? $"Снимок {c.SnapshotSequence} · {c.ChannelCount} каналов" : "Снимок: нет данных";
+        ? _workerRenderMeter is { } r ? $"Снимок {r.SnapshotSequence} · {r.ChannelCount} каналов" : Localization.Get("VmWorkerMeterSnapshotNoData")
+        : _workerCaptureMeter is { } c ? $"Снимок {c.SnapshotSequence} · {c.ChannelCount} каналов" : Localization.Get("VmWorkerMeterSnapshotNoData");
     public string WorkerMeterCoalescingSummary => WorkerSession?.Mode == SessionMode.Render
-        ? _workerRenderMeter is { } r ? $"Объединено: {r.CoalescedSnapshotCount}" : "Объединение: нет данных"
-        : _workerCaptureMeter is { } c ? $"Объединено: {c.CoalescedSnapshotCount}" : "Объединение: нет данных";
+        ? _workerRenderMeter is { } r ? $"Объединено: {r.CoalescedSnapshotCount}" : Localization.Get("VmWorkerMeterCoalescedNoData")
+        : _workerCaptureMeter is { } c ? $"Объединено: {c.CoalescedSnapshotCount}" : Localization.Get("VmWorkerMeterCoalescedNoData");
     public string WorkerConsentText => _workerPendingSettings is { } s ? $"{s.Direction} · {s.EndpointId} · {s.FormatId} · {s.ChannelCount} каналов · период {s.Period} · MMCSS {s.Mmcss} · {s.DurationSeconds} с · сценарий {s.Scenario} · канал Windows {s.RenderChannel?.ToString() ?? "не применяется"}. Только синтетическая операция; физическое соответствие UNKNOWN." : "Нет настроек для подтверждения.";
     public string WorkerSessionSettingsText => _workerSessionSettings is { } s ? $"{s.Direction} · {s.EndpointId} · {s.FormatId} · {s.ChannelCount} каналов · топология {s.TopologyId} · период {s.Period} · MMCSS {s.Mmcss} · {s.DurationSeconds} с · канал Windows {s.RenderChannel?.ToString() ?? "не применяется"} · {s.Scenario}" : "Неизвестно: сессия ещё не принята worker.";
     public ObservableCollection<WorkerTimelineEntryDto> WorkerTimeline { get; } = [];
     private WorkerTimelineEntryDto? _selectedWorkerTimelineEntry;
     public WorkerTimelineEntryDto? SelectedWorkerTimelineEntry { get => _selectedWorkerTimelineEntry; set { if (Set(ref _selectedWorkerTimelineEntry, value)) { Changed(nameof(WorkerSelectedEventDetails)); RefreshContext(); } } }
-    public string WorkerSelectedEventDetails => (SelectedWorkerTimelineEntry ?? WorkerTimeline.LastOrDefault())?.DiagnosticDetails ?? "События отсутствуют.";
-    public string WorkerEmptyTimelineText => WorkerTimeline.Count == 0 ? "Событий worker fake пока нет." : string.Empty;
+    public string WorkerSelectedEventDetails => (SelectedWorkerTimelineEntry ?? WorkerTimeline.LastOrDefault())?.DiagnosticDetails ?? Localization.Get("VmWorkerEventsMissing");
+    public string WorkerEmptyTimelineText => WorkerTimeline.Count == 0 ? Localization.Get("VmWorkerTimelineEmpty") : string.Empty;
     public IReadOnlyList<ChoiceOption> WorkerPeriodOptions { get; } = [new("DEFAULT", "По умолчанию"), new("MINIMUM", "Минимальный")];
     public IReadOnlyList<ChoiceOption> WorkerMmcssOptions { get; } = [new("OFF", "Выключен"), new("PRO_AUDIO", "Pro Audio")];
     public IReadOnlyList<ChoiceOption> WorkerScenarioOptions { get; } = [new("NORMAL", "Обычная сессия"), new("ALL_SILENT", "Только тишина"), new("NO_WINDOW", "Нет завершённого окна"), new("WARNING", "Предупреждение"), new("FAILURE", "Синтетическая ошибка"), new("DEVICE_LOSS", "Потеря устройства (fake)")];
     public IReadOnlyList<SelectionOption> DurationOptions { get; } = [new(1, "1 секунда"), new(3, "3 секунды"), new(5, "5 секунд"), new(10, "10 секунд")];
     public ObservableCollection<ProbeEventDto> Events { get; }
     public ProbeEventDto? LastEvent => Events.LastOrDefault();
-    public string EmptyEventMessage => Events.Count == 0 ? "Событий пока нет. Запустите синтетическую сессию или выберите сценарий." : string.Empty;
-    public string ConfirmationText => _pending is null ? "Сначала выберите доступное демонстрационное устройство." : _pending.Mode == SessionMode.Render
+    public string EmptyEventMessage => Events.Count == 0 ? Localization.Get("VmDemoEventsEmpty") : string.Empty;
+    public string ConfirmationText => _pending is null ? Localization.Get("VmChooseDemoDeviceFirst") : _pending.Mode == SessionMode.Render
         ? $"Подтвердите симуляцию выхода: {_pending.Endpoint.Name}, канал Windows {_pending.RenderChannel}, {_pending.DurationSeconds} с. Звук не воспроизводится."
         : $"Подтвердите симуляцию Capture: {_pending.Endpoint.Name}, {_pending.DurationSeconds} с. Реального захвата нет.";
-    public string InspectorTitle { get; private set; } = "Сведения";
-    public string InspectorProvenanceText { get; private set; } = "ДЕМО · Данные симуляции";
+    public string InspectorTitle { get; private set; } = Localization.Get("VmInspectorDetails");
+    public string InspectorProvenanceText { get; private set; } = Localization.Get("VmInspectorDemoProvenance");
     public IReadOnlyList<string> InspectorDetails { get; private set; } = [];
     public IReadOnlyList<InspectorSectionDto> InspectorSections { get; private set; } = [];
     public ParameterCommand NavigateCommand { get; }
