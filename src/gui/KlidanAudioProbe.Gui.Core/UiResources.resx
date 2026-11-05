@@ -1150,4 +1150,8 @@ Fallback: {1}
   <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker disconnected before the terminal event.</value></data>
   <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Start outcome unknown; no response or terminal cleanup was observed.</value></data>
   <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>MeterSnapshot event has no validated typed Capture/Render DTO.</value></data>
+  <data name="VmInspectorIpcSequence" xml:space="preserve"><value>IPC sequence</value></data>
+  <data name="VmInspectorSequenceLocal" xml:space="preserve"><value>local</value></data>
+  <data name="VmInspectorWorkerFormatValue" xml:space="preserve"><value>{0} · {1} {2} · {3} {4}</value></data>
+  <data name="VmInspectorDurationValue" xml:space="preserve"><value>{0} {1}</value></data>
 </root>

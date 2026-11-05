@@ -1150,4 +1150,8 @@ Fallback: {1}
   <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker отключился до конечного события.</value></data>
   <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Исход Start неизвестен: не получен ответ или конечное подтверждение очистки.</value></data>
   <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>Событие MeterSnapshot не содержит проверенного типизированного DTO Capture/Render.</value></data>
+  <data name="VmInspectorIpcSequence" xml:space="preserve"><value>последовательность IPC</value></data>
+  <data name="VmInspectorSequenceLocal" xml:space="preserve"><value>локальное</value></data>
+  <data name="VmInspectorWorkerFormatValue" xml:space="preserve"><value>{0} · {1} {2} · {3} {4}</value></data>
+  <data name="VmInspectorDurationValue" xml:space="preserve"><value>{0} {1}</value></data>
 </root>

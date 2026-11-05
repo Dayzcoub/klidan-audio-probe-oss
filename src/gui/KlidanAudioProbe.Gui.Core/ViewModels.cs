@@ -3133,7 +3133,7 @@ public sealed class MainViewModel : ViewModel
                     WorkerSession is { } ws ? $"{Localization.Get("VmInspectorSessionLabel")}: {ws.Id:D} · {ws.Lifecycle}" : Localization.Get("VmInspectorWorkerSessionNotStarted"),
                     $"{Localization.Get("VmInspectorStreamQualityLabel")}: {WorkerSession?.Quality.ToString() ?? "UNKNOWN"}",
                     $"{Localization.Get("VmInspectorCleanupLabel")}: {WorkerSession?.CleanupStatus ?? "UNKNOWN"}",
-                    WorkerTimeline.LastOrDefault() is { } we ? $"{Localization.Get("VmInspectorEventLabel")}: {we.Name} · IPC sequence {we.ProtocolSequence?.ToString() ?? "локальное"}" : Localization.Get("VmInspectorWorkerEventsMissing"),
+                    WorkerTimeline.LastOrDefault() is { } we ? $"{Localization.Get("VmInspectorEventLabel")}: {we.Name} · {Localization.Get("VmInspectorIpcSequence")}: {we.ProtocolSequence?.ToString() ?? Localization.Get("VmInspectorSequenceLocal")}" : Localization.Get("VmInspectorWorkerEventsMissing"),
                     $"{Localization.Get("VmInspectorPhysicalMatchLabel")}: UNKNOWN · {Localization.Get("VmInspectorWorkerDataSynthetic")}"
                 ];
                 break;
@@ -3176,11 +3176,11 @@ public sealed class MainViewModel : ViewModel
         var sessionFields = new List<InspectorFieldDto>();
         if (WorkerSession is { } session)
         {
-            sessionFields.Add(new(Localization.Get("VmInspectorModeLabel"), session.Mode == SessionMode.Capture ? "Capture" : "Render", session.Mode.ToString()));
+            sessionFields.Add(new(Localization.Get("VmInspectorModeLabel"), Localization.Get(session.Mode == SessionMode.Capture ? "VmCaptureLabel" : "VmRenderLabel"), session.Mode.ToString()));
             sessionFields.Add(new(Localization.Get("VmInspectorEndpointLabel"), settings?.EndpointId ?? session.EndpointName));
-            sessionFields.Add(new(Localization.Get("VmInspectorFormatLabel"), settings is null ? Localization.Get("VmInspectorUnknown") : $"{settings.Encoding} · {settings.SampleRate} Гц · {settings.ChannelCount} каналов", settings?.FormatId));
+            sessionFields.Add(new(Localization.Get("VmInspectorFormatLabel"), settings is null ? Localization.Get("VmInspectorUnknown") : string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorWorkerFormatValue"), settings.Encoding, settings.SampleRate, Localization.Get("VmInspectorHertz"), settings.ChannelCount, Localization.Get("VmInspectorChannelAbbreviation")), settings?.FormatId));
             if (session.Mode == SessionMode.Render) sessionFields.Add(new(Localization.Get("VmInspectorWindowsChannelLabel"), settings?.RenderChannel?.ToString() ?? session.RenderChannel?.ToString() ?? Localization.Get("VmInspectorUnknown")));
-            sessionFields.Add(new(Localization.Get("VmInspectorDurationLabel"), settings is null ? $"{session.DurationSeconds} с" : $"{settings.DurationSeconds} с"));
+            sessionFields.Add(new(Localization.Get("VmInspectorDurationLabel"), string.Format(Localization.CurrentCulture, Localization.Get("VmInspectorDurationValue"), settings?.DurationSeconds ?? session.DurationSeconds, Localization.Get("VmInspectorSecondsAbbreviation"))));
             sessionFields.Add(new(Localization.Get("VmInspectorStateLabel"), LifecycleLabel(session.Lifecycle), session.Lifecycle.ToString()));
             sessionFields.Add(new(Localization.Get("VmInspectorIdLabel"), session.Id.ToString("N")[..8]));
             sessionFields.Add(new(Localization.Get("VmInspectorFullUuidLabel"), session.Id.ToString("D"), Copyable: true));
