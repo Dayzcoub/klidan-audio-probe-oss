@@ -2547,10 +2547,10 @@ public sealed class MainViewModel : ViewModel
             _savedProfileBindingResult = _savedProfileBindingState.Invalidate(reason);
         (_savedProfileOperatorStatus, _savedProfileOperatorHistory, _savedProfileOperatorLimitation) = reason switch
         {
-            DeviceProfileBindingInvalidationReason.WorkerDisconnected or DeviceProfileBindingInvalidationReason.WorkerRestarted or DeviceProfileBindingInvalidationReason.WorkerReplaced => ("Проверка устарела: Worker отключён или изменился.", "Текущая доступность устройства неизвестна.", "Подключите Worker заново только после штатного нового запуска; прежняя проверка не действует."),
-            DeviceProfileBindingInvalidationReason.ProfileSelectionChanged => ("Проверка устарела: выбранный профиль изменился.", "Текущее сопоставление не подтверждено.", "Повторите проверку для выбранного профиля."),
-            DeviceProfileBindingInvalidationReason.EndpointRediscovered => ("Проверка устарела: список устройств обновляется.", "Предыдущий результат не относится к новому discovery.", "Дождитесь полного списка устройств и повторите проверку."),
-            _ => ("Проверка устарела: текущий список устройств больше не подтверждён.", "Текущее сопоставление не подтверждено.", "Повторите проверку после обновления Worker и списка устройств.")
+            DeviceProfileBindingInvalidationReason.WorkerDisconnected or DeviceProfileBindingInvalidationReason.WorkerRestarted or DeviceProfileBindingInvalidationReason.WorkerReplaced => (Localization.Get("VmBindingInvalidWorker"), Localization.Get("VmBindingAvailabilityUnknown"), Localization.Get("VmBindingReconnectWorker")),
+            DeviceProfileBindingInvalidationReason.ProfileSelectionChanged => (Localization.Get("VmBindingInvalidProfileSelection"), Localization.Get("VmBindingNotConfirmed"), Localization.Get("VmBindingRetrySelectedProfile")),
+            DeviceProfileBindingInvalidationReason.EndpointRediscovered => (Localization.Get("VmBindingRediscovery"), Localization.Get("VmBindingPriorDiscoveryStale"), Localization.Get("VmBindingWaitForDiscovery")),
+            _ => (Localization.Get("VmBindingStaleDeviceList"), Localization.Get("VmBindingNotConfirmed"), Localization.Get("VmBindingRetryAfterRefresh"))
         };
         Changed(nameof(SavedProfileBindingStatus)); Changed(nameof(SavedProfileBindingExplanation)); Changed(nameof(SavedProfileBindingTechnicalDetails)); Changed(nameof(HasSavedProfileBindingAssessment));
         Changed(nameof(SavedProfileOperatorStatus)); Changed(nameof(SavedProfileOperatorHistory)); Changed(nameof(SavedProfileOperatorLimitation));
@@ -2590,8 +2590,8 @@ public sealed class MainViewModel : ViewModel
             if (discovery.Provenance != "REAL_WINDOWS_METADATA")
             {
                 InvalidateSavedProfileBinding(DeviceProfileBindingInvalidationReason.DiscoverySnapshotStale);
-                _savedProfileOperatorStatus = "Проверка отклонена: свежий список устройств не имеет REAL_WINDOWS_METADATA.";
-                _savedProfileOperatorHistory = "Текущее сопоставление не подтверждено.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingFreshMetadataRequired");
+                _savedProfileOperatorHistory = Localization.Get("VmBindingNotConfirmed");
                 return;
             }
             ApplyAutomaticDiscovery(discovery, selection);
@@ -2600,9 +2600,9 @@ public sealed class MainViewModel : ViewModel
             if (discovery.OperationState == "PARTIAL")
             {
                 _matchingSavedProfiles = [];
-                _savedProfileOperatorStatus = "Список устройств неполный. Совпадение не подтверждено.";
-                _savedProfileOperatorHistory = "Отсутствующий endpoint нельзя считать definitively absent.";
-                _savedProfileOperatorLimitation = "Повторите проверку после полного REAL_WINDOWS_METADATA discovery.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingDiscoveryIncomplete");
+                _savedProfileOperatorHistory = Localization.Get("VmBindingMissingEndpointUnknown");
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingRetryFullMetadataDiscovery");
                 Changed(nameof(SavedProfileMatchingSummary));
                 return;
             }
@@ -2644,9 +2644,9 @@ public sealed class MainViewModel : ViewModel
             else
             {
                 SelectedSavedDeviceProfile = null;
-                _savedProfileOperatorStatus = "Сохранённый профиль для этой пары устройств не найден.";
-                _savedProfileOperatorHistory = "Это не означает несовместимость устройства.";
-                _savedProfileOperatorLimitation = "Проверка выполняет только сопоставление точных ID и не применяет настройки.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingNoSavedProfile");
+                _savedProfileOperatorHistory = Localization.Get("VmBindingNoCompatibilityConclusion");
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingExactIdOnly");
             }
         }
         catch (Exception ex)

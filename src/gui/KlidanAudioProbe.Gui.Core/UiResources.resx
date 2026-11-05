@@ -817,4 +817,21 @@
   <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Check is stale: Worker disconnected.</value></data>
   <data name="VmBindingInvalidated" xml:space="preserve"><value>Check is stale: its inputs changed.</value></data>
   <data name="VmBindingNotRun" xml:space="preserve"><value>Check was not performed.</value></data>
+  <data name="VmBindingInvalidWorker" xml:space="preserve"><value>Check is stale: Worker disconnected or changed.</value></data>
+  <data name="VmBindingAvailabilityUnknown" xml:space="preserve"><value>Current device availability is unknown.</value></data>
+  <data name="VmBindingReconnectWorker" xml:space="preserve"><value>Reconnect Worker only after a normal new start; the previous check is no longer valid.</value></data>
+  <data name="VmBindingInvalidProfileSelection" xml:space="preserve"><value>Check is stale: the selected profile changed.</value></data>
+  <data name="VmBindingNotConfirmed" xml:space="preserve"><value>The current match was not confirmed.</value></data>
+  <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Repeat the check for the selected profile.</value></data>
+  <data name="VmBindingRediscovery" xml:space="preserve"><value>Check is stale: the device list is being refreshed.</value></data>
+  <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>The previous result does not apply to the new discovery.</value></data>
+  <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Wait for the complete device list, then repeat the check.</value></data>
+  <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Check is stale: the current device list is no longer confirmed.</value></data>
+  <data name="VmBindingRetryAfterRefresh" xml:space="preserve"><value>Repeat the check after refreshing Worker and the device list.</value></data>
+  <data name="VmBindingFreshMetadataRequired" xml:space="preserve"><value>Check rejected: fresh device discovery lacks REAL_WINDOWS_METADATA provenance.</value></data>
+  <data name="VmBindingMissingEndpointUnknown" xml:space="preserve"><value>A missing endpoint cannot be considered definitively absent.</value></data>
+  <data name="VmBindingRetryFullMetadataDiscovery" xml:space="preserve"><value>Repeat the check after complete REAL_WINDOWS_METADATA discovery.</value></data>
+  <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>No saved profile was found for this device pair.</value></data>
+  <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>This does not mean the device is incompatible.</value></data>
+  <data name="VmBindingExactIdOnly" xml:space="preserve"><value>The check matches exact IDs only and does not apply settings.</value></data>
 </root>

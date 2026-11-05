@@ -817,4 +817,21 @@
   <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Проверка устарела: Worker отключён.</value></data>
   <data name="VmBindingInvalidated" xml:space="preserve"><value>Проверка устарела: входные данные изменились.</value></data>
   <data name="VmBindingNotRun" xml:space="preserve"><value>Проверка не выполнена.</value></data>
+  <data name="VmBindingInvalidWorker" xml:space="preserve"><value>Проверка устарела: Worker отключён или изменился.</value></data>
+  <data name="VmBindingAvailabilityUnknown" xml:space="preserve"><value>Текущая доступность устройства неизвестна.</value></data>
+  <data name="VmBindingReconnectWorker" xml:space="preserve"><value>Подключите Worker заново только после штатного нового запуска; прежняя проверка не действует.</value></data>
+  <data name="VmBindingInvalidProfileSelection" xml:space="preserve"><value>Проверка устарела: выбранный профиль изменился.</value></data>
+  <data name="VmBindingNotConfirmed" xml:space="preserve"><value>Текущее сопоставление не подтверждено.</value></data>
+  <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Повторите проверку для выбранного профиля.</value></data>
+  <data name="VmBindingRediscovery" xml:space="preserve"><value>Проверка устарела: список устройств обновляется.</value></data>
+  <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>Предыдущий результат не относится к новому discovery.</value></data>
+  <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Дождитесь полного списка устройств и повторите проверку.</value></data>
+  <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Проверка устарела: текущий список устройств больше не подтверждён.</value></data>
+  <data name="VmBindingRetryAfterRefresh" xml:space="preserve"><value>Повторите проверку после обновления Worker и списка устройств.</value></data>
+  <data name="VmBindingFreshMetadataRequired" xml:space="preserve"><value>Проверка отклонена: свежий список устройств не имеет REAL_WINDOWS_METADATA.</value></data>
+  <data name="VmBindingMissingEndpointUnknown" xml:space="preserve"><value>Отсутствующий endpoint нельзя считать definitively absent.</value></data>
+  <data name="VmBindingRetryFullMetadataDiscovery" xml:space="preserve"><value>Повторите проверку после полного REAL_WINDOWS_METADATA discovery.</value></data>
+  <data name="VmBindingNoSavedProfile" xml:space="preserve"><value>Сохранённый профиль для этой пары устройств не найден.</value></data>
+  <data name="VmBindingNoCompatibilityConclusion" xml:space="preserve"><value>Это не означает несовместимость устройства.</value></data>
+  <data name="VmBindingExactIdOnly" xml:space="preserve"><value>Проверка выполняет только сопоставление точных ID и не применяет настройки.</value></data>
 </root>
