@@ -727,6 +727,22 @@
   <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>ПРОПУЩЕНО</value></data>
   <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>ОШИБКА</value></data>
   <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmNavigateNeedEndpoint" xml:space="preserve"><value>Сначала выберите активное устройство или точную пару Capture/Render.</value></data>
+  <data name="VmNavigateNeedRealTest" xml:space="preserve"><value>Сначала выполните реальную проверку.</value></data>
+  <data name="VmDemoDeviceUnavailable" xml:space="preserve"><value>Выберите доступное демонстрационное устройство на экране «Устройства» и откройте соответствующий режим.</value></data>
+  <data name="VmDemoStarted" xml:space="preserve"><value>Симуляция запущена. Реальные устройства не используются.</value></data>
+  <data name="VmDemoStartCancelled" xml:space="preserve"><value>Запуск отменён; сессия не начиналась.</value></data>
+  <data name="VmWorkerFakeNotStarted" xml:space="preserve"><value>Worker fake mode не запускался.</value></data>
+  <data name="VmWorkerConfirmationRequested" xml:space="preserve"><value>Запрошено подтверждение worker fake: {0}, {1}, каналов: {2}.</value></data>
+  <data name="VmWorkerStartRejected" xml:space="preserve"><value>Worker fake отклонил Start: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomeUnknown" xml:space="preserve"><value>Результат запуска неизвестен: {0}: {1}</value></data>
+  <data name="VmWorkerConsentCancelled" xml:space="preserve"><value>Запуск worker fake отменён до отправки команды.</value></data>
+  <data name="VmWorkerStopAccepted" xml:space="preserve"><value>Stop принят. Это подтверждение не означает завершение или cleanup.</value></data>
+  <data name="VmWorkerSettingsAccepted" xml:space="preserve"><value>Worker fake принял неизменяемые настройки сессии {0:D}.</value></data>
+  <data name="VmWorkerEventQueueOverflow" xml:space="preserve"><value>Очередь UI событий переполнена. Состояние операции UNKNOWN; новые данные не отображаются.</value></data>
+  <data name="VmWorkerTransportFault" xml:space="preserve"><value>Транспорт worker: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Результат Start неизвестен. Новая операция заблокирована до позднего ответа или отключения worker.</value></data>
+  <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Поздний ответ worker: запуск отвергнут ({0}).</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>

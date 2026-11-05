@@ -227,7 +227,7 @@ public sealed class MainViewModel : ViewModel
     private WorkerSessionSettingsDto? _workerPendingSettings;
     private WorkerSessionSettingsDto? _workerSessionSettings;
     private SessionDto? _workerSession;
-    private string _workerNotice = "Worker fake mode не запускался.";
+    private string _workerNotice = Localization.Get("VmWorkerFakeNotStarted");
     private long _workerTimelineSequence;
     private readonly List<WorkerEventDto> _earlyWorkerEvents = [];
     private TaskCompletionSource? _workerTerminal;
@@ -1214,8 +1214,8 @@ public sealed class MainViewModel : ViewModel
     public void NavigateOperatorStep(OperatorStep step)
     {
         if (AutomaticScanRunning && !_automaticScanTerminal && step != OperatorStep.Test) return;
-        if (step == OperatorStep.Test && !CanUseSelectedWindowsEndpoint && !HasCurrentDuplexPair) { Notice = "Сначала выберите активное устройство или точную пару Capture/Render."; WorkflowStep = OperatorStep.Device; return; }
-        if (step == OperatorStep.Result && !_automaticScanAttempted && RealFormatMatrix is null && RealInitializationResult is null && _realFormatError is null && _realInitializationError is null && !HasDuplexResults) { Notice = "Сначала выполните реальную проверку."; return; }
+        if (step == OperatorStep.Test && !CanUseSelectedWindowsEndpoint && !HasCurrentDuplexPair) { Notice = Localization.Get("VmNavigateNeedEndpoint"); WorkflowStep = OperatorStep.Device; return; }
+        if (step == OperatorStep.Result && !_automaticScanAttempted && RealFormatMatrix is null && RealInitializationResult is null && _realFormatError is null && _realInitializationError is null && !HasDuplexResults) { Notice = Localization.Get("VmNavigateNeedRealTest"); return; }
         if (Screen != ProbeScreen.Devices) Screen = ProbeScreen.Devices;
         WorkflowStep = step;
         RefreshContext();
@@ -1268,7 +1268,7 @@ public sealed class MainViewModel : ViewModel
 
     public void RequestConfirmation()
     {
-        if (!CanBegin()) { Notice = "Выберите доступное демонстрационное устройство на экране «Устройства» и откройте соответствующий режим."; return; }
+        if (!CanBegin()) { Notice = Localization.Get("VmDemoDeviceUnavailable"); return; }
         var mode = Screen == ProbeScreen.Capture ? SessionMode.Capture : SessionMode.Render;
         var endpoint = mode == SessionMode.Capture ? SelectedCaptureEndpoint! : SelectedRenderEndpoint!;
         _pendingSessionId = Guid.NewGuid();
@@ -1291,7 +1291,7 @@ public sealed class MainViewModel : ViewModel
         Record(request.Id, ProbeEventKind.Preparing, "Синтетическая подготовка.");
         Session = Session with { Lifecycle = SessionLifecycle.Started, Message = "Синтетическая сессия выполняется." };
         Record(request.Id, ProbeEventKind.Started, "Синтетическая сессия запущена.");
-        Notice = "Симуляция запущена. Реальные устройства не используются.";
+        Notice = Localization.Get("VmDemoStarted");
         _pending = null;
         _pendingSessionId = null;
         if (Session.Mode == SessionMode.Capture) NextPulse();
@@ -1305,7 +1305,7 @@ public sealed class MainViewModel : ViewModel
         _pending = null;
         _pendingSessionId = null;
         Changed(nameof(ConfirmationText));
-        Notice = "Запуск отменён; сессия не начиналась.";
+        Notice = Localization.Get("VmDemoStartCancelled");
     }
 
     private void BeginStop()
@@ -2777,7 +2777,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(WorkerConsentText));
         WorkerConsentChecked = false;
         WorkerConsentPending = true;
-        WorkerNotice = $"Запрошено подтверждение worker fake: {SelectedWorkerEndpoint.Name}, {format}, {WorkerChannelCount} каналов.";
+        WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerConfirmationRequested"), SelectedWorkerEndpoint.Name, format, WorkerChannelCount);
         AddWorkerTimeline(Guid.Empty, "SessionRequested", "REQUESTED", "UNKNOWN", "NOT_ATTEMPTED", "Запрос сформирован в GUI; соединение использует только fake service.");
         Changed(nameof(WorkerPendingSettings));
     }
@@ -2795,8 +2795,8 @@ public sealed class MainViewModel : ViewModel
         {
             ApplyWorkerSessionAccepted(await _worker.StartSessionAsync(settings, receipt));
         }
-        catch (WorkerCommandException ex) { _workerStartOutcomeUnknown = false; WorkerNotice = $"Запуск отвергнут worker fake: {ex.ErrorCode}: {ex.Message}"; AddWorkerTimeline(Guid.Empty, "Rejected", "FAILED", "UNKNOWN", "NOT_ATTEMPTED", $"{ex.ErrorCode}: {ex.Message}"); }
-        catch (Exception ex) { _workerStartOutcomeUnknown = Interlocked.CompareExchange(ref _lateWorkerStartAccepted, 0, 0) == 0 && Interlocked.CompareExchange(ref _lateWorkerStartRejected, 0, 0) == 0; WorkerNotice = $"Результат запуска неизвестен: {ex.GetType().Name}: {ex.Message}"; }
+        catch (WorkerCommandException ex) { _workerStartOutcomeUnknown = false; WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerStartRejected"), ex.ErrorCode, ex.Message); AddWorkerTimeline(Guid.Empty, "Rejected", "FAILED", "UNKNOWN", "NOT_ATTEMPTED", $"{ex.ErrorCode}: {ex.Message}"); }
+        catch (Exception ex) { _workerStartOutcomeUnknown = Interlocked.CompareExchange(ref _lateWorkerStartAccepted, 0, 0) == 0 && Interlocked.CompareExchange(ref _lateWorkerStartRejected, 0, 0) == 0; WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerStartOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _workerPendingSettings = null; Changed(nameof(WorkerPendingSettings)); Changed(nameof(WorkerConsentText)); RefreshWorkerCommands(); }
     }
 
@@ -2805,7 +2805,7 @@ public sealed class MainViewModel : ViewModel
         if (!WorkerConsentPending) return;
         WorkerConsentPending = false; WorkerConsentChecked = false; _workerPendingSettings = null; Changed(nameof(WorkerConsentText));
         AddWorkerTimeline(Guid.Empty, "ConsentCancelled", "CANCELLED", "UNKNOWN", "NOT_ATTEMPTED", "Подтверждение отменено; команда Start не отправлялась.");
-        WorkerNotice = "Запуск worker fake отменён до отправки команды."; Changed(nameof(WorkerPendingSettings)); RefreshWorkerCommands();
+        WorkerNotice = Localization.Get("VmWorkerConsentCancelled"); Changed(nameof(WorkerPendingSettings)); RefreshWorkerCommands();
     }
 
     private async Task StopWorkerSessionAsync()
@@ -2813,7 +2813,7 @@ public sealed class MainViewModel : ViewModel
         if (_worker is null || WorkerSession is not { Lifecycle: SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started } session) return;
         await _worker.StopSessionAsync(session.Id);
         if (WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started) WorkerSession = WorkerSession with { Lifecycle = SessionLifecycle.Stopping, Message = "Worker принял Stop; terminal event ещё ожидается." };
-        WorkerNotice = "Stop принят. Это подтверждение не означает завершение или cleanup.";
+        WorkerNotice = Localization.Get("VmWorkerStopAccepted");
         RefreshWorkerCommands();
     }
 
@@ -2873,7 +2873,7 @@ public sealed class MainViewModel : ViewModel
         WorkerSession = new(accepted.SessionId, settings.Direction == "CAPTURE" ? SessionMode.Capture : SessionMode.Render,
             endpointName, settings.RenderChannel, settings.DurationSeconds,
             SessionLifecycle.Preparing, StreamQuality.Unknown, "Синтетическая операция принята worker.", "NOT_ATTEMPTED", true, settings.ChannelCount);
-        WorkerNotice = $"Worker fake принял неизменяемые настройки сессии {accepted.SessionId:D}.";
+        WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSettingsAccepted"), accepted.SessionId);
         AddWorkerTimeline(accepted.SessionId, "Accepted", "PREPARING", "UNKNOWN", "NOT_ATTEMPTED", $"Start response correlated; worker operation state {accepted.OperationState}.", null, accepted.CorrelationId);
         var early = _earlyWorkerEvents.Where(e => e.SessionId == accepted.SessionId).ToArray();
         _earlyWorkerEvents.RemoveAll(e => e.SessionId == accepted.SessionId);
@@ -2974,7 +2974,7 @@ public sealed class MainViewModel : ViewModel
             _workerUiOverflowed = true;
             if (WorkerSession is { } current && WorkerOperationActive)
                 WorkerSession = current with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = "Очередь UI переполнена; продолжение событий worker не подтверждено." };
-            WorkerNotice = "Очередь UI событий переполнена. Состояние операции UNKNOWN; новые данные не отображаются.";
+            WorkerNotice = Localization.Get("VmWorkerEventQueueOverflow");
             AddWorkerTimeline(WorkerSession?.Id ?? Guid.Empty, "UI_EVENT_OVERFLOW", "UNKNOWN", "UNKNOWN", "UNKNOWN", "Ограниченная очередь управляющих событий исчерпана; lifecycle/cleanup не подтверждены.");
             return;
         }
@@ -3037,11 +3037,11 @@ public sealed class MainViewModel : ViewModel
 
     private void ApplyWorkerTransportFault(WorkerTransportFaultDto fault)
     {
-        WorkerNotice = $"Транспорт worker: {fault.Stage}: {fault.Message}";
+        WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerTransportFault"), fault.Stage, fault.Message);
         if ((fault.Stage is "RESPONSE_TIMEOUT" or "REQUEST_CANCELLED") && (fault.Command is "StartCaptureMeter" or "StartRenderChannelTest"))
         {
             _workerStartOutcomeUnknown = true;
-            WorkerNotice = "Результат Start неизвестен. Новая операция заблокирована до позднего ответа или отключения worker.";
+            WorkerNotice = Localization.Get("VmWorkerStartOutcomePending");
             AddWorkerTimeline(Guid.Empty, "StartOutcomeUnknown", "UNKNOWN", "UNKNOWN", "UNKNOWN", fault.Message, null, fault.CorrelationId);
             RefreshWorkerCommands();
             return;
@@ -3049,7 +3049,7 @@ public sealed class MainViewModel : ViewModel
         if (fault.Stage == "LATE_RESPONSE" && (fault.Command is "StartCaptureMeter" or "StartRenderChannelTest") && fault.ErrorCode is not null)
         {
             _workerStartOutcomeUnknown = false;
-            WorkerNotice = $"Поздний ответ worker: запуск отвергнут ({fault.ErrorCode}).";
+            WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerLateStartRejected"), fault.ErrorCode);
             AddWorkerTimeline(Guid.Empty, "Rejected", "FAILED", "UNKNOWN", "NOT_ATTEMPTED", fault.Message, null, fault.CorrelationId);
             RefreshWorkerCommands();
             return;

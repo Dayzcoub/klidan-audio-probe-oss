@@ -727,6 +727,22 @@
   <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>SKIPPED</value></data>
   <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>FAILED</value></data>
   <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmNavigateNeedEndpoint" xml:space="preserve"><value>Select an active device or an exact Capture/Render pair first.</value></data>
+  <data name="VmNavigateNeedRealTest" xml:space="preserve"><value>Run a real test first.</value></data>
+  <data name="VmDemoDeviceUnavailable" xml:space="preserve"><value>Select an available demo device on the Devices screen and open its mode.</value></data>
+  <data name="VmDemoStarted" xml:space="preserve"><value>Simulation started. Real devices are not used.</value></data>
+  <data name="VmDemoStartCancelled" xml:space="preserve"><value>Start cancelled; the session did not begin.</value></data>
+  <data name="VmWorkerFakeNotStarted" xml:space="preserve"><value>Worker fake mode has not started.</value></data>
+  <data name="VmWorkerConfirmationRequested" xml:space="preserve"><value>Worker fake confirmation requested: {0}, {1}, {2} channels.</value></data>
+  <data name="VmWorkerStartRejected" xml:space="preserve"><value>Worker fake rejected Start: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomeUnknown" xml:space="preserve"><value>Start result is unknown: {0}: {1}</value></data>
+  <data name="VmWorkerConsentCancelled" xml:space="preserve"><value>Worker fake start cancelled before the command was sent.</value></data>
+  <data name="VmWorkerStopAccepted" xml:space="preserve"><value>Stop accepted. This confirmation does not mean completion or cleanup.</value></data>
+  <data name="VmWorkerSettingsAccepted" xml:space="preserve"><value>Worker fake accepted the immutable session settings {0:D}.</value></data>
+  <data name="VmWorkerEventQueueOverflow" xml:space="preserve"><value>UI event queue overflowed. Operation state is UNKNOWN; new data is not displayed.</value></data>
+  <data name="VmWorkerTransportFault" xml:space="preserve"><value>Worker transport: {0}: {1}</value></data>
+  <data name="VmWorkerStartOutcomePending" xml:space="preserve"><value>Start result is unknown. New operations are blocked until a late reply or Worker disconnect.</value></data>
+  <data name="VmWorkerLateStartRejected" xml:space="preserve"><value>Late Worker reply: Start was rejected ({0}).</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>
