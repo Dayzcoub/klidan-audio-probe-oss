@@ -1548,6 +1548,7 @@ var endpointWindow = new MainWindow { DataContext = browserVm, Width = 1024, Hei
 endpointWindow.Show(); endpointWindow.UpdateLayout();
 var searchBox = (TextBox)typeof(MainWindow).GetField("WindowsEndpointSearch", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var directionCombo = (ComboBox)typeof(MainWindow).GetField("WindowsEndpointDirection", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
+var sustainedModeCombo = (ComboBox)typeof(MainWindow).GetField("SustainedModeSelector", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var activeCheck = (CheckBox)typeof(MainWindow).GetField("WindowsEndpointActiveOnly", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var endpointGrid = (DataGrid)typeof(MainWindow).GetField("WindowsEndpointGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
 var inlineDetails = (Border)typeof(MainWindow).GetField("WindowsEndpointInlineDetails", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(endpointWindow)!;
@@ -1561,6 +1562,10 @@ Check(SelectedComboLabel(directionCombo) == "Все" && directionCombo.SelectedV
 directionCombo.IsDropDownOpen = true; endpointWindow.UpdateLayout();
 var directionPopup = (Popup)directionCombo.Template.FindName("PART_Popup", directionCombo);
 Check(directionPopup.IsOpen, "runtime direction dropdown opens with its themed popup");
+Check(sustainedModeCombo.SelectedValue?.ToString() == "Standard (300 s)" && SelectedComboLabel(sustainedModeCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticSustainedStandard"), "sustained mode ComboBox localizes its label while retaining the invariant selection value");
+sustainedModeCombo.SelectedValue = "Extended (600 s)"; sustainedModeCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
+Check(browserVm.AutomaticSustainedMode == "Extended (600 s)" && SelectedComboLabel(sustainedModeCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticSustainedExtended"), "sustained mode selection retains its invariant value and updates the localized label");
+sustainedModeCombo.SelectedValue = "Standard (300 s)"; sustainedModeCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 directionCombo.IsDropDownOpen = false; endpointWindow.UpdateLayout();
 directionCombo.SelectedValue = "CAPTURE"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 Check(browserVm.WindowsEndpointDirectionFilter == "CAPTURE" && SelectedComboLabel(directionCombo) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel"), "runtime direction selection displays the localized Capture label and updates the typed filter binding");
@@ -1986,7 +1991,7 @@ var localProjection = projectedWorkerEvent with { ProtocolSequence = null, IsSyn
 Check(localProjection.SourceText == "Локально · демо" && localProjection.EventLabel == "Предупреждение" && localProjection.DiagnosticDetails.Contains("synthetic completion", StringComparison.Ordinal), "local demo event remains distinct and selected detail retains full explanation");
 Check(projectedWorkerEvent.QualityTableLabel == "Не оценено" && projectedWorkerEvent.CleanupTableLabel == "Фикт. очистка" && projectedWorkerEvent.DiagnosticDetails.Contains("Фиктивная очистка завершена", StringComparison.Ordinal) && projectedWorkerEvent.DiagnosticDetails.Contains("SYNTHETIC_CLEANUP_COMPLETED", StringComparison.Ordinal), "compact event cells keep full Russian semantics and raw cleanup code in details");
 renderInspectorVm.SelectedWorkerTimelineEntry = renderInspectorVm.WorkerTimeline[0];
-Check(renderInspectorVm.WorkerSelectedEventDetails.Contains("Start response correlated", StringComparison.Ordinal) && renderInspectorVm.WorkerSelectedEventDetails.Contains("Синтетическое событие Started", StringComparison.Ordinal) == false, "selected worker event detail follows the selected timeline row instead of repeating the latest event");
+Check(renderInspectorVm.WorkerSelectedEventDetails.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmWorkerStartResponseCorrelated").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && renderInspectorVm.WorkerSelectedEventDetails.Contains("Синтетическое событие Started", StringComparison.Ordinal) == false, "selected worker event detail follows the selected timeline row instead of repeating the latest event");
 var compactWindow = new MainWindow { DataContext = renderInspectorVm };
 var workerTimelineGrid = (DataGrid)typeof(MainWindow).GetField("WorkerTimelineGrid", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(compactWindow)!;
 var meterBankList = (ListBox)typeof(MainWindow).GetField("WorkerMeterBankList", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(compactWindow)!;

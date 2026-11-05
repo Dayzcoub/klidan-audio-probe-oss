@@ -1136,4 +1136,18 @@ Fallback: {1}
   <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Refresh local profiles and check again.</value></data>
   <data name="VmBindingCheckFailed" xml:space="preserve"><value>Check did not complete: {0}.</value></data>
   <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>The current result is unconfirmed.</value></data>
+  <data name="VmAutomaticSustainedStandard" xml:space="preserve"><value>Standard (300 s)</value></data>
+  <data name="VmAutomaticSustainedExtended" xml:space="preserve"><value>Extended (600 s)</value></data>
+  <data name="VmWorkerUnsupportedFakeFormat" xml:space="preserve"><value>Unsupported Worker Fake format.</value></data>
+  <data name="VmWorkerGuiSessionRequestDetail" xml:space="preserve"><value>Request created in the GUI; connection uses the Fake service only.</value></data>
+  <data name="VmWorkerConsentCancelledDetail" xml:space="preserve"><value>Consent cancelled; the Start command was not sent.</value></data>
+  <data name="VmWorkerStopAcceptedAwaitingTerminal" xml:space="preserve"><value>Worker accepted Stop; waiting for the terminal event.</value></data>
+  <data name="VmWorkerWindowClosingCleanupUnknown" xml:space="preserve"><value>Window is closing; terminal cleanup was not observed.</value></data>
+  <data name="VmWorkerWindowCloseStopUnconfirmed" xml:space="preserve"><value>Stop during window close was not confirmed.</value></data>
+  <data name="VmWorkerStateDispatchFailed" xml:space="preserve"><value>Could not dispatch Worker state to the UI: {0}</value></data>
+  <data name="VmWorkerSessionDispatchFailed" xml:space="preserve"><value>Could not dispatch the late response to the UI: {0}</value></data>
+  <data name="VmWorkerStartResponseCorrelated" xml:space="preserve"><value>Start response correlated; Worker operation state {0}.</value></data>
+  <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker disconnected before the terminal event.</value></data>
+  <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Start outcome unknown; no response or terminal cleanup was observed.</value></data>
+  <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>MeterSnapshot event has no validated typed Capture/Render DTO.</value></data>
 </root>

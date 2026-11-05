@@ -1136,4 +1136,18 @@ Fallback: {1}
   <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Обновите локальные профили и повторите проверку.</value></data>
   <data name="VmBindingCheckFailed" xml:space="preserve"><value>Проверка не завершена: {0}.</value></data>
   <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>Текущий результат не подтверждён.</value></data>
+  <data name="VmAutomaticSustainedStandard" xml:space="preserve"><value>Стандартный (300 с)</value></data>
+  <data name="VmAutomaticSustainedExtended" xml:space="preserve"><value>Расширенный (600 с)</value></data>
+  <data name="VmWorkerUnsupportedFakeFormat" xml:space="preserve"><value>Неподдерживаемый формат Worker Fake.</value></data>
+  <data name="VmWorkerGuiSessionRequestDetail" xml:space="preserve"><value>Запрос сформирован в GUI; соединение использует только сервис Fake.</value></data>
+  <data name="VmWorkerConsentCancelledDetail" xml:space="preserve"><value>Согласие отменено; команда Start не отправлялась.</value></data>
+  <data name="VmWorkerStopAcceptedAwaitingTerminal" xml:space="preserve"><value>Worker принял Stop; ожидается конечное событие.</value></data>
+  <data name="VmWorkerWindowClosingCleanupUnknown" xml:space="preserve"><value>Окно закрывается; конечная очистка не наблюдалась.</value></data>
+  <data name="VmWorkerWindowCloseStopUnconfirmed" xml:space="preserve"><value>Остановка при закрытии окна не подтверждена.</value></data>
+  <data name="VmWorkerStateDispatchFailed" xml:space="preserve"><value>Не удалось передать состояние Worker в UI: {0}</value></data>
+  <data name="VmWorkerSessionDispatchFailed" xml:space="preserve"><value>Не удалось передать поздний ответ в UI: {0}</value></data>
+  <data name="VmWorkerStartResponseCorrelated" xml:space="preserve"><value>Ответ Start сопоставлен; состояние операции Worker: {0}.</value></data>
+  <data name="VmWorkerDisconnectedBeforeTerminalEvent" xml:space="preserve"><value>Worker отключился до конечного события.</value></data>
+  <data name="VmWorkerStartOutcomeUnknownDetail" xml:space="preserve"><value>Исход Start неизвестен: не получен ответ или конечное подтверждение очистки.</value></data>
+  <data name="VmWorkerMeterSnapshotDtoInvalid" xml:space="preserve"><value>Событие MeterSnapshot не содержит проверенного типизированного DTO Capture/Render.</value></data>
 </root>

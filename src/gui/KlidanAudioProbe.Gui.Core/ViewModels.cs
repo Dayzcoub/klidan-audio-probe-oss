@@ -464,8 +464,8 @@ public sealed class MainViewModel : ViewModel
     public bool AutomaticScanConsentChecked { get => _automaticScanConsentChecked; set { if (Set(ref _automaticScanConsentChecked, value)) ConfirmAutomaticScanCommand.Refresh(); } }
     public bool AutomaticScanRunning { get => _automaticScanRunning; private set { if (Set(ref _automaticScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
     public bool AutomaticScanBusy => AutomaticScanPreparing || AutomaticScanRunning;
-    public IReadOnlyList<string> AutomaticSustainedModes { get; } = ["Standard (300 s)", "Extended (600 s)"];
-    public string AutomaticSustainedMode { get => _automaticSustainedMode; set { if (AutomaticScanBusy || !AutomaticSustainedModes.Contains(value, StringComparer.Ordinal)) return; if (Set(ref _automaticSustainedMode, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); } } }
+    public IReadOnlyList<ChoiceOption> AutomaticSustainedModes { get; } = [new("Standard (300 s)", Localization.Get("VmAutomaticSustainedStandard")), new("Extended (600 s)", Localization.Get("VmAutomaticSustainedExtended"))];
+    public string AutomaticSustainedMode { get => _automaticSustainedMode; set { if (AutomaticScanBusy || !AutomaticSustainedModes.Any(option => option.Value == value)) return; if (Set(ref _automaticSustainedMode, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); } } }
     public bool CanNavigateAwayFromAutomaticScan => !AutomaticScanBusy;
     public bool HasAutomaticScanResult => _automaticScanResult is not null || _automaticScanOutcomeUnknown && _automaticScanAttempted && _automaticScanTerminal;
     public bool AutomaticScanAttempted => _automaticScanAttempted;
@@ -505,7 +505,8 @@ public sealed class MainViewModel : ViewModel
             var active = prepared.MaximumActiveSeconds == 0 ? Localization.Get("VmAutomaticScanActiveUnavailable") : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanActiveBound"), prepared.MaximumActiveSeconds);
             var identity = Localization.Get(prepared.PairPhysicalIdentityUnconfirmed ? "VmAutomaticScanIdentityUnconfirmed" : "VmAutomaticScanIdentityCurrent");
             var stages = prepared.StagedPlan is { } staged ? string.Join(", ", staged.Stages.Select(s => $"{s.Stage}={s.State}")) : Localization.Get("VmAutomaticScanStagesSaved");
-            return string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConsentSummary"), string.Join("\n", endpoints), identity, operations, AutomaticSustainedMode, active, prepared.MaximumTotalOperations, prepared.MaximumWallClockSeconds, prepared.WorkerPlan.LifetimeSeconds, prepared.WorkerPlan.MaximumOperationCount, stages);
+            var sustainedMode = AutomaticSustainedModes.Single(option => option.Value == AutomaticSustainedMode).Label;
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConsentSummary"), string.Join("\n", endpoints), identity, operations, sustainedMode, active, prepared.MaximumTotalOperations, prepared.MaximumWallClockSeconds, prepared.WorkerPlan.LifetimeSeconds, prepared.WorkerPlan.MaximumOperationCount, stages);
         }
     }
     public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
@@ -2779,13 +2780,13 @@ public sealed class MainViewModel : ViewModel
     {
         if (!CanRequestWorker(direction) || SelectedWorkerEndpoint is null || SelectedWorkerFormat is null) return;
         var format = SelectedWorkerFormat.FormatId;
-        var encoding = format switch { "PCM16-48000" => "PCM16", "PCM24-48000" => "PCM24_IN_32", "FLOAT32-48000" => "FLOAT32", _ => throw new InvalidOperationException("Unsupported worker fake format.") };
+        var encoding = format switch { "PCM16-48000" => "PCM16", "PCM24-48000" => "PCM24_IN_32", "FLOAT32-48000" => "FLOAT32", _ => throw new InvalidOperationException(Localization.Get("VmWorkerUnsupportedFakeFormat")) };
         _workerPendingSettings = new(SelectedWorkerEndpoint.EndpointId, direction, format, 48000, encoding, SelectedWorkerFormat.Topology.ChannelCount, format, WorkerDurationSeconds, WorkerPeriod, WorkerMmcss, direction == "RENDER" ? WorkerRenderChannel : null, WorkerScenario);
         Changed(nameof(WorkerConsentText));
         WorkerConsentChecked = false;
         WorkerConsentPending = true;
         WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerConfirmationRequested"), SelectedWorkerEndpoint.Name, format, WorkerChannelCount);
-        AddWorkerTimeline(Guid.Empty, "SessionRequested", "REQUESTED", "UNKNOWN", "NOT_ATTEMPTED", "Запрос сформирован в GUI; соединение использует только fake service.");
+        AddWorkerTimeline(Guid.Empty, "SessionRequested", "REQUESTED", "UNKNOWN", "NOT_ATTEMPTED", Localization.Get("VmWorkerGuiSessionRequestDetail"));
         Changed(nameof(WorkerPendingSettings));
     }
 
@@ -2811,7 +2812,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (!WorkerConsentPending) return;
         WorkerConsentPending = false; WorkerConsentChecked = false; _workerPendingSettings = null; Changed(nameof(WorkerConsentText));
-        AddWorkerTimeline(Guid.Empty, "ConsentCancelled", "CANCELLED", "UNKNOWN", "NOT_ATTEMPTED", "Подтверждение отменено; команда Start не отправлялась.");
+        AddWorkerTimeline(Guid.Empty, "ConsentCancelled", "CANCELLED", "UNKNOWN", "NOT_ATTEMPTED", Localization.Get("VmWorkerConsentCancelledDetail"));
         WorkerNotice = Localization.Get("VmWorkerConsentCancelled"); Changed(nameof(WorkerPendingSettings)); RefreshWorkerCommands();
     }
 
@@ -2819,7 +2820,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (_worker is null || WorkerSession is not { Lifecycle: SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started } session) return;
         await _worker.StopSessionAsync(session.Id);
-        if (WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started) WorkerSession = WorkerSession with { Lifecycle = SessionLifecycle.Stopping, Message = "Worker принял Stop; terminal event ещё ожидается." };
+        if (WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started) WorkerSession = WorkerSession with { Lifecycle = SessionLifecycle.Stopping, Message = Localization.Get("VmWorkerStopAcceptedAwaitingTerminal") };
         WorkerNotice = Localization.Get("VmWorkerStopAccepted");
         RefreshWorkerCommands();
     }
@@ -2845,8 +2846,8 @@ public sealed class MainViewModel : ViewModel
                 }
                 catch
                 {
-                    WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = "Окно закрывается; terminal cleanup не наблюдался." };
-                    AddWorkerTimeline(active.Id, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", "Остановка при закрытии окна не подтверждена.");
+                    WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = Localization.Get("VmWorkerWindowClosingCleanupUnknown") };
+                    AddWorkerTimeline(active.Id, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", Localization.Get("VmWorkerWindowCloseStopUnconfirmed"));
                     await _worker.DisposeAsync();
                     return;
                 }
@@ -2858,15 +2859,15 @@ public sealed class MainViewModel : ViewModel
 
     private void WorkerStateChanged(WorkerStateDto state)
     {
-        if (_uiContext is null) { try { ApplyWorkerState(state, true); } catch (Exception ex) { _workerNotice = $"Ошибка доставки состояния в UI: {ex.Message}"; } }
-        else _uiContext.Post(_ => { try { ApplyWorkerState(state, true); } catch (Exception ex) { _workerNotice = $"Ошибка доставки состояния в UI: {ex.Message}"; } }, null);
+        if (_uiContext is null) { try { ApplyWorkerState(state, true); } catch (Exception ex) { _workerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerStateDispatchFailed"), ex.Message); } }
+        else _uiContext.Post(_ => { try { ApplyWorkerState(state, true); } catch (Exception ex) { _workerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerStateDispatchFailed"), ex.Message); } }, null);
     }
 
     private void WorkerSessionAccepted(WorkerSessionAcceptedDto accepted)
     {
         Interlocked.Exchange(ref _lateWorkerStartAccepted, 1);
-        if (_uiContext is null) { try { ApplyWorkerSessionAccepted(accepted); } catch (Exception ex) { _workerNotice = $"Ошибка доставки позднего ответа в UI: {ex.Message}"; } }
-        else _uiContext.Post(_ => { try { ApplyWorkerSessionAccepted(accepted); } catch (Exception ex) { _workerNotice = $"Ошибка доставки позднего ответа в UI: {ex.Message}"; } }, null);
+        if (_uiContext is null) { try { ApplyWorkerSessionAccepted(accepted); } catch (Exception ex) { _workerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSessionDispatchFailed"), ex.Message); } }
+        else _uiContext.Post(_ => { try { ApplyWorkerSessionAccepted(accepted); } catch (Exception ex) { _workerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSessionDispatchFailed"), ex.Message); } }, null);
     }
 
     private void ApplyWorkerSessionAccepted(WorkerSessionAcceptedDto accepted)
@@ -2881,7 +2882,7 @@ public sealed class MainViewModel : ViewModel
             endpointName, settings.RenderChannel, settings.DurationSeconds,
             SessionLifecycle.Preparing, StreamQuality.Unknown, Localization.Get("VmWorkerSyntheticOperationAccepted"), "NOT_ATTEMPTED", true, settings.ChannelCount);
         WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSettingsAccepted"), accepted.SessionId);
-        AddWorkerTimeline(accepted.SessionId, "Accepted", "PREPARING", "UNKNOWN", "NOT_ATTEMPTED", $"Start response correlated; worker operation state {accepted.OperationState}.", null, accepted.CorrelationId);
+        AddWorkerTimeline(accepted.SessionId, "Accepted", "PREPARING", "UNKNOWN", "NOT_ATTEMPTED", string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerStartResponseCorrelated"), accepted.OperationState), null, accepted.CorrelationId);
         var early = _earlyWorkerEvents.Where(e => e.SessionId == accepted.SessionId).ToArray();
         _earlyWorkerEvents.RemoveAll(e => e.SessionId == accepted.SessionId);
         foreach (var evt in early) ApplyWorkerEvent(evt);
@@ -2946,11 +2947,11 @@ public sealed class MainViewModel : ViewModel
         if (state.State == WorkerConnectionState.Disconnected && WorkerOperationActive && WorkerSession is { } active)
         {
             WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = Localization.Get("VmWorkerDisconnectedCleanupUnknown") };
-            _workerTerminal?.TrySetException(new IOException("Worker disconnected before terminal event."));
+            _workerTerminal?.TrySetException(new IOException(Localization.Get("VmWorkerDisconnectedBeforeTerminalEvent")));
             AddWorkerTimeline(active.Id, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", state.Message);
         }
         else if (state.State == WorkerConnectionState.Disconnected && _workerStartOutcomeUnknown)
-            AddWorkerTimeline(Guid.Empty, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", "Start outcome unknown; no response or terminal cleanup was observed.");
+            AddWorkerTimeline(Guid.Empty, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", Localization.Get("VmWorkerStartOutcomeUnknownDetail"));
         RefreshCanExecute();
         RefreshContext();
     }
@@ -3013,7 +3014,7 @@ public sealed class MainViewModel : ViewModel
             if (WorkerSession?.Lifecycle != SessionLifecycle.Started) return;
             if (evt.CaptureMeter is { } capture) _workerCaptureMeter = capture;
             else if (evt.RenderMeter is { } render) _workerRenderMeter = render;
-            else throw new InvalidDataException("MeterSnapshot event has no validated typed Capture/Render DTO.");
+            else throw new InvalidDataException(Localization.Get("VmWorkerMeterSnapshotDtoInvalid"));
             var channelCount = WorkerSession.Mode == SessionMode.Render ? _workerRenderMeter?.ChannelCount : _workerCaptureMeter?.ChannelCount;
             var bankCount = (channelCount.GetValueOrDefault() + 7) / 8;
             if (_workerMeterBank >= bankCount) _workerMeterBank = Math.Max(0, bankCount - 1);
