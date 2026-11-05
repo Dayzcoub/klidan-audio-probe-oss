@@ -423,10 +423,10 @@ Check(vm.Formats.Count == 12 && vm.Formats.SelectMany(f => new[] { f.DefaultPeri
 Check(vm.Formats.SelectMany(f => new[] { f.DefaultPeriod.Status, f.MinimumPeriod.Status }).Distinct().Count() >= 5, "matrix shows distinct supported, unsupported, failed and unknown/not-tested states");
 var statusLabels = new Dictionary<FormatStatus, string>
 {
-    [FormatStatus.SupportedReported] = "✓ Поддерживается", [FormatStatus.Unsupported] = "× Нет", [FormatStatus.Failed] = "! Ошибка",
-    [FormatStatus.Unknown] = "? Неизвестно", [FormatStatus.NotTested] = "? Не проверено", [FormatStatus.Initialized] = "✓ Инициализировано", [FormatStatus.Ready] = "✓ Готово"
+    [FormatStatus.SupportedReported] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusSupported"), [FormatStatus.Unsupported] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusUnsupported"), [FormatStatus.Failed] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusFailed"),
+    [FormatStatus.Unknown] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusUnknown"), [FormatStatus.NotTested] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusNotTested"), [FormatStatus.Initialized] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusInitialized"), [FormatStatus.Ready] = KlidanAudioProbe.Gui.Core.Localization.Get("VmFormatStatusReady")
 };
-Check(statusLabels.All(pair => MainViewModel.StatusLabel(pair.Key) == pair.Value), "format matrix uses concise Russian status labels with text and symbols");
+Check(statusLabels.All(pair => MainViewModel.StatusLabel(pair.Key) == pair.Value), "format matrix uses localized concise status labels with text and symbols");
 Check(new PeriodEvidence(FormatStatus.Unknown, null).StatusCode == "UNKNOWN" && new PeriodEvidence(FormatStatus.NotTested, null).StatusCode == "NOT_TESTED", "UNKNOWN and NOT_TESTED remain distinct machine-readable states");
 var accessibleEvidence = new PeriodEvidence(FormatStatus.Initialized, "S_OK", "S_OK", "INITIALIZE_ONLY").AccessibleText;
 Check(accessibleEvidence.Contains("INITIALIZED", StringComparison.Ordinal) && accessibleEvidence.Contains("IsFormatSupported HRESULT: S_OK", StringComparison.Ordinal) && accessibleEvidence.Contains("Initialize HRESULT: S_OK", StringComparison.Ordinal) && accessibleEvidence.Contains("INITIALIZE_ONLY", StringComparison.Ordinal), "accessible format-cell text preserves status, HRESULTs and provenance");

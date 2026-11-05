@@ -634,7 +634,7 @@ public sealed class MainViewModel : ViewModel
     public IEnumerable<EndpointDto> EndpointRows => Direction == SessionMode.Capture ? CaptureEndpoints : RenderEndpoints;
     public bool HasEndpoints => EndpointRows.Any();
     public bool IsEndpointListEmpty => !HasEndpoints;
-    public string EmptyEndpointMessage => !HasEndpoints ? string.Format(Localization.CurrentCulture, Localization.Get("VmEndpointListEmpty"), ModeLabel(Direction)) : SelectedEndpoint is null ? Localization.Get("VmChooseDemoEndpoint") : string.Empty;
+    public string EmptyEndpointMessage => !HasEndpoints ? string.Format(Localization.CurrentCulture, Localization.Get("VmEndpointListEmpty"), Localization.Get(Direction == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")) : SelectedEndpoint is null ? Localization.Get("VmChooseDemoEndpoint") : string.Empty;
     public EndpointDto? SelectedEndpoint
     {
         get => Direction == SessionMode.Capture ? SelectedCaptureEndpoint : SelectedRenderEndpoint;
@@ -3091,13 +3091,13 @@ public sealed class MainViewModel : ViewModel
                     : windowsDeviceView
                     ? [Localization.Get("VmInspectorEndpointsNotRequested"), Localization.Get("VmInspectorConnectWorkerForDiscovery"), "Shared Mode metadata · Exclusive capability NOT TESTED"]
                     : SelectedEndpoint is { } e
-                    ? [$"{e.Name}", $"Направление: {ModeLabel(Direction)}", $"Состояние: {e.State}", $"Формат микширования: {e.Format}", $"Каналы Windows: {e.Channels}", "Физические разъёмы: НЕИЗВЕСТНО"]
+                    ? [$"{e.Name}", $"{Localization.Get("VmInspectorDirectionLabel")}: {Localization.Get(Direction == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"Состояние: {e.State}", $"Формат микширования: {e.Format}", $"Каналы Windows: {e.Channels}", "Физические разъёмы: НЕИЗВЕСТНО"]
                     : [EmptyEndpointMessage, Localization.Get("VmInspectorPassiveDemoList")];
                 break;
             case ProbeScreen.Formats:
                 InspectorTitle = Localization.Get("VmInspectorFormatTitle");
                 InspectorDetails = SelectedFormat is { } f
-                    ? [$"{f.Encoding} · {f.SampleRate} Гц · {f.ChannelCount} кан.", .. PeriodDetails("Период: стандартный", f.DefaultPeriod), .. PeriodDetails("Период: минимальный", f.MinimumPeriod)]
+                    ? [$"{f.Encoding} · {f.SampleRate} Гц · {f.ChannelCount} кан.", .. PeriodDetails(Localization.Get("VmPeriodDefaultLabel"), f.DefaultPeriod), .. PeriodDetails(Localization.Get("VmPeriodMinimumLabel"), f.MinimumPeriod)]
                     : [Localization.Get("VmInspectorFormatNotSelected")];
                 break;
             case ProbeScreen.Capture:
@@ -3115,7 +3115,7 @@ public sealed class MainViewModel : ViewModel
             case ProbeScreen.Reports:
                 InspectorTitle = Localization.Get("VmInspectorReportsTitle");
                 InspectorDetails = SelectedReport is { } report
-                    ? [$"{report.Name}", $"Режим: {ModeLabel(report.Mode)}", $"Состояние: {report.Lifecycle}", $"Качество потока: {report.Quality}", report.Evidence, "ДЕМО · Данные симуляции"]
+                    ? [$"{report.Name}", $"{Localization.Get("VmInspectorModeLabel")}: {Localization.Get(report.Mode == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection")}", $"Состояние: {report.Lifecycle}", $"Качество потока: {report.Quality}", report.Evidence, "ДЕМО · Данные симуляции"]
                     : [Localization.Get("VmInspectorReportNotSelected")];
                 break;
             case ProbeScreen.Diagnostics:
@@ -3204,18 +3204,18 @@ public sealed class MainViewModel : ViewModel
 
     public static string StatusLabel(FormatStatus status) => status switch
     {
-        FormatStatus.SupportedReported => "✓ Поддерживается",
-        FormatStatus.Unsupported => "× Нет",
-        FormatStatus.Failed => "! Ошибка",
-        FormatStatus.Unknown => "? Неизвестно",
-        FormatStatus.NotTested => "? Не проверено",
-        FormatStatus.Initialized => "✓ Инициализировано",
-        FormatStatus.Ready => "✓ Готово",
-        _ => "? Неизвестно"
+        FormatStatus.SupportedReported => Localization.Get("VmFormatStatusSupported"),
+        FormatStatus.Unsupported => Localization.Get("VmFormatStatusUnsupported"),
+        FormatStatus.Failed => Localization.Get("VmFormatStatusFailed"),
+        FormatStatus.Unknown => Localization.Get("VmFormatStatusUnknown"),
+        FormatStatus.NotTested => Localization.Get("VmFormatStatusNotTested"),
+        FormatStatus.Initialized => Localization.Get("VmFormatStatusInitialized"),
+        FormatStatus.Ready => Localization.Get("VmFormatStatusReady"),
+        _ => Localization.Get("VmFormatStatusUnknown")
     };
 
     private static string[] PeriodDetails(string label, PeriodEvidence evidence) =>
-    [label, $"Статус: {evidence.StatusCode}", $"IsFormatSupported HRESULT: {evidence.Hresult ?? "неизвестно"}", $"Initialize HRESULT: {evidence.InitializeHresult ?? "не наблюдался"}", $"Происхождение: {evidence.Provenance ?? "неизвестно"}"];
+    [label, string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodStatusFormat"), evidence.StatusCode), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodFormatSupportHresult"), evidence.Hresult ?? Localization.Get("VmValueUnknown")), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodInitializeHresult"), evidence.InitializeHresult ?? Localization.Get("VmValueNotObserved")), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodProvenance"), evidence.Provenance ?? Localization.Get("VmValueUnknown"))];
 
     public static string ModeLabel(SessionMode mode) => mode == SessionMode.Capture ? "вход (Capture)" : "выход (Render)";
 

@@ -677,4 +677,22 @@
   <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Остановлена</value></data>
   <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Завершена</value></data>
   <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmCaptureInputDirection" xml:space="preserve"><value>вход (Capture)</value></data>
+  <data name="VmRenderOutputDirection" xml:space="preserve"><value>выход (Render)</value></data>
+  <data name="VmInspectorDirectionLabel" xml:space="preserve"><value>Направление</value></data>
+  <data name="VmPeriodDefaultLabel" xml:space="preserve"><value>Период: стандартный</value></data>
+  <data name="VmPeriodMinimumLabel" xml:space="preserve"><value>Период: минимальный</value></data>
+  <data name="VmFormatStatusSupported" xml:space="preserve"><value>✓ Поддерживается</value></data>
+  <data name="VmFormatStatusUnsupported" xml:space="preserve"><value>× Нет</value></data>
+  <data name="VmFormatStatusFailed" xml:space="preserve"><value>! Ошибка</value></data>
+  <data name="VmFormatStatusUnknown" xml:space="preserve"><value>? Неизвестно</value></data>
+  <data name="VmFormatStatusNotTested" xml:space="preserve"><value>? Не проверено</value></data>
+  <data name="VmFormatStatusInitialized" xml:space="preserve"><value>✓ Инициализировано</value></data>
+  <data name="VmFormatStatusReady" xml:space="preserve"><value>✓ Готово</value></data>
+  <data name="VmPeriodStatusFormat" xml:space="preserve"><value>Статус: {0}</value></data>
+  <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
+  <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
+  <data name="VmPeriodProvenance" xml:space="preserve"><value>Происхождение: {0}</value></data>
+  <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>

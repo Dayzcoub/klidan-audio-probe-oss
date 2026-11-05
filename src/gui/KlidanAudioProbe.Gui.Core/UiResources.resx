@@ -677,4 +677,22 @@
   <data name="VmInspectorLifecycleStopped" xml:space="preserve"><value>Stopped</value></data>
   <data name="VmInspectorLifecycleCompleted" xml:space="preserve"><value>Completed</value></data>
   <data name="VmInspectorLifecycleFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmCaptureInputDirection" xml:space="preserve"><value>input (Capture)</value></data>
+  <data name="VmRenderOutputDirection" xml:space="preserve"><value>output (Render)</value></data>
+  <data name="VmInspectorDirectionLabel" xml:space="preserve"><value>Direction</value></data>
+  <data name="VmPeriodDefaultLabel" xml:space="preserve"><value>Period: standard</value></data>
+  <data name="VmPeriodMinimumLabel" xml:space="preserve"><value>Period: minimum</value></data>
+  <data name="VmFormatStatusSupported" xml:space="preserve"><value>✓ Supported</value></data>
+  <data name="VmFormatStatusUnsupported" xml:space="preserve"><value>× No</value></data>
+  <data name="VmFormatStatusFailed" xml:space="preserve"><value>! Failed</value></data>
+  <data name="VmFormatStatusUnknown" xml:space="preserve"><value>? Unknown</value></data>
+  <data name="VmFormatStatusNotTested" xml:space="preserve"><value>? Not tested</value></data>
+  <data name="VmFormatStatusInitialized" xml:space="preserve"><value>✓ Initialized</value></data>
+  <data name="VmFormatStatusReady" xml:space="preserve"><value>✓ Ready</value></data>
+  <data name="VmPeriodStatusFormat" xml:space="preserve"><value>Status: {0}</value></data>
+  <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
+  <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
+  <data name="VmPeriodProvenance" xml:space="preserve"><value>Provenance: {0}</value></data>
+  <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>
