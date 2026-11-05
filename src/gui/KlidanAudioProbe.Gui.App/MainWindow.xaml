@@ -470,13 +470,13 @@
                 <TextBlock Text="{loc:Loc InitializeLimitations}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
               </StackPanel>
             </Border>
-            <DataGrid ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" MinHeight="380" MaxHeight="560" AutomationProperties.Name="{loc:Loc FormatMatrix}">
+            <DataGrid ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" MinHeight="380" MaxHeight="560" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="{loc:Loc FormatMatrix}">
               <DataGrid.Columns>
                 <DataGridTextColumn Header="{loc:Loc EncodingLabel}" Binding="{Binding Encoding}" Width="*" MinWidth="128"/>
                 <DataGridTextColumn Header="{loc:Loc FrequencyHz}" Binding="{Binding SampleRate}" Width="110"/>
                 <DataGridTextColumn Header="{loc:Loc ChannelsLabel}" Binding="{Binding ChannelCount}" Width="75"/>
-                <DataGridTemplateColumn Header="{loc:Loc DefaultPeriod}" Width="2*" MinWidth="170"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding DefaultPeriod.Status, Converter={StaticResource FormatStatusText}}" AutomationProperties.HelpText="{Binding DefaultPeriod.AccessibleText}" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="{loc:Loc MinimumPeriod}" Width="2*" MinWidth="170"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding MinimumPeriod.Status, Converter={StaticResource FormatStatusText}}" AutomationProperties.HelpText="{Binding MinimumPeriod.AccessibleText}" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="{loc:Loc DefaultPeriod}" Width="2*" MinWidth="170"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding DefaultPeriod.Status, Converter={StaticResource FormatStatusText}}" AutomationProperties.HelpText="{Binding DefaultPeriod.DisplayAccessibleText}" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="{loc:Loc MinimumPeriod}" Width="2*" MinWidth="170"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding MinimumPeriod.Status, Converter={StaticResource FormatStatusText}}" AutomationProperties.HelpText="{Binding MinimumPeriod.DisplayAccessibleText}" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
               </DataGrid.Columns>
             </DataGrid>
             <TextBlock Text="{loc:Loc DriverSupportLimitations}" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,0"/>

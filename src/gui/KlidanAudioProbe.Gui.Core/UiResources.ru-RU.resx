@@ -789,6 +789,7 @@
   <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>Нужен текущий результат успешного Initialize для выбранного точного endpoint и подключённый worker.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
+  <data name="VmPeriodEvidenceAccessibleText" xml:space="preserve"><value>{0}. HRESULT IsFormatSupported: {1}. HRESULT Initialize: {2}. Происхождение: {3}.</value></data>
   <data name="VmScanOutcome" xml:space="preserve"><value>{0} · поддержка и Initialize разделены. Запуск потока, стабильность и Duplex не проверялись.</value></data>
   <data name="VmQueryInvalidated" xml:space="preserve"><value>Выполняется новый запрос; предыдущая матрица временно не является текущим результатом.</value></data>
   <data name="VmQueryChannelsValidation" xml:space="preserve"><value>Введите от 1 до 32 уникальных номеров каналов в диапазоне 1–64 через запятую.</value></data>

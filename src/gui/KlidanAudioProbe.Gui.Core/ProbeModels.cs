@@ -35,6 +35,9 @@ public sealed record PeriodEvidence(FormatStatus Status, string? Hresult, string
     };
 
     public string AccessibleText => $"{StatusCode}. IsFormatSupported HRESULT: {Hresult ?? "неизвестно"}. Initialize HRESULT: {InitializeHresult ?? "не наблюдался"}. Происхождение: {Provenance ?? "неизвестно"}.";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayAccessibleText => string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodEvidenceAccessibleText"), StatusCode, Hresult ?? Localization.Get("VmValueUnknown"), InitializeHresult ?? Localization.Get("VmValueNotObserved"), Provenance ?? Localization.Get("VmValueUnknown"));
 }
 public sealed record FormatDto(string Encoding, int SampleRate, int ChannelCount, PeriodEvidence DefaultPeriod, PeriodEvidence MinimumPeriod);
 public sealed record MeterChannelDto(int Channel, double? PeakDbfs, double? RmsDbfs, double? PeakHoldDbfs, int? Clips, bool? Silent = null, string? StateText = null)

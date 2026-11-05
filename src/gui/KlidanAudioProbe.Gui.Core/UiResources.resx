@@ -789,6 +789,7 @@
   <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>A current successful Initialize result for the exact selected endpoint and a connected worker are required.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
+  <data name="VmPeriodEvidenceAccessibleText" xml:space="preserve"><value>{0}. IsFormatSupported HRESULT: {1}. Initialize HRESULT: {2}. Provenance: {3}.</value></data>
   <data name="VmScanOutcome" xml:space="preserve"><value>{0} · support and Initialize are reported separately. Stream start, stability, and Duplex were not tested.</value></data>
   <data name="VmQueryInvalidated" xml:space="preserve"><value>A new query is running; the previous matrix is temporarily not current.</value></data>
   <data name="VmQueryChannelsValidation" xml:space="preserve"><value>Enter 1–32 unique channel counts in the range 1–64, separated by commas.</value></data>
