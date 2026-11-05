@@ -1183,4 +1183,6 @@ Fallback: {1}
   <data name="VmDeviceScanDetailBufferFrames" xml:space="preserve"><value>bufferFrames</value></data>
   <data name="VmDeviceScanDetailEventReady" xml:space="preserve"><value>eventReady</value></data>
   <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>releases</value></data>
+  <data name="VmAutomaticScanTimeoutLabel" xml:space="preserve"><value>timeout</value></data>
+  <data name="VmAutomaticScanMillisecondsAbbreviation" xml:space="preserve"><value>ms</value></data>
 </root>

@@ -559,11 +559,11 @@ public sealed class MainViewModel : ViewModel
         {
             if (_automaticScanResult is not { } result)
                 return _automaticScanAttempted ? _automaticScanStatus : Localization.Get("VmAutomaticScanTechnicalDetailsMissing");
-            var lines = result.Operations.Select(o => $"{o.Operation.Stage} · {o.Lifecycle} · {o.Operation.OperationId} · {o.Operation.EndpointId ?? "PAIR"} · cleanup={o.CleanupStatus} · {o.Message}").ToList();
+            var lines = result.Operations.Select(o => $"{o.Operation.Stage} · {o.Lifecycle} · {o.Operation.OperationId} · {o.Operation.EndpointId ?? "PAIR"} · {Localization.Get("CleanupLabel")}={o.CleanupStatus} · {o.Message}").ToList();
             if (result.PeriodDiscoveryDiagnostics is { } diagnostics)
             {
                 lines.Add("PERIOD_DISCOVERY · " + diagnostics.Summary);
-                lines.AddRange(diagnostics.Operations.Select(o => $"PERIOD_DISCOVERY · #{o.OperationIndex} · {o.Direction} · {o.Outcome} · {o.DurationMilliseconds} ms · timeout={o.TimeoutSeconds} s" + (o.WorkerErrorCode is null ? string.Empty : $" · Worker={o.WorkerErrorCode}")));
+                lines.AddRange(diagnostics.Operations.Select(o => $"PERIOD_DISCOVERY · #{o.OperationIndex} · {o.Direction} · {o.Outcome} · {o.DurationMilliseconds} {Localization.Get("VmAutomaticScanMillisecondsAbbreviation")} · {Localization.Get("VmAutomaticScanTimeoutLabel")}={o.TimeoutSeconds} {Localization.Get("VmInspectorSecondsAbbreviation")}" + (o.WorkerErrorCode is null ? string.Empty : $" · {Localization.Get("VmWorkerLabel")}={o.WorkerErrorCode}")));
             }
             return string.Join("\n", lines);
         }
