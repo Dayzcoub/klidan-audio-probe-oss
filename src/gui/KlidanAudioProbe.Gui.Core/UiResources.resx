@@ -472,4 +472,26 @@
   <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>The connected worker does not support the required real operations.</value></data>
   <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Wait for the current operation to finish or cancel the pending confirmation.</value></data>
   <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>No scan details are available.</value></data>
+  <data name="VmWorkerLabel" xml:space="preserve"><value>Worker</value></data>
+  <data name="VmWorkerConnected" xml:space="preserve"><value>Worker: connected</value></data>
+  <data name="VmWorkerDisconnected" xml:space="preserve"><value>disconnected</value></data>
+  <data name="VmWorkerStarting" xml:space="preserve"><value>starting</value></data>
+  <data name="VmWorkerConnecting" xml:space="preserve"><value>connecting</value></data>
+  <data name="VmWorkerHandshaking" xml:space="preserve"><value>negotiating protocol</value></data>
+  <data name="VmWorkerStopping" xml:space="preserve"><value>stopping</value></data>
+  <data name="VmWorkerIncompatible" xml:space="preserve"><value>incompatible</value></data>
+  <data name="VmWorkerError" xml:space="preserve"><value>error</value></data>
+  <data name="VmWindowsDiscoveryCurrent" xml:space="preserve"><value>Windows discovery: current</value></data>
+  <data name="VmWindowsDiscoveryRefreshing" xml:space="preserve"><value>Windows discovery: refreshing</value></data>
+  <data name="VmWindowsDiscoveryError" xml:space="preserve"><value>Windows discovery: error · {0}</value></data>
+  <data name="VmWindowsDiscoveryStale" xml:space="preserve"><value>Windows discovery: stale or not performed</value></data>
+  <data name="VmEndpointListEmpty" xml:space="preserve"><value>{0} list is empty. Only demo data is available; select “Return to demo”.</value></data>
+  <data name="VmChooseDemoEndpoint" xml:space="preserve"><value>Select an available row for a demo session.</value></data>
+  <data name="VmEvidenceLibraryStatus" xml:space="preserve"><value>{0} records shown · {1} valid · {2} invalid/unsupported retained as diagnostics.</value></data>
+  <data name="VmSelectEvidenceRecord" xml:space="preserve"><value>Select an evidence record.</value></data>
+  <data name="VmSelectDuplexRecord" xml:space="preserve"><value>Select a Duplex record to compare compatible historical runs.</value></data>
+  <data name="VmUtcLabel" xml:space="preserve"><value>UTC</value></data>
+  <data name="VmLocalLabel" xml:space="preserve"><value>Local</value></data>
+  <data name="VmIdentityLabel" xml:space="preserve"><value>Identity</value></data>
+  <data name="VmOriginalLabel" xml:space="preserve"><value>Original</value></data>
 </root>

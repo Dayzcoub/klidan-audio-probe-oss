@@ -472,4 +472,26 @@
   <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>Подключённый worker не поддерживает необходимые реальные операции.</value></data>
   <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Дождитесь завершения текущей операции или отмените ожидающее подтверждение.</value></data>
   <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>Нет данных сканирования.</value></data>
+  <data name="VmWorkerLabel" xml:space="preserve"><value>Worker</value></data>
+  <data name="VmWorkerConnected" xml:space="preserve"><value>Worker: подключён</value></data>
+  <data name="VmWorkerDisconnected" xml:space="preserve"><value>отключён</value></data>
+  <data name="VmWorkerStarting" xml:space="preserve"><value>запускается</value></data>
+  <data name="VmWorkerConnecting" xml:space="preserve"><value>подключается</value></data>
+  <data name="VmWorkerHandshaking" xml:space="preserve"><value>согласует протокол</value></data>
+  <data name="VmWorkerStopping" xml:space="preserve"><value>останавливается</value></data>
+  <data name="VmWorkerIncompatible" xml:space="preserve"><value>несовместим</value></data>
+  <data name="VmWorkerError" xml:space="preserve"><value>ошибка</value></data>
+  <data name="VmWindowsDiscoveryCurrent" xml:space="preserve"><value>Обнаружение Windows: актуально</value></data>
+  <data name="VmWindowsDiscoveryRefreshing" xml:space="preserve"><value>Обнаружение Windows: обновляется</value></data>
+  <data name="VmWindowsDiscoveryError" xml:space="preserve"><value>Обнаружение Windows: ошибка · {0}</value></data>
+  <data name="VmWindowsDiscoveryStale" xml:space="preserve"><value>Обнаружение Windows: устарело или не выполнялось</value></data>
+  <data name="VmEndpointListEmpty" xml:space="preserve"><value>Список {0} пуст. Доступны только проверочные данные; нажмите «Вернуть демо».</value></data>
+  <data name="VmChooseDemoEndpoint" xml:space="preserve"><value>Выберите доступную строку для демонстрационной сессии.</value></data>
+  <data name="VmEvidenceLibraryStatus" xml:space="preserve"><value>Показано записей: {0} · корректных: {1} · некорректные/неподдерживаемые сохранены для диагностики: {2}.</value></data>
+  <data name="VmSelectEvidenceRecord" xml:space="preserve"><value>Выберите запись доказательств.</value></data>
+  <data name="VmSelectDuplexRecord" xml:space="preserve"><value>Выберите запись Duplex для сравнения совместимых исторических запусков.</value></data>
+  <data name="VmUtcLabel" xml:space="preserve"><value>UTC</value></data>
+  <data name="VmLocalLabel" xml:space="preserve"><value>Местное время</value></data>
+  <data name="VmIdentityLabel" xml:space="preserve"><value>Идентификатор</value></data>
+  <data name="VmOriginalLabel" xml:space="preserve"><value>Исходный файл</value></data>
 </root>
