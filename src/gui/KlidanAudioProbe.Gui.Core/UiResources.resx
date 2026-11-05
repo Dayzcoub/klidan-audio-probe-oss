@@ -693,6 +693,14 @@
   <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
   <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
   <data name="VmPeriodProvenance" xml:space="preserve"><value>Provenance: {0}</value></data>
+  <data name="VmInspectorMixerFormatLabel" xml:space="preserve"><value>Mix format</value></data>
+  <data name="VmInspectorWindowsChannelsLabel" xml:space="preserve"><value>Windows channels</value></data>
+  <data name="VmInspectorPhysicalConnectorsLabel" xml:space="preserve"><value>Physical connectors</value></data>
+  <data name="VmInspectorDeviceLabel" xml:space="preserve"><value>Device</value></data>
+  <data name="VmInspectorMeterLabel" xml:space="preserve"><value>Meter</value></data>
+  <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Physical match</value></data>
+  <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Connection</value></data>
+  <data name="VmInspectorEventLabel" xml:space="preserve"><value>Event</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>

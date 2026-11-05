@@ -693,6 +693,14 @@
   <data name="VmPeriodFormatSupportHresult" xml:space="preserve"><value>IsFormatSupported HRESULT: {0}</value></data>
   <data name="VmPeriodInitializeHresult" xml:space="preserve"><value>Initialize HRESULT: {0}</value></data>
   <data name="VmPeriodProvenance" xml:space="preserve"><value>Происхождение: {0}</value></data>
+  <data name="VmInspectorMixerFormatLabel" xml:space="preserve"><value>Формат микширования</value></data>
+  <data name="VmInspectorWindowsChannelsLabel" xml:space="preserve"><value>Каналы Windows</value></data>
+  <data name="VmInspectorPhysicalConnectorsLabel" xml:space="preserve"><value>Физические разъёмы</value></data>
+  <data name="VmInspectorDeviceLabel" xml:space="preserve"><value>Устройство</value></data>
+  <data name="VmInspectorMeterLabel" xml:space="preserve"><value>Измеритель</value></data>
+  <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Физическое соответствие</value></data>
+  <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Соединение</value></data>
+  <data name="VmInspectorEventLabel" xml:space="preserve"><value>Событие</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>
