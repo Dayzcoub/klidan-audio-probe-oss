@@ -1619,9 +1619,10 @@ var channelSummary = (TextBlock)typeof(MainWindow).GetField("WorkerChannelCountT
 channelSummary.SetBinding(TextBlock.TextProperty, new Binding(nameof(workerVm.WorkerChannelSummary)) { Source = workerVm });
 workerVm.SelectedWorkerEndpoint = workerVm.WorkerEndpoints.Single(e => e.Direction == "CAPTURE");
 channelSummary.GetBindingExpression(TextBlock.TextProperty)!.UpdateTarget();
-Check(!workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains("2 каналов", StringComparison.Ordinal), "Capture selection shows its topology count and hides Render channel selection");
+Check(workerVm.SelectedWorkerEndpoint?.Direction == "CAPTURE" && !workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureLabel"), StringComparison.Ordinal) && channelSummary.Text.Contains("2 каналов", StringComparison.Ordinal), "Capture selection shows its localized direction and topology count while retaining the invariant machine value");
 workerVm.SelectedWorkerEndpoint = workerVm.WorkerEndpoints.Single(e => e.Direction == "RENDER");
-Check(workerVm.WorkerRenderChannelVisible, "Render selection shows its Windows channel selector");
+channelSummary.GetBindingExpression(TextBlock.TextProperty)!.UpdateTarget();
+Check(workerVm.WorkerRenderChannelVisible && channelSummary.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderLabel"), StringComparison.Ordinal), "Render selection shows its localized direction and Windows channel selector");
 foreach (var channelCount in new[] { 2, 8, 32, 48, 64 })
 {
     workerVm.SelectedWorkerFormat = workerVm.WorkerFormatOptions.Single(f => f.Topology.ChannelCount == channelCount);

@@ -451,7 +451,7 @@ public sealed class MainViewModel : ViewModel
         }
     }
     public string StreamValidationResultsSummary => string.Join(" · ", StreamValidationRows.Select(r => $"{r.Period}: {r.FinalStatus}"));
-    public string StreamValidationConsentText => SelectedWindowsEndpoint is { } e && SelectedStreamCandidate is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamValidationConsent"), e.FriendlyNameDisplay, e.Direction, e.EndpointId, c.Channels, c.Period.ToUpperInvariant()) : Localization.Get("VmStreamValidationSelectInitializedCandidate");
+    public string StreamValidationConsentText => SelectedWindowsEndpoint is { } e && SelectedStreamCandidate is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamValidationConsent"), e.FriendlyNameDisplay, DirectionDisplayLabel(e.Direction), e.EndpointId, c.Channels, c.Period.ToUpperInvariant()) : Localization.Get("VmStreamValidationSelectInitializedCandidate");
     public string StreamValidationAvailability => Localization.Get(CanRequestStreamValidation() ? "VmStreamValidationAuthorizationRequired" : "VmStreamValidationNeedsCurrentInitialize");
     public bool DeviceScanRunning { get => _deviceScanRunning; private set { if (Set(ref _deviceScanRunning, value)) { CancelDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RequestStreamValidationCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestRealInitializeCommand.Refresh(); Changed(nameof(CanSaveDeviceProfile)); } } }
     public bool AutomaticScanPairEnabled
@@ -499,8 +499,8 @@ public sealed class MainViewModel : ViewModel
             if (_automaticScanPreparation is not { } prepared) return Localization.Get("VmAutomaticScanPlanMissing");
             var target = prepared.Plan.Target;
             var endpoints = new List<string>();
-            if (target.Capture is { } capture) endpoints.Add($"Capture: {capture.FriendlyNameDisplay} · ID {capture.EndpointId}");
-            if (target.Render is { } render) endpoints.Add($"Render: {render.FriendlyNameDisplay} · ID {render.EndpointId}");
+            if (target.Capture is { } capture) endpoints.Add($"{Localization.Get("VmCaptureLabel")}: {capture.FriendlyNameDisplay} · ID {capture.EndpointId}");
+            if (target.Render is { } render) endpoints.Add($"{Localization.Get("VmRenderLabel")}: {render.FriendlyNameDisplay} · ID {render.EndpointId}");
             var operations = string.Join(", ", prepared.WorkerPlan.AllowedOperations.Select(ScanCommandLabel));
             var active = prepared.MaximumActiveSeconds == 0 ? Localization.Get("VmAutomaticScanActiveUnavailable") : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanActiveBound"), prepared.MaximumActiveSeconds);
             var identity = Localization.Get(prepared.PairPhysicalIdentityUnconfirmed ? "VmAutomaticScanIdentityUnconfirmed" : "VmAutomaticScanIdentityCurrent");
@@ -576,7 +576,7 @@ public sealed class MainViewModel : ViewModel
     public bool HasDeviceScanResult => _deviceScanResult is not null;
     public IReadOnlyList<RealFormatCandidateDto> DeviceScanInitializeCandidates => _deviceScanResult?.Initializations.SelectMany(r => r.Candidates).ToArray() ?? [];
     public string DeviceScanProgress => _deviceScanProgress;
-    public string DeviceScanConsentText => SelectedWindowsEndpoint is { } e ? string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanConsent"), e.FriendlyNameDisplay, e.Direction, DeviceConfigurationScan.MaximumInitializeOperations, DeviceConfigurationScan.MaximumDurationSeconds) : Localization.Get("VmChooseActiveWindowsDevice");
+    public string DeviceScanConsentText => SelectedWindowsEndpoint is { } e ? string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanConsent"), e.FriendlyNameDisplay, DirectionDisplayLabel(e.Direction), DeviceConfigurationScan.MaximumInitializeOperations, DeviceConfigurationScan.MaximumDurationSeconds) : Localization.Get("VmChooseActiveWindowsDevice");
     public bool CanStartDeviceScan => CanUseSelectedWindowsEndpoint && WorkerState.State == WorkerConnectionState.ConnectedFake && _worker is not null && _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && _worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal) && !_realQueryRunning && !_realInitializeRunning && !_deviceScanRunning && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending;
     public string DeviceScanAvailabilityReason => CanStartDeviceScan ? Localization.Get("VmDeviceScanPlanBound") : WorkerState.State != WorkerConnectionState.ConnectedFake ? Localization.Get("VmConnectWorker") : !_windowsDiscoveryCurrent ? Localization.Get("VmRefreshWindowsDevices") : SelectedWindowsEndpoint is null ? Localization.Get("VmChooseCaptureOrRenderEndpoint") : SelectedWindowsEndpoint.DeviceState != "ACTIVE" ? Localization.Get("VmSelectedEndpointInactive") : !_worker!.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) || !_worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal) ? Localization.Get("VmWorkerOperationsUnsupported") : Localization.Get("VmWaitOrCancelPendingOperation");
     public string DeviceScanResultSummary
@@ -631,7 +631,7 @@ public sealed class MainViewModel : ViewModel
         _ => _operatorResultMode
     };
     public string OperatorResultConfiguration => _operatorResultConfiguration;
-    public string OperatorSelectedDevice => WorkflowStep == OperatorStep.Result && _operatorResultEndpoint.Length > 0 ? _operatorResultEndpoint : SelectedWindowsEndpoint is { } e ? $"{e.FriendlyNameDisplay} · {e.Direction} · {e.DeviceState}" : SelectedPhysicalDeviceGroup?.DisplayName ?? RealFormatEndpointLabel;
+    public string OperatorSelectedDevice => WorkflowStep == OperatorStep.Result && _operatorResultEndpoint.Length > 0 ? _operatorResultEndpoint : SelectedWindowsEndpoint is { } e ? $"{e.FriendlyNameDisplay} · {DirectionDisplayLabel(e.Direction)} · {e.DeviceState}" : SelectedPhysicalDeviceGroup?.DisplayName ?? RealFormatEndpointLabel;
     public SessionMode Direction
     {
         get => _direction;
@@ -693,7 +693,7 @@ public sealed class MainViewModel : ViewModel
     public FormatTopologyDto? SelectedWorkerFormat { get => _selectedWorkerFormat; set { if (value is not null && !WorkerFormatOptions.Contains(value)) return; if (Set(ref _selectedWorkerFormat, value)) { if (_workerRenderChannel < 1 || _workerRenderChannel > WorkerChannelCount) _workerRenderChannel = 1; Changed(nameof(WorkerChannelCount)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(WorkerRenderChannel)); Changed(nameof(WorkerRenderChannelOptions)); RefreshWorkerCommands(); } } }
     public IReadOnlyList<FormatTopologyDto> WorkerFormatOptions => SelectedWorkerEndpoint?.FormatTopologies ?? [];
     public int WorkerChannelCount => SelectedWorkerFormat?.Topology.ChannelCount ?? 0;
-    public string WorkerChannelSummary => SelectedWorkerEndpoint is { } endpoint && WorkerChannelCount > 0 ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerChannelSummary"), endpoint.Direction, SelectedWorkerFormat!.FormatId, WorkerChannelCount) : Localization.Get("VmWorkerFormatNotSelected");
+    public string WorkerChannelSummary => SelectedWorkerEndpoint is { } endpoint && WorkerChannelCount > 0 ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerChannelSummary"), DirectionDisplayLabel(endpoint.Direction), SelectedWorkerFormat!.FormatId, WorkerChannelCount) : Localization.Get("VmWorkerFormatNotSelected");
     public bool WorkerRenderChannelVisible => SelectedWorkerEndpoint?.Direction == "RENDER";
     public bool WorkerCurrentEndpointsVisible => WorkerState.State == WorkerConnectionState.ConnectedFake;
     public IReadOnlyList<WorkerEndpointDto> LastWorkerEndpointSnapshot { get => _lastWorkerEndpointSnapshot; private set { if (Set(ref _lastWorkerEndpointSnapshot, value)) { Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); } } }
@@ -941,7 +941,7 @@ public sealed class MainViewModel : ViewModel
     }
     public bool RealInitializeConsentPending { get => _realInitializeConsentPending; private set { if (Set(ref _realInitializeConsentPending, value)) { Changed(nameof(RealInitializeConsentChecked)); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealInitializeDisabledReason)); ConfirmRealInitializeCommand.Refresh(); CancelRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
     public bool RealInitializeConsentChecked { get => _realInitializeConsentChecked; set { if (Set(ref _realInitializeConsentChecked, value)) ConfirmRealInitializeCommand.Refresh(); } }
-    public string RealInitializeConsentText => _pendingRealFormatCandidate is { } c && _pendingRealEndpointId is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializeConsentDescription"), _pendingRealDirection, c.Encoding, c.SampleRate, c.Channels, c.Period) : Localization.Get("VmRealInitializeSelectSupportedFormat");
+    public string RealInitializeConsentText => _pendingRealFormatCandidate is { } c && _pendingRealEndpointId is not null && _pendingRealDirection is { } direction ? string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializeConsentDescription"), DirectionDisplayLabel(direction), c.Encoding, c.SampleRate, c.Channels, c.Period) : Localization.Get("VmRealInitializeSelectSupportedFormat");
     public bool HasSelectedWindowsEndpoint => SelectedWindowsEndpoint is not null;
     public string WindowsEndpointSearchText
     {
@@ -1030,7 +1030,7 @@ public sealed class MainViewModel : ViewModel
     public string SavedProfileBindingTechnicalDetails => _savedProfileBindingResult is { } result
         ? $"{Localization.Get("VmOverallLabel")}: {result.Overall}\n{Localization.Get("VmCaptureLabel")}: {result.Capture}\n{Localization.Get("VmRenderLabel")}: {result.Render}\n{Localization.Get("VmProfileLabel")}: {result.SourceProfileId:D}\n{Localization.Get("VmScanSessionLabel")}: {result.SourceScanSessionId ?? "UNKNOWN"}\n{Localization.Get("VmGenerationLabel")}: {result.DiscoveryGeneration ?? "UNKNOWN"}\n{Localization.Get("VmExactIdsLabel")}: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\n{Localization.Get("VmReasonsLabel")}: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\n{Localization.Get("VmLimitationsLabel")}: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\n{Localization.Get("VmFurtherVerificationRequiredLabel")}: {result.RequiresFurtherVerification}"
         : Localization.Get("VmSavedProfileTechnicalDetailsMissing");
-    public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalWorkerEndpoint"), e.Name, e.Direction, e.ChannelCount)).ToArray();
+    public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalWorkerEndpoint"), e.Name, DirectionDisplayLabel(e.Direction), e.ChannelCount)).ToArray();
     public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? Localization.Get("VmWorkerRestartRequired") : string.Empty;
     public int WorkerRenderChannel { get => _workerRenderChannel; set { if (value >= 1 && value <= WorkerChannelCount && Set(ref _workerRenderChannel, value)) RefreshWorkerCommands(); } }
     public IReadOnlyList<SelectionOption> WorkerRenderChannelOptions => Enumerable.Range(1, WorkerChannelCount).Select(i => new SelectionOption(i, string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsChannelOption"), i))).ToArray();
@@ -1093,8 +1093,8 @@ public sealed class MainViewModel : ViewModel
     public string WorkerMeterCoalescingSummary => WorkerSession?.Mode == SessionMode.Render
         ? _workerRenderMeter is { } r ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterCoalescedSummary"), r.CoalescedSnapshotCount) : Localization.Get("VmWorkerMeterCoalescedNoData")
         : _workerCaptureMeter is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterCoalescedSummary"), c.CoalescedSnapshotCount) : Localization.Get("VmWorkerMeterCoalescedNoData");
-    public string WorkerConsentText => _workerPendingSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerConsentSummary"), s.Direction, s.EndpointId, s.FormatId, s.ChannelCount, s.Period, s.Mmcss, s.DurationSeconds, s.Scenario, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable")) : Localization.Get("VmWorkerConsentMissing");
-    public string WorkerSessionSettingsText => _workerSessionSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSessionSettingsSummary"), s.Direction, s.EndpointId, s.FormatId, s.ChannelCount, s.TopologyId, s.Period, s.Mmcss, s.DurationSeconds, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable"), s.Scenario) : Localization.Get("VmWorkerSessionSettingsMissing");
+    public string WorkerConsentText => _workerPendingSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerConsentSummary"), DirectionDisplayLabel(s.Direction), s.EndpointId, s.FormatId, s.ChannelCount, s.Period, s.Mmcss, s.DurationSeconds, s.Scenario, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable")) : Localization.Get("VmWorkerConsentMissing");
+    public string WorkerSessionSettingsText => _workerSessionSettings is { } s ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSessionSettingsSummary"), DirectionDisplayLabel(s.Direction), s.EndpointId, s.FormatId, s.ChannelCount, s.TopologyId, s.Period, s.Mmcss, s.DurationSeconds, s.RenderChannel?.ToString() ?? Localization.Get("VmWorkerMeterNotApplicable"), s.Scenario) : Localization.Get("VmWorkerSessionSettingsMissing");
     public ObservableCollection<WorkerTimelineEntryDto> WorkerTimeline { get; } = [];
     private WorkerTimelineEntryDto? _selectedWorkerTimelineEntry;
     public WorkerTimelineEntryDto? SelectedWorkerTimelineEntry { get => _selectedWorkerTimelineEntry; set { if (Set(ref _selectedWorkerTimelineEntry, value)) { Changed(nameof(WorkerSelectedEventDetails)); RefreshContext(); } } }
@@ -2182,8 +2182,8 @@ public sealed class MainViewModel : ViewModel
         _streamValidationRunning = true; Changed(nameof(StreamValidationRunning)); Changed(nameof(StreamValidationRows)); RequestStreamValidationCommand.Refresh(); CancelStreamValidationCommand.Refresh();
         _streamValidationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         _activeStreamOperationId = Guid.NewGuid().ToString("D");
-        _streamValidationProgress = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamProgress"), endpoint.Direction, period);
-        _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamRunning"), period, endpoint.Direction);
+        _streamValidationProgress = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamProgress"), DirectionDisplayLabel(endpoint.Direction), period);
+        _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamRunning"), period, DirectionDisplayLabel(endpoint.Direction));
         Changed(nameof(StreamValidationProgress)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamEvidencePersistenceStatus));
         try
         {
@@ -2298,7 +2298,7 @@ public sealed class MainViewModel : ViewModel
             {
                 _realQueryInvalidated = true;
             }
-            _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
+            _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
             _operatorResultMode = "Автоматическое сканирование конфигурации";
             _operatorResultProvenance = "REAL_WASAPI_QUERY + REAL_WASAPI_INITIALIZE_ONLY";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorDeviceScanConfiguration"), result.Initializations.Count);
@@ -2343,7 +2343,7 @@ public sealed class MainViewModel : ViewModel
         {
             var requestedChannels = RealQueryChannelCountsText.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(value => int.TryParse(value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var count) ? count : -1).ToArray();
             if (requestedChannels.Length is < 1 or > 32 || requestedChannels.Any(count => count is < 1 or > 64) || requestedChannels.Distinct().Count() != requestedChannels.Length) throw new ArgumentException(Localization.Get("VmQueryChannelsValidation"));
-            _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
+            _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
             _operatorResultMode = "Запрос Exclusive-форматов";
             _operatorResultProvenance = "REAL_WASAPI_QUERY";
             _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorFormatQueryConfiguration"), string.Join(", ", requestedChannels));
@@ -2351,7 +2351,7 @@ public sealed class MainViewModel : ViewModel
             var result = await _worker.QueryFormatMatrixAsync(id, endpoint.Direction, requestedChannels);
             if (WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent)
             {
-                _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
+                _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}";
                 _operatorResultMode = "Запрос Exclusive-форматов";
                 _operatorResultConfiguration = Localization.Get("VmQueryDisconnectedConfiguration");
                 _realFormatError = Localization.Get("VmQueryDisconnectedError");
@@ -2376,7 +2376,7 @@ public sealed class MainViewModel : ViewModel
             NotifyOperatorResult();
             if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
         }
-        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}"; _operatorResultMode = "Запрос Exclusive-форматов"; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
+        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}"; _operatorResultMode = "Запрос Exclusive-форматов"; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
         finally { _realQueryRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
     }
 
@@ -3224,6 +3224,8 @@ public sealed class MainViewModel : ViewModel
 
     private static string[] PeriodDetails(string label, PeriodEvidence evidence) =>
     [label, string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodStatusFormat"), evidence.StatusCode), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodFormatSupportHresult"), evidence.Hresult ?? Localization.Get("VmValueUnknown")), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodInitializeHresult"), evidence.InitializeHresult ?? Localization.Get("VmValueNotObserved")), string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodProvenance"), evidence.Provenance ?? Localization.Get("VmValueUnknown"))];
+
+    private static string DirectionDisplayLabel(string direction) => direction switch { "CAPTURE" => Localization.Get("VmCaptureLabel"), "RENDER" => Localization.Get("VmRenderLabel"), _ => direction };
 
     public static string ModeLabel(SessionMode mode) => mode == SessionMode.Capture ? "вход (Capture)" : "выход (Render)";
 
