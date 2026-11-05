@@ -78,11 +78,13 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     private void SetState(WorkerConnectionState state, string message, int? exitCode = null)
     {
         _state = new(state, message, _pid, exitCode);
+        EndpointDiscoveryQaTrace.Write("worker-state", state: state.ToString(), exitCode: exitCode);
         RaiseSafely(StateChanged, _state);
     }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
+        EndpointDiscoveryQaTrace.Write("worker-connect-enter", state: _state.State.ToString(), exitCode: QueryExitCode(_process));
         if (_everStarted) throw new InvalidOperationException("Automatic worker restart is disabled; create a new application session to retry.");
         _everStarted = true;
         try
@@ -142,12 +144,17 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             }
             catch (WorkerProtocolException ex) { SetState(WorkerConnectionState.Incompatible, $"Согласование worker отклонено: {ex.ErrorCode}."); throw; }
             catch (Exception ex) { SetState(WorkerConnectionState.Incompatible, "Ответ worker не прошёл согласование протокола."); throw new WorkerProtocolException("HANDSHAKE", "INCOMPATIBLE_PROTOCOL", ex.Message); }
-            _readerTask = ReaderLoopAsync(_lifetime.Token);
-            _ = MonitorExitAsync(_process);
+            using (ExecutionContext.SuppressFlow())
+            {
+                _readerTask = ReaderLoopAsync(_lifetime.Token);
+                _ = MonitorExitAsync(_process);
+            }
             SetState(WorkerConnectionState.ConnectedFake, "Подключено к синтетическому worker · без аудиоустройств.");
+            EndpointDiscoveryQaTrace.Write("worker-connect-complete", state: _state.State.ToString(), exitCode: QueryExitCode(_process));
         }
         catch (Exception ex)
         {
+            EndpointDiscoveryQaTrace.Write("worker-connect-failure", state: _state.State.ToString(), exitCode: QueryExitCode(_process), exceptionType: ex.GetType().Name, errorCode: ex is Win32Exception win32 ? win32.NativeErrorCode.ToString() : null);
             if (_state.State == WorkerConnectionState.Incompatible) KillOwnedWorker();
             else
             {
@@ -174,10 +181,13 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     public async Task<WindowsEndpointDiscoveryDto> ListWindowsEndpointsAsync(CancellationToken cancellationToken = default)
     {
         if (!_capabilities.Contains("ListWindowsEndpoints", StringComparer.Ordinal)) throw new WorkerCommandException("ListWindowsEndpoints", "NOT_SUPPORTED", "The connected worker did not advertise this capability.");
-        using var response = await SendAsync("ListWindowsEndpoints", new { }, cancellationToken).ConfigureAwait(false);
+        if (_state.State != WorkerConnectionState.ConnectedFake) throw new InvalidOperationException("Worker transport is not connected.");
+        using var response = await SendAsync("ListWindowsEndpoints", new { }, cancellationToken, responseTimeoutOverride: ResponseTimeoutOverrideForTest ?? TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=payload-parse workerState={0}", _state.State);
         var discovery = response.RootElement.GetProperty("payload").Deserialize<WindowsEndpointDiscoveryDto>(JsonOptions)
             ?? throw new InvalidDataException("Windows endpoint response payload is missing.");
         WindowsEndpointDiscoveryValidation.Validate(discovery, _capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal));
+        System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=validated endpointCount={0} workerState={1}", discovery.Endpoints.Count, _state.State);
         return discovery;
     }
 
@@ -515,10 +525,14 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         finally { if (!shutdownRejected) { _lifetime.Cancel(); KillOwnedWorker(); } }
     }
 
-    private async Task<JsonDocument> SendAsync(string command, object payload, CancellationToken cancellationToken, bool allowStopping = false, WorkerSessionSettingsDto? expectedSettings = null)
+    private async Task<JsonDocument> SendAsync(string command, object payload, CancellationToken cancellationToken, bool allowStopping = false, WorkerSessionSettingsDto? expectedSettings = null, TimeSpan? responseTimeoutOverride = null)
     {
         if ((_state.State != WorkerConnectionState.ConnectedFake && !(allowStopping && _state.State == WorkerConnectionState.Stopping)) || _pipe is null) throw new InvalidOperationException("Worker is not connected.");
+        var traceTimer = Stopwatch.StartNew();
+        void Trace(string stage) => System.Diagnostics.Trace.TraceInformation("WorkerIpc stage={0} command={1} elapsedMs={2} workerState={3}", stage, command, traceTimer.ElapsedMilliseconds, _state.State);
         var id = Guid.NewGuid();
+        var traceDiscovery = command == "ListWindowsEndpoints";
+        if (traceDiscovery) EndpointDiscoveryQaTrace.Write("ipc-request-created", id, _state.State.ToString(), QueryExitCode(_process));
         var completion = new TaskCompletionSource<JsonDocument>(TaskCreationOptions.RunContinuationsAsynchronously);
         var pending = new PendingRequest(command, completion, command is "StartCaptureMeter" or "StartRenderChannelTest", expectedSettings);
         lock (_pendingSync)
@@ -530,10 +544,21 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var acquired = false;
         try
         {
-            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            Trace("waiting-write-lock");
+            using (var writeTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token))
+            {
+                writeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                try { await _writeGate.WaitAsync(writeTimeout.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !_lifetime.IsCancellationRequested)
+                {
+                    Trace("write-lock-timeout");
+                    throw new TimeoutException($"Timed out waiting to send {command}.");
+                }
+            }
             acquired = true;
             cancellationToken.ThrowIfCancellationRequested();
             if (!pending.MarkSent()) throw new InvalidOperationException("Request was cancelled before write.");
+            Trace("request-write-start");
             try
             {
                 var request = new { protocolVersion = new { major = ProtocolMajor, minor = ProtocolMinor }, schemaVersion = SchemaVersion, kind = "request", requestId = id, correlationId = (Guid?)null, sessionId = (Guid?)null, eventSequence = 0L, commandOrEvent = command, payload };
@@ -541,31 +566,42 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
                 timeout.CancelAfter(TimeSpan.FromSeconds(5));
                 await IpcFrameCodec.WriteJsonAsync(_pipe, request, timeout.Token).ConfigureAwait(false);
                 RequestWrittenForTest?.Invoke(id);
+                if (traceDiscovery) EndpointDiscoveryQaTrace.Write("ipc-request-sent", id, _state.State.ToString(), QueryExitCode(_process));
+                Trace("request-sent");
             }
             catch (Exception ex)
             {
+                if (traceDiscovery) EndpointDiscoveryQaTrace.Write("ipc-write-failure", id, _state.State.ToString(), QueryExitCode(_process), ex.GetType().Name, ex is Win32Exception writeError ? writeError.NativeErrorCode.ToString() : null);
                 EndTransport("REQUEST_WRITE", ex.Message, QueryExitCode(_process));
                 throw new IOException("Worker request write failed; transport outcome is unknown.", ex);
             }
             finally { _writeGate.Release(); acquired = false; }
-            var responseTimeout = ResponseTimeoutOverrideForTest ?? GetResponseTimeout(command);
-            try { return await completion.Task.WaitAsync(responseTimeout, cancellationToken).ConfigureAwait(false); }
-            catch (TimeoutException)
+            var responseTimeout = responseTimeoutOverride ?? ResponseTimeoutOverrideForTest ?? GetResponseTimeout(command);
+            try { var result = await completion.Task.WaitAsync(responseTimeout, cancellationToken).ConfigureAwait(false); Trace("response-received"); return result; }
+            catch (TimeoutException) { if (traceDiscovery) EndpointDiscoveryQaTrace.Write("ipc-response-timeout", id, _state.State.ToString(), QueryExitCode(_process)); return AbandonTimedOutRequest(); }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !_lifetime.IsCancellationRequested)
             {
-                if (!pending.TryAbandon(out _)) return await completion.Task.ConfigureAwait(false);
-                completion.TrySetCanceled();
-                RaiseSafely(TransportFault, new WorkerTransportFaultDto("RESPONSE_TIMEOUT", $"No response arrived for {command}; command outcome remains unknown.", CorrelationId: id, Command: command));
-                if (IsSupervisedNativeOperation(command)) EndTransport(command is "ValidateDuplex" or "ValidateSustainedDuplex" ? "DUPLEX_SUPERVISION_TIMEOUT" : command == "InitializeExclusiveCustomPeriod" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
-                throw;
+                return AbandonTimedOutRequest();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                Trace("cancelled");
+                if (traceDiscovery) EndpointDiscoveryQaTrace.Write("ipc-cancelled", id, _state.State.ToString(), QueryExitCode(_process));
                 if (!pending.TryAbandon(out var mayHaveBeenSent)) return await completion.Task.ConfigureAwait(false);
                 if (!mayHaveBeenSent) RemovePending(id, pending);
                 completion.TrySetCanceled(cancellationToken);
                 if (mayHaveBeenSent) RaiseSafely(TransportFault, new WorkerTransportFaultDto("REQUEST_CANCELLED", $"Caller cancelled {command} after its frame may have been sent; outcome remains unknown.", CorrelationId: id, Command: command));
                 if (mayHaveBeenSent && IsSupervisedNativeOperation(command)) EndTransport(command == "CloseScanSession" ? "SESSION_CLOSE_CANCELLED" : "NATIVE_OPERATION_CANCELLED", "A real native operation may already be running; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
                 throw;
+            }
+            JsonDocument AbandonTimedOutRequest()
+            {
+                Trace("response-timeout");
+                if (!pending.TryAbandon(out _)) return completion.Task.GetAwaiter().GetResult();
+                completion.TrySetCanceled();
+                RaiseSafely(TransportFault, new WorkerTransportFaultDto("RESPONSE_TIMEOUT", $"No response arrived for {command}; command outcome remains unknown.", CorrelationId: id, Command: command));
+                if (IsSupervisedNativeOperation(command)) EndTransport(command is "ValidateDuplex" or "ValidateSustainedDuplex" ? "DUPLEX_SUPERVISION_TIMEOUT" : command == "InitializeExclusiveCustomPeriod" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
+                throw new TimeoutException($"No response arrived for {command} within the response deadline.");
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !pending.WasSent)
@@ -577,7 +613,12 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             }
             throw;
         }
-        finally { if (acquired) _writeGate.Release(); }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            if (pending.TryAbandon(out var mayHaveBeenSent) && !mayHaveBeenSent) RemovePending(id, pending);
+            throw new IOException($"Worker transport closed while waiting for {command}; the command outcome is unknown.");
+        }
+        finally { if (acquired) _writeGate.Release(); Trace("send-complete"); }
     }
 
     private static bool IsSupervisedNativeOperation(string command) => command is "QueryFormatMatrix" or "ValidateFormatMatrix" or "ValidateStream" or "ValidateDuplex" or "ValidateSustainedDuplex" or "InitializeExclusiveCustomPeriod" or "CloseScanSession";
@@ -616,7 +657,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex) { if (!_shutdownRequested) EndTransport("PIPE_READ", ex.Message, QueryExitCode(_process)); }
+        catch (Exception ex) { EndpointDiscoveryQaTrace.Write("ipc-read-failure", state: _state.State.ToString(), exitCode: QueryExitCode(_process), exceptionType: ex.GetType().Name, errorCode: ex is Win32Exception readError ? readError.NativeErrorCode.ToString() : null); if (!_shutdownRequested) EndTransport("PIPE_READ", ex.Message, QueryExitCode(_process)); }
     }
 
     private void DispatchResponse(JsonDocument document)
@@ -670,6 +711,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             }
             _pending.TryRemove(correlation, out _);
         }
+        if (command == "ListWindowsEndpoints") EndpointDiscoveryQaTrace.Write("ipc-response-received", correlation, _state.State.ToString(), QueryExitCode(_process), errorCode: accepted ? null : root.GetProperty("errorCode").GetString());
         if (!accepted)
         {
             var code = root.GetProperty("errorCode").GetString()!;
@@ -877,6 +919,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     private void EndTransport(string stage, string message, int? exitCode)
     {
         if (Interlocked.Exchange(ref _transportEnded, 1) != 0) return;
+        EndpointDiscoveryQaTrace.Write("end-transport-" + stage, state: _state.State.ToString(), exitCode: exitCode);
         lock (_pendingSync)
         {
             foreach (var entry in _pending.ToArray())
@@ -997,7 +1040,10 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     private async Task MonitorExitAsync(SafeProcessHandle process)
     {
         if (await Task.Run(() => WaitForSingleObject(process, uint.MaxValue)).ConfigureAwait(false) == 0 && !_shutdownRequested)
+        {
+            EndpointDiscoveryQaTrace.Write("worker-process-exit", state: _state.State.ToString(), exitCode: QueryExitCode(process));
             EndTransport("PROCESS_EXIT", "Worker process exited unexpectedly.", QueryExitCode(process));
+        }
     }
     private void KillOwnedWorker()
     {

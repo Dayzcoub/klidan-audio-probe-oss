@@ -824,6 +824,9 @@
   <data name="VmBindingNotConfirmed" xml:space="preserve"><value>The current match was not confirmed.</value></data>
   <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Repeat the check for the selected profile.</value></data>
   <data name="VmBindingRediscovery" xml:space="preserve"><value>Check is stale: the device list is being refreshed.</value></data>
+  <data name="VmBindingDiscoveryCompleted" xml:space="preserve"><value>Device list refreshed. Saved profile binding remains unverified.</value></data>
+  <data name="VmEndpointRefreshFailure" xml:space="preserve"><value>Device refresh failed: {0}. Saved profile binding remains unverified.</value></data>
+  <data name="VmBindingCheckAfterDiscovery" xml:space="preserve"><value>Check saved profile binding separately if needed.</value></data>
   <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>The previous result does not apply to the new discovery.</value></data>
   <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Wait for the complete device list, then repeat the check.</value></data>
   <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Check is stale: the current device list is no longer confirmed.</value></data>

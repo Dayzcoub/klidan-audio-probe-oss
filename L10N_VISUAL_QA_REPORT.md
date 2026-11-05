@@ -118,3 +118,123 @@ READY_FOR_PUBLIC_RELEASE = NO
 Remaining blockers are the live GUI endpoint discovery hang, incomplete full
 workflow visual inspection, and missing exact-size 100% plus isolated 125% and
 150% visual runs. Physical QA is explicitly outside this pass.
+
+## QA-6 endpoint discovery investigation — 2026-11-05
+
+This is a local investigation against starting HEAD
+`0bffd09e81a5902db5448b268be68f0ec6196723`; the changes below are not committed
+or pushed. The first proposed diagnosis (a stale saved-profile status label)
+was incomplete. In the latest Release GUI, opening Developer Tools and pressing
+Find / refresh left the Worker disconnected and showed no endpoint rows. A
+successful status was observed in an earlier session, but could not be
+reproduced consistently in this run. Therefore the root cause is unresolved and
+the GUI discovery fix is not accepted.
+
+Fresh checks during this investigation:
+
+| Check | Result | Evidence |
+|---|---|---|
+| Native Release build | PASS | `cmake --build build --config Release --parallel`, exit 0 |
+| Native CTest | PASS | 119/119, 18.07 s |
+| GUI Release build | PASS | `dotnet build ...Gui.App.csproj -c Release`, 0 warnings/errors |
+| GUI Core/WPF | FAIL | Fresh run repeatedly stops at pre-existing assertion `Period discovery entry is visible with an explicit unavailable reason` (test expects an unavailable reason although its injected workflow makes the state Ready). |
+| Worker IPC/process | PASS | 292 checks, including 5-second discovery timeout, late response and later independent correlation |
+| Resource parity | PASS | 1,219 keys in each locale, zero missing/empty values, zero placeholder mismatches |
+| GUI endpoint discovery | FAIL | Release GUI on real Windows: refresh left Worker disconnected and endpoint list empty; prior refresh durations around 9–11 seconds are not accepted as proof because the latest result contradicted them. |
+| Shutdown cleanup | PASS | Closed GUI; subsequent process query found no GUI or Worker process. |
+
+The app UI trace listener experiment did not produce a trace file. No endpoint
+IDs or user paths were included in the attempted trace messages. Detailed
+stage-by-stage request/response timing is therefore unavailable. No active
+audio operation was started. No commit or push was made because live discovery
+and GUI Core/WPF validation did not pass.
+
+```text
+ROOT_CAUSE = unresolved
+DISCOVERY_GUI = FAIL
+DISCOVERY_DURATION_MS = inconsistent; prior ~9,000–11,000 ms observations not accepted as PASS
+IPC_TIMEOUT_HANDLING = PASS (Worker IPC regression checks)
+LOADING_CLEANUP = FAIL (GUI returned disconnected/empty state)
+STALE_ENDPOINT_SAFETY = PASS (failed/disconnected result exposes no current rows)
+REPEAT_REFRESH = NOT_CONFIRMED
+RU_GUI = NOT_RUN in latest build
+EN_GUI = FAIL
+GUI_CLOSE_WORKER_CLEANUP = PASS
+NATIVE_CTEST = PASS (119/119)
+GUI_TESTS = FAIL (pre-existing assertion above)
+FINAL_HEAD = 0bffd09e81a5902db5448b268be68f0ec6196723 + uncommitted local changes
+WORKTREE = DIRTY
+READY_FOR_DPI_QA = NO
+```
+
+## QA-6A endpoint discovery root cause — 2026-11-05 (supersedes the QA-6 finding above)
+
+The earlier report's claim that a Release refresh left the Worker disconnected
+was not supported by a captured trace and is superseded by this controlled
+diagnostic run. QA logging was enabled explicitly with
+`KLIDAN_ENDPOINT_DISCOVERY_QA_LOG` and began before Worker startup. The local
+trace is:
+
+`C:\Users\Jizzo\AppData\Local\Temp\klidan-endpoint-qa-bc17249a9b02426e85d0e2a461ae1555.log`
+
+The actual Native Worker IPC discovery path completed successfully twice in
+one GUI launch. The first request was sent at elapsed 55,066 ms and its
+correlated response arrived at 55,089 ms (23 ms); the second was sent at
+164,234 ms and its correlated response arrived at 164,255 ms (21 ms). Both
+results reached the UI, and Loading exited 1 ms later. Worker state progressed
+Disconnected → Starting → Connecting → Handshaking → ConnectedFake. Process
+exit code 259 while connected is STILL_ACTIVE; normal shutdown later recorded
+exit code 0. The GUI and Worker processes were absent after closing the GUI.
+Developer Tools showed 87 real Windows endpoint rows. No endpoint identifiers,
+payloads or personal paths were written to the trace.
+
+The apparent persistent “Loading” symptom is explained by the saved-profile
+operator status being set to a “device list is refreshing” message at discovery
+start, but not being given a terminal status on success/failure. The actual
+`WindowsDiscoveryLoading` flag was cleared after each response. The current
+ViewModel change sets a completed status that explicitly keeps profile binding
+unverified, and sets a failure status on errors. Thus this run identified a
+stale status presentation issue; it did **not** reproduce a 120-second GUI
+Loading state, Worker exit, IPC timeout, or pipe failure. Standalone native
+`--list` was not used as a substitute for the GUI IPC trace.
+
+The initial trace also revealed an AsyncLocal correlation leak into the
+long-lived IPC reader task. Reader/exit-monitor tasks now start with execution
+context flow suppressed; request and response retain their explicit IPC
+correlation IDs. This is diagnostic correlation correctness, not an audio or
+transport behavior change.
+
+Validation on this working tree:
+
+| Check | Result | Evidence |
+|---|---|---|
+| GUI Core/WPF | PASS | `dotnet run --project tests/gui/KlidanAudioProbe.Gui.Core.Tests/KlidanAudioProbe.Gui.Core.Tests.csproj -c Release`; all 810 checks passed |
+| Worker IPC/process | PASS | `dotnet run --project tests/gui/KlidanAudioProbe.Gui.Worker.Tests/KlidanAudioProbe.Gui.Worker.Tests.csproj -c Release`; all 292 checks passed, including timeout, cancellation, late response, disconnect and shutdown cases |
+| GUI Release | PASS | `dotnet build src/gui/KlidanAudioProbe.Gui.App/KlidanAudioProbe.Gui.App.csproj -c Release`; 0 warnings, 0 errors |
+| Diff whitespace | PASS | `git diff --check`, exit 0 |
+| Interactive discovery | PARTIAL | Two real GUI refreshes passed in en-US (23 ms and 21 ms IPC response); the 3-run RU/EN matrix was stopped by Computer Use after the physical Escape key event |
+
+Several Core test expectations in the existing suite hard-coded Russian UI
+phrases while the suite selects en-US. These expectations now use the active
+resource strings; the machine status, endpoint and command assertions remain.
+The gated-discovery test now pumps the WPF Dispatcher instead of blocking it
+with `SpinWait` while awaiting a UI continuation.
+
+No active audio operation was run. This verified code/test checkpoint is being
+committed and pushed to the existing branch. The remaining interactive RU/EN
+three-refresh check is still required before DPI QA.
+
+```text
+ROOT_CAUSE = IDENTIFIED (stale saved-profile status made completed discovery look ongoing; no IPC hang reproduced)
+LAST_SUCCESSFUL_STAGE = ui-update-complete
+FIRST_FAILED_STAGE = NONE in the two traced discovery operations
+WORKER_EXIT_REASON = normal GUI shutdown, exitCode=0; exitCode=259 while connected means STILL_ACTIVE
+IPC_RESULT = PASS, correlated responses at 23 ms and 21 ms
+LOADING_CLEANUP = PASS (Loading=false and cleanup-complete recorded for both)
+DISCOVERY_3_RUNS = NOT_RUN (only two refreshes occurred in the one GUI launch)
+PERIOD_DISCOVERY_TEST = PASS (included in 810 GUI Core/WPF checks)
+GUI_TESTS = PASS (810 Core/WPF; 292 Worker IPC/process)
+FINAL_HEAD = pending checkpoint push
+WORKTREE = pending checkpoint push
+READY_FOR_DPI_QA = NO (RU/EN three-refresh interactive validation remains incomplete)
+```

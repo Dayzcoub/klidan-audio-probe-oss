@@ -219,6 +219,7 @@ public sealed class MainViewModel : ViewModel
     private bool _customPeriodDuplexConsentPending, _customPeriodDuplexConsentChecked, _customPeriodDuplexRunning;
     private CancellationTokenSource? _customPeriodDuplexCancellation;
     private bool _workerAttempted;
+    private int _windowsDiscoveryRequestGeneration;
     private WorkerEndpointDto? _selectedWorkerEndpoint;
     private FormatTopologyDto? _selectedWorkerFormat;
     private int _workerRenderChannel = 1, _workerDurationSeconds = 3;
@@ -1545,7 +1546,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(SelectedWorkerEndpoint)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); RefreshWorkerCommands(); RefreshContext();
     }
 
-    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !AutomaticScanBusy && !AutomaticScanConsentPending && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
+    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !_bindingCheckRunning && !AutomaticScanBusy && !AutomaticScanConsentPending && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
         (WorkerState.State == WorkerConnectionState.ConnectedFake && _worker.Capabilities.Contains("ListWindowsEndpoints", StringComparer.Ordinal) ||
          WorkerState.State == WorkerConnectionState.Disconnected && !_workerAttempted);
 
@@ -2672,7 +2673,7 @@ public sealed class MainViewModel : ViewModel
         if (!CanCheckSavedProfileBinding() || _worker is null) return;
         var requestVersion = ++_bindingCheckVersion;
         _bindingCheckRunning = true;
-        Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh();
+        Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh(); DiscoverWindowsEndpointsCommand.Refresh();
         try
         {
             if (WorkerState.State == WorkerConnectionState.Disconnected && !_workerAttempted)
@@ -2770,7 +2771,7 @@ public sealed class MainViewModel : ViewModel
         {
             _bindingCheckRunning = false;
             Changed(nameof(SavedProfileBindingChecking)); Changed(nameof(SavedProfileBindingStatus)); Changed(nameof(SavedProfileBindingExplanation)); Changed(nameof(SavedProfileBindingTechnicalDetails)); Changed(nameof(HasSavedProfileBindingAssessment)); Changed(nameof(SavedProfileOperatorStatus)); Changed(nameof(SavedProfileOperatorHistory)); Changed(nameof(SavedProfileOperatorLimitation));
-            CheckSavedProfileBindingCommand.Refresh();
+            CheckSavedProfileBindingCommand.Refresh(); DiscoverWindowsEndpointsCommand.Refresh();
         }
     }
 
@@ -2785,6 +2786,13 @@ public sealed class MainViewModel : ViewModel
     private async Task DiscoverWindowsEndpointsAsync()
     {
         if (!CanDiscoverWindowsEndpoints() || _worker is null) return;
+        var generation = Interlocked.Increment(ref _windowsDiscoveryRequestGeneration);
+        var operation = Guid.NewGuid();
+        using var traceOperation = EndpointDiscoveryQaTrace.BeginOperation(operation);
+        var discoveryTimer = System.Diagnostics.Stopwatch.StartNew();
+        void Trace(string stage) => System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage={0} elapsedMs={1} workerState={2} loading={3}", stage, discoveryTimer.ElapsedMilliseconds, WorkerState.State, _windowsDiscoveryLoading);
+        EndpointDiscoveryQaTrace.Write("gui-click-accepted", state: WorkerState.State.ToString(), loading: _windowsDiscoveryLoading);
+        Trace("begin");
         InvalidateSavedProfileBinding(DeviceProfileBindingInvalidationReason.EndpointRediscovered);
         var selection = new AutomaticScanSelection(SelectedWindowsEndpoint?.EndpointId, AutomaticScanPairEnabled,
             AutomaticScanPairEnabled ? SelectedDuplexCaptureEndpoint?.EndpointId : null,
@@ -2794,6 +2802,8 @@ public sealed class MainViewModel : ViewModel
         CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityDiscoveryUpdating"));
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryUpdating"));
         _windowsDiscoveryLoading = true;_windowsDiscoveryCurrent = false;_windowsDiscoveryError = null;
+        EndpointDiscoveryQaTrace.Write("loading-enter", state: WorkerState.State.ToString(), loading: true);
+        Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh();
         _physicalDeviceGroups = [];
         Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
         Changed(nameof(DuplexWorkerAvailability)); Changed(nameof(DuplexDiscoveryFreshness)); Changed(nameof(DuplexEvidenceFreshness));
@@ -2804,33 +2814,60 @@ public sealed class MainViewModel : ViewModel
         {
             if (WorkerState.State == WorkerConnectionState.Disconnected)
             {
+                Trace("connect-start");
+                EndpointDiscoveryQaTrace.Write("viewmodel-connect-start", state: WorkerState.State.ToString(), loading: true);
                 _workerAttempted = true;
                 await _worker.ConnectAsync();
                 ApplyWorkerState(_worker.State);
+                Trace("connect-complete");
+                EndpointDiscoveryQaTrace.Write("viewmodel-connect-complete", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, loading: true);
                 if (WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException($"{Localization.Get("VmDiscoveryWorkerDisconnected")}: {WorkerState.Message}");
             }
+            Trace("request-start");
+            EndpointDiscoveryQaTrace.Write("discovery-request-start", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, loading: true);
+            using var discoveryTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var discovery = _automaticScanWorkflow is not null
-                ? await _automaticScanWorkflow.RefreshEndpointsAsync(CancellationToken.None)
-                : await _worker.ListWindowsEndpointsAsync();
+                ? await _automaticScanWorkflow.RefreshEndpointsAsync(discoveryTimeout.Token)
+                : await _worker.ListWindowsEndpointsAsync(discoveryTimeout.Token);
+            Trace("response-received");
             WindowsEndpointDiscoveryValidation.Validate(discovery);
+            if (generation != Volatile.Read(ref _windowsDiscoveryRequestGeneration)) { Trace("late-result-discarded"); return; }
             ApplyAutomaticDiscovery(discovery, selection);
+            EndpointDiscoveryQaTrace.Write("ui-update-complete", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, loading: true);
             WorkerNotice=string.Format(Localization.CurrentCulture, Localization.Get("VmDiscoverySuccess"), discovery.Endpoints.Count);
+            _savedProfileOperatorStatus = Localization.Get("VmBindingDiscoveryCompleted");
+            _savedProfileOperatorHistory = Localization.Get("VmBindingNotConfirmed");
+            _savedProfileOperatorLimitation = Localization.Get("VmBindingCheckAfterDiscovery");
+            Trace("success");
         }
         catch(Exception ex)
         {
-            InvalidateAutomaticDeviceSelection();
-            _windowsDiscoveryError=ex is WorkerCommandException command ? $"{command.Command}/{command.ErrorCode}" : ex.GetType().Name;
-            WorkerNotice=string.Format(Localization.CurrentCulture, Localization.Get("VmDiscoveryFailure"), _windowsDiscoveryError);
+            Trace($"failure-{ex.GetType().Name}");
+            EndpointDiscoveryQaTrace.Write(ex is OperationCanceledException ? "discovery-cancelled" : "discovery-failure", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, exceptionType: ex.GetType().Name, errorCode: ex is WorkerCommandException commandFailure ? commandFailure.ErrorCode : ex is System.ComponentModel.Win32Exception win32Failure ? win32Failure.NativeErrorCode.ToString() : null, loading: _windowsDiscoveryLoading);
+            if (generation == Volatile.Read(ref _windowsDiscoveryRequestGeneration))
+            {
+                InvalidateAutomaticDeviceSelection();
+                _windowsDiscoveryError=ex is WorkerCommandException command ? $"{command.Command}/{command.ErrorCode}" : ex.GetType().Name;
+                WorkerNotice=string.Format(Localization.CurrentCulture, Localization.Get("VmDiscoveryFailure"), _windowsDiscoveryError);
+                _savedProfileOperatorStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmEndpointRefreshFailure"), _windowsDiscoveryError);
+                _savedProfileOperatorHistory = Localization.Get("VmBindingCurrentResultUnconfirmed");
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingRetryAfterRefresh");
+            }
         }
         finally
         {
+            Trace("cleanup-start");
             _windowsDiscoveryLoading=false;
+            EndpointDiscoveryQaTrace.Write("loading-exit", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, loading: false);
             Changed(nameof(WindowsDiscoveryLoading));Changed(nameof(WindowsDiscoveryStatusText));Changed(nameof(WindowsEndpoints));Changed(nameof(DuplexCaptureEndpoints));Changed(nameof(DuplexRenderEndpoints));Changed(nameof(LastWindowsEndpoints));Changed(nameof(HasCurrentWindowsEndpoints));Changed(nameof(HasHistoricalWindowsEndpoints));
+            Changed(nameof(SavedProfileBindingChecking)); Changed(nameof(SavedProfileOperatorStatus)); Changed(nameof(SavedProfileOperatorHistory)); Changed(nameof(SavedProfileOperatorLimitation));
             Changed(nameof(CanUseSelectedWindowsEndpoint));Changed(nameof(DeviceScanAvailabilityReason));Changed(nameof(AutomaticScanAvailabilityReason));Changed(nameof(RealFormatMatrixIsStale));Changed(nameof(RealFormatMatrixStatus));Changed(nameof(HasCurrentOperatorQueryResult));Changed(nameof(NeedsInitializeFormatQuery));Changed(nameof(RealInitializeDisabledReason));Changed(nameof(CanSaveDeviceProfile));Changed(nameof(RealFormatSummary));Changed(nameof(RealFormatEndpointLabel));Changed(nameof(RealInitializationDetails));Changed(nameof(RealInitializationSummary));Changed(nameof(DuplexWorkerAvailability));Changed(nameof(DuplexDiscoveryFreshness));Changed(nameof(DuplexEvidenceFreshness));QueryRealFormatsCommand.Refresh();RequestRealInitializeCommand.Refresh();RequestDeviceScanCommand.Refresh();PrepareAutomaticScanCommand.Refresh();
             RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh(); Changed(nameof(HasCurrentDuplexPair)); Changed(nameof(CanSaveDeviceProfile));
             RefreshWindowsEndpointBrowser();
             DiscoverWindowsEndpointsCommand.Refresh();
             RefreshCanExecute();
+            Trace("cleanup-complete");
+            EndpointDiscoveryQaTrace.Write("gui-cleanup-complete", state: WorkerState.State.ToString(), exitCode: WorkerState.ExitCode, loading: _windowsDiscoveryLoading);
         }
     }
 

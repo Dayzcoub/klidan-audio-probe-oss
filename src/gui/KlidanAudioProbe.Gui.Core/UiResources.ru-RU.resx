@@ -824,6 +824,9 @@
   <data name="VmBindingNotConfirmed" xml:space="preserve"><value>Текущее сопоставление не подтверждено.</value></data>
   <data name="VmBindingRetrySelectedProfile" xml:space="preserve"><value>Повторите проверку для выбранного профиля.</value></data>
   <data name="VmBindingRediscovery" xml:space="preserve"><value>Проверка устарела: список устройств обновляется.</value></data>
+  <data name="VmBindingDiscoveryCompleted" xml:space="preserve"><value>Список устройств обновлён. Привязка сохранённого профиля не проверена.</value></data>
+  <data name="VmEndpointRefreshFailure" xml:space="preserve"><value>Не удалось обновить список устройств: {0}. Привязка сохранённого профиля не проверена.</value></data>
+  <data name="VmBindingCheckAfterDiscovery" xml:space="preserve"><value>При необходимости отдельно проверьте привязку сохранённого профиля.</value></data>
   <data name="VmBindingPriorDiscoveryStale" xml:space="preserve"><value>Предыдущий результат не относится к новому discovery.</value></data>
   <data name="VmBindingWaitForDiscovery" xml:space="preserve"><value>Дождитесь полного списка устройств и повторите проверку.</value></data>
   <data name="VmBindingStaleDeviceList" xml:space="preserve"><value>Проверка устарела: текущий список устройств больше не подтверждён.</value></data>

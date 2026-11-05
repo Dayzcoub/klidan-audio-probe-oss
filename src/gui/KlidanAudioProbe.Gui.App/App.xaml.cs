@@ -6,6 +6,7 @@ public partial class App : System.Windows.Application
 {
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
+        EndpointDiscoveryQaTrace.StartFromEnvironment();
         base.OnStartup(e);
         Localization.Initialize();
         var developerTools = e.Args.Any(a => string.Equals(a, "--developer-tools", StringComparison.OrdinalIgnoreCase));
