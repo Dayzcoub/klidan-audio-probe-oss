@@ -701,6 +701,32 @@
   <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Физическое соответствие</value></data>
   <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Соединение</value></data>
   <data name="VmInspectorEventLabel" xml:space="preserve"><value>Событие</value></data>
+  <data name="VmScanCommandQuery" xml:space="preserve"><value>запрос форматов</value></data>
+  <data name="VmScanCommandInitialize" xml:space="preserve"><value>Initialize-only</value></data>
+  <data name="VmScanCommandStream" xml:space="preserve"><value>проверка Capture/Render потока</value></data>
+  <data name="VmScanCommandDuplex" xml:space="preserve"><value>одновременная Duplex проверка</value></data>
+  <data name="VmScanStageDiscovery" xml:space="preserve"><value>Проверка выбранных устройств</value></data>
+  <data name="VmScanStageQuery" xml:space="preserve"><value>Запрос форматов</value></data>
+  <data name="VmScanStageInitialize" xml:space="preserve"><value>Инициализация</value></data>
+  <data name="VmScanStageStream" xml:space="preserve"><value>Проверка потока</value></data>
+  <data name="VmScanStageDuplex" xml:space="preserve"><value>Duplex</value></data>
+  <data name="VmScanStagePeriodDiscovery" xml:space="preserve"><value>Period discovery</value></data>
+  <data name="VmScanStageCustomDuplex" xml:space="preserve"><value>Custom Duplex</value></data>
+  <data name="VmScanStageRepeatability" xml:space="preserve"><value>Repeatability</value></data>
+  <data name="VmScanStageEvaluate" xml:space="preserve"><value>Оценка результатов</value></data>
+  <data name="VmScanStageSave" xml:space="preserve"><value>Сохранение отчёта</value></data>
+  <data name="VmScanStageComplete" xml:space="preserve"><value>Завершение</value></data>
+  <data name="VmScanLifecycleCompleted" xml:space="preserve"><value>ЗАВЕРШЕНО</value></data>
+  <data name="VmScanLifecycleIncomplete" xml:space="preserve"><value>НЕПОЛНО</value></data>
+  <data name="VmScanLifecycleCancelled" xml:space="preserve"><value>ОТМЕНЕНО</value></data>
+  <data name="VmScanLifecycleFailed" xml:space="preserve"><value>ОШИБКА</value></data>
+  <data name="VmScanLifecycleUnknown" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
+  <data name="VmOperationLifecyclePending" xml:space="preserve"><value>ОЖИДАЕТ</value></data>
+  <data name="VmOperationLifecycleRunning" xml:space="preserve"><value>ВЫПОЛНЯЕТСЯ</value></data>
+  <data name="VmOperationLifecycleCompleted" xml:space="preserve"><value>ЗАВЕРШЕНО</value></data>
+  <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>ПРОПУЩЕНО</value></data>
+  <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>ОШИБКА</value></data>
+  <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>НЕИЗВЕСТНО</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>неизвестно</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
 </root>

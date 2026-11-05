@@ -1821,14 +1821,14 @@ public sealed class MainViewModel : ViewModel
         ExportAutomaticScanCommand.Refresh();
     }
 
-    private static string ScanCommandLabel(string command) => command switch
+    private static string ScanCommandLabel(string command) => Localization.Get(command switch
     {
-        "QUERY" or "QueryFormatMatrix" => "запрос форматов",
-        "INITIALIZE" or "ValidateFormatMatrix" => "Initialize-only",
-        "STREAM" or "ValidateStream" => "проверка Capture/Render потока",
-        "DUPLEX" or "ValidateDuplex" => "одновременная Duplex проверка",
+        "QUERY" or "QueryFormatMatrix" => "VmScanCommandQuery",
+        "INITIALIZE" or "ValidateFormatMatrix" => "VmScanCommandInitialize",
+        "STREAM" or "ValidateStream" => "VmScanCommandStream",
+        "DUPLEX" or "ValidateDuplex" => "VmScanCommandDuplex",
         _ => command
-    };
+    });
 
     private static string? JsonProvenance(System.Text.Json.JsonElement? report)
     {
@@ -1836,25 +1836,25 @@ public sealed class MainViewModel : ViewModel
         return provenance.GetString();
     }
 
-    private static string ScanStageLabel(ScanStage stage) => stage switch
+    private static string ScanStageLabel(ScanStage stage) => Localization.Get(stage switch
     {
-        ScanStage.Discovery => "Проверка выбранных устройств", ScanStage.Query => "Запрос форматов",
-        ScanStage.Initialize => "Инициализация", ScanStage.Stream => "Проверка потока",
-        ScanStage.Duplex => "Duplex", ScanStage.PeriodDiscovery => "Period discovery", ScanStage.ShortCustomDuplex => "Custom Duplex", ScanStage.Repeatability => "Repeatability", ScanStage.Evaluate => "Оценка результатов",
-        ScanStage.Save => "Сохранение отчёта", _ => "Завершение"
-    };
+        ScanStage.Discovery => "VmScanStageDiscovery", ScanStage.Query => "VmScanStageQuery",
+        ScanStage.Initialize => "VmScanStageInitialize", ScanStage.Stream => "VmScanStageStream",
+        ScanStage.Duplex => "VmScanStageDuplex", ScanStage.PeriodDiscovery => "VmScanStagePeriodDiscovery", ScanStage.ShortCustomDuplex => "VmScanStageCustomDuplex", ScanStage.Repeatability => "VmScanStageRepeatability", ScanStage.Evaluate => "VmScanStageEvaluate",
+        ScanStage.Save => "VmScanStageSave", _ => "VmScanStageComplete"
+    });
 
-    private static string ScanLifecycleLabel(ScanRunLifecycle lifecycle) => lifecycle switch
+    private static string ScanLifecycleLabel(ScanRunLifecycle lifecycle) => Localization.Get(lifecycle switch
     {
-        ScanRunLifecycle.Completed => "ЗАВЕРШЕНО", ScanRunLifecycle.Incomplete => "НЕПОЛНО",
-        ScanRunLifecycle.Cancelled => "ОТМЕНЕНО", ScanRunLifecycle.Failed => "ОШИБКА", _ => "НЕИЗВЕСТНО"
-    };
+        ScanRunLifecycle.Completed => "VmScanLifecycleCompleted", ScanRunLifecycle.Incomplete => "VmScanLifecycleIncomplete",
+        ScanRunLifecycle.Cancelled => "VmScanLifecycleCancelled", ScanRunLifecycle.Failed => "VmScanLifecycleFailed", _ => "VmScanLifecycleUnknown"
+    });
 
-    private static string OperationLifecycleLabel(string state) => state switch
+    private static string OperationLifecycleLabel(string state) => Localization.Get(state switch
     {
-        "Pending" => "ОЖИДАЕТ", "Running" => "ВЫПОЛНЯЕТСЯ", "Completed" => "ЗАВЕРШЕНО",
-        "Skipped" => "ПРОПУЩЕНО", "Failed" => "ОШИБКА", _ => "НЕИЗВЕСТНО"
-    };
+        "Pending" => "VmOperationLifecyclePending", "Running" => "VmOperationLifecycleRunning", "Completed" => "VmOperationLifecycleCompleted",
+        "Skipped" => "VmOperationLifecycleSkipped", "Failed" => "VmOperationLifecycleFailed", _ => "VmOperationLifecycleUnknown"
+    });
 
     private void RequestDeviceScan()
     {

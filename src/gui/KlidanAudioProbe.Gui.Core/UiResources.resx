@@ -701,6 +701,32 @@
   <data name="VmInspectorPhysicalMatchLabel" xml:space="preserve"><value>Physical match</value></data>
   <data name="VmInspectorConnectionLabel" xml:space="preserve"><value>Connection</value></data>
   <data name="VmInspectorEventLabel" xml:space="preserve"><value>Event</value></data>
+  <data name="VmScanCommandQuery" xml:space="preserve"><value>format query</value></data>
+  <data name="VmScanCommandInitialize" xml:space="preserve"><value>Initialize-only</value></data>
+  <data name="VmScanCommandStream" xml:space="preserve"><value>Capture/Render stream check</value></data>
+  <data name="VmScanCommandDuplex" xml:space="preserve"><value>coordinated Duplex check</value></data>
+  <data name="VmScanStageDiscovery" xml:space="preserve"><value>Check selected devices</value></data>
+  <data name="VmScanStageQuery" xml:space="preserve"><value>Format query</value></data>
+  <data name="VmScanStageInitialize" xml:space="preserve"><value>Initialize</value></data>
+  <data name="VmScanStageStream" xml:space="preserve"><value>Stream validation</value></data>
+  <data name="VmScanStageDuplex" xml:space="preserve"><value>Duplex</value></data>
+  <data name="VmScanStagePeriodDiscovery" xml:space="preserve"><value>Period discovery</value></data>
+  <data name="VmScanStageCustomDuplex" xml:space="preserve"><value>Custom Duplex</value></data>
+  <data name="VmScanStageRepeatability" xml:space="preserve"><value>Repeatability</value></data>
+  <data name="VmScanStageEvaluate" xml:space="preserve"><value>Evaluate results</value></data>
+  <data name="VmScanStageSave" xml:space="preserve"><value>Save report</value></data>
+  <data name="VmScanStageComplete" xml:space="preserve"><value>Complete</value></data>
+  <data name="VmScanLifecycleCompleted" xml:space="preserve"><value>COMPLETED</value></data>
+  <data name="VmScanLifecycleIncomplete" xml:space="preserve"><value>INCOMPLETE</value></data>
+  <data name="VmScanLifecycleCancelled" xml:space="preserve"><value>CANCELLED</value></data>
+  <data name="VmScanLifecycleFailed" xml:space="preserve"><value>FAILED</value></data>
+  <data name="VmScanLifecycleUnknown" xml:space="preserve"><value>UNKNOWN</value></data>
+  <data name="VmOperationLifecyclePending" xml:space="preserve"><value>PENDING</value></data>
+  <data name="VmOperationLifecycleRunning" xml:space="preserve"><value>RUNNING</value></data>
+  <data name="VmOperationLifecycleCompleted" xml:space="preserve"><value>COMPLETED</value></data>
+  <data name="VmOperationLifecycleSkipped" xml:space="preserve"><value>SKIPPED</value></data>
+  <data name="VmOperationLifecycleFailed" xml:space="preserve"><value>FAILED</value></data>
+  <data name="VmOperationLifecycleUnknown" xml:space="preserve"><value>UNKNOWN</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
 </root>
