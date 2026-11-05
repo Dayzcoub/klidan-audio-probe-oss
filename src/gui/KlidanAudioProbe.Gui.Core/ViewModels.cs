@@ -621,7 +621,14 @@ public sealed class MainViewModel : ViewModel
     public string DuplexEvidenceFreshness => $"{DuplexWorkerAvailability} · {DuplexDiscoveryFreshness}";
     public bool NeedsInitializeFormatQuery => OperatorTestMode == "INITIALIZE_ONLY" && !HasCurrentOperatorQueryResult;
     public bool HasOperatorInitializeResult => RealInitializationResult is not null && _realInitializationError is null;
-    public string OperatorResultMode => _operatorResultMode;
+    public string OperatorResultMode => _operatorResultMode switch
+    {
+        "Одновременная проверка Duplex" => Localization.Get("VmOperatorModeDuplex"),
+        "Автоматическое сканирование конфигурации" => Localization.Get("VmOperatorModeDeviceScan"),
+        "Запрос Exclusive-форматов" => Localization.Get("VmOperatorModeFormatQuery"),
+        "Проверка Initialize-only" => Localization.Get("VmOperatorModeInitializeOnly"),
+        _ => _operatorResultMode
+    };
     public string OperatorResultConfiguration => _operatorResultConfiguration;
     public string OperatorSelectedDevice => WorkflowStep == OperatorStep.Result && _operatorResultEndpoint.Length > 0 ? _operatorResultEndpoint : SelectedWindowsEndpoint is { } e ? $"{e.FriendlyNameDisplay} · {e.Direction} · {e.DeviceState}" : SelectedPhysicalDeviceGroup?.DisplayName ?? RealFormatEndpointLabel;
     public SessionMode Direction
@@ -2133,7 +2140,7 @@ public sealed class MainViewModel : ViewModel
             _operatorResultEndpoint = $"{Localization.Get("VmCaptureLabel")} · {capture.FriendlyNameDisplay}\n{Localization.Get("VmRenderLabel")} · {render.FriendlyNameDisplay}";
             _operatorResultMode = "Одновременная проверка Duplex";
             _operatorResultProvenance = "REAL_WASAPI_DUPLEX";
-            _operatorResultConfiguration = $"48 кГц stereo PCM16 · {period} · 5 секунд · MMCSS OFF";
+            _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorDuplexConfiguration"), period);
             OperatorResultOutcome = $"{assessment.Classification} · {assessment.Reason}";
             Changed(nameof(DuplexAssessments)); Changed(nameof(DuplexResultCards)); Changed(nameof(DuplexRecommendation)); Changed(nameof(DuplexRecommendationSummary)); Changed(nameof(HasDuplexResults)); Changed(nameof(CanSaveDeviceProfile));
             NotifyOperatorResult();
@@ -2243,7 +2250,7 @@ public sealed class MainViewModel : ViewModel
     private void CancelDeviceScan()
     {
         if (!_deviceScanRunning || _deviceScanCancellation is null) return;
-        _deviceScanProgress = "Отмена запрошена; ожидание завершения текущего вызова worker.";
+        _deviceScanProgress = Localization.Get("VmDeviceScanCancellationWaiting");
         Changed(nameof(DeviceScanProgress));
         _deviceScanCancellation.Cancel();
         Changed(nameof(CanSaveDeviceProfile));
@@ -2253,7 +2260,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (!DeviceScanConsentPending || !DeviceScanConsentChecked || _worker is null || SelectedWindowsEndpoint is not { } endpoint || _pendingDeviceScanConsent is not { } consent) return;
         if (!CanUseSelectedWindowsEndpoint || endpoint.EndpointId != consent.EndpointId || endpoint.Direction != consent.Direction || DeviceConfigurationScan.Fingerprint(endpoint) != consent.Fingerprint || WorkerState.State != WorkerConnectionState.ConnectedFake)
-        { CancelDeviceScanConsent(); WorkerNotice = "Endpoint, состояние или план изменились; подтверждение сканирования сброшено."; return; }
+        { CancelDeviceScanConsent(); WorkerNotice = Localization.Get("VmDeviceScanConsentInvalidated"); return; }
         CancelDeviceScanConsent();
         DeviceScanRunning = true;
         _deviceScanInitializations = [];
@@ -2264,7 +2271,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(DeviceScanRunning)); Changed(nameof(DeviceScanResult)); Changed(nameof(HasDeviceScanResult)); Changed(nameof(HasSingleEndpointScanResult)); Changed(nameof(DeviceScanResultSummary)); Changed(nameof(CanSaveDeviceProfile));
         _deviceScanCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(DeviceConfigurationScan.MaximumDurationSeconds));
         var token = _deviceScanCancellation.Token;
-        SetDeviceScanProgress(DeviceScanStage.Preflight, "Проверка выбранного активного endpoint и согласованного плана.");
+        SetDeviceScanProgress(DeviceScanStage.Preflight, Localization.Get("VmDeviceScanPreflight"));
         try
         {
             var result = await DeviceConfigurationScan.RunAsync(_worker, endpoint, consent, (stage, message) =>
@@ -2277,7 +2284,7 @@ public sealed class MainViewModel : ViewModel
             SelectedStreamCandidate = result.Initializations.SelectMany(r => r.Candidates).FirstOrDefault(c => c.InitializeAttempted && c.InitializeStatus is ("INITIALIZED" or "READY") && c.SampleRate == 48_000 && c.Encoding == "PCM16" && c.Channels == 2);
             _streamValidations.Clear(); _streamAttemptedSinceProfileSave = false; _lastStreamAttemptPeriod = null;
             _streamValidationRows["MINIMUM"] = StreamValidationResultRow.NotRun("MINIMUM"); _streamValidationRows["DEFAULT"] = StreamValidationResultRow.NotRun("DEFAULT");
-            _streamValidationStatus = "Поток не проверялся. После успешного Initialize выберите период и запросите отдельное согласие.";
+            _streamValidationStatus = Localization.Get("VmDeviceScanStreamSeparateConsentRequired");
             if (result.Query is not null && SelectedWindowsEndpoint is { } current && current.EndpointId == result.EndpointId && current.Direction == result.Direction && CanUseSelectedWindowsEndpoint && WorkerState.State == WorkerConnectionState.ConnectedFake)
             {
                 _realQueriedChannelCounts = endpoint.Direction == "CAPTURE" ? [1, 2] : [2];
@@ -2293,7 +2300,7 @@ public sealed class MainViewModel : ViewModel
             _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
             _operatorResultMode = "Автоматическое сканирование конфигурации";
             _operatorResultProvenance = "REAL_WASAPI_QUERY + REAL_WASAPI_INITIALIZE_ONLY";
-            _operatorResultConfiguration = $"48 кГц PCM16 · {result.Initializations.Count} Initialize-only результатов";
+            _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorDeviceScanConfiguration"), result.Initializations.Count);
             OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmScanOutcome"), result.State);
             SetDeviceScanProgress(result.State, result.Message);
             Changed(nameof(DeviceScanResult)); Changed(nameof(HasDeviceScanResult)); Changed(nameof(HasSingleEndpointScanResult)); Changed(nameof(DeviceScanInitializeCandidates)); Changed(nameof(DeviceScanResultSummary)); Changed(nameof(DeviceScanTechnicalDetails)); Changed(nameof(StreamValidations)); Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus)); Changed(nameof(OperatorResultStreamEvidenceNote)); Changed(nameof(OperatorResultProfileEvidenceNote)); Changed(nameof(OperatorResultDetails)); Changed(nameof(OperatorResultProvenance)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(CanSaveDeviceProfile));
@@ -2338,7 +2345,7 @@ public sealed class MainViewModel : ViewModel
             _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
             _operatorResultMode = "Запрос Exclusive-форматов";
             _operatorResultProvenance = "REAL_WASAPI_QUERY";
-            _operatorResultConfiguration = $"{string.Join(", ", requestedChannels)} каналов-кандидатов · 44,1/48 кГц · PCM16, PCM24-in-32, Float32";
+            _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorFormatQueryConfiguration"), string.Join(", ", requestedChannels));
             NotifyOperatorResult();
             var result = await _worker.QueryFormatMatrixAsync(id, endpoint.Direction, requestedChannels);
             if (WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent)
@@ -2352,7 +2359,7 @@ public sealed class MainViewModel : ViewModel
                 if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
                 return;
             }
-            if (result.Provenance != "REAL_WASAPI_QUERY" || result.ReportLevel != "PASSIVE_QUERY" || result.EndpointId != id || result.Direction != endpoint.Direction) throw new InvalidDataException("Worker result did not match the selected Windows endpoint or passive-query contract.");
+            if (result.Provenance != "REAL_WASAPI_QUERY" || result.ReportLevel != "PASSIVE_QUERY" || result.EndpointId != id || result.Direction != endpoint.Direction) throw new InvalidDataException(Localization.Get("VmQueryResponseMismatch"));
             _realQueriedChannelCounts = requestedChannels;
             _realQueryInvalidated = SelectedWindowsEndpoint?.EndpointId != id || SelectedWindowsEndpoint?.Direction != endpoint.Direction;
             _realFormatError = null;
@@ -2397,7 +2404,7 @@ public sealed class MainViewModel : ViewModel
             _operatorResultEndpoint = OperatorSelectedDevice;
             _operatorResultMode = "Проверка Initialize-only";
             _operatorResultProvenance = "REAL_WASAPI_INITIALIZE_ONLY";
-            _operatorResultConfiguration = $"{candidate.Encoding} · {candidate.SampleRate} Гц · {candidate.Channels} канал(а) · {candidate.Period}";
+            _operatorResultConfiguration = string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorInitializeConfiguration"), candidate.Encoding, candidate.SampleRate, candidate.Channels, candidate.Period);
             NotifyOperatorResult();
             var fingerprint = RealFormatConsent.Fingerprint(endpointId, direction, candidate.SampleRate, candidate.Channels, candidate.Encoding, candidate.Period);
             var receipt = new RealFormatConsentDto(true, Guid.NewGuid(), fingerprint);

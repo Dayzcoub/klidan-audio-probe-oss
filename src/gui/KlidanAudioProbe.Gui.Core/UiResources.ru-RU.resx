@@ -1105,4 +1105,17 @@ Fallback: {1}
   <data name="VmReasonsLabel" xml:space="preserve"><value>Причины</value></data>
   <data name="VmLimitationsLabel" xml:space="preserve"><value>Ограничения</value></data>
   <data name="VmFurtherVerificationRequiredLabel" xml:space="preserve"><value>Требуется дополнительная проверка</value></data>
+  <data name="VmOperatorModeDuplex" xml:space="preserve"><value>Проверка Duplex</value></data>
+  <data name="VmOperatorModeDeviceScan" xml:space="preserve"><value>Автоматическое сканирование конфигурации</value></data>
+  <data name="VmOperatorModeFormatQuery" xml:space="preserve"><value>Запрос Exclusive-форматов</value></data>
+  <data name="VmOperatorModeInitializeOnly" xml:space="preserve"><value>Проверка только Initialize</value></data>
+  <data name="VmDeviceScanCancellationWaiting" xml:space="preserve"><value>Запрошена отмена; ожидается завершение текущего вызова Worker.</value></data>
+  <data name="VmDeviceScanConsentInvalidated" xml:space="preserve"><value>Изменились endpoint, состояние устройства или план; подтверждение сканирования сброшено.</value></data>
+  <data name="VmDeviceScanPreflight" xml:space="preserve"><value>Проверка выбранного активного endpoint и согласованного плана.</value></data>
+  <data name="VmDeviceScanStreamSeparateConsentRequired" xml:space="preserve"><value>Поток не проверялся. После успешного Initialize выберите период и запросите отдельное согласие.</value></data>
+  <data name="VmOperatorDuplexConfiguration" xml:space="preserve"><value>48 кГц, стерео, PCM16 · {0} · 5 секунд · MMCSS OFF</value></data>
+  <data name="VmOperatorDeviceScanConfiguration" xml:space="preserve"><value>48 кГц, PCM16 · результатов Initialize-only: {0}</value></data>
+  <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Кандидатные количества каналов: {0} · 44,1/48 кГц · PCM16, PCM24-in-32, Float32</value></data>
+  <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Гц · каналов: {2} · {3}</value></data>
+  <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Результат Worker не соответствует выбранному Windows endpoint или контракту пассивного запроса.</value></data>
 </root>

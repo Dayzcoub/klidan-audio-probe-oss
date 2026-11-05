@@ -1105,4 +1105,17 @@ Fallback: {1}
   <data name="VmReasonsLabel" xml:space="preserve"><value>Reasons</value></data>
   <data name="VmLimitationsLabel" xml:space="preserve"><value>Limitations</value></data>
   <data name="VmFurtherVerificationRequiredLabel" xml:space="preserve"><value>Further verification required</value></data>
+  <data name="VmOperatorModeDuplex" xml:space="preserve"><value>Duplex validation</value></data>
+  <data name="VmOperatorModeDeviceScan" xml:space="preserve"><value>Automatic configuration scan</value></data>
+  <data name="VmOperatorModeFormatQuery" xml:space="preserve"><value>Exclusive format query</value></data>
+  <data name="VmOperatorModeInitializeOnly" xml:space="preserve"><value>Initialize-only validation</value></data>
+  <data name="VmDeviceScanCancellationWaiting" xml:space="preserve"><value>Cancellation requested; waiting for the current Worker call to finish.</value></data>
+  <data name="VmDeviceScanConsentInvalidated" xml:space="preserve"><value>Endpoint, device state, or plan changed; scan confirmation was reset.</value></data>
+  <data name="VmDeviceScanPreflight" xml:space="preserve"><value>Validating the selected active endpoint and approved plan.</value></data>
+  <data name="VmDeviceScanStreamSeparateConsentRequired" xml:space="preserve"><value>Stream was not validated. After successful Initialize, select a period and request separate consent.</value></data>
+  <data name="VmOperatorDuplexConfiguration" xml:space="preserve"><value>48 kHz stereo PCM16 · {0} · 5 seconds · MMCSS OFF</value></data>
+  <data name="VmOperatorDeviceScanConfiguration" xml:space="preserve"><value>48 kHz PCM16 · {0} Initialize-only results</value></data>
+  <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Candidate channel counts: {0} · 44.1/48 kHz · PCM16, PCM24-in-32, Float32</value></data>
+  <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Hz · {2} channels · {3}</value></data>
+  <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Worker result did not match the selected Windows endpoint or passive-query contract.</value></data>
 </root>
