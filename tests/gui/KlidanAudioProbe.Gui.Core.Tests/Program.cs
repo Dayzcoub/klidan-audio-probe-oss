@@ -61,6 +61,23 @@ var sessionStateConverterCases = new (object Value, string Resource)[]
 };
 var eventConverter = new EventKindConverter();
 var sessionStateConverter = new SessionStateConverter();
+var scanSummaryOperations = new[]
+{
+    new ScanOperationResult(new(ScanStage.Query), ScanOperationLifecycle.Completed, "", "NOT_APPLICABLE", null),
+    new ScanOperationResult(new(ScanStage.Stream), ScanOperationLifecycle.Skipped, "", "NOT_ATTEMPTED", null),
+    new ScanOperationResult(new(ScanStage.Duplex), ScanOperationLifecycle.Unknown, "", "UNKNOWN", null)
+};
+const string scanSummarySource = "Completed · завершено 1 · пропущено 1 · ошибки 1. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.";
+var recommendationFixture = DeviceConfigurationEvaluator.Recommend([]);
+var scanSummaryFixture = new ScanRunResult("localization-fixture", ScanRunLifecycle.Completed, new(null, null), scanSummaryOperations, [], [], recommendationFixture, scanSummarySource, false, "NOT_CERTIFIED");
+var summaryVm = new MainViewModel();
+typeof(MainViewModel).GetField("_automaticScanResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(summaryVm, scanSummaryFixture);
+var repeatabilityCountsFixture = new DuplexRepeatabilityCounts(2, 2, 1, 0, 0, 1);
+const string repeatabilitySummarySource = "План: 2; attempted: 2; completed: 1; failed: 0; unknown: 0; skipped: 1. MINIMUM: REPEATABLY_CLEAN; DEFAULT: INSUFFICIENT_EVIDENCE";
+var repeatabilitySummaryFixture = new DuplexRepeatabilityResult("localization-fixture", ScanRunLifecycle.Completed, new(null, null), [],
+    [new("MINIMUM", DuplexRepeatabilityClassification.REPEATABLY_CLEAN, 3, ["DUPLEX_CLEAN"]), new("DEFAULT", DuplexRepeatabilityClassification.INSUFFICIENT_EVIDENCE, 0, ["NOT_RUN"])],
+    repeatabilitySummarySource, "TEST_FAKE", Counts: repeatabilityCountsFixture);
+typeof(MainViewModel).GetField("_duplexRepeatabilityResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(summaryVm, repeatabilitySummaryFixture);
 foreach (var language in new[] { "en-US", "ru-RU" })
 {
     KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
@@ -71,6 +88,11 @@ foreach (var language in new[] { "en-US", "ru-RU" })
         Check((string)sessionStateConverter.Convert(value, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get(resource), $"SessionStateConverter localizes {value} in {language}");
     Check((string)eventConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknown") && (string)eventConverter.Convert((ProbeEventKind)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknownWithValue"), (ProbeEventKind)999), $"EventKindConverter localizes missing and unknown values in {language}");
     Check((string)sessionStateConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownUpper") && (string)sessionStateConverter.Convert((SessionLifecycle)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiSessionUnknownWithValue"), (SessionLifecycle)999), $"SessionStateConverter localizes missing and unknown values in {language}");
+    Check(summaryVm.AutomaticScanResultSummary == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanSummaryDisplay"), KlidanAudioProbe.Gui.Core.Localization.Get("VmScanLifecycleCompleted"), 1, 1, 1) && scanSummaryFixture.Summary == scanSummarySource, $"automatic scan summary localizes its display without changing source summary in {language}");
+    Check(summaryVm.AutomaticScanRecommendationText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRecommendationReasonNoCleanCandidate"), StringComparison.Ordinal), $"recommendation explanation localizes in {language}");
+    var expectedRepeatabilitySummary = string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilitySummaryDisplay"), 2, 2, 1, 0, 0, 1,
+        $"MINIMUM: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassClean")}; DEFAULT: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassInsufficient")}");
+    Check(summaryVm.DuplexRepeatabilityResultText.StartsWith(expectedRepeatabilitySummary, StringComparison.Ordinal) && repeatabilitySummaryFixture.Summary == repeatabilitySummarySource, $"repeatability summary localizes its display without changing source summary in {language}");
 }
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
 var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);

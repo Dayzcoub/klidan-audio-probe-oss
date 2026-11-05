@@ -513,7 +513,7 @@ public sealed class MainViewModel : ViewModel
     }
     public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
         _automaticScanOutcomeUnknown && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) :
-        _automaticScanResult is { } result ? $"{ScanLifecycleLabel(result.Lifecycle)} · {result.Summary}" :
+        _automaticScanResult is { } result ? AutomaticScanSummaryDisplay(result) :
         _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) : Localization.Get("VmAutomaticScanResultMissing");
     public string AutomaticScanResultHeadline => _automaticScanResult?.Lifecycle switch
     {
@@ -527,8 +527,8 @@ public sealed class MainViewModel : ViewModel
     public string AutomaticScanResultDevice => SelectedPhysicalDeviceGroup?.DisplayName ?? (_automaticScanResult is not { } result ? OperatorSelectedDevice :
         string.Join(" + ", new[] { result.Target.Capture?.FriendlyNameDisplay, result.Target.Render?.FriendlyNameDisplay }.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal)));
     public string AutomaticScanRecommendationText => _automaticScanResult is not { } result ? Localization.Get("VmAutomaticScanRecommendationMissing") : result.Recommendation.Preferred is { } preferred
-        ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons))
-        : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons));
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)))
+        : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)));
     public string AutomaticScanPhysicalLatencyText => Localization.Get("VmAutomaticScanLatencyNotMeasured");
     public string AutomaticScanResultProvenance
     {
@@ -591,7 +591,7 @@ public sealed class MainViewModel : ViewModel
             var initialized = scan.Initializations.SelectMany(r => r.Candidates).Count(c => c.InitializeStatus is "INITIALIZED" or "READY");
             var failed = scan.Initializations.SelectMany(r => r.Candidates).Count(c => c.InitializeStatus is "FAILED" or "UNSUPPORTED" or "INCOMPLETE");
             var streamRuns = _streamValidations.Count(s => s.EndpointId == scan.EndpointId && s.Direction == scan.Direction);
-            return string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanResultSummary"), scan.State, supported, initialized, failed, streamRuns == 0 ? "NOT_RUN" : string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanStreamObservations"), streamRuns));
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanResultSummary"), DeviceScanStageLabel(scan.State), supported, initialized, failed, streamRuns == 0 ? "NOT_RUN" : string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanStreamObservations"), streamRuns));
         }
     }
     public string DeviceScanTechnicalDetails => _deviceScanResult is not { } scan ? Localization.Get("VmDeviceScanDetailsMissing") : string.Join("\n", scan.Initializations.SelectMany(r => r.Candidates).Select(c => $"{c.Encoding} {c.SampleRate} {Localization.Get("VmInspectorHertz")} {Localization.Get("VmInspectorChannelAbbreviation")}={c.Channels} {c.Period}: {Localization.Get("StatusLabel")}={c.Status}; {Localization.Get("VmDeviceScanDetailSupport")}={c.SupportStatus} IsFormatSupported={c.SupportHr ?? "unknown"}; Initialize={c.InitializeStatus} {Localization.Get("VmDeviceScanDetailFirst")}={c.FirstInitializeHr ?? "unknown"}; {Localization.Get("VmDeviceScanDetailAlignment")} GetBufferSize={c.AlignmentGetBufferSizeHr ?? "not observed"}/{c.AlignmentFrames?.ToString() ?? "unknown"} {Localization.Get("VmDeviceScanDetailFrames")}, Activate={c.AlignmentActivateHr ?? "not observed"}, {Localization.Get("VmDeviceScanDetailPeriod100ns")}={c.AlignmentPeriod100ns?.ToString() ?? "unknown"}, Initialize={c.AlignmentInitializeHr ?? "not observed"}; {Localization.Get("VmDeviceScanDetailFinal")}={c.FinalInitializeHr ?? "unknown"}; {Localization.Get("VmDeviceScanDetailRequestedPeriod")}={c.RequestedPeriod100ns?.ToString() ?? "unknown"}; {Localization.Get("VmDeviceScanDetailActualPeriod")}={c.ActualPeriod100ns?.ToString() ?? "unknown"}; {Localization.Get("VmDeviceScanDetailBufferFrames")}={c.ActualBufferFrames?.ToString() ?? "unknown"}; SetEventHandle={c.SetEventHandleHr ?? "not observed"}; {Localization.Get("VmDeviceScanDetailEventReady")}={c.EventHandleReady?.ToString() ?? "unknown"}; {Localization.Get("CleanupLabel")}={c.CleanupStatus}; {Localization.Get("VmDeviceScanDetailReleases")}={c.ClientReleaseAttempts}"));
@@ -808,7 +808,7 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<DuplexResultCard> DuplexResultCards => [DeviceConfigurationEvaluator.ProjectCard("MINIMUM", _duplexValidations.GetValueOrDefault("MINIMUM")), DeviceConfigurationEvaluator.ProjectCard("DEFAULT", _duplexValidations.GetValueOrDefault("DEFAULT"))];
     public DuplexRecommendation DuplexRecommendation => DeviceConfigurationEvaluator.Recommend(DuplexAssessments);
     public bool HasDuplexResults => _duplexValidations.Count > 0;
-    public string DuplexRecommendationSummary => DuplexRecommendation.Preferred is { } p ? $"PROBE_PROVISIONAL · {p.Period} · {p.Classification}. AudioHost: NOT_CERTIFIED. {string.Join(" ", DuplexRecommendation.Reasons)}" : string.Join(" ", DuplexRecommendation.Reasons);
+    public string DuplexRecommendationSummary => DuplexRecommendation.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexRecommendationSummary"), p.Period, p.Classification, string.Join(" ", DuplexRecommendation.Reasons.Select(RecommendationReasonLabel))) : string.Join(" ", DuplexRecommendation.Reasons.Select(RecommendationReasonLabel));
     public DuplexRepeatabilityReadiness DuplexRepeatabilityReadiness
     {
         get
@@ -843,7 +843,7 @@ public sealed class MainViewModel : ViewModel
           Localization.Get("VmRepeatabilityPlanTimeLimit") + "\n" +
           string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanWorkerSession"), preparation.WorkerPlan.LifetimeSeconds, preparation.WorkerPlan.MaximumOperationDurationSeconds, preparation.WorkerPlan.MaximumOperationCount) + "\n" +
           Localization.Get("VmRepeatabilityPlanSafetyLimits");
-    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{result.Summary}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\n{Localization.Get("VmPersistenceLabel")}: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
+    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{RepeatabilitySummaryDisplay(result)}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\n{Localization.Get("VmPersistenceLabel")}: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
     public bool PeriodDiscoveryConsentPending => _periodDiscoveryConsentPending;
     public bool PeriodDiscoveryConsentChecked { get => _periodDiscoveryConsentChecked; set { if (Set(ref _periodDiscoveryConsentChecked, value)) ConfirmPeriodDiscoveryCommand.Refresh(); } }
     public bool PeriodDiscoveryRunning => _periodDiscoveryRunning;
@@ -869,7 +869,7 @@ public sealed class MainViewModel : ViewModel
     public string CustomRepeatabilityStatus => _customRepeatabilityStatus;
     public bool CanPrepareCustomRepeatability => CanPrepareCustomRepeatabilityInternal();
     public string CustomRepeatabilityPlanText => _customRepeatabilityPreparation is not { } p ? Localization.Get("VmCustomRepeatabilityPlanMissing") : string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityPlanRunCount"), p.Periods!.Count, p.Periods[0]) + "\n" + string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityPlanTiming"), p.PauseMilliseconds) + "\n" + Localization.Get("VmCustomRepeatabilityPlanSafety");
-    public string CustomRepeatabilityResultText => _customRepeatabilityResult is not { } r ? Localization.Get("VmCustomRepeatabilityResultMissing") : $"{r.Summary}\n{r.ReportPath ?? Localization.Get("VmReportNotSaved")}";
+    public string CustomRepeatabilityResultText => _customRepeatabilityResult is not { } r ? Localization.Get("VmCustomRepeatabilityResultMissing") : $"{RepeatabilitySummaryDisplay(r)}\n{r.ReportPath ?? Localization.Get("VmReportNotSaved")}";
     public IReadOnlyList<WindowsEndpointDto> LastWindowsEndpoints => _lastWindowsEndpointSnapshot?.Endpoints ?? [];
     private IReadOnlyList<WindowsEndpointDto> WindowsEndpointSource => _windowsDiscoveryCurrent ? WindowsEndpoints : HasHistoricalWindowsEndpoints ? LastWindowsEndpoints : [];
     public IReadOnlyList<WindowsEndpointDto> WindowsEndpointRows => WindowsEndpointSource
@@ -1695,7 +1695,7 @@ public sealed class MainViewModel : ViewModel
             ApplyAutomaticScanEvents(result.Events);
             _automaticScanTerminal = true;
             NotifyAutomaticScanResultBindings();
-            SetAutomaticScanStatus(result.Summary);
+            SetAutomaticScanStatus(AutomaticScanSummaryDisplay(result));
             NavigateOperatorStep(OperatorStep.Result);
         }
         catch (Exception ex)
@@ -1889,6 +1889,48 @@ public sealed class MainViewModel : ViewModel
         ScanRunLifecycle.Cancelled => "VmScanLifecycleCancelled", ScanRunLifecycle.Failed => "VmScanLifecycleFailed", _ => "VmScanLifecycleUnknown"
     });
 
+    private static string AutomaticScanSummaryDisplay(ScanRunResult result)
+    {
+        var completed = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Completed);
+        var skipped = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Skipped);
+        var errors = result.Operations.Count(o => o.Lifecycle is ScanOperationLifecycle.Failed or ScanOperationLifecycle.Unknown);
+        var sourceSummary = $"{result.Lifecycle} · завершено {completed} · пропущено {skipped} · ошибки {errors}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.";
+        return result.Summary != sourceSummary ? result.Summary : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanSummaryDisplay"), ScanLifecycleLabel(result.Lifecycle), completed, skipped, errors);
+    }
+
+    private static string RepeatabilitySummaryDisplay(DuplexRepeatabilityResult result)
+    {
+        var counts = result.Counts ?? new(result.Runs.Count, result.Runs.Count(r => !string.IsNullOrWhiteSpace(r.OperationId)), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Completed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Failed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Unknown), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Skipped));
+        var periods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {p.Classification}"));
+        var sourceSummary = $"План: {counts.Planned}; attempted: {counts.Attempted}; completed: {counts.Completed}; failed: {counts.Failed}; unknown: {counts.Unknown}; skipped: {counts.Skipped}. {periods}";
+        if (result.Summary != sourceSummary) return result.Summary;
+        var displayPeriods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {Localization.Get(p.Classification switch
+        {
+            DuplexRepeatabilityClassification.REPEATABLY_CLEAN => "VmRepeatabilityClassClean",
+            DuplexRepeatabilityClassification.INTERMITTENT_ANOMALIES => "VmRepeatabilityClassIntermittent",
+            DuplexRepeatabilityClassification.REPEATABLY_ANOMALOUS => "VmRepeatabilityClassAnomalous",
+            _ => "VmRepeatabilityClassInsufficient"
+        })}"));
+        return string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilitySummaryDisplay"), counts.Planned, counts.Attempted, counts.Completed, counts.Failed, counts.Unknown, counts.Skipped, displayPeriods);
+    }
+
+    private static string RecommendationReasonLabel(string reason)
+    {
+        var key = reason switch
+        {
+            "Для одного периода получено несколько кандидатов; автоматический выбор из неоднозначных записей заблокирован." => "VmRecommendationReasonAmbiguousPeriod",
+            "Кандидаты относятся к разным точным парам или несовместимым настройкам; они не ранжируются совместно." => "VmRecommendationReasonDifferentPairs",
+            "Кандидат MINIMUM выбран по чистому короткому Duplex evidence для этой точной пары." => "VmRecommendationReasonMinimumSelected",
+            "Рекомендация не разрешает активацию AudioHost; требуется длительная и production QA." => "VmRecommendationReasonNoAudioHostActivation",
+            "DEFAULT выбран: MINIMUM не имеет независимого чистого Duplex подтверждения." => "VmRecommendationReasonDefaultSelected",
+            "Проверка ограничена коротким запуском; AudioHost не сертифицирован." => "VmRecommendationReasonShortRunOnly",
+            "Нет кандидата с полным чистым Duplex evidence для этой точной пары." => "VmRecommendationReasonNoCleanCandidate",
+            "Формат support и отдельные Capture/Render результаты не заменяют совместную Duplex проверку." => "VmRecommendationReasonNoSeparateProof",
+            _ => null
+        };
+        return key is null ? reason : Localization.Get(key);
+    }
+
     private static string OperationLifecycleLabel(string state) => Localization.Get(state switch
     {
         "Pending" => "VmOperationLifecyclePending", "Running" => "VmOperationLifecycleRunning", "Completed" => "VmOperationLifecycleCompleted",
@@ -1979,7 +2021,7 @@ public sealed class MainViewModel : ViewModel
         try
         {
             var result = await _duplexRepeatabilityWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), OnDuplexRepeatabilityProgress, _duplexRepeatabilityCancellation.Token).ConfigureAwait(true);
-            _duplexRepeatabilityResult = result; _duplexRepeatabilityStatus = result.PersistenceStatus == "SAVE_FAILED" ? $"SAVE_FAILED · {result.PersistenceError}" : result.Summary;
+            _duplexRepeatabilityResult = result; _duplexRepeatabilityStatus = result.PersistenceStatus == "SAVE_FAILED" ? $"SAVE_FAILED · {result.PersistenceError}" : RepeatabilitySummaryDisplay(result);
         }
         catch (Exception ex) { _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _duplexRepeatabilityRunning = false; _duplexRepeatabilityCancellation?.Dispose(); _duplexRepeatabilityCancellation = null; Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityResultText)); Changed(nameof(DuplexRepeatabilityStatus)); PrepareDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityCommand.Refresh(); }
@@ -2036,7 +2078,7 @@ public sealed class MainViewModel : ViewModel
         { CancelCustomRepeatabilityConsent(Localization.Get("VmCustomRepeatabilityAuthorizationInvalidated")); return; }
         _customRepeatabilityConsentPending = false; _customRepeatabilityConsentChecked = false; _customRepeatabilityRunning = true; _customRepeatabilityCancellation = new CancellationTokenSource();
         Changed(nameof(CustomRepeatabilityConsentPending)); Changed(nameof(CustomRepeatabilityRunning)); PrepareCustomRepeatabilityCommand.Refresh(); ConfirmCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityConsentCommand.Refresh(); CancelCustomRepeatabilityCommand.Refresh();
-        try { _customRepeatabilityResult = await workflow.RunCustomApprovedAsync(preparation, Guid.NewGuid(), OnDuplexRepeatabilityProgress, _customRepeatabilityCancellation.Token).ConfigureAwait(true); _customRepeatabilityStatus = _customRepeatabilityResult.Summary; }
+        try { _customRepeatabilityResult = await workflow.RunCustomApprovedAsync(preparation, Guid.NewGuid(), OnDuplexRepeatabilityProgress, _customRepeatabilityCancellation.Token).ConfigureAwait(true); _customRepeatabilityStatus = RepeatabilitySummaryDisplay(_customRepeatabilityResult); }
         catch (Exception ex) { _customRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityOutcomeUnknown"), ex.GetType().Name, ex.Message); }
         finally { _customRepeatabilityRunning = false; _customRepeatabilityCancellation?.Dispose(); _customRepeatabilityCancellation = null; Changed(nameof(CustomRepeatabilityRunning)); Changed(nameof(CustomRepeatabilityResultText)); Changed(nameof(CustomRepeatabilityStatus)); PrepareCustomRepeatabilityCommand.Refresh(); CancelCustomRepeatabilityCommand.Refresh(); }
     }

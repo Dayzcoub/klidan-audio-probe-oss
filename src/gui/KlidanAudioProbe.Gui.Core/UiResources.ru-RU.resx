@@ -1219,4 +1219,19 @@ Fallback: {1}
   <data name="UiEventStopped" xml:space="preserve"><value>Остановлено</value></data>
   <data name="UiEventCompleted" xml:space="preserve"><value>Завершено</value></data>
   <data name="UiEventFailure" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmAutomaticScanSummaryDisplay" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Физический RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmDuplexRecommendationSummary" xml:space="preserve"><value>PROBE_PROVISIONAL · {0} · {1}. AudioHost: NOT_CERTIFIED. {2}</value></data>
+  <data name="VmRecommendationReasonAmbiguousPeriod" xml:space="preserve"><value>Для одного периода получено несколько кандидатов; автоматический выбор из неоднозначных записей заблокирован.</value></data>
+  <data name="VmRecommendationReasonDifferentPairs" xml:space="preserve"><value>Кандидаты относятся к разным точным парам или несовместимым настройкам; они не ранжируются совместно.</value></data>
+  <data name="VmRecommendationReasonMinimumSelected" xml:space="preserve"><value>Кандидат MINIMUM выбран по чистому короткому Duplex evidence для этой точной пары.</value></data>
+  <data name="VmRecommendationReasonNoAudioHostActivation" xml:space="preserve"><value>Рекомендация не разрешает активацию AudioHost; требуется длительная и production QA.</value></data>
+  <data name="VmRecommendationReasonDefaultSelected" xml:space="preserve"><value>DEFAULT выбран: MINIMUM не имеет независимого чистого Duplex подтверждения.</value></data>
+  <data name="VmRecommendationReasonShortRunOnly" xml:space="preserve"><value>Проверка ограничена коротким запуском; AudioHost не сертифицирован.</value></data>
+  <data name="VmRecommendationReasonNoCleanCandidate" xml:space="preserve"><value>Нет кандидата с полным чистым Duplex evidence для этой точной пары.</value></data>
+  <data name="VmRecommendationReasonNoSeparateProof" xml:space="preserve"><value>Формат support и отдельные Capture/Render результаты не заменяют совместную Duplex проверку.</value></data>
+  <data name="VmRepeatabilitySummaryDisplay" xml:space="preserve"><value>План: {0}; попыток: {1}; завершено: {2}; ошибок: {3}; неизвестно: {4}; пропущено: {5}. {6}</value></data>
+  <data name="VmRepeatabilityClassClean" xml:space="preserve"><value>повторяемо чисто</value></data>
+  <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>непостоянные аномалии</value></data>
+  <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>повторяемые аномалии</value></data>
+  <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>недостаточно данных</value></data>
 </root>

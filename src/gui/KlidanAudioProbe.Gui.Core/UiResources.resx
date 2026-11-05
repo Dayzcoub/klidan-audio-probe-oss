@@ -1219,4 +1219,19 @@ Fallback: {1}
   <data name="UiEventStopped" xml:space="preserve"><value>Stopped</value></data>
   <data name="UiEventCompleted" xml:space="preserve"><value>Completed</value></data>
   <data name="UiEventFailure" xml:space="preserve"><value>Failure</value></data>
+  <data name="VmAutomaticScanSummaryDisplay" xml:space="preserve"><value>{0} · completed {1} · skipped {2} · errors {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmDuplexRecommendationSummary" xml:space="preserve"><value>PROBE_PROVISIONAL · {0} · {1}. AudioHost: NOT_CERTIFIED. {2}</value></data>
+  <data name="VmRecommendationReasonAmbiguousPeriod" xml:space="preserve"><value>Multiple candidates were reported for one period; automatic selection is blocked for ambiguous records.</value></data>
+  <data name="VmRecommendationReasonDifferentPairs" xml:space="preserve"><value>Candidates use different exact endpoint pairs or incompatible settings; they are not ranked together.</value></data>
+  <data name="VmRecommendationReasonMinimumSelected" xml:space="preserve"><value>MINIMUM was selected from clean short Duplex evidence for this exact pair.</value></data>
+  <data name="VmRecommendationReasonNoAudioHostActivation" xml:space="preserve"><value>This recommendation does not authorize AudioHost activation; long-duration and production QA are still required.</value></data>
+  <data name="VmRecommendationReasonDefaultSelected" xml:space="preserve"><value>DEFAULT was selected because MINIMUM lacks independent clean Duplex confirmation.</value></data>
+  <data name="VmRecommendationReasonShortRunOnly" xml:space="preserve"><value>This check is limited to a short run; AudioHost is not certified.</value></data>
+  <data name="VmRecommendationReasonNoCleanCandidate" xml:space="preserve"><value>No candidate has complete clean Duplex evidence for this exact pair.</value></data>
+  <data name="VmRecommendationReasonNoSeparateProof" xml:space="preserve"><value>Format support and separate Capture/Render results do not replace a coordinated Duplex check.</value></data>
+  <data name="VmRepeatabilitySummaryDisplay" xml:space="preserve"><value>Planned: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmRepeatabilityClassClean" xml:space="preserve"><value>repeatably clean</value></data>
+  <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>intermittent anomalies</value></data>
+  <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>repeatably anomalous</value></data>
+  <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>insufficient evidence</value></data>
 </root>
