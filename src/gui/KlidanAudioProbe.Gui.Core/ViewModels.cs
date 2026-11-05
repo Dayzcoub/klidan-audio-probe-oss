@@ -92,9 +92,9 @@ public sealed class MainViewModel : ViewModel
     private string _operatorTestMode = "EXCLUSIVE_FORMAT_QUERY", _realInitializePeriod = "default";
     private string _operatorResultEndpoint = "", _operatorResultMode = "", _operatorResultConfiguration = "";
     private string _deviceProfileSaveMessage = "";
-    private string _operatorResultProvenance = "REAL_WASAPI_QUERY · данные отсутствуют";
+    private string _operatorResultProvenance = Localization.Get("VmOperatorResultProvenanceEmpty");
     private RealFormatUniqueRowDto? _selectedRealFormatRow;
-    private string _operatorResultOutcome = "Результат ещё не получен.";
+    private string _operatorResultOutcome = Localization.Get("VmOperatorResultOutcomeEmpty");
     private SessionMode _direction = SessionMode.Capture;
     private EndpointDto? _selectedCaptureEndpoint;
     private EndpointDto? _selectedRenderEndpoint;
@@ -102,7 +102,7 @@ public sealed class MainViewModel : ViewModel
     private ReportDto? _selectedReport;
     private SessionDto? _session;
     private MeterSnapshotDto? _meter;
-    private string _notice = "Данные этой сборки синтетические.";
+    private string _notice = Localization.Get("VmSyntheticBuildNotice");
     private bool _confirmPending;
     private bool _consentChecked;
     private long _eventSequence;
@@ -132,12 +132,12 @@ public sealed class MainViewModel : ViewModel
     private OfflineSustainedProfileRecoveryPreview? _historicalRecoveryPreview;
     private bool _historicalRecoveryConfirmationChecked, _historicalRecoveryRunning, _historicalRecoverySaving;
     private int _historicalRecoveryVersion;
-    private string _historicalRecoveryStatus = "Выберите завершённое историческое измерение.";
+    private string _historicalRecoveryStatus = Localization.Get("VmHistoricalRecoveryChooseMeasurement");
     private string? _historicalRecoveryTechnicalError;
     private DeviceProfileBindingRevalidationResult? _savedProfileBindingResult;
-    private string _savedProfileOperatorStatus = "Нажмите «Проверить подключение», чтобы обновить устройства и найти сохранённый профиль.";
-    private string _savedProfileOperatorHistory = "Историческая конфигурация пока не выбрана.";
-    private string _savedProfileOperatorLimitation = "Проверка не применяет настройки и не запускает аудио.";
+    private string _savedProfileOperatorStatus = Localization.Get("VmSavedProfileCheckConnection");
+    private string _savedProfileOperatorHistory = Localization.Get("VmSavedProfileNoHistorySelected");
+    private string _savedProfileOperatorLimitation = Localization.Get("VmSavedProfileCheckLimitation");
     private WindowsEndpointDto? _selectedWindowsEndpoint;
     private PhysicalDeviceGroupDto? _selectedPhysicalDeviceGroup;
     private IReadOnlyList<PhysicalDeviceGroupDto> _physicalDeviceGroups = [];
@@ -159,7 +159,7 @@ public sealed class MainViewModel : ViewModel
     private RealFormatCandidateDto? _selectedStreamCandidate;
     private RealStreamConsentDto? _pendingStreamConsent;
     private bool _streamConsentPending, _streamConsentChecked, _streamValidationRunning;
-    private string _streamValidationStatus = "Поток не проверялся.";
+    private string _streamValidationStatus = Localization.Get("VmStreamNotValidated");
     private string _streamValidationProgress = "";
     private readonly List<RealStreamValidationDto> _streamValidations = [];
     private readonly Dictionary<string, StreamValidationResultRow> _streamValidationRows = new(StringComparer.Ordinal)
@@ -174,17 +174,17 @@ public sealed class MainViewModel : ViewModel
     private bool _streamAttemptedSinceProfileSave;
     private IReadOnlyList<RealFormatMatrixDto> _deviceScanInitializations = [];
     private bool _deviceScanConsentPending, _deviceScanConsentChecked, _deviceScanRunning;
-    private string _deviceScanProgress = "Сканирование не запускалось.";
+    private string _deviceScanProgress = Localization.Get("VmDeviceScanNotStarted");
     private AutomaticScanPreparation? _automaticScanPreparation;
     private ScanRunResult? _automaticScanResult;
     private CancellationTokenSource? _automaticScanCancellation;
     private Task? _automaticScanTask;
     private bool _automaticScanPairEnabled, _automaticScanPreparing, _automaticScanConsentPending, _automaticScanConsentChecked, _automaticScanRunning, _automaticScanOutcomeUnknown, _automaticScanAttempted, _automaticScanTerminal;
     private string _automaticSustainedMode = "Standard (300 s)";
-    private string _automaticScanStatus = "Сканирование не запускалось.";
+    private string _automaticScanStatus = Localization.Get("VmAutomaticScanNotStarted");
     private bool _automaticScanExportRunning;
-    private string _automaticScanExportStatus = "Экспорт не подготовлен.";
-    private string _automaticScanExportTechnicalDetails = "Технические сведения экспорта отсутствуют.";
+    private string _automaticScanExportStatus = Localization.Get("VmAutomaticScanExportNotPrepared");
+    private string _automaticScanExportTechnicalDetails = Localization.Get("VmAutomaticScanExportDetailsMissing");
     private LaboratoryEvidenceBundlePreparation? _automaticScanExportPreparation;
     private readonly ObservableCollection<AutomaticScanProgressRow> _automaticScanProgressRows = [];
     private string _windowsEndpointSearchText = string.Empty, _windowsEndpointDirectionFilter = "ALL";
@@ -193,24 +193,24 @@ public sealed class MainViewModel : ViewModel
     private string? _pendingDuplexPeriod, _activeDuplexOperationId;
     private DuplexConsentDto? _pendingDuplexConsent;
     private bool _duplexConsentPending, _duplexConsentChecked, _duplexValidationRunning;
-    private string _duplexStatus = "Duplex не запускался.";
+    private string _duplexStatus = Localization.Get("VmDuplexNotStarted");
     private readonly Dictionary<string, DuplexValidationDto> _duplexValidations = new(StringComparer.Ordinal);
     private DuplexRepeatabilityPreparation? _duplexRepeatabilityPreparation;
     private DuplexRepeatabilityResult? _duplexRepeatabilityResult;
     private CancellationTokenSource? _duplexRepeatabilityCancellation;
     private bool _duplexRepeatabilityConsentPending, _duplexRepeatabilityConsentChecked, _duplexRepeatabilityRunning;
-    private string _duplexRepeatabilityStatus = "Repeatability QA не запускалась.";
+    private string _duplexRepeatabilityStatus = Localization.Get("VmDuplexRepeatabilityNotStarted");
     private DuplexRepeatabilityPreparation? _customRepeatabilityPreparation;
     private DuplexRepeatabilityResult? _customRepeatabilityResult;
     private CancellationTokenSource? _customRepeatabilityCancellation;
     private bool _customRepeatabilityConsentPending, _customRepeatabilityConsentChecked, _customRepeatabilityRunning;
-    private string _customRepeatabilityStatus = "Custom-period repeatability не запускалась.";
+    private string _customRepeatabilityStatus = Localization.Get("VmCustomRepeatabilityNotStarted");
     private PeriodDiscoveryPreparation? _periodDiscoveryPreparation;
     private PeriodDiscoverySeriesResult? _periodDiscoveryResult;
     private string? _periodDiscoveryResultFingerprint;
     private bool _periodDiscoveryConsentPending, _periodDiscoveryConsentChecked, _periodDiscoveryRunning;
     private CancellationTokenSource? _periodDiscoveryCancellation;
-    private string _periodDiscoveryStatus = "Исследование периодов не запускалось.";
+    private string _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryNotStarted");
     private string _customPeriodFramesText = "192", _customPeriodDuplexStatus = "Custom-period Duplex не запускался.";
     private CustomPeriodDuplexPreparation? _customPeriodDuplexPreparation;
     private CustomPeriodDuplexResult? _customPeriodDuplexResult;
@@ -342,7 +342,7 @@ public sealed class MainViewModel : ViewModel
 
     public ProbeScreen Screen { get => _screen; private set => Set(ref _screen, value); }
     public OperatorStep WorkflowStep { get => _operatorStep; private set { if (Set(ref _operatorStep, value)) { Changed(nameof(WorkflowStepLabel)); Changed(nameof(OperatorSelectedDevice)); } } }
-    public string WorkflowStepLabel => WorkflowStep switch { OperatorStep.Device => "1 · Устройство", OperatorStep.Test => "2 · Проверка", _ => "3 · Результат" };
+    public string WorkflowStepLabel => WorkflowStep switch { OperatorStep.Device => Localization.Get("VmWorkflowDeviceStep"), OperatorStep.Test => Localization.Get("VmWorkflowTestStep"), _ => Localization.Get("VmWorkflowResultStep") };
     public bool DeveloperToolsOpen { get => _developerToolsOpen; set { if (Set(ref _developerToolsOpen, value)) { Changed(nameof(WorkerStatusVisible)); RefreshContext(); } } }
     public bool DeveloperToolsAvailable => _developerToolsAvailable;
     public IReadOnlyList<StringSelectionOption> LanguageOptions => Localization.Languages;
@@ -359,8 +359,8 @@ public sealed class MainViewModel : ViewModel
     }
     public string LanguageRestartNotice => Localization.Get("LanguageRestartNotice");
     public bool WorkerStatusVisible => DeveloperToolsOpen || WorkerOperationActive;
-    public IReadOnlyList<StringSelectionOption> OperatorTestModes { get; } = [new("EXCLUSIVE_FORMAT_QUERY", "Запрос Exclusive-форматов"), new("INITIALIZE_ONLY", "Проверка Initialize-only")];
-    public IReadOnlyList<StringSelectionOption> RealInitializePeriods { get; } = [new("default", "Стандартный (DEFAULT)"), new("minimum", "Минимальный (MINIMUM)")];
+    public IReadOnlyList<StringSelectionOption> OperatorTestModes { get; } = [new("EXCLUSIVE_FORMAT_QUERY", Localization.Get("VmOperatorExclusiveFormatQuery")), new("INITIALIZE_ONLY", Localization.Get("VmOperatorInitializeOnly"))];
+    public IReadOnlyList<StringSelectionOption> RealInitializePeriods { get; } = [new("default", Localization.Get("VmDefaultPeriod")), new("minimum", Localization.Get("VmMinimumPeriod"))];
     public string OperatorTestMode { get => _operatorTestMode; set { if (value is "EXCLUSIVE_FORMAT_QUERY" or "INITIALIZE_ONLY" && Set(ref _operatorTestMode, value)) { Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); QueryRealFormatsCommand.Refresh(); RequestRealInitializeCommand.Refresh(); } } }
     public string RealInitializePeriod { get => _realInitializePeriod; set { if (value is "default" or "minimum" && Set(ref _realInitializePeriod, value)) { SyncSelectedRealFormatCandidate(); Changed(nameof(RealSelectedCandidateDetails)); Changed(nameof(RealInitializeDisabledReason)); RequestRealInitializeCommand.Refresh(); } } }
     public RealFormatUniqueRowDto? SelectedRealFormatRow
@@ -389,16 +389,16 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
-            if (WorkerState.State != WorkerConnectionState.ConnectedFake) return "Worker отключён. Подключите worker, чтобы продолжить.";
-            if (RealFormatMatrix is not null && RealFormatMatrixIsStale || SelectedWindowsEndpoint is not null && !CanUseSelectedWindowsEndpoint) return "Endpoint устарел или недоступен. Повторно обновите список и выберите активное устройство.";
-            if (_realQueryRunning || _realInitializeRunning || WorkerOperationActive) return "Операция выполняется. Дождитесь её завершения.";
-            if (!HasCurrentOperatorQueryResult) return "Нет текущего запроса форматов для выбранного endpoint. Выполните запрос.";
-            if (SelectedRealFormatRow is null) return "Формат не выбран. Выберите строку с SUPPORTED_REPORTED.";
-            if (SelectedRealFormatRow.DisplayStatus is "INCOMPLETE/CONFLICT" or "INCOMPLETE" or "NOT_TESTED") return "Конфликт или неполные данные. Этот формат нельзя инициализировать.";
-            if (SelectedRealFormatRow.DisplayStatus is "UNSUPPORTED" or "FAILED" || SelectedRealFormatCandidate is { SupportStatus: not "SUPPORTED_REPORTED" }) return "Выбранный формат не поддерживается (или запрос завершился ошибкой) для Initialize-only.";
-            if (SelectedRealFormatCandidate is null) return "Для выбранного периода нет пригодного результата формата.";
-            if (RealInitializeConsentPending) return "Ожидается свежее подтверждение или отмена.";
-            if (_worker is null || !_worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal)) return "Подключённый worker не поддерживает Initialize-only.";
+            if (WorkerState.State != WorkerConnectionState.ConnectedFake) return Localization.Get("VmInitializeNeedsWorker");
+            if (RealFormatMatrix is not null && RealFormatMatrixIsStale || SelectedWindowsEndpoint is not null && !CanUseSelectedWindowsEndpoint) return Localization.Get("VmInitializeEndpointStale");
+            if (_realQueryRunning || _realInitializeRunning || WorkerOperationActive) return Localization.Get("VmInitializeOperationRunning");
+            if (!HasCurrentOperatorQueryResult) return Localization.Get("VmInitializeNeedsCurrentQuery");
+            if (SelectedRealFormatRow is null) return Localization.Get("VmInitializeNeedsSelectedFormat");
+            if (SelectedRealFormatRow.DisplayStatus is "INCOMPLETE/CONFLICT" or "INCOMPLETE" or "NOT_TESTED") return Localization.Get("VmInitializeFormatIncomplete");
+            if (SelectedRealFormatRow.DisplayStatus is "UNSUPPORTED" or "FAILED" || SelectedRealFormatCandidate is { SupportStatus: not "SUPPORTED_REPORTED" }) return Localization.Get("VmInitializeFormatUnsupported");
+            if (SelectedRealFormatCandidate is null) return Localization.Get("VmInitializePeriodUnavailable");
+            if (RealInitializeConsentPending) return Localization.Get("VmInitializeAwaitingConsent");
+            if (_worker is null || !_worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal)) return Localization.Get("VmInitializeWorkerCapabilityMissing");
             return "";
         }
     }

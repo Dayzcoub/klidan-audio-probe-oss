@@ -403,4 +403,37 @@
   <data name="QualityUnknown" xml:space="preserve"><value>Quality unknown</value></data>
   <data name="NoFakeSession" xml:space="preserve"><value>No fake session</value></data>
   <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 seconds; Extended: 600 seconds. Both modes run only after confirmation of the complete plan.</value></data>
+  <data name="VmOperatorResultProvenanceEmpty" xml:space="preserve"><value>REAL_WASAPI_QUERY · no data</value></data>
+  <data name="VmOperatorResultOutcomeEmpty" xml:space="preserve"><value>No result has been received.</value></data>
+  <data name="VmSyntheticBuildNotice" xml:space="preserve"><value>This build uses synthetic data.</value></data>
+  <data name="VmHistoricalRecoveryChooseMeasurement" xml:space="preserve"><value>Select a completed historical measurement.</value></data>
+  <data name="VmSavedProfileCheckConnection" xml:space="preserve"><value>Select “Check connection” to refresh devices and find a saved profile.</value></data>
+  <data name="VmSavedProfileNoHistorySelected" xml:space="preserve"><value>No historical configuration is selected.</value></data>
+  <data name="VmSavedProfileCheckLimitation" xml:space="preserve"><value>This check does not apply settings or start audio.</value></data>
+  <data name="VmStreamNotValidated" xml:space="preserve"><value>Stream has not been validated.</value></data>
+  <data name="VmDeviceScanNotStarted" xml:space="preserve"><value>Scan has not started.</value></data>
+  <data name="VmAutomaticScanNotStarted" xml:space="preserve"><value>Scan has not started.</value></data>
+  <data name="VmAutomaticScanExportNotPrepared" xml:space="preserve"><value>Export has not been prepared.</value></data>
+  <data name="VmAutomaticScanExportDetailsMissing" xml:space="preserve"><value>Export technical details are unavailable.</value></data>
+  <data name="VmDuplexNotStarted" xml:space="preserve"><value>Duplex has not started.</value></data>
+  <data name="VmDuplexRepeatabilityNotStarted" xml:space="preserve"><value>Repeatability QA has not started.</value></data>
+  <data name="VmCustomRepeatabilityNotStarted" xml:space="preserve"><value>Custom-period repeatability has not started.</value></data>
+  <data name="VmPeriodDiscoveryNotStarted" xml:space="preserve"><value>Period discovery has not started.</value></data>
+  <data name="VmWorkflowDeviceStep" xml:space="preserve"><value>1 · Device</value></data>
+  <data name="VmWorkflowTestStep" xml:space="preserve"><value>2 · Test</value></data>
+  <data name="VmWorkflowResultStep" xml:space="preserve"><value>3 · Result</value></data>
+  <data name="VmOperatorExclusiveFormatQuery" xml:space="preserve"><value>Query Exclusive formats</value></data>
+  <data name="VmOperatorInitializeOnly" xml:space="preserve"><value>Initialize-only check</value></data>
+  <data name="VmDefaultPeriod" xml:space="preserve"><value>Standard (DEFAULT)</value></data>
+  <data name="VmMinimumPeriod" xml:space="preserve"><value>Minimum (MINIMUM)</value></data>
+  <data name="VmInitializeNeedsWorker" xml:space="preserve"><value>Worker is disconnected. Connect the worker to continue.</value></data>
+  <data name="VmInitializeEndpointStale" xml:space="preserve"><value>The endpoint is stale or unavailable. Refresh the list and select an active device.</value></data>
+  <data name="VmInitializeOperationRunning" xml:space="preserve"><value>An operation is running. Wait for it to finish.</value></data>
+  <data name="VmInitializeNeedsCurrentQuery" xml:space="preserve"><value>There is no current format query for the selected endpoint. Run the query.</value></data>
+  <data name="VmInitializeNeedsSelectedFormat" xml:space="preserve"><value>No format is selected. Choose a row marked SUPPORTED_REPORTED.</value></data>
+  <data name="VmInitializeFormatIncomplete" xml:space="preserve"><value>Evidence conflicts or is incomplete. This format cannot be initialized.</value></data>
+  <data name="VmInitializeFormatUnsupported" xml:space="preserve"><value>The selected format is unsupported or its query failed for Initialize-only.</value></data>
+  <data name="VmInitializePeriodUnavailable" xml:space="preserve"><value>No usable format result exists for the selected period.</value></data>
+  <data name="VmInitializeAwaitingConsent" xml:space="preserve"><value>Waiting for fresh confirmation or cancellation.</value></data>
+  <data name="VmInitializeWorkerCapabilityMissing" xml:space="preserve"><value>The connected worker does not support Initialize-only.</value></data>
 </root>

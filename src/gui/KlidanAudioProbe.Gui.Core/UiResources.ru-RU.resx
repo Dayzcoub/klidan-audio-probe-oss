@@ -403,4 +403,37 @@
   <data name="QualityUnknown" xml:space="preserve"><value>Качество неизвестно</value></data>
   <data name="NoFakeSession" xml:space="preserve"><value>Нет fake-сессии</value></data>
   <data name="SustainedModeTooltip" xml:space="preserve"><value>Standard: 300 секунд; Extended: 600 секунд. Оба режима выполняются только после подтверждения полного плана.</value></data>
+  <data name="VmOperatorResultProvenanceEmpty" xml:space="preserve"><value>REAL_WASAPI_QUERY · данные отсутствуют</value></data>
+  <data name="VmOperatorResultOutcomeEmpty" xml:space="preserve"><value>Результат ещё не получен.</value></data>
+  <data name="VmSyntheticBuildNotice" xml:space="preserve"><value>Данные этой сборки синтетические.</value></data>
+  <data name="VmHistoricalRecoveryChooseMeasurement" xml:space="preserve"><value>Выберите завершённое историческое измерение.</value></data>
+  <data name="VmSavedProfileCheckConnection" xml:space="preserve"><value>Нажмите «Проверить подключение», чтобы обновить устройства и найти сохранённый профиль.</value></data>
+  <data name="VmSavedProfileNoHistorySelected" xml:space="preserve"><value>Историческая конфигурация пока не выбрана.</value></data>
+  <data name="VmSavedProfileCheckLimitation" xml:space="preserve"><value>Проверка не применяет настройки и не запускает аудио.</value></data>
+  <data name="VmStreamNotValidated" xml:space="preserve"><value>Поток не проверялся.</value></data>
+  <data name="VmDeviceScanNotStarted" xml:space="preserve"><value>Сканирование не запускалось.</value></data>
+  <data name="VmAutomaticScanNotStarted" xml:space="preserve"><value>Сканирование не запускалось.</value></data>
+  <data name="VmAutomaticScanExportNotPrepared" xml:space="preserve"><value>Экспорт не подготовлен.</value></data>
+  <data name="VmAutomaticScanExportDetailsMissing" xml:space="preserve"><value>Технические сведения экспорта отсутствуют.</value></data>
+  <data name="VmDuplexNotStarted" xml:space="preserve"><value>Duplex не запускался.</value></data>
+  <data name="VmDuplexRepeatabilityNotStarted" xml:space="preserve"><value>Repeatability QA не запускалась.</value></data>
+  <data name="VmCustomRepeatabilityNotStarted" xml:space="preserve"><value>Custom-period repeatability не запускалась.</value></data>
+  <data name="VmPeriodDiscoveryNotStarted" xml:space="preserve"><value>Исследование периодов не запускалось.</value></data>
+  <data name="VmWorkflowDeviceStep" xml:space="preserve"><value>1 · Устройство</value></data>
+  <data name="VmWorkflowTestStep" xml:space="preserve"><value>2 · Проверка</value></data>
+  <data name="VmWorkflowResultStep" xml:space="preserve"><value>3 · Результат</value></data>
+  <data name="VmOperatorExclusiveFormatQuery" xml:space="preserve"><value>Запрос Exclusive-форматов</value></data>
+  <data name="VmOperatorInitializeOnly" xml:space="preserve"><value>Проверка Initialize-only</value></data>
+  <data name="VmDefaultPeriod" xml:space="preserve"><value>Стандартный (DEFAULT)</value></data>
+  <data name="VmMinimumPeriod" xml:space="preserve"><value>Минимальный (MINIMUM)</value></data>
+  <data name="VmInitializeNeedsWorker" xml:space="preserve"><value>Worker отключён. Подключите worker, чтобы продолжить.</value></data>
+  <data name="VmInitializeEndpointStale" xml:space="preserve"><value>Endpoint устарел или недоступен. Повторно обновите список и выберите активное устройство.</value></data>
+  <data name="VmInitializeOperationRunning" xml:space="preserve"><value>Операция выполняется. Дождитесь её завершения.</value></data>
+  <data name="VmInitializeNeedsCurrentQuery" xml:space="preserve"><value>Нет текущего запроса форматов для выбранного endpoint. Выполните запрос.</value></data>
+  <data name="VmInitializeNeedsSelectedFormat" xml:space="preserve"><value>Формат не выбран. Выберите строку с SUPPORTED_REPORTED.</value></data>
+  <data name="VmInitializeFormatIncomplete" xml:space="preserve"><value>Конфликт или неполные данные. Этот формат нельзя инициализировать.</value></data>
+  <data name="VmInitializeFormatUnsupported" xml:space="preserve"><value>Выбранный формат не поддерживается (или запрос завершился ошибкой) для Initialize-only.</value></data>
+  <data name="VmInitializePeriodUnavailable" xml:space="preserve"><value>Для выбранного периода нет пригодного результата формата.</value></data>
+  <data name="VmInitializeAwaitingConsent" xml:space="preserve"><value>Ожидается свежее подтверждение или отмена.</value></data>
+  <data name="VmInitializeWorkerCapabilityMissing" xml:space="preserve"><value>Подключённый worker не поддерживает Initialize-only.</value></data>
 </root>
