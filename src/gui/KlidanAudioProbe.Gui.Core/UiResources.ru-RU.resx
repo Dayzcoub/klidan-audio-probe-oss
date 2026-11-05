@@ -1118,4 +1118,22 @@ Fallback: {1}
   <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Кандидатные количества каналов: {0} · 44,1/48 кГц · PCM16, PCM24-in-32, Float32</value></data>
   <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Гц · каналов: {2} · {3}</value></data>
   <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Результат Worker не соответствует выбранному Windows endpoint или контракту пассивного запроса.</value></data>
+  <data name="VmHistoricalRecoveryChecking" xml:space="preserve"><value>Проверка исторических измерений…</value></data>
+  <data name="VmHistoricalRecoveryConfigurationMissing" xml:space="preserve"><value>Подтверждённая конфигурация не найдена.</value></data>
+  <data name="VmHistoricalRecoveryPreviewReady" xml:space="preserve"><value>Исторические измерения прошли проверку по текущим правилам. Просмотрите результат и подтвердите сохранение.</value></data>
+  <data name="VmHistoricalRecoveryRejected" xml:space="preserve"><value>Проверка исторических измерений отклонена. См. технические сведения.</value></data>
+  <data name="VmHistoricalRecoveryProfileCreated" xml:space="preserve"><value>Создан новый профиль v4: {0:D} · {1:dd.MM.yyyy HH:mm}.</value></data>
+  <data name="VmHistoricalRecoverySaveFailed" xml:space="preserve"><value>Профиль не сохранён. См. технические сведения.</value></data>
+  <data name="VmHistoricalRecoveryCancelled" xml:space="preserve"><value>Проверка отменена.</value></data>
+  <data name="VmBindingExactIdsOnlyLimitation" xml:space="preserve"><value>Точные Capture/Render ID совпали. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не проверялись.</value></data>
+  <data name="VmBindingMultipleProfilesFound" xml:space="preserve"><value>Для этой пары устройств найдено несколько сохранённых профилей. Выбор неоднозначен.</value></data>
+  <data name="VmBindingMultipleProfilesChooseManually" xml:space="preserve"><value>Профиль не выбран автоматически; откройте расширенную диагностику и выберите его.</value></data>
+  <data name="VmBindingLegacyMeasurementsFound" xml:space="preserve"><value>Найдены предыдущие измерения. Подтверждённого длительного профиля пока нет.</value></data>
+  <data name="VmBindingShortResultsNotSustained" xml:space="preserve"><value>Короткие результаты не переинтерпретируются как длительная проверка.</value></data>
+  <data name="VmBindingSustainedValidationRequired" xml:space="preserve"><value>Для длительного профиля v4 нужна отдельная проверенная длительная проверка.</value></data>
+  <data name="VmBindingProfileCorruptOrUnsupported" xml:space="preserve"><value>Сохранённый профиль повреждён или не поддерживается.</value></data>
+  <data name="VmBindingMatchingProfileNotFound" xml:space="preserve"><value>Для этой пары устройств доступный профиль не найден.</value></data>
+  <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Обновите локальные профили и повторите проверку.</value></data>
+  <data name="VmBindingCheckFailed" xml:space="preserve"><value>Проверка не завершена: {0}.</value></data>
+  <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>Текущий результат не подтверждён.</value></data>
 </root>

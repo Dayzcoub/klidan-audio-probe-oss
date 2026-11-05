@@ -1118,4 +1118,22 @@ Fallback: {1}
   <data name="VmOperatorFormatQueryConfiguration" xml:space="preserve"><value>Candidate channel counts: {0} · 44.1/48 kHz · PCM16, PCM24-in-32, Float32</value></data>
   <data name="VmOperatorInitializeConfiguration" xml:space="preserve"><value>{0} · {1} Hz · {2} channels · {3}</value></data>
   <data name="VmQueryResponseMismatch" xml:space="preserve"><value>Worker result did not match the selected Windows endpoint or passive-query contract.</value></data>
+  <data name="VmHistoricalRecoveryChecking" xml:space="preserve"><value>Checking historical measurements…</value></data>
+  <data name="VmHistoricalRecoveryConfigurationMissing" xml:space="preserve"><value>No verified configuration was found.</value></data>
+  <data name="VmHistoricalRecoveryPreviewReady" xml:space="preserve"><value>Historical measurements passed current rules. Review the result and confirm saving.</value></data>
+  <data name="VmHistoricalRecoveryRejected" xml:space="preserve"><value>Historical measurement verification was rejected. See technical details.</value></data>
+  <data name="VmHistoricalRecoveryProfileCreated" xml:space="preserve"><value>Created new v4 profile: {0:D} · {1:dd.MM.yyyy HH:mm}.</value></data>
+  <data name="VmHistoricalRecoverySaveFailed" xml:space="preserve"><value>Profile was not saved. See technical details.</value></data>
+  <data name="VmHistoricalRecoveryCancelled" xml:space="preserve"><value>Verification cancelled.</value></data>
+  <data name="VmBindingExactIdsOnlyLimitation" xml:space="preserve"><value>Exact Capture/Render IDs matched. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not reverified.</value></data>
+  <data name="VmBindingMultipleProfilesFound" xml:space="preserve"><value>Multiple saved profiles match this device pair. Selection is ambiguous.</value></data>
+  <data name="VmBindingMultipleProfilesChooseManually" xml:space="preserve"><value>No profile was selected automatically; open advanced diagnostics to choose one.</value></data>
+  <data name="VmBindingLegacyMeasurementsFound" xml:space="preserve"><value>Earlier measurements were found. No verified sustained profile is available yet.</value></data>
+  <data name="VmBindingShortResultsNotSustained" xml:space="preserve"><value>Short results are not reinterpreted as a sustained test.</value></data>
+  <data name="VmBindingSustainedValidationRequired" xml:space="preserve"><value>A v4 sustained profile requires a separately validated long-duration test.</value></data>
+  <data name="VmBindingProfileCorruptOrUnsupported" xml:space="preserve"><value>The saved profile is damaged or unsupported.</value></data>
+  <data name="VmBindingMatchingProfileNotFound" xml:space="preserve"><value>No available profile was found for this device pair.</value></data>
+  <data name="VmBindingRefreshProfiles" xml:space="preserve"><value>Refresh local profiles and check again.</value></data>
+  <data name="VmBindingCheckFailed" xml:space="preserve"><value>Check did not complete: {0}.</value></data>
+  <data name="VmBindingCurrentResultUnconfirmed" xml:space="preserve"><value>The current result is unconfirmed.</value></data>
 </root>

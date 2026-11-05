@@ -2481,7 +2481,7 @@ try
     var uiSummaryBytes = File.ReadAllBytes(recoverySummaryPath);
     File.WriteAllBytes(recoverySummaryPath, JsonSerializer.SerializeToUtf8Bytes(recoverySummary with { TimestampUtc = recoverySummary.TimestampUtc.AddSeconds(1) }));
     recoveryVm.HistoricalRecoveryConfirmationChecked = true; recoveryVm.SaveHistoricalSustainedRecoveryCommand.Execute(null);
-    Check(!recoveryVm.HistoricalRecoveryPreviewVisible && recoveryVm.HistoricalRecoveryStatus == "Профиль не сохранён. См. технические сведения." && recoveryVm.HistoricalRecoveryTechnicalDetails.Contains("InvalidDataException", StringComparison.Ordinal), "S5-R2 source changes invalidate the approved preview and keep details out of the operator headline");
+    Check(!recoveryVm.HistoricalRecoveryPreviewVisible && recoveryVm.HistoricalRecoveryStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmHistoricalRecoverySaveFailed") && recoveryVm.HistoricalRecoveryTechnicalDetails.Contains("InvalidDataException", StringComparison.Ordinal), "S5-R2 source changes invalidate the approved preview and keep details out of the operator headline");
     File.WriteAllBytes(recoverySummaryPath, uiSummaryBytes);
     recoveryVm.RefreshHistoricalSustainedScansCommand.Execute(null); recoveryVm.SelectedHistoricalSustainedScan = recoveryVm.HistoricalSustainedScans[0]; recoveryVm.PreviewHistoricalSustainedRecoveryCommand.Execute(null);
     Check(recoveryVm.HistoricalRecoveryPreviewVisible, "S5-R2 requires a new Preview after a changed source");

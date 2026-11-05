@@ -2487,7 +2487,7 @@ public sealed class MainViewModel : ViewModel
     private Task PreviewHistoricalSustainedRecoveryAsync()
     {
         if (!CanPreviewHistoricalSustainedRecovery() || _selectedHistoricalSustainedScan is not { } selected) return Task.CompletedTask;
-        InvalidateHistoricalRecovery("Проверка старых измерений выполняется…");
+        InvalidateHistoricalRecovery(Localization.Get("VmHistoricalRecoveryChecking"));
         var version = _historicalRecoveryVersion;
         _historicalRecoveryRunning = true; Changed(nameof(HistoricalRecoveryRunning)); RefreshHistoricalRecoveryCommands();
         try
@@ -2495,10 +2495,10 @@ public sealed class MainViewModel : ViewModel
             var preview = OfflineSustainedProfileRecovery.Preview(selected.SessionId, RecoveryScansDirectory, RecoveryProfilesDirectory, RecoveryEvidenceDirectory);
             if (version != _historicalRecoveryVersion) return Task.CompletedTask;
             _historicalRecoveryPreview = preview;
-            _historicalRecoveryStatus = preview.Recommendation.Preferred is null ? "Подтверждённая конфигурация не найдена." : "Старые измерения подтверждены текущими правилами. Просмотрите результат и подтвердите сохранение.";
+            _historicalRecoveryStatus = preview.Recommendation.Preferred is null ? Localization.Get("VmHistoricalRecoveryConfigurationMissing") : Localization.Get("VmHistoricalRecoveryPreviewReady");
             ChangedHistoricalRecovery();
         }
-        catch (Exception ex) { if (version == _historicalRecoveryVersion) { _historicalRecoveryStatus = "Проверка старых измерений отклонена. См. технические сведения."; _historicalRecoveryTechnicalError = $"{ex.GetType().Name}: {ex.Message}"; Changed(nameof(HistoricalRecoveryStatus)); Changed(nameof(HistoricalRecoveryTechnicalDetails)); } }
+        catch (Exception ex) { if (version == _historicalRecoveryVersion) { _historicalRecoveryStatus = Localization.Get("VmHistoricalRecoveryRejected"); _historicalRecoveryTechnicalError = $"{ex.GetType().Name}: {ex.Message}"; Changed(nameof(HistoricalRecoveryStatus)); Changed(nameof(HistoricalRecoveryTechnicalDetails)); } }
         finally { _historicalRecoveryRunning = false; Changed(nameof(HistoricalRecoveryRunning)); RefreshHistoricalRecoveryCommands(); }
         return Task.CompletedTask;
     }
@@ -2510,18 +2510,18 @@ public sealed class MainViewModel : ViewModel
         try
         {
             var saved = OfflineSustainedProfileRecovery.Save(preview);
-            _historicalRecoveryStatus = $"Создан новый v4 профиль: {saved.Profile.ProfileId:D} · {saved.Profile.CreatedAtUtc.ToLocalTime():dd.MM.yyyy HH:mm}.";
+            _historicalRecoveryStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryProfileCreated"), saved.Profile.ProfileId, saved.Profile.CreatedAtUtc.ToLocalTime());
             _historicalRecoveryPreview = null; _historicalRecoveryConfirmationChecked = false; _historicalRecoveryVersion++;
             ChangedHistoricalRecovery();
             RefreshSavedProfiles();
             RefreshHistoricalSustainedScans();
         }
-        catch (Exception ex) { _historicalRecoveryStatus = "Профиль не сохранён. См. технические сведения."; _historicalRecoveryTechnicalError = $"{ex.GetType().Name}: {ex.Message}"; _historicalRecoveryPreview = null; _historicalRecoveryConfirmationChecked = false; _historicalRecoveryVersion++; ChangedHistoricalRecovery(); }
+        catch (Exception ex) { _historicalRecoveryStatus = Localization.Get("VmHistoricalRecoverySaveFailed"); _historicalRecoveryTechnicalError = $"{ex.GetType().Name}: {ex.Message}"; _historicalRecoveryPreview = null; _historicalRecoveryConfirmationChecked = false; _historicalRecoveryVersion++; ChangedHistoricalRecovery(); }
         finally { _historicalRecoverySaving = false; Changed(nameof(HistoricalRecoverySaving)); RefreshHistoricalRecoveryCommands(); }
         return Task.CompletedTask;
     }
 
-    private void CancelHistoricalSustainedRecovery() => InvalidateHistoricalRecovery("Проверка отменена.");
+    private void CancelHistoricalSustainedRecovery() => InvalidateHistoricalRecovery(Localization.Get("VmHistoricalRecoveryCancelled"));
     private void InvalidateHistoricalRecovery(string? status)
     {
         _historicalRecoveryVersion++; _historicalRecoveryPreview = null; _historicalRecoveryConfirmationChecked = false;
@@ -2622,31 +2622,31 @@ public sealed class MainViewModel : ViewModel
             {
                 SelectedSavedDeviceProfile = v4Matches[0];
                 _savedProfileBindingResult = _savedProfileBindingState.Evaluate(v4Matches[0].Profile!, discovery, generation, v4Matches[0].Path);
-                _savedProfileOperatorStatus = "Пара устройств найдена. Аудиоконфигурация требует повторной проверки.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingExactFound");
                 _savedProfileOperatorHistory = HistoricalOperatorText(v4Matches[0].Profile!);
-                _savedProfileOperatorLimitation = "Совпали точные Capture/Render ID. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.";
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingExactIdsOnlyLimitation");
             }
             else if (v4Matches.Length > 1)
             {
                 SelectedSavedDeviceProfile = null;
                 _savedProfileBindingResult = _savedProfileBindingState.Invalidate(DeviceProfileBindingInvalidationReason.ProfileSelectionChanged);
-                _savedProfileOperatorStatus = "Найдено несколько сохранённых профилей для этой пары устройств. Выбор неоднозначен.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingMultipleProfilesFound");
                 _savedProfileOperatorHistory = string.Join("\n", v4Matches.Select(p => $"{p.OperatorDisplayName} · {p.OperatorTimestampLabel} · {p.OperatorResult}"));
-                _savedProfileOperatorLimitation = "Профиль не выбран автоматически; откройте расширенную диагностику для выбора.";
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingMultipleProfilesChooseManually");
             }
             else if (legacyMatches.Length > 0)
             {
                 SelectedSavedDeviceProfile = null;
-                _savedProfileOperatorStatus = "Найдены предыдущие измерения. Подтверждённого длительного профиля пока нет.";
-                _savedProfileOperatorHistory = "Короткие результаты не переинтерпретируются как sustained-проверка.";
-                _savedProfileOperatorLimitation = "Для v4 sustained-профиля нужна отдельная валидированная длительная проверка.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingLegacyMeasurementsFound");
+                _savedProfileOperatorHistory = Localization.Get("VmBindingShortResultsNotSustained");
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingSustainedValidationRequired");
             }
             else if (_savedDeviceProfiles.Any(p => !p.IsAvailable))
             {
                 SelectedSavedDeviceProfile = null;
-                _savedProfileOperatorStatus = "Сохранённый профиль повреждён или не поддерживается.";
-                _savedProfileOperatorHistory = "Доступный профиль для этой пары устройств не найден.";
-                _savedProfileOperatorLimitation = "Обновите локальные профили и повторите проверку.";
+                _savedProfileOperatorStatus = Localization.Get("VmBindingProfileCorruptOrUnsupported");
+                _savedProfileOperatorHistory = Localization.Get("VmBindingMatchingProfileNotFound");
+                _savedProfileOperatorLimitation = Localization.Get("VmBindingRefreshProfiles");
             }
             else
             {
@@ -2659,9 +2659,9 @@ public sealed class MainViewModel : ViewModel
         catch (Exception ex)
         {
             InvalidateSavedProfileBinding(DeviceProfileBindingInvalidationReason.DiscoverySnapshotStale);
-            _savedProfileOperatorStatus = $"Проверка не завершена: {ex.GetType().Name}.";
-            _savedProfileOperatorHistory = "Текущий результат не подтверждён.";
-            _savedProfileOperatorLimitation = "Повторите проверку после обновления Worker и списка устройств.";
+            _savedProfileOperatorStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmBindingCheckFailed"), ex.GetType().Name);
+            _savedProfileOperatorHistory = Localization.Get("VmBindingCurrentResultUnconfirmed");
+            _savedProfileOperatorLimitation = Localization.Get("VmBindingRetryAfterRefresh");
         }
         finally
         {
