@@ -801,4 +801,20 @@
   <data name="VmInitializeResultMissing" xml:space="preserve"><value>результат отсутствует</value></data>
   <data name="VmInitializeErrorPrefix" xml:space="preserve"><value>Initialize-only: исход неизвестен или отклонён</value></data>
   <data name="VmInitializeUnknownOutcome" xml:space="preserve"><value>Исход Initialize неизвестен (UNKNOWN) · операция worker могла быть выполнена.</value></data>
+  <data name="VmBindingExactFound" xml:space="preserve"><value>Пара устройств найдена. Аудиоконфигурация требует повторной проверки.</value></data>
+  <data name="VmBindingCaptureMissing" xml:space="preserve"><value>Сохранённый аудиовход не найден.</value></data>
+  <data name="VmBindingRenderMissing" xml:space="preserve"><value>Сохранённый аудиовыход не найден.</value></data>
+  <data name="VmBindingBothMissing" xml:space="preserve"><value>Сохранённые Capture и Render endpoints не найдены.</value></data>
+  <data name="VmBindingEndpointUnavailable" xml:space="preserve"><value>Сохранённый endpoint отключён или не подключён.</value></data>
+  <data name="VmBindingDiscoveryIncomplete" xml:space="preserve"><value>Список устройств неполный. Совпадение не подтверждено.</value></data>
+  <data name="VmBindingInvalidProvenance" xml:space="preserve"><value>Проверка отклонена: discovery не имеет REAL_WINDOWS_METADATA.</value></data>
+  <data name="VmBindingDiscoveryFailed" xml:space="preserve"><value>Проверка discovery не завершена.</value></data>
+  <data name="VmBindingProfileInvalid" xml:space="preserve"><value>Профиль повреждён или не поддерживается.</value></data>
+  <data name="VmBindingUnboundProfile" xml:space="preserve"><value>Профиль не привязан к этому компьютеру.</value></data>
+  <data name="VmBindingIdentityAmbiguous" xml:space="preserve"><value>Точные endpoint identities неоднозначны.</value></data>
+  <data name="VmBindingMetadataContradiction" xml:space="preserve"><value>Доступные метаданные противоречат сохранённой привязке.</value></data>
+  <data name="VmBindingMetadataInsufficient" xml:space="preserve"><value>Метаданные устройства недоступны или недостаточны.</value></data>
+  <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Проверка устарела: Worker отключён.</value></data>
+  <data name="VmBindingInvalidated" xml:space="preserve"><value>Проверка устарела: входные данные изменились.</value></data>
+  <data name="VmBindingNotRun" xml:space="preserve"><value>Проверка не выполнена.</value></data>
 </root>

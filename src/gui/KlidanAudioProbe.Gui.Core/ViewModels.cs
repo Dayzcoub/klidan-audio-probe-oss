@@ -2424,22 +2424,22 @@ public sealed class MainViewModel : ViewModel
 
     private static string BindingStatus(DeviceProfileBindingRevalidationResult result) => result.Overall switch
     {
-        DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery => "Пара устройств найдена. Аудиоконфигурация требует повторной проверки.",
-        DeviceProfileBindingAssessment.CaptureMissing => "Сохранённый аудиовход не найден.",
-        DeviceProfileBindingAssessment.RenderMissing => "Сохранённый аудиовыход не найден.",
-        DeviceProfileBindingAssessment.BothEndpointsMissing => "Сохранённые Capture и Render endpoints не найдены.",
-        DeviceProfileBindingAssessment.EndpointDisabledOrUnplugged => "Сохранённый endpoint отключён или не подключён.",
-        DeviceProfileBindingAssessment.DiscoveryIncomplete => "Список устройств неполный. Совпадение не подтверждено.",
-        DeviceProfileBindingAssessment.DiscoveryProvenanceInvalid => "Проверка отклонена: discovery не имеет REAL_WINDOWS_METADATA.",
-        DeviceProfileBindingAssessment.DiscoveryFailed => "Проверка discovery не завершена.",
-        DeviceProfileBindingAssessment.ProfileInvalidOrUnsupported => "Профиль повреждён или не поддерживается.",
-        DeviceProfileBindingAssessment.SanitizedUnboundProfile => "Профиль не привязан к этому компьютеру.",
-        DeviceProfileBindingAssessment.AmbiguousOrDuplicateIdentity => "Точные endpoint identities неоднозначны.",
-        DeviceProfileBindingAssessment.AvailableMetadataContradiction => "Доступные метаданные противоречат сохранённой привязке.",
-        DeviceProfileBindingAssessment.MetadataUnavailableOrInsufficient => "Метаданные устройства недоступны или недостаточны.",
-        DeviceProfileBindingAssessment.BindingInvalidated when result.Reasons.Any(r => r.Contains("WORKER_DISCONNECTED", StringComparison.Ordinal)) => "Проверка устарела: Worker отключён.",
-        DeviceProfileBindingAssessment.BindingInvalidated => "Проверка устарела: входные данные изменились.",
-        _ => "Проверка не выполнена."
+        DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery => Localization.Get("VmBindingExactFound"),
+        DeviceProfileBindingAssessment.CaptureMissing => Localization.Get("VmBindingCaptureMissing"),
+        DeviceProfileBindingAssessment.RenderMissing => Localization.Get("VmBindingRenderMissing"),
+        DeviceProfileBindingAssessment.BothEndpointsMissing => Localization.Get("VmBindingBothMissing"),
+        DeviceProfileBindingAssessment.EndpointDisabledOrUnplugged => Localization.Get("VmBindingEndpointUnavailable"),
+        DeviceProfileBindingAssessment.DiscoveryIncomplete => Localization.Get("VmBindingDiscoveryIncomplete"),
+        DeviceProfileBindingAssessment.DiscoveryProvenanceInvalid => Localization.Get("VmBindingInvalidProvenance"),
+        DeviceProfileBindingAssessment.DiscoveryFailed => Localization.Get("VmBindingDiscoveryFailed"),
+        DeviceProfileBindingAssessment.ProfileInvalidOrUnsupported => Localization.Get("VmBindingProfileInvalid"),
+        DeviceProfileBindingAssessment.SanitizedUnboundProfile => Localization.Get("VmBindingUnboundProfile"),
+        DeviceProfileBindingAssessment.AmbiguousOrDuplicateIdentity => Localization.Get("VmBindingIdentityAmbiguous"),
+        DeviceProfileBindingAssessment.AvailableMetadataContradiction => Localization.Get("VmBindingMetadataContradiction"),
+        DeviceProfileBindingAssessment.MetadataUnavailableOrInsufficient => Localization.Get("VmBindingMetadataInsufficient"),
+        DeviceProfileBindingAssessment.BindingInvalidated when result.Reasons.Any(r => r.Contains("WORKER_DISCONNECTED", StringComparison.Ordinal)) => Localization.Get("VmBindingWorkerDisconnected"),
+        DeviceProfileBindingAssessment.BindingInvalidated => Localization.Get("VmBindingInvalidated"),
+        _ => Localization.Get("VmBindingNotRun")
     };
 
     private void RefreshSavedProfiles()

@@ -801,4 +801,20 @@
   <data name="VmInitializeResultMissing" xml:space="preserve"><value>result missing</value></data>
   <data name="VmInitializeErrorPrefix" xml:space="preserve"><value>Initialize-only: outcome unknown or rejected</value></data>
   <data name="VmInitializeUnknownOutcome" xml:space="preserve"><value>Initialize outcome UNKNOWN · worker operation may have committed.</value></data>
+  <data name="VmBindingExactFound" xml:space="preserve"><value>Device pair found. Audio configuration must be checked again.</value></data>
+  <data name="VmBindingCaptureMissing" xml:space="preserve"><value>Saved audio input was not found.</value></data>
+  <data name="VmBindingRenderMissing" xml:space="preserve"><value>Saved audio output was not found.</value></data>
+  <data name="VmBindingBothMissing" xml:space="preserve"><value>Saved Capture and Render endpoints were not found.</value></data>
+  <data name="VmBindingEndpointUnavailable" xml:space="preserve"><value>Saved endpoint is disabled or unplugged.</value></data>
+  <data name="VmBindingDiscoveryIncomplete" xml:space="preserve"><value>The device list is incomplete. A match was not confirmed.</value></data>
+  <data name="VmBindingInvalidProvenance" xml:space="preserve"><value>Check rejected: discovery does not have REAL_WINDOWS_METADATA provenance.</value></data>
+  <data name="VmBindingDiscoveryFailed" xml:space="preserve"><value>Device discovery check did not complete.</value></data>
+  <data name="VmBindingProfileInvalid" xml:space="preserve"><value>Profile is damaged or unsupported.</value></data>
+  <data name="VmBindingUnboundProfile" xml:space="preserve"><value>Profile is not bound to this computer.</value></data>
+  <data name="VmBindingIdentityAmbiguous" xml:space="preserve"><value>Exact endpoint identities are ambiguous.</value></data>
+  <data name="VmBindingMetadataContradiction" xml:space="preserve"><value>Available metadata conflicts with the saved binding.</value></data>
+  <data name="VmBindingMetadataInsufficient" xml:space="preserve"><value>Device metadata is unavailable or insufficient.</value></data>
+  <data name="VmBindingWorkerDisconnected" xml:space="preserve"><value>Check is stale: Worker disconnected.</value></data>
+  <data name="VmBindingInvalidated" xml:space="preserve"><value>Check is stale: its inputs changed.</value></data>
+  <data name="VmBindingNotRun" xml:space="preserve"><value>Check was not performed.</value></data>
 </root>
