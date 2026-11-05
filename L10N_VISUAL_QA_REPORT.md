@@ -238,3 +238,78 @@ FINAL_HEAD = 13eef3767d4e7ab71d2db256ae5643ee828e1912
 WORKTREE = clean after checkpoint push
 READY_FOR_DPI_QA = NO (RU/EN three-refresh interactive validation remains incomplete)
 ```
+
+## QA-6B discovery verification — 2026-11-05
+
+Validated the current branch tip `c3af6b241ad3bc880c4bc4df477aa1f1cdee618f`
+through Windows UI Automation. QA trace files were created in the local Temp
+directory and contain state/correlation timing only:
+
+- en-US: `C:\Users\Jizzo\AppData\Local\Temp\klidan-qa6b-e4bc6fb0eee448659d2f624a76915f64.log`
+- ru-RU: `C:\Users\Jizzo\AppData\Local\Temp\klidan-qa6b-ru-2c87a9d41cd148309e58001e4c341037.log`
+- isolated install: `C:\Users\Jizzo\AppData\Local\Temp\klidan-qa6b-installed-51128808da6b4b15bd2d9231b9f672ff.log`
+
+Each trace recorded three `loading-enter` → `gui-cleanup-complete` pairs,
+three request/response correlation matches, no timeout/transport/Worker errors,
+and Loading false at cleanup. Measured Loading-to-cleanup durations:
+
+| Locale | Run 1 | Run 2 | Run 3 | Groups after refresh |
+|---|---:|---:|---:|---:|
+| en-US | 232 ms | 50 ms | 60 ms | 35 |
+| ru-RU | 192 ms | 51 ms | 64 ms | 35 |
+
+The English session retained its selected physical group across the repeated
+refreshes. In the Russian session, a physical group was selected after the
+first refresh and remained selected through runs 2 and 3. The saved-profile
+status showed the localized completed message stating that the saved binding
+remains unverified; it did not remain in a refreshing/loading state. Windows
+reported nine present AudioEndpoint devices, while the GUI exposed 35 physical
+device groups. No active audio action was invoked.
+
+The GUI language selection persisted `ru-RU` across process restart; the newly
+started GUI title and controls were Russian. The original `en-US` preference
+was restored after verification so the operator's starting setting was
+preserved.
+
+For installed-app QA, a fresh self-contained installer was built from the
+current HEAD using `scripts/Build-LabInstaller.ps1`; the build manifest records
+the exact branch and source SHA. The new installer was installed to an isolated
+Temp directory, launched normally without `--developer-tools`, completed one
+Russian passive refresh (35 groups; 234 ms Loading-to-cleanup), and closed with
+its Worker. The GUI and Worker processes exited; the isolated install was then
+uninstalled. The installer is unsigned.
+
+Installer: `C:\Users\Jizzo\AppData\Local\Temp\klidan-qa6b-installer-db934ce2fda94fa9876ed526e8c7dec8\KLIDAN-AudioProbe-Setup.exe`
+
+SHA-256: `e4f9376ccaccc71dbd0ef2f840a3e60eb00de125857539ccdbf2677757d638ff`
+
+The first packaging attempt exposed a helper-script limitation when passing a
+custom installer basename; Inno Setup has a fixed `OutputBaseFilename`. The
+build was repeated in a new empty directory using the configured basename and
+completed successfully. No repository code or version was changed.
+
+Fresh test runs:
+
+| Check | Result | Evidence |
+|---|---|---|
+| GUI Core/WPF | PASS | 810 checks; `dotnet run --project tests/gui/KlidanAudioProbe.Gui.Core.Tests/KlidanAudioProbe.Gui.Core.Tests.csproj -c Release` |
+| Worker IPC/process | PASS | 292 checks; `dotnet run --project tests/gui/KlidanAudioProbe.Gui.Worker.Tests/KlidanAudioProbe.Gui.Worker.Tests.csproj -c Release` |
+| Installed Release GUI | PASS | Current-HEAD installer; normal Russian launch, no Developer Tools UI, passive discovery, clean close/uninstall |
+| Worker stability | PASS | Six GUI refreshes plus installed-app refresh had correlated responses, no Worker error transitions, clean shutdown |
+
+The saved language setting was temporarily changed to ru-RU for the restart
+check and then restored to the original en-US value. No production source or
+test code changed during QA-6B; only this report is modified locally.
+
+```text
+EN_REFRESH_3_3 = PASS
+RU_REFRESH_3_3 = PASS
+REFRESH_DURATIONS_MS = en-US [232, 50, 60]; ru-RU [192, 51, 64]
+LOADING_CLEANUP = PASS
+WORKER_STABILITY = PASS
+INSTALLED_GUI = PASS
+GUI_TESTS = PASS (810)
+WORKER_TESTS = PASS (292)
+FINAL_HEAD = c3af6b241ad3bc880c4bc4df477aa1f1cdee618f
+READY_FOR_DPI_QA = YES
+```
