@@ -1234,4 +1234,14 @@ Fallback: {1}
   <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>intermittent anomalies</value></data>
   <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>repeatably anomalous</value></data>
   <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>insufficient evidence</value></data>
+  <data name="VmConfidenceHigh" xml:space="preserve"><value>HIGH</value></data>
+  <data name="VmConfidenceMedium" xml:space="preserve"><value>MEDIUM</value></data>
+  <data name="VmConfidenceLow" xml:space="preserve"><value>LOW</value></data>
+  <data name="VmConfidenceNone" xml:space="preserve"><value>NONE</value></data>
+  <data name="VmConfidenceProvisional" xml:space="preserve"><value>PROVISIONAL</value></data>
+  <data name="VmConfidenceProvisionalSingleRun" xml:space="preserve"><value>PROVISIONAL_SINGLE_SUSTAINED_RUN</value></data>
+  <data name="VmConfidenceVerifiedSustained" xml:space="preserve"><value>VERIFIED_SUSTAINED_CLEAN</value></data>
+  <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Lifecycle: {0}\n{1}\nPersistence: {2}\nReport: {3}</value></data>
+  <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Lifecycle: {0}\nPersistence: {1}\nReport: {2}{3}</value></data>
+  <data name="VmErrorDetail" xml:space="preserve"><value>Error: {0}</value></data>
 </root>

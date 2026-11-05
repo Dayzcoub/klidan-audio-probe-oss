@@ -1234,4 +1234,14 @@ Fallback: {1}
   <data name="VmRepeatabilityClassIntermittent" xml:space="preserve"><value>непостоянные аномалии</value></data>
   <data name="VmRepeatabilityClassAnomalous" xml:space="preserve"><value>повторяемые аномалии</value></data>
   <data name="VmRepeatabilityClassInsufficient" xml:space="preserve"><value>недостаточно данных</value></data>
+  <data name="VmConfidenceHigh" xml:space="preserve"><value>ВЫСОКАЯ (HIGH)</value></data>
+  <data name="VmConfidenceMedium" xml:space="preserve"><value>СРЕДНЯЯ (MEDIUM)</value></data>
+  <data name="VmConfidenceLow" xml:space="preserve"><value>НИЗКАЯ (LOW)</value></data>
+  <data name="VmConfidenceNone" xml:space="preserve"><value>НЕТ (NONE)</value></data>
+  <data name="VmConfidenceProvisional" xml:space="preserve"><value>ПРЕДВАРИТЕЛЬНАЯ (PROVISIONAL)</value></data>
+  <data name="VmConfidenceProvisionalSingleRun" xml:space="preserve"><value>ПРЕДВАРИТЕЛЬНАЯ: ОДИН ДЛИТЕЛЬНЫЙ ЗАПУСК (PROVISIONAL_SINGLE_SUSTAINED_RUN)</value></data>
+  <data name="VmConfidenceVerifiedSustained" xml:space="preserve"><value>ПОДТВЕРЖДЕНО ДЛИТЕЛЬНЫМИ ПРОВЕРКАМИ (VERIFIED_SUSTAINED_CLEAN)</value></data>
+  <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Состояние: {0}\n{1}\nСохранение: {2}\nОтчёт: {3}</value></data>
+  <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Состояние: {0}\nСохранение: {1}\nОтчёт: {2}{3}</value></data>
+  <data name="VmErrorDetail" xml:space="preserve"><value>Ошибка: {0}</value></data>
 </root>

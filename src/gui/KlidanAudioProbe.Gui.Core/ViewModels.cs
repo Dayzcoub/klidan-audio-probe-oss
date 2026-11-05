@@ -853,7 +853,7 @@ public sealed class MainViewModel : ViewModel
     public string PeriodDiscoveryPlanText => _periodDiscoveryPreparation?.PlanText ?? PeriodDiscoveryAvailabilityReason;
     public string PeriodDiscoveryMatrixText => _periodDiscoveryResult?.MatrixText ?? Localization.Get("VmPeriodMatrixMissing");
     public string PeriodDiscoveryReportPath => _periodDiscoveryResult?.ReportPath ?? Localization.Get("VmReportNotSaved");
-    public string PeriodDiscoveryResultText => _periodDiscoveryResult is not { } result ? Localization.Get("VmPeriodDiscoveryResultMissing") : $"{result.Lifecycle}\n{result.MatrixText}\n{result.PersistenceStatus}\n{result.ReportPath ?? Localization.Get("VmReportNotSaved")}";
+    public string PeriodDiscoveryResultText => _periodDiscoveryResult is not { } result ? Localization.Get("VmPeriodDiscoveryResultMissing") : string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodDiscoveryResultSummary"), result.Lifecycle, result.MatrixText, result.PersistenceStatus, result.ReportPath ?? Localization.Get("VmReportNotSaved"));
     public string CustomPeriodFramesText { get => _customPeriodFramesText; set { if (Set(ref _customPeriodFramesText, value)) { Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); } } }
     public bool CustomPeriodDuplexConsentPending => _customPeriodDuplexConsentPending;
     public bool CustomPeriodDuplexConsentChecked { get => _customPeriodDuplexConsentChecked; set { if (Set(ref _customPeriodDuplexConsentChecked, value)) ConfirmCustomPeriodDuplexCommand.Refresh(); } }
@@ -862,7 +862,7 @@ public sealed class MainViewModel : ViewModel
     public bool CanPrepareCustomPeriodDuplex => CanPrepareCustomPeriodDuplexInternal();
     public string CustomPeriodDuplexAvailabilityReason => Localization.Get(CanPrepareCustomPeriodDuplexInternal() ? "VmCustomPeriodDuplexReady" : "VmCustomPeriodDuplexNeedsDiscovery");
     public string CustomPeriodDuplexPlanText => _customPeriodDuplexPreparation?.PlanText ?? CustomPeriodDuplexAvailabilityReason;
-    public string CustomPeriodDuplexResultText => _customPeriodDuplexResult is not { } result ? Localization.Get("VmCustomPeriodDuplexResultMissing") : $"{result.Lifecycle}\n{result.PersistenceStatus}\n{result.ReportPath ?? Localization.Get("VmReportNotSaved")}{(result.Error is null ? "" : $"\n{result.Error}")}";
+    public string CustomPeriodDuplexResultText => _customPeriodDuplexResult is not { } result ? Localization.Get("VmCustomPeriodDuplexResultMissing") : string.Format(Localization.CurrentCulture, Localization.Get("VmCustomPeriodDuplexResultSummary"), result.Lifecycle, result.PersistenceStatus, result.ReportPath ?? Localization.Get("VmReportNotSaved"), result.Error is null ? string.Empty : string.Format(Localization.CurrentCulture, Localization.Get("VmErrorDetail"), result.Error));
     public bool CustomRepeatabilityConsentPending => _customRepeatabilityConsentPending;
     public bool CustomRepeatabilityConsentChecked { get => _customRepeatabilityConsentChecked; set { if (Set(ref _customRepeatabilityConsentChecked, value)) ConfirmCustomRepeatabilityCommand.Refresh(); } }
     public bool CustomRepeatabilityRunning => _customRepeatabilityRunning;
@@ -991,7 +991,7 @@ public sealed class MainViewModel : ViewModel
     public string HistoricalRecoveryPreviewDates => _historicalRecoveryPreview is null ? "—" : string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryPreviewDates"), _historicalRecoveryPreview.HistoricalMeasurementTimestampUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Localization.CurrentCulture), _selectedHistoricalSustainedScan?.TimestampLabel ?? "—");
     public string HistoricalRecoveryPreferred => _historicalRecoveryPreview?.Recommendation.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryPreferred"), p.Period, p.CaptureBufferFrames, p.RenderBufferFrames, p.Mmcss, p.DurationSeconds) : Localization.Get("VmHistoricalRecoveryPreferredMissing");
     public string HistoricalRecoveryFallback => _historicalRecoveryPreview?.Recommendation.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalRecoveryFallback"), f.Period, f.CaptureBufferFrames, f.RenderBufferFrames) : Localization.Get("VmHistoricalRecoveryFallbackMissing");
-    public string HistoricalRecoveryConfidence => _historicalRecoveryPreview?.Recommendation.Preferred?.Confidence ?? "NONE";
+    public string HistoricalRecoveryConfidence => HistoricalConfidenceLabel(_historicalRecoveryPreview?.Recommendation.Preferred?.Confidence);
     public string HistoricalRecoveryTechnicalDetails => string.Join("\n", new[] { _selectedHistoricalSustainedScan?.TechnicalDetails, _historicalRecoveryTechnicalError }.Where(s => !string.IsNullOrWhiteSpace(s)));
     public DeviceConfigurationProfileStorage.SavedProfileEntry? SelectedSavedDeviceProfile
     {
@@ -1930,6 +1930,16 @@ public sealed class MainViewModel : ViewModel
         };
         return key is null ? reason : Localization.Get(key);
     }
+
+    private static string HistoricalConfidenceLabel(string? confidence) => confidence switch
+    {
+        null or "" or "NOT_AVAILABLE" => Localization.Get("VmConfidenceNone"),
+        "HIGH" => Localization.Get("VmConfidenceHigh"), "MEDIUM" => Localization.Get("VmConfidenceMedium"), "LOW" => Localization.Get("VmConfidenceLow"),
+        "PROVISIONAL" => Localization.Get("VmConfidenceProvisional"),
+        "PROVISIONAL_SINGLE_SUSTAINED_RUN" => Localization.Get("VmConfidenceProvisionalSingleRun"),
+        "VERIFIED_SUSTAINED_CLEAN" => Localization.Get("VmConfidenceVerifiedSustained"),
+        _ => confidence
+    };
 
     private static string OperationLifecycleLabel(string state) => Localization.Get(state switch
     {

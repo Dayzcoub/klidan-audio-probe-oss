@@ -837,6 +837,27 @@ foreach (var language in new[] { "en-US", "ru-RU" })
     Check(realWorkflowVm.OperatorResultMode == KlidanAudioProbe.Gui.Core.Localization.Get("VmOperatorModeFormatQuery") && !realWorkflowVm.IsDuplexOperatorResult, $"operator mode displays localized format-query label in {language} while retaining its internal result kind");
 }
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage(queryModeTestCulture, false);
+var confidenceCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var confidenceVm = new MainViewModel();
+    var confidenceCode = "PROVISIONAL_SINGLE_SUSTAINED_RUN";
+    var confidenceAssessment = new DuplexCandidateAssessment("capture", "render", 48000, "FLOAT32", 2, "CUSTOM:100000:480", "PRO_AUDIO", 30, "CLEAN", confidenceCode, "480", "480", "FULL", "FULL", "fixture", default);
+    var confidencePreview = new OfflineSustainedProfileRecoveryPreview("session", "summary", "profile", null!, [], new DuplexRecommendation("SUSTAINED_VALIDATED", "NOT_CERTIFIED", confidenceAssessment, null, []), "fingerprint", DateTimeOffset.UtcNow, "scans", "profiles", "evidence");
+    typeof(MainViewModel).GetField("_historicalRecoveryPreview", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(confidenceVm, confidencePreview);
+    var expectedConfidence = language == "ru-RU" ? "ПРЕДВАРИТЕЛЬНАЯ: ОДИН ДЛИТЕЛЬНЫЙ ЗАПУСК (PROVISIONAL_SINGLE_SUSTAINED_RUN)" : confidenceCode;
+    Check(confidenceVm.HistoricalRecoveryConfidence == expectedConfidence, $"historical confidence {confidencePreview.Recommendation.Preferred!.Confidence} displays as {expectedConfidence} in {language}");
+    var periodVm = new MainViewModel();
+    var periodResult = new PeriodDiscoverySeriesResult("COMPLETED", [], [], "BOTH_EXACT", @"C:\evidence\period.json", "SAVED_AND_RELOADED");
+    typeof(MainViewModel).GetField("_periodDiscoveryResult", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(periodVm, periodResult);
+    Check(periodVm.PeriodDiscoveryResultText.Contains(language == "ru-RU" ? "Состояние:" : "Lifecycle:", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("COMPLETED", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("BOTH_EXACT", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains("SAVED_AND_RELOADED", StringComparison.Ordinal) && periodVm.PeriodDiscoveryResultText.Contains(periodResult.ReportPath!, StringComparison.Ordinal), $"period discovery localizes labels in {language} while preserving evidence values and path");
+    var customVm = new MainViewModel();
+    var customResult = new CustomPeriodDuplexResult("FAILED", Guid.NewGuid().ToString("D"), "CUSTOM:100000:480", @"C:\evidence\custom.json", "SAVE_FAILED", null, "IOException: fixture");
+    typeof(MainViewModel).GetField("_customPeriodDuplexResult", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(customVm, customResult);
+    Check(customVm.CustomPeriodDuplexResultText.Contains(language == "ru-RU" ? "Состояние:" : "Lifecycle:", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("FAILED", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("SAVE_FAILED", StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains(customResult.ReportPath!, StringComparison.Ordinal) && customVm.CustomPeriodDuplexResultText.Contains("IOException: fixture", StringComparison.Ordinal), $"custom-period summary localizes labels in {language} while preserving status, error and path");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(confidenceCulture, false);
 Check(realWorkflowVm.RealFormatRows.First().DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.SelectedRealFormatRow?.DisplayStatus == "SUPPORTED_REPORTED" && realWorkflowVm.RealFormatSummary.Contains("Форматов проверено: 12", StringComparison.Ordinal) && realWorkflowVm.RealFormatSummary.Contains("Initialize: NOT_ATTEMPTED", StringComparison.Ordinal), "supported formats sort first and the compact summary separates query counts from unattempted Initialize");
 Check(!realWorkflowVm.OperatorResultOutcome.Contains("CLEAN", StringComparison.Ordinal) && !realWorkflowVm.OperatorResultOutcome.Contains("Started", StringComparison.Ordinal), "successful query result does not claim clean stream quality or audio start");
 var scanMatrixResponse = realQueryResponse with { Candidates = realCandidates.Select(c => c.SampleRate == 44100 ? c with { Status = "UNSUPPORTED", SupportStatus = "UNSUPPORTED", SupportHr = "0x88890008" } : c).ToArray() };
