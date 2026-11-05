@@ -619,4 +619,20 @@
   <data name="VmInspectorWorkerEventsMissing" xml:space="preserve"><value>Worker событий пока нет.</value></data>
   <data name="VmInspectorDemoDiagnosticsTitle" xml:space="preserve"><value>Диагностика · демо</value></data>
   <data name="VmInspectorWindowsSectionTitle" xml:space="preserve"><value>Windows endpoint · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorMeasurementStale" xml:space="preserve"><value>Устарели</value></data>
+  <data name="VmInspectorMeasurementFinal" xml:space="preserve"><value>Финальные</value></data>
+  <data name="VmInspectorMeasurementMissing" xml:space="preserve"><value>Нет данных</value></data>
+  <data name="VmInspectorMeasurementWindowMissing" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmInspectorMeasurementCurrent" xml:space="preserve"><value>Текущие</value></data>
+  <data name="VmInspectorWorkerConnected" xml:space="preserve"><value>Подключён (демо)</value></data>
+  <data name="VmInspectorWorkerStarting" xml:space="preserve"><value>Запускается</value></data>
+  <data name="VmInspectorWorkerConnecting" xml:space="preserve"><value>Подключается</value></data>
+  <data name="VmInspectorWorkerNegotiating" xml:space="preserve"><value>Согласование протокола</value></data>
+  <data name="VmInspectorWorkerStopping" xml:space="preserve"><value>Отключается</value></data>
+  <data name="VmInspectorWorkerIncompatible" xml:space="preserve"><value>Несовместим</value></data>
+  <data name="VmInspectorWorkerFailed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="VmInspectorWorkerDisconnected" xml:space="preserve"><value>Отключён</value></data>
+  <data name="VmInspectorStateLabel" xml:space="preserve"><value>Состояние</value></data>
+  <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Транспорт</value></data>
+  <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Происхождение</value></data>
 </root>

@@ -3151,16 +3151,16 @@ public sealed class MainViewModel : ViewModel
         var sequence = capture?.SnapshotSequence ?? render?.SnapshotSequence;
         var completedWindow = capture?.CompletedWindowIndex ?? render?.CompletedWindowIndex;
         var channelCount = capture?.ChannelCount ?? render?.ChannelCount;
-        var measurementState = _workerMeterStale ? "Устарели" : _workerMeterFinal ? "Финальные" : sequence is null ? "Нет данных" : completedWindow is null ? "Нет завершённого окна" : "Текущие";
+        var measurementState = _workerMeterStale ? Localization.Get("VmInspectorMeasurementStale") : _workerMeterFinal ? Localization.Get("VmInspectorMeasurementFinal") : sequence is null ? Localization.Get("VmInspectorMeasurementMissing") : completedWindow is null ? Localization.Get("VmInspectorMeasurementWindowMissing") : Localization.Get("VmInspectorMeasurementCurrent");
         var connection = WorkerState.State switch
         {
-            WorkerConnectionState.ConnectedFake => "Подключён (демо)", WorkerConnectionState.Starting => "Запускается", WorkerConnectionState.Connecting => "Подключается", WorkerConnectionState.Handshaking => "Согласование протокола", WorkerConnectionState.Stopping => "Отключается", WorkerConnectionState.Incompatible => "Несовместим", WorkerConnectionState.Failed => "Ошибка", _ => "Отключён"
+            WorkerConnectionState.ConnectedFake => Localization.Get("VmInspectorWorkerConnected"), WorkerConnectionState.Starting => Localization.Get("VmInspectorWorkerStarting"), WorkerConnectionState.Connecting => Localization.Get("VmInspectorWorkerConnecting"), WorkerConnectionState.Handshaking => Localization.Get("VmInspectorWorkerNegotiating"), WorkerConnectionState.Stopping => Localization.Get("VmInspectorWorkerStopping"), WorkerConnectionState.Incompatible => Localization.Get("VmInspectorWorkerIncompatible"), WorkerConnectionState.Failed => Localization.Get("VmInspectorWorkerFailed"), _ => Localization.Get("VmInspectorWorkerDisconnected")
         };
         var connectionFields = new List<InspectorFieldDto>
         {
-            new("Состояние", connection, WorkerState.State.ToString()),
-            new("Транспорт", "Локальный Windows Named Pipe · протокол 1.0"),
-            new("Происхождение", "Worker Fake · синтетические данные", "Реальные аудиоустройства не используются.")
+            new(Localization.Get("VmInspectorStateLabel"), connection, WorkerState.State.ToString()),
+            new(Localization.Get("VmInspectorTransportLabel"), "Локальный Windows Named Pipe · протокол 1.0"),
+            new(Localization.Get("VmInspectorProvenanceLabel"), "Worker Fake · синтетические данные", "Реальные аудиоустройства не используются.")
         };
         if (WorkerState.State is WorkerConnectionState.Failed or WorkerConnectionState.Incompatible || WorkerState.State == WorkerConnectionState.Disconnected && WorkerSession?.Lifecycle == SessionLifecycle.Unknown)
             connectionFields.Add(new("Причина", WorkerState.Message, WorkerState.State.ToString()));

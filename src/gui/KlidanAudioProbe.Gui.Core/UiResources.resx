@@ -619,4 +619,20 @@
   <data name="VmInspectorWorkerEventsMissing" xml:space="preserve"><value>No Worker events yet.</value></data>
   <data name="VmInspectorDemoDiagnosticsTitle" xml:space="preserve"><value>Diagnostics · demo</value></data>
   <data name="VmInspectorWindowsSectionTitle" xml:space="preserve"><value>Windows endpoint · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorMeasurementStale" xml:space="preserve"><value>Stale</value></data>
+  <data name="VmInspectorMeasurementFinal" xml:space="preserve"><value>Final</value></data>
+  <data name="VmInspectorMeasurementMissing" xml:space="preserve"><value>No data</value></data>
+  <data name="VmInspectorMeasurementWindowMissing" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmInspectorMeasurementCurrent" xml:space="preserve"><value>Current</value></data>
+  <data name="VmInspectorWorkerConnected" xml:space="preserve"><value>Connected (demo)</value></data>
+  <data name="VmInspectorWorkerStarting" xml:space="preserve"><value>Starting</value></data>
+  <data name="VmInspectorWorkerConnecting" xml:space="preserve"><value>Connecting</value></data>
+  <data name="VmInspectorWorkerNegotiating" xml:space="preserve"><value>Negotiating protocol</value></data>
+  <data name="VmInspectorWorkerStopping" xml:space="preserve"><value>Disconnecting</value></data>
+  <data name="VmInspectorWorkerIncompatible" xml:space="preserve"><value>Incompatible</value></data>
+  <data name="VmInspectorWorkerFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmInspectorWorkerDisconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="VmInspectorStateLabel" xml:space="preserve"><value>State</value></data>
+  <data name="VmInspectorTransportLabel" xml:space="preserve"><value>Transport</value></data>
+  <data name="VmInspectorProvenanceLabel" xml:space="preserve"><value>Provenance</value></data>
 </root>
