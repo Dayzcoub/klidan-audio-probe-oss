@@ -1172,4 +1172,15 @@ Fallback: {1}
   <data name="VmDeviceScanStageCancelled" xml:space="preserve"><value>Cancelled</value></data>
   <data name="VmDeviceScanStageFailed" xml:space="preserve"><value>Failed</value></data>
   <data name="VmDeviceScanStageIncomplete" xml:space="preserve"><value>Incomplete</value></data>
+  <data name="VmDeviceScanDetailSupport" xml:space="preserve"><value>support</value></data>
+  <data name="VmDeviceScanDetailFirst" xml:space="preserve"><value>first</value></data>
+  <data name="VmDeviceScanDetailAlignment" xml:space="preserve"><value>alignment</value></data>
+  <data name="VmDeviceScanDetailFrames" xml:space="preserve"><value>frames</value></data>
+  <data name="VmDeviceScanDetailPeriod100ns" xml:space="preserve"><value>period100ns</value></data>
+  <data name="VmDeviceScanDetailFinal" xml:space="preserve"><value>final</value></data>
+  <data name="VmDeviceScanDetailRequestedPeriod" xml:space="preserve"><value>requestedPeriod100ns</value></data>
+  <data name="VmDeviceScanDetailActualPeriod" xml:space="preserve"><value>actualPeriod100ns</value></data>
+  <data name="VmDeviceScanDetailBufferFrames" xml:space="preserve"><value>bufferFrames</value></data>
+  <data name="VmDeviceScanDetailEventReady" xml:space="preserve"><value>eventReady</value></data>
+  <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>releases</value></data>
 </root>

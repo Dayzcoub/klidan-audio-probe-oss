@@ -1172,4 +1172,15 @@ Fallback: {1}
   <data name="VmDeviceScanStageCancelled" xml:space="preserve"><value>Отменено</value></data>
   <data name="VmDeviceScanStageFailed" xml:space="preserve"><value>Ошибка</value></data>
   <data name="VmDeviceScanStageIncomplete" xml:space="preserve"><value>Неполный результат</value></data>
+  <data name="VmDeviceScanDetailSupport" xml:space="preserve"><value>поддержка</value></data>
+  <data name="VmDeviceScanDetailFirst" xml:space="preserve"><value>первая попытка</value></data>
+  <data name="VmDeviceScanDetailAlignment" xml:space="preserve"><value>выравнивание</value></data>
+  <data name="VmDeviceScanDetailFrames" xml:space="preserve"><value>кадров</value></data>
+  <data name="VmDeviceScanDetailPeriod100ns" xml:space="preserve"><value>период100нс</value></data>
+  <data name="VmDeviceScanDetailFinal" xml:space="preserve"><value>итог</value></data>
+  <data name="VmDeviceScanDetailRequestedPeriod" xml:space="preserve"><value>запрошенныйПериод100нс</value></data>
+  <data name="VmDeviceScanDetailActualPeriod" xml:space="preserve"><value>фактическийПериод100нс</value></data>
+  <data name="VmDeviceScanDetailBufferFrames" xml:space="preserve"><value>кадрыБуфера</value></data>
+  <data name="VmDeviceScanDetailEventReady" xml:space="preserve"><value>событиеГотово</value></data>
+  <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>освобождения</value></data>
 </root>
