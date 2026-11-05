@@ -494,4 +494,24 @@
   <data name="VmLocalLabel" xml:space="preserve"><value>Local</value></data>
   <data name="VmIdentityLabel" xml:space="preserve"><value>Identity</value></data>
   <data name="VmOriginalLabel" xml:space="preserve"><value>Original</value></data>
+  <data name="VmRepeatabilityWorkflowUnavailable" xml:space="preserve"><value>Repeatability workflow is unavailable.</value></data>
+  <data name="VmRepeatabilityWorkerOutcomeUnknown" xml:space="preserve"><value>Worker operation outcome is UNKNOWN; restart the Worker before reuse.</value></data>
+  <data name="VmRepeatabilityWorkerDisconnected" xml:space="preserve"><value>Worker is not connected.</value></data>
+  <data name="VmRepeatabilityRefreshDiscovery" xml:space="preserve"><value>Refresh Windows discovery before preparing repeatability.</value></data>
+  <data name="VmRepeatabilityChoosePair" xml:space="preserve"><value>Select one active Capture and one active Render endpoint.</value></data>
+  <data name="VmRepeatabilityOperationActive" xml:space="preserve"><value>Another scan or audio operation is active or unresolved.</value></data>
+  <data name="VmRepeatabilityAwaitingConsent" xml:space="preserve"><value>Another operation is awaiting operator consent.</value></data>
+  <data name="VmRepeatabilityReady" xml:space="preserve"><value>Ready: exact active Capture/Render pair and current Worker discovery.</value></data>
+  <data name="VmRepeatabilitySelectExactEndpoints" xml:space="preserve"><value>Select exact Capture and Render endpoints.</value></data>
+  <data name="VmRepeatabilityResultMissing" xml:space="preserve"><value>No repeatability result has been received.</value></data>
+  <data name="VmReportLabel" xml:space="preserve"><value>Report</value></data>
+  <data name="VmNotSaved" xml:space="preserve"><value>not saved</value></data>
+  <data name="VmNotConfirmed" xml:space="preserve"><value>unconfirmed</value></data>
+  <data name="VmPeriodDiscoveryReady" xml:space="preserve"><value>Ready: current exact Capture/Render pair and current Windows discovery.</value></data>
+  <data name="VmPeriodMatrixMissing" xml:space="preserve"><value>Matrix has not been received.</value></data>
+  <data name="VmReportNotSaved" xml:space="preserve"><value>Report has not been saved.</value></data>
+  <data name="VmPeriodDiscoveryResultMissing" xml:space="preserve"><value>Period discovery has not completed.</value></data>
+  <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Ready: exactly one selected custom period will run.</value></data>
+  <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Complete REAL C4.2A period discovery first and select the current endpoint pair.</value></data>
+  <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex has not completed.</value></data>
 </root>

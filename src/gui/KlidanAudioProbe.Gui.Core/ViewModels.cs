@@ -808,13 +808,13 @@ public sealed class MainViewModel : ViewModel
             var discovery = _windowsDiscoveryCurrent;
             var operation = AutomaticScanBusy || WorkerOperationActive || _deviceScanRunning || _realQueryRunning || _realInitializeRunning || _streamValidationRunning || _duplexValidationRunning || _duplexRepeatabilityRunning || _automaticScanOutcomeUnknown;
             var consent = AutomaticScanConsentPending || WorkerConsentPending || DuplexConsentPending || RealInitializeConsentPending || DeviceScanConsentPending || _streamConsentPending || _duplexRepeatabilityConsentPending;
-            var reason = _duplexRepeatabilityWorkflow is null ? "Repeatability workflow is unavailable."
-                : !worker ? _workerStartOutcomeUnknown ? "Worker operation outcome is UNKNOWN; restart the Worker before reuse." : "Worker is not connected."
-                : !discovery ? "Refresh Windows discovery before preparing repeatability."
-                : !endpoints ? "Select one active Capture and one active Render endpoint."
-                : operation ? "Another scan or audio operation is active or unresolved."
-                : consent ? "Another operation is awaiting operator consent."
-                : "Ready: exact active Capture/Render pair and current Worker discovery.";
+            var reason = _duplexRepeatabilityWorkflow is null ? Localization.Get("VmRepeatabilityWorkflowUnavailable")
+                : !worker ? _workerStartOutcomeUnknown ? Localization.Get("VmRepeatabilityWorkerOutcomeUnknown") : Localization.Get("VmRepeatabilityWorkerDisconnected")
+                : !discovery ? Localization.Get("VmRepeatabilityRefreshDiscovery")
+                : !endpoints ? Localization.Get("VmRepeatabilityChoosePair")
+                : operation ? Localization.Get("VmRepeatabilityOperationActive")
+                : consent ? Localization.Get("VmRepeatabilityAwaitingConsent")
+                : Localization.Get("VmRepeatabilityReady");
             return new(!operation && !consent && endpoints && worker && discovery, reason, endpoints, worker, discovery, operation || consent);
         }
     }
@@ -826,33 +826,33 @@ public sealed class MainViewModel : ViewModel
     public string DuplexRepeatabilityStatus => _duplexRepeatabilityStatus;
     public string DuplexRepeatabilityAvailabilityReason => DuplexRepeatabilityReadiness.Reason;
     public string DuplexRepeatabilityPlanText => _duplexRepeatabilityPreparation is not { } preparation
-        ? "Выберите точные Capture и Render endpoints."
+        ? Localization.Get("VmRepeatabilitySelectExactEndpoints")
         : $"Capture: {preparation.Plan.Target.Capture!.FriendlyNameDisplay} · {preparation.Plan.Target.Capture.EndpointId}\nRender: {preparation.Plan.Target.Render!.FriendlyNameDisplay} · {preparation.Plan.Target.Render.EndpointId}\n" +
           $"48 кГц · {preparation.WorkerPlan.Formats.Single().Encoding} · {preparation.WorkerPlan.Formats.Single().Channels} канала\n" +
           "6 запусков · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT\n" +
           $"5 секунд на операцию · 30 секунд общего активного аудио · MMCSS OFF\n" +
           $"Worker session: {preparation.WorkerPlan.LifetimeSeconds} секунд lifetime, {preparation.WorkerPlan.MaximumOperationDurationSeconds} секунд на операцию, {preparation.WorkerPlan.MaximumOperationCount} операций максимум\n" +
           "Capture data discarded; Render sends digital silence. Physical RTL excluded. AudioHost activation excluded.";
-    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? "Результат repeatability ещё не получен." : $"{result.Summary}\nОтчёт: {result.ReportPath ?? "не сохранён"}\nPersistence: {result.PersistenceStatus ?? "не подтверждено"}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
+    public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{result.Summary}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\nPersistence: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
     public bool PeriodDiscoveryConsentPending => _periodDiscoveryConsentPending;
     public bool PeriodDiscoveryConsentChecked { get => _periodDiscoveryConsentChecked; set { if (Set(ref _periodDiscoveryConsentChecked, value)) ConfirmPeriodDiscoveryCommand.Refresh(); } }
     public bool PeriodDiscoveryRunning => _periodDiscoveryRunning;
     public string PeriodDiscoveryStatus => _periodDiscoveryStatus;
     public bool CanPreparePeriodDiscovery => CanPreparePeriodDiscoveryInternal();
-    public string PeriodDiscoveryAvailabilityReason => !CanPreparePeriodDiscoveryInternal() ? PeriodDiscoveryBlockingReason() : "Ready: current exact Capture/Render pair and current Windows discovery.";
+    public string PeriodDiscoveryAvailabilityReason => !CanPreparePeriodDiscoveryInternal() ? PeriodDiscoveryBlockingReason() : Localization.Get("VmPeriodDiscoveryReady");
     public string PeriodDiscoveryPlanText => _periodDiscoveryPreparation?.PlanText ?? PeriodDiscoveryAvailabilityReason;
-    public string PeriodDiscoveryMatrixText => _periodDiscoveryResult?.MatrixText ?? "Матрица ещё не получена.";
-    public string PeriodDiscoveryReportPath => _periodDiscoveryResult?.ReportPath ?? "Отчёт ещё не сохранён.";
-    public string PeriodDiscoveryResultText => _periodDiscoveryResult is not { } result ? "Исследование периодов ещё не завершено." : $"{result.Lifecycle}\n{result.MatrixText}\n{result.PersistenceStatus}\n{result.ReportPath ?? "Отчёт не сохранён"}";
+    public string PeriodDiscoveryMatrixText => _periodDiscoveryResult?.MatrixText ?? Localization.Get("VmPeriodMatrixMissing");
+    public string PeriodDiscoveryReportPath => _periodDiscoveryResult?.ReportPath ?? Localization.Get("VmReportNotSaved");
+    public string PeriodDiscoveryResultText => _periodDiscoveryResult is not { } result ? Localization.Get("VmPeriodDiscoveryResultMissing") : $"{result.Lifecycle}\n{result.MatrixText}\n{result.PersistenceStatus}\n{result.ReportPath ?? Localization.Get("VmReportNotSaved")}";
     public string CustomPeriodFramesText { get => _customPeriodFramesText; set { if (Set(ref _customPeriodFramesText, value)) { Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); } } }
     public bool CustomPeriodDuplexConsentPending => _customPeriodDuplexConsentPending;
     public bool CustomPeriodDuplexConsentChecked { get => _customPeriodDuplexConsentChecked; set { if (Set(ref _customPeriodDuplexConsentChecked, value)) ConfirmCustomPeriodDuplexCommand.Refresh(); } }
     public bool CustomPeriodDuplexRunning => _customPeriodDuplexRunning;
     public string CustomPeriodDuplexStatus => _customPeriodDuplexStatus;
     public bool CanPrepareCustomPeriodDuplex => CanPrepareCustomPeriodDuplexInternal();
-    public string CustomPeriodDuplexAvailabilityReason => CanPrepareCustomPeriodDuplexInternal() ? "Готово: будет запущен ровно один выбранный custom period." : "Сначала завершите REAL C4.2A period discovery и выберите текущую пару endpoint-ов.";
+    public string CustomPeriodDuplexAvailabilityReason => Localization.Get(CanPrepareCustomPeriodDuplexInternal() ? "VmCustomPeriodDuplexReady" : "VmCustomPeriodDuplexNeedsDiscovery");
     public string CustomPeriodDuplexPlanText => _customPeriodDuplexPreparation?.PlanText ?? CustomPeriodDuplexAvailabilityReason;
-    public string CustomPeriodDuplexResultText => _customPeriodDuplexResult is not { } result ? "Custom-period Duplex ещё не завершён." : $"{result.Lifecycle}\n{result.PersistenceStatus}\n{result.ReportPath ?? "Отчёт не сохранён"}{(result.Error is null ? "" : $"\n{result.Error}")}";
+    public string CustomPeriodDuplexResultText => _customPeriodDuplexResult is not { } result ? Localization.Get("VmCustomPeriodDuplexResultMissing") : $"{result.Lifecycle}\n{result.PersistenceStatus}\n{result.ReportPath ?? Localization.Get("VmReportNotSaved")}{(result.Error is null ? "" : $"\n{result.Error}")}";
     public bool CustomRepeatabilityConsentPending => _customRepeatabilityConsentPending;
     public bool CustomRepeatabilityConsentChecked { get => _customRepeatabilityConsentChecked; set { if (Set(ref _customRepeatabilityConsentChecked, value)) ConfirmCustomRepeatabilityCommand.Refresh(); } }
     public bool CustomRepeatabilityRunning => _customRepeatabilityRunning;

@@ -494,4 +494,24 @@
   <data name="VmLocalLabel" xml:space="preserve"><value>Местное время</value></data>
   <data name="VmIdentityLabel" xml:space="preserve"><value>Идентификатор</value></data>
   <data name="VmOriginalLabel" xml:space="preserve"><value>Исходный файл</value></data>
+  <data name="VmRepeatabilityWorkflowUnavailable" xml:space="preserve"><value>Сценарий проверки повторяемости недоступен.</value></data>
+  <data name="VmRepeatabilityWorkerOutcomeUnknown" xml:space="preserve"><value>Исход операции Worker неизвестен (UNKNOWN); перезапустите Worker перед повторным использованием.</value></data>
+  <data name="VmRepeatabilityWorkerDisconnected" xml:space="preserve"><value>Worker не подключён.</value></data>
+  <data name="VmRepeatabilityRefreshDiscovery" xml:space="preserve"><value>Обновите обнаружение Windows перед подготовкой проверки повторяемости.</value></data>
+  <data name="VmRepeatabilityChoosePair" xml:space="preserve"><value>Выберите один активный Capture и один активный Render endpoint.</value></data>
+  <data name="VmRepeatabilityOperationActive" xml:space="preserve"><value>Выполняется или не завершена другая операция сканирования/аудио.</value></data>
+  <data name="VmRepeatabilityAwaitingConsent" xml:space="preserve"><value>Ожидается подтверждение другой операции.</value></data>
+  <data name="VmRepeatabilityReady" xml:space="preserve"><value>Готово: точная активная пара Capture/Render и актуальное обнаружение Worker.</value></data>
+  <data name="VmRepeatabilitySelectExactEndpoints" xml:space="preserve"><value>Выберите точные Capture и Render endpoints.</value></data>
+  <data name="VmRepeatabilityResultMissing" xml:space="preserve"><value>Результат проверки повторяемости ещё не получен.</value></data>
+  <data name="VmReportLabel" xml:space="preserve"><value>Отчёт</value></data>
+  <data name="VmNotSaved" xml:space="preserve"><value>не сохранён</value></data>
+  <data name="VmNotConfirmed" xml:space="preserve"><value>не подтверждено</value></data>
+  <data name="VmPeriodDiscoveryReady" xml:space="preserve"><value>Готово: точная текущая пара Capture/Render и актуальное обнаружение Windows.</value></data>
+  <data name="VmPeriodMatrixMissing" xml:space="preserve"><value>Матрица ещё не получена.</value></data>
+  <data name="VmReportNotSaved" xml:space="preserve"><value>Отчёт ещё не сохранён.</value></data>
+  <data name="VmPeriodDiscoveryResultMissing" xml:space="preserve"><value>Исследование периодов ещё не завершено.</value></data>
+  <data name="VmCustomPeriodDuplexReady" xml:space="preserve"><value>Готово: будет запущен ровно один выбранный custom period.</value></data>
+  <data name="VmCustomPeriodDuplexNeedsDiscovery" xml:space="preserve"><value>Сначала завершите REAL C4.2A period discovery и выберите текущую пару endpoint-ов.</value></data>
+  <data name="VmCustomPeriodDuplexResultMissing" xml:space="preserve"><value>Custom-period Duplex ещё не завершён.</value></data>
 </root>
