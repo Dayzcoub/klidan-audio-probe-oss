@@ -329,8 +329,8 @@ public sealed class MainViewModel : ViewModel
         StopWorkerSessionCommand = new(StopWorkerSessionAsync, () => WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started);
         foreach (var command in new[] { ConnectWorkerCommand, QueryWorkerEndpointsCommand, DiscoverWindowsEndpointsCommand, QueryRealFormatsCommand, ConfirmRealInitializeCommand, ConfirmDeviceScanCommand, ShutdownWorkerCommand, ConfirmWorkerSessionCommand, StopWorkerSessionCommand })
             command.ExecutionFailed += ex => WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerFakeOperationFailed"), ex.GetType().Name, ex.Message);
-        ConfirmStreamValidationCommand.ExecutionFailed += ex => _streamValidationStatus = $"Stream validation failed: {ex.GetType().Name}: {ex.Message}";
-        ConfirmDuplexValidationCommand.ExecutionFailed += ex => { _duplexStatus = $"Duplex failed/unknown: {ex.GetType().Name}: {ex.Message}"; Changed(nameof(DuplexStatus)); };
+        ConfirmStreamValidationCommand.ExecutionFailed += ex => _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamCommandFailed"), ex.GetType().Name, ex.Message);
+        ConfirmDuplexValidationCommand.ExecutionFailed += ex => { _duplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexCommandFailed"), ex.GetType().Name, ex.Message); Changed(nameof(DuplexStatus)); };
         PrepareAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanPrepareCommandFailed"), ex.GetType().Name, ex.Message));
         ConfirmAutomaticScanCommand.ExecutionFailed += ex => SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConfirmCommandUnknown"), ex.GetType().Name, ex.Message));
         _bindingWorkerProcessId = WorkerState.ProcessId;
@@ -598,7 +598,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (HasDuplexPairProfileEvidence) return DeviceConfigurationProfileFactory.CreateDuplex(SelectedDuplexCaptureEndpoint!, SelectedDuplexRenderEndpoint!, _duplexValidations.Values.OrderBy(v => v.Report.GetProperty("requested").GetProperty("period").GetString() == "MINIMUM" ? 0 : 1).ToArray());
         if (!CanSaveDeviceProfile || SelectedWindowsEndpoint is not { } endpoint || RealFormatMatrix is not { } query)
-            throw new InvalidOperationException("A current, accepted real WASAPI result for the selected active endpoint is required.");
+            throw new InvalidOperationException(Localization.Get("VmDeviceProfileCurrentResultRequired"));
         var initializations = RealInitializationResult is null ? _deviceScanInitializations : _deviceScanInitializations.Append(RealInitializationResult).ToArray();
         return DeviceConfigurationProfileJson.Validate(DeviceConfigurationProfileFactory.CreateAggregated(endpoint, query, initializations, streamValidations: _streamValidations.Where(s => s.EndpointId == endpoint.EndpointId && s.Direction == endpoint.Direction).ToArray()));
     }
@@ -2790,7 +2790,7 @@ public sealed class MainViewModel : ViewModel
         Interlocked.Exchange(ref _lateWorkerStartRejected, 0);
         WorkerConsentPending = false;
         WorkerConsentChecked = false;
-        AddWorkerTimeline(Guid.Empty, "ConsentAccepted", "CONSENTED", "UNKNOWN", "NOT_ATTEMPTED", "Одноразовое подтверждение сформировано и привязано к отпечатку настроек.");
+        AddWorkerTimeline(Guid.Empty, "ConsentAccepted", "CONSENTED", "UNKNOWN", "NOT_ATTEMPTED", Localization.Get("VmWorkerConsentFingerprintBound"));
         try
         {
             ApplyWorkerSessionAccepted(await _worker.StartSessionAsync(settings, receipt));
@@ -2872,7 +2872,7 @@ public sealed class MainViewModel : ViewModel
         _workerTerminal = new(TaskCreationOptions.RunContinuationsAsynchronously);
         WorkerSession = new(accepted.SessionId, settings.Direction == "CAPTURE" ? SessionMode.Capture : SessionMode.Render,
             endpointName, settings.RenderChannel, settings.DurationSeconds,
-            SessionLifecycle.Preparing, StreamQuality.Unknown, "Синтетическая операция принята worker.", "NOT_ATTEMPTED", true, settings.ChannelCount);
+            SessionLifecycle.Preparing, StreamQuality.Unknown, Localization.Get("VmWorkerSyntheticOperationAccepted"), "NOT_ATTEMPTED", true, settings.ChannelCount);
         WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSettingsAccepted"), accepted.SessionId);
         AddWorkerTimeline(accepted.SessionId, "Accepted", "PREPARING", "UNKNOWN", "NOT_ATTEMPTED", $"Start response correlated; worker operation state {accepted.OperationState}.", null, accepted.CorrelationId);
         var early = _earlyWorkerEvents.Where(e => e.SessionId == accepted.SessionId).ToArray();
@@ -2906,8 +2906,8 @@ public sealed class MainViewModel : ViewModel
             if (DuplexConsentPending) CancelDuplexConsent();
             if (_deviceScanRunning) CancelDeviceScan();
             if (_streamValidationRunning) _streamValidationCancellation?.Cancel();
-            if (_duplexValidationRunning) { _duplexStatus = "UNKNOWN · worker отключён во время Duplex; обе стороны и cleanup неизвестны."; Changed(nameof(DuplexStatus)); }
-            else if (HasDuplexResults) { _duplexStatus = "Сохранены последние принятые Duplex результаты; после отключения они исторические. Очистка и физическая маршрутизация из отключения не выводятся."; Changed(nameof(DuplexStatus)); }
+            if (_duplexValidationRunning) { _duplexStatus = Localization.Get("VmDuplexDisconnectedDuringValidation"); Changed(nameof(DuplexStatus)); }
+            else if (HasDuplexResults) { _duplexStatus = Localization.Get("VmDuplexHistoricalAfterDisconnect"); Changed(nameof(DuplexStatus)); }
         }
         Changed(nameof(CanSaveDeviceProfile));
         Changed(nameof(WorkerCurrentEndpointsVisible)); Changed(nameof(WorkerRestartExplanation)); Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HasHistoricalWindowsEndpoints));
@@ -2938,7 +2938,7 @@ public sealed class MainViewModel : ViewModel
         RefreshWorkerCommands();
         if (state.State == WorkerConnectionState.Disconnected && WorkerOperationActive && WorkerSession is { } active)
         {
-            WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = "Worker отключён; Stop и cleanup неизвестны." };
+            WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = Localization.Get("VmWorkerDisconnectedCleanupUnknown") };
             _workerTerminal?.TrySetException(new IOException("Worker disconnected before terminal event."));
             AddWorkerTimeline(active.Id, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", state.Message);
         }
@@ -2950,7 +2950,7 @@ public sealed class MainViewModel : ViewModel
 
     private void WorkerEventReceived(WorkerEventDto evt)
     {
-        if (_uiContext is null) { try { ReceiveWorkerEvent(evt); } catch (Exception ex) { _workerNotice = $"Ошибка worker event: {ex.Message}"; } }
+        if (_uiContext is null) { try { ReceiveWorkerEvent(evt); } catch (Exception ex) { _workerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerEventCallbackFailed"), ex.Message); } }
         else
         {
             var post = false;
@@ -2973,17 +2973,17 @@ public sealed class MainViewModel : ViewModel
         {
             _workerUiOverflowed = true;
             if (WorkerSession is { } current && WorkerOperationActive)
-                WorkerSession = current with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = "Очередь UI переполнена; продолжение событий worker не подтверждено." };
+                WorkerSession = current with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = Localization.Get("VmWorkerUiQueueOverflow") };
             WorkerNotice = Localization.Get("VmWorkerEventQueueOverflow");
-            AddWorkerTimeline(WorkerSession?.Id ?? Guid.Empty, "UI_EVENT_OVERFLOW", "UNKNOWN", "UNKNOWN", "UNKNOWN", "Ограниченная очередь управляющих событий исчерпана; lifecycle/cleanup не подтверждены.");
+            AddWorkerTimeline(WorkerSession?.Id ?? Guid.Empty, "UI_EVENT_OVERFLOW", "UNKNOWN", "UNKNOWN", "UNKNOWN", Localization.Get("VmWorkerUiQueueOverflowDetails"));
             return;
         }
         if (batch.CoalescedSnapshots > 0)
-            AddWorkerTimeline(WorkerSession?.Id ?? Guid.Empty, "MeterSnapshotsCoalesced", WorkerSession?.Lifecycle.ToString().ToUpperInvariant() ?? "UNKNOWN", "UNKNOWN", "UNKNOWN", $"UI retained only the latest snapshot; {batch.CoalescedSnapshots} pending snapshots were coalesced.");
+            AddWorkerTimeline(WorkerSession?.Id ?? Guid.Empty, "MeterSnapshotsCoalesced", WorkerSession?.Lifecycle.ToString().ToUpperInvariant() ?? "UNKNOWN", "UNKNOWN", "UNKNOWN", string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSnapshotsCoalescedDetails"), batch.CoalescedSnapshots));
         foreach (var evt in batch.Events)
         {
             try { ReceiveWorkerEvent(evt); }
-            catch (Exception ex) { WorkerNotice = $"Ошибка worker event: {ex.GetType().Name}: {ex.Message}"; }
+            catch (Exception ex) { WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerEventCallbackFailed"), $"{ex.GetType().Name}: {ex.Message}"); }
         }
     }
 
@@ -3018,12 +3018,12 @@ public sealed class MainViewModel : ViewModel
         var lifecycle = evt.Name switch { "Preparing" => SessionLifecycle.Preparing, "Ready" => SessionLifecycle.Ready, "Started" => SessionLifecycle.Started, "Stopping" => SessionLifecycle.Stopping, "Completed" => SessionLifecycle.Completed, "Failed" => SessionLifecycle.Failed, _ => WorkerSession?.Lifecycle ?? SessionLifecycle.Unknown };
         var quality = qualityText switch { "CLEAN" => StreamQuality.Clean, "WARNING" => StreamQuality.Warning, "FAILED" => StreamQuality.Failed, _ => StreamQuality.Unknown };
         if (evt.Name == "Warning" && WorkerSession is { } current) lifecycle = current.Lifecycle;
-        var detail = payload.TryGetProperty("failureCode", out var failure) ? failure.GetString() ?? evt.Name : payload.TryGetProperty("warningCode", out var warning) ? warning.GetString() ?? evt.Name : $"Синтетическое событие {evt.Name}.";
+        var detail = payload.TryGetProperty("failureCode", out var failure) ? failure.GetString() ?? evt.Name : payload.TryGetProperty("warningCode", out var warning) ? warning.GetString() ?? evt.Name : string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerSyntheticEventDetail"), evt.Name);
         WorkerSession = WorkerSession! with { Lifecycle = lifecycle, Quality = quality, CleanupStatus = cleanup, Message = detail };
         if (evt.Name is "Completed" or "Failed") { _workerMeterFinal = _workerCaptureMeter is not null || _workerRenderMeter is not null; Changed(nameof(WorkerMeterStatusText)); }
         AddWorkerTimeline(evt.SessionId, evt.Name, lifecycleText, qualityText, cleanup, detail, evt.EventSequence, evt.CorrelationId);
         if (evt.Name is "Completed" or "Failed") _workerTerminal?.TrySetResult();
-        WorkerNotice = $"Событие {evt.Name} · IPC sequence {evt.EventSequence}.";
+        WorkerNotice = string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerEventNotice"), evt.Name, evt.EventSequence);
         RefreshWorkerCommands();
     }
 
@@ -3056,7 +3056,7 @@ public sealed class MainViewModel : ViewModel
         }
         if ((fault.Stage is "PIPE_READ" or "PROCESS_EXIT" or "REQUEST_WRITE" or "CONNECT") && WorkerOperationActive && WorkerSession is { } active)
         {
-            WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = "Worker/pipe disconnected; Stop/cleanup unknown." };
+            WorkerSession = active with { Lifecycle = SessionLifecycle.Unknown, Quality = StreamQuality.Unknown, CleanupStatus = null, Message = Localization.Get("VmWorkerPipeDisconnectedCleanupUnknown") };
             _workerTerminal?.TrySetException(new IOException(fault.Message));
             AddWorkerTimeline(active.Id, "WorkerDisconnected", "UNKNOWN", "UNKNOWN", "UNKNOWN", fault.Message);
         }

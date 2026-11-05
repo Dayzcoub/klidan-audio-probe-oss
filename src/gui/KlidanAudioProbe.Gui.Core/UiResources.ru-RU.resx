@@ -1079,4 +1079,19 @@ Fallback: {1}
   <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>Физическая пара больше не является однозначной; выберите Capture и Render явно.</value></data>
   <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>Выбранный точный endpoint исчез или стал неактивен после обновления. Автоматическая подмена устройства запрещена.</value></data>
   <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>Пара изменилась; прежняя оценка и подтверждение сброшены.</value></data>
+  <data name="VmStreamCommandFailed" xml:space="preserve"><value>Ошибка проверки Stream: {0}: {1}</value></data>
+  <data name="VmDuplexCommandFailed" xml:space="preserve"><value>Ошибка Duplex или неизвестный исход: {0}: {1}</value></data>
+  <data name="VmDeviceProfileCurrentResultRequired" xml:space="preserve"><value>Требуется текущий принятый результат реального WASAPI для выбранного активного endpoint.</value></data>
+  <data name="VmWorkerConsentFingerprintBound" xml:space="preserve"><value>Одноразовое подтверждение сформировано и привязано к отпечатку настроек.</value></data>
+  <data name="VmWorkerSyntheticOperationAccepted" xml:space="preserve"><value>Синтетическая операция принята worker.</value></data>
+  <data name="VmDuplexDisconnectedDuringValidation" xml:space="preserve"><value>UNKNOWN · worker отключён во время Duplex; обе стороны и cleanup неизвестны.</value></data>
+  <data name="VmDuplexHistoricalAfterDisconnect" xml:space="preserve"><value>Сохранены последние принятые Duplex результаты; после отключения они исторические. Очистка и физическая маршрутизация из отключения не выводятся.</value></data>
+  <data name="VmWorkerDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker отключён; Stop и cleanup неизвестны.</value></data>
+  <data name="VmWorkerEventCallbackFailed" xml:space="preserve"><value>Ошибка обработки события worker: {0}</value></data>
+  <data name="VmWorkerUiQueueOverflow" xml:space="preserve"><value>Очередь UI переполнена; продолжение событий worker не подтверждено.</value></data>
+  <data name="VmWorkerUiQueueOverflowDetails" xml:space="preserve"><value>Ограниченная очередь управляющих событий исчерпана; lifecycle/cleanup не подтверждены.</value></data>
+  <data name="VmWorkerSnapshotsCoalescedDetails" xml:space="preserve"><value>UI сохранил только последний снимок; объединено ожидавших снимков: {0}.</value></data>
+  <data name="VmWorkerSyntheticEventDetail" xml:space="preserve"><value>Синтетическое событие {0}.</value></data>
+  <data name="VmWorkerEventNotice" xml:space="preserve"><value>Событие {0} · IPC sequence {1}.</value></data>
+  <data name="VmWorkerPipeDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker/pipe отключены; Stop/cleanup неизвестны.</value></data>
 </root>

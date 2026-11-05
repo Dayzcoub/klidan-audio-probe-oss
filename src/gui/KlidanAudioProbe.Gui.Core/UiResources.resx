@@ -1079,4 +1079,19 @@ Fallback: {1}
   <data name="VmAutomaticScanPairAmbiguous" xml:space="preserve"><value>The physical pair is no longer unambiguous; explicitly select Capture and Render.</value></data>
   <data name="VmAutomaticScanEndpointUnavailable" xml:space="preserve"><value>The exact selected endpoint disappeared or became inactive after refresh. Automatic device substitution is disabled.</value></data>
   <data name="VmDuplexPairInvalidated" xml:space="preserve"><value>The pair changed; the previous assessment and consent were cleared.</value></data>
+  <data name="VmStreamCommandFailed" xml:space="preserve"><value>Stream validation failed: {0}: {1}</value></data>
+  <data name="VmDuplexCommandFailed" xml:space="preserve"><value>Duplex failed or unknown: {0}: {1}</value></data>
+  <data name="VmDeviceProfileCurrentResultRequired" xml:space="preserve"><value>A current, accepted real WASAPI result for the selected active endpoint is required.</value></data>
+  <data name="VmWorkerConsentFingerprintBound" xml:space="preserve"><value>One-time consent was created and bound to the settings fingerprint.</value></data>
+  <data name="VmWorkerSyntheticOperationAccepted" xml:space="preserve"><value>Synthetic operation accepted by Worker.</value></data>
+  <data name="VmDuplexDisconnectedDuringValidation" xml:space="preserve"><value>UNKNOWN · Worker disconnected during Duplex; both sides and cleanup are unknown.</value></data>
+  <data name="VmDuplexHistoricalAfterDisconnect" xml:space="preserve"><value>The latest accepted Duplex results are retained as historical after disconnect. Cleanup and physical routing cannot be inferred from the disconnect.</value></data>
+  <data name="VmWorkerDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker disconnected; Stop and cleanup are unknown.</value></data>
+  <data name="VmWorkerEventCallbackFailed" xml:space="preserve"><value>Worker event handling failed: {0}</value></data>
+  <data name="VmWorkerUiQueueOverflow" xml:space="preserve"><value>UI event queue overflowed; continuation of Worker events was not confirmed.</value></data>
+  <data name="VmWorkerUiQueueOverflowDetails" xml:space="preserve"><value>The bounded control-event queue was exhausted; lifecycle/cleanup are unconfirmed.</value></data>
+  <data name="VmWorkerSnapshotsCoalescedDetails" xml:space="preserve"><value>UI retained only the latest snapshot; {0} pending snapshots were coalesced.</value></data>
+  <data name="VmWorkerSyntheticEventDetail" xml:space="preserve"><value>Synthetic event {0}.</value></data>
+  <data name="VmWorkerEventNotice" xml:space="preserve"><value>Event {0} · IPC sequence {1}.</value></data>
+  <data name="VmWorkerPipeDisconnectedCleanupUnknown" xml:space="preserve"><value>Worker/pipe disconnected; Stop/cleanup are unknown.</value></data>
 </root>
