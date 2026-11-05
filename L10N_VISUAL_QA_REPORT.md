@@ -393,9 +393,77 @@ READY_FOR_EXTERNAL_DPI_QA = YES
 
 For 125%/150%, `QA-7B-External-DPI.ps1` is the prepared external-laptop runner. It launches both locales with Developer Tools OFF/ON, checks `GetDpiForWindow`, captures exact-size windows and UIA geometry into a timestamped artifact directory, restores the app language preference byte-for-byte, and restores Topmost state. It does not change Windows display scaling. Run from PowerShell with the tested GUI executable, target DPI 120 or 144, and source SHA, for example: `.\QA-7B-External-DPI.ps1 -ExePath C:\QA\KlidanAudioProbe.Gui.App.exe -ExpectedDpi 120 -SourceSha <tested-sha>`.
 
-Remaining blockers are the live GUI endpoint discovery hang, incomplete full
-workflow visual inspection, and missing exact-size 100% plus isolated 125% and
-150% visual runs. Physical QA is explicitly outside this pass.
+Historical QA-7 checkpoint: this blocker list describes the state before QA-7B/7C and is superseded by the verified exact-size 96-DPI matrix and passive-refresh results above. Remaining external work is actual 120/144 DPI coverage and Results visuals that require legitimate completed measurement evidence. Physical audio QA remains out of scope.
 
+## QA-7C remaining visual coverage — 2026-11-05
 
+Tested source SHA: `e57991734a5e6d7f64152275673d7d0699392adc`. Fresh Release executable SHA-256: `ee7b5ffe57c7bf02286d33e5e951397c5ae87a0ea20a89af731536fd66834456`. The runner was executed against that exact binary and manifest in both PowerShell 7 and Windows PowerShell 5.1. Each run captured all 28 locale × Developer Tools × page/size states at actual `GetDpiForWindow=96`; `GetWindowRect` reported the requested 1440×900 and 1024×720 pixel geometry. Screenshots and manifests are outside Git:
 
+- `%TEMP%\qa7c-final-ps7\`
+- `%TEMP%\qa7c-final-ps51\`
+
+| Scope | Result | Evidence / limit |
+|---|---|---|
+| Evidence Library | PASS | Real UIA navigation; 768 rows × 9 columns at both sizes/locales. Horizontal scrolling is available for its wide table. |
+| Saved Profiles | PASS | Diagnostics expander opened; selector exposes 24 entries. |
+| Historical Results | PASS | Selector exposes 16 entries. No result was represented as a fresh measurement. |
+| Inspector | PARTIAL | UIA list visible at 1440×900; intentionally collapsed by responsive layout below 1280 DIP at 1024×720. |
+| Results and Recommendations | PARTIAL | Real Result navigation is guarded until a completed measurement exists. Four attempted states correctly remained on the previous view; no synthetic evidence or active audio test was used. |
+| Developer Tools OFF/ON | PASS | OFF launches omit developer navigation; ON launches expose it and Test/Result navigation. |
+| en-US / ru-RU at 96 DPI | PARTIAL | Available screens above were captured and UIA-checked at both sizes. Results remain evidence-gated; Inspector is intentionally hidden at minimum width. |
+| External runner | PASS | PS7 and Windows PowerShell 5.1, 28/28 states each, tied to source SHA and executable SHA-256. Preference bytes and Topmost state were restored; only runner-owned GUI/Worker processes were closed. |
+| 120 / 144 DPI | NOT_RUN | No isolated display/VM with actual 120/144 DPI was available; system scaling was not changed. |
+| Resource parity / placeholders | PASS | 1224 keys per locale; missing=0, extra=0, empty RU=0, placeholder mismatch=0. |
+| GUI Core/WPF | PASS | 827 checks. The test harness now asserts Initialize summary evidence under en-US and ru-RU rather than assuming English text. |
+| GUI Release | PASS | Fresh Release build; 0 warnings, 0 errors. |
+| Worker IPC / Native CTest | NOT_RUN | No Worker, IPC, native or transport code changed. |
+| `git diff --check` | PASS | Final check required before commit. |
+
+The temporary capture matrix confirms empty-label button count zero and actual window geometry. On the minimum window, the Inspector omission follows the existing responsive threshold (`ActualWidth < 1280`); this is an intentional layout state. Results and recommendations cannot be visually certified without legitimate completed measurement evidence.
+
+### External laptop commands
+
+On the source checkout, build and create the manifest before copying the Release output directory, this script, and manifest to the test laptop:
+
+```powershell
+$sourceSha = (git rev-parse HEAD).Trim()
+dotnet build src/gui/KlidanAudioProbe.Gui.App/KlidanAudioProbe.Gui.App.csproj -c Release --no-restore
+$exe = (Resolve-Path 'src/gui/KlidanAudioProbe.Gui.App/bin/Release/net10.0-windows/KlidanAudioProbe.Gui.App.exe').Path
+$exeHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+[pscustomobject]@{ sourceSha = $sourceSha; configuration = 'Release'; executableSha256 = $exeHash } |
+    ConvertTo-Json | Set-Content -LiteralPath .\qa-build-manifest.json -Encoding utf8
+```
+
+After placing all files in `C:\QA\AudioProbe`, execute in Windows PowerShell 5.1 or PowerShell 7. Set Windows display scaling manually to the target before starting; the script does not change it:
+
+```powershell
+$sourceSha = '<source SHA from qa-build-manifest.json>'
+$exe = 'C:\QA\AudioProbe\KlidanAudioProbe.Gui.App.exe'
+$manifest = 'C:\QA\AudioProbe\qa-build-manifest.json'
+.\QA-7B-External-DPI.ps1 -ExePath $exe -ExpectedDpi 120 -SourceSha $sourceSha `
+  -BuildManifestPath $manifest -ArtifactRoot 'C:\QA\AudioProbe\artifacts-120'
+.\QA-7B-External-DPI.ps1 -ExePath $exe -ExpectedDpi 144 -SourceSha $sourceSha `
+  -BuildManifestPath $manifest -ArtifactRoot 'C:\QA\AudioProbe\artifacts-144'
+```
+
+Expected 120/144 runs must each report 28 states and matching DPI. The script refuses a source/binary manifest mismatch and does not grant a PASS for an incomplete matrix.
+
+```text
+EVIDENCE_LIBRARY = PASS
+SAVED_PROFILES = PASS
+HISTORICAL_RESULTS = PASS
+INSPECTOR = PARTIAL
+RESULTS = PARTIAL
+DEV_TOOLS_OFF = PASS
+DEV_TOOLS_ON = PASS
+RU_VISUAL_96 = PARTIAL
+EN_VISUAL_96 = PARTIAL
+EXTERNAL_DPI_RUNNER = PASS (PS7 + Windows PowerShell 5.1)
+DPI_120 = NOT_RUN
+DPI_144 = NOT_RUN
+QA_REPORT = UPDATED
+GUI_TESTS = PASS (827)
+FINAL_HEAD = tested source e57991734a5e6d7f64152275673d7d0699392adc; report checkpoint follows
+READY_FOR_EXTERNAL_DPI_QA = YES
+READY_FOR_MERGE = NO (Results evidence-dependent; external DPI pending)
+```

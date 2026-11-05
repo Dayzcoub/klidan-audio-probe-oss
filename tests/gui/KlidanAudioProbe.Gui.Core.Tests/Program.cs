@@ -32,7 +32,7 @@ void Throws<T>(Action action, string name) where T : Exception
     catch (T) { Check(true, name); return; }
     throw new InvalidOperationException($"FAIL: {name}");
 }
-var originalLanguage = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+const string baselineLanguage = "en-US";
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage("en-US", false);
 Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("Windows diagnostics", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language").Length > 0, "English localization resources are complete for the public shell");
 Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow en-US without changing SessionMode values");
@@ -114,7 +114,7 @@ foreach (var language in new[] { "en-US", "ru-RU" })
         $"MINIMUM: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassClean")}; DEFAULT: {KlidanAudioProbe.Gui.Core.Localization.Get("VmRepeatabilityClassInsufficient")}");
     Check(summaryVm.DuplexRepeatabilityResultText.StartsWith(expectedRepeatabilitySummary, StringComparison.Ordinal) && repeatabilitySummaryFixture.Summary == repeatabilitySummarySource, $"repeatability summary localizes its display without changing source summary in {language}");
 }
-KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
 var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
 Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
 typeof(MainViewModel).GetMethod("SetDeviceScanProgress", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lockedDeveloperVm, [DeviceScanStage.Preflight, "fixture"]);
@@ -263,7 +263,7 @@ foreach (var (language, expectedFormat) in new[] { ("ru-RU", "Основной: 
     Check(BindingOperations.GetBinding(preferredText, TextBlock.TextProperty)?.StringFormat == expectedFormat, $"{language} WPF loads the localized preferred-profile binding format");
     localizedWindow.Close();
 }
-KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
 var comboControl = new ComboBox { Style = comboStyle };
 comboControl.ApplyTemplate();
 var popup = (Popup)comboTemplate.FindName("PART_Popup", comboControl);
@@ -491,7 +491,7 @@ finally { if (Directory.Exists(profileTemp)) Directory.Delete(profileTemp, recur
 var vm = new MainViewModel();
 Check(vm.Session is null && vm.Events.Count == 0 && vm.Meter is null, "no session, meter, or fake error event on launch");
 Check(vm.WorkflowStep == OperatorStep.Device && !vm.DeveloperToolsOpen && vm.WorkerState.State == WorkerConnectionState.Disconnected, "first launch starts on Device without connecting a worker or opening Developer Tools");
-Check(vm.InspectorProvenanceText == "WINDOWS · Системные метаданные" && vm.InspectorTitle.Contains("REAL_WINDOWS_METADATA", StringComparison.Ordinal), "empty first-launch inspector is Windows metadata context, not DEMO provenance");
+Check(vm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && vm.InspectorTitle == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsDeviceTitle"), "empty first-launch inspector is localized Windows metadata context, not DEMO provenance");
 vm.NavigateOperatorStep(OperatorStep.Test);
 Check(vm.WorkflowStep == OperatorStep.Device, "test step refuses to proceed without a selected current real Windows endpoint");
 Check(vm.CaptureEndpoints.All(e => e.IsDemo) && vm.RenderEndpoints.All(e => e.IsDemo), "all endpoint fixtures are synthetic");
@@ -947,7 +947,18 @@ Check(scanWorkflowVm.DeviceScanConsentPending && scanWorkflowWorker.RealQueryCal
 scanWorkflowVm.CancelDeviceScanConsentCommand.Execute(null);
 Check(!scanWorkflowVm.DeviceScanConsentPending && scanWorkflowWorker.RealInitializeCalls == 0, "cancelled scan consent clears the plan and performs no Initialize");
 scanWorkflowVm.RequestDeviceScanCommand.Execute(null);
-Check(scanWorkflowVm.DeviceScanConsentText.Contains("Initialize-only", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanConsentText.Contains("Streams will not start", StringComparison.Ordinal) && scanWorkflowVm.DeviceScanConsentText.Contains("180 seconds", StringComparison.Ordinal), "scan consent describes real operations, no Start/output, and bounded duration");
+var scanConsentCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var (language, streamPhrase, durationPhrase) in new[]
+{
+    ("en-US", "Streams will not start", "180 seconds"),
+    ("ru-RU", "Потоки не запускаются", "180 секунд")
+})
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var consentText = scanWorkflowVm.DeviceScanConsentText;
+    Check(consentText.Contains("Initialize-only", StringComparison.OrdinalIgnoreCase) && consentText.Contains(streamPhrase, StringComparison.OrdinalIgnoreCase) && consentText.Contains(durationPhrase, StringComparison.Ordinal), $"scan consent describes real operations, no Start/output, and bounded duration in {language}");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(scanConsentCulture, false);
 scanWorkflowVm.DeviceScanConsentChecked = true;
 scanWorkflowVm.ConfirmDeviceScanCommand.Execute(null);
 SpinWait.SpinUntil(() => !scanWorkflowVm.DeviceScanRunning && scanWorkflowVm.DeviceScanResult is not null, TimeSpan.FromSeconds(5));
@@ -964,7 +975,13 @@ var automaticSanitized = DeviceConfigurationProfileJson.Parse(DeviceConfiguratio
 Check(automaticProfileRoundTrip.Evidence.Count == 28 && automaticProfileRoundTrip.EndpointBindings.Capture?.EndpointId == "local-windows-id" && automaticSanitized.EndpointBindings.Capture is { EndpointId: null, Binding: "SANITIZED_UNBOUND" } && automaticSanitized.Evidence.Count == 28, "aggregated scan profile supports strict local and endpoint-redacted sanitized round trips");
 Check(scanWorkflowVm.RequestStreamValidationCommand.CanExecute(null), "stream validation is offered only after successful Initialize on the exact current endpoint");
 scanWorkflowVm.RequestStreamValidationCommand.Execute(null);
-Check(scanWorkflowVm.StreamConsentPending && scanWorkflowVm.StreamValidationConsentText.Contains(scanWorkflowVm.SelectedWindowsEndpoint!.EndpointId!, StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("Exclusive endpoint", StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("without saving PCM", StringComparison.Ordinal), "stream consent displays exact endpoint ID, endpoint reservation, Capture packet handling and no PCM persistence");
+var streamConsentCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
+foreach (var (language, noPcmPhrase) in new[] { ("en-US", "without saving PCM"), ("ru-RU", "без сохранения PCM") })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    Check(scanWorkflowVm.StreamConsentPending && scanWorkflowVm.StreamValidationConsentText.Contains(scanWorkflowVm.SelectedWindowsEndpoint!.EndpointId!, StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains("Exclusive endpoint", StringComparison.Ordinal) && scanWorkflowVm.StreamValidationConsentText.Contains(noPcmPhrase, StringComparison.OrdinalIgnoreCase), $"stream consent displays exact endpoint, reservation and no PCM persistence in {language}");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(streamConsentCulture, false);
 scanWorkflowVm.CancelStreamConsentCommand.Execute(null);
 Check(!scanWorkflowVm.StreamConsentPending && scanWorkflowWorker.RealStreamCalls == 0, "cancelled stream consent performs no operation");
 scanWorkflowVm.RequestStreamValidationCommand.Execute(null); scanWorkflowVm.StreamConsentChecked = true; scanWorkflowVm.ConfirmStreamValidationCommand.Execute(null);
@@ -1532,8 +1549,15 @@ var resultGrid = (DataGrid)typeof(MainWindow).GetField("OperatorResultFormatGrid
 var initializeDetailsExpander = (Expander)typeof(MainWindow).GetField("InitializeTechnicalDetailsExpander", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(operatorWindow)!;
 Check((operatorWindow.Title.Contains("Windows diagnostics", StringComparison.Ordinal) || operatorWindow.Title.Contains("диагностика Windows", StringComparison.Ordinal)) && resultPanel.Visibility == Visibility.Visible && testPanel.Visibility == Visibility.Collapsed, "runtime WPF opens the real-result step with a localized Windows diagnostic title");
 Check(resultGrid.Visibility == Visibility.Collapsed && resultDetails.Text.Contains("INITIALIZE-ONLY", StringComparison.OrdinalIgnoreCase), "Initialize result screen shows detailed initialization evidence without repeating the passive matrix");
-Check(resultDetails.Text.Contains("Fixture Interface", StringComparison.Ordinal) && resultDetails.Text.Contains("PCM16 · 48000 Hz · 2 channels", StringComparison.Ordinal) && resultDetails.Text.Contains("IsFormatSupported status: SUPPORTED_REPORTED", StringComparison.Ordinal) && resultDetails.Text.Contains("DEFAULT · 10 ms", StringComparison.Ordinal) && resultDetails.Text.Contains("HRESULT: 0x00000000", StringComparison.Ordinal) && resultDetails.Text.Contains("480 frames", StringComparison.Ordinal) && resultDetails.Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealEventReady"), StringComparison.Ordinal) && resultDetails.Text.Contains("RELEASE_ATTEMPTED", StringComparison.Ordinal) && resultDetails.Text.Contains("NOT_STARTED", StringComparison.Ordinal), "successful Initialize primary summary shows reported support separately from Initialize, Start and unconfirmed release evidence");
-Check(initializeDetailsExpander.Visibility == Visibility.Visible && !initializeDetailsExpander.IsExpanded && ((TextBlock)initializeDetailsExpander.Content).Text.Contains("alignment retry", StringComparison.OrdinalIgnoreCase) && ((TextBlock)initializeDetailsExpander.Content).Text.Contains("release attempts", StringComparison.Ordinal), "full HRESULT, alignment and COM release details are collapsed by default in the technical section");
+foreach (var initializeLanguage in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(initializeLanguage, false);
+    var initializeCulture = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture;
+    var initializeSummary = realWorkflowVm.RealInitializationSummary;
+    Check(initializeSummary.Contains("Fixture Interface", StringComparison.Ordinal) && initializeSummary.Contains(initializeLanguage == "ru-RU" ? "PCM16 · 48000 Гц · 2 канал(а)" : "PCM16 · 48000 Hz · 2 channels", StringComparison.Ordinal) && initializeSummary.Contains("SUPPORTED_REPORTED", StringComparison.Ordinal) && initializeSummary.Contains("READY", StringComparison.Ordinal) && initializeSummary.Contains("0x00000000", StringComparison.Ordinal) && initializeSummary.Contains("480 frames", StringComparison.Ordinal) && initializeSummary.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealEventReady"), StringComparison.Ordinal) && initializeSummary.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmRealCleanupReleaseAttempted"), StringComparison.Ordinal) && initializeSummary.Contains("NOT_STARTED", StringComparison.Ordinal) && initializeSummary.Contains("NOT_TRANSFERRED", StringComparison.Ordinal), $"successful Initialize summary localizes in {initializeLanguage} and preserves separate support, Initialize, Start and cleanup evidence");
+}
+KlidanAudioProbe.Gui.Core.Localization.SetLanguage(baselineLanguage, false);
+Check(initializeDetailsExpander.Visibility == Visibility.Visible && !initializeDetailsExpander.IsExpanded && ((TextBlock)initializeDetailsExpander.Content).Text.Length > 0 && realWorkflowVm.RealInitializationDetails.Contains("release attempts", StringComparison.Ordinal), "full HRESULT, alignment and COM release details are collapsed by default in the technical section");
 realWorkflowVm.OpenDeveloperToolsCommand.Execute(null);
 realWorkflowVm.NavigateOperatorStep(OperatorStep.Test); operatorWindow.UpdateLayout();
 Check(testPanel.Visibility == Visibility.Visible && operatorGrid.Items.Count == 12 && operatorGrid.Columns.Count == 5, "runtime WPF test page presents 12 unique format rows with compact evidence columns");
