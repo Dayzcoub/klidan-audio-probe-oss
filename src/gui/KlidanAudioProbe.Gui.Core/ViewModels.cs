@@ -3080,63 +3080,63 @@ public sealed class MainViewModel : ViewModel
     {
         var windowsDeviceView = Screen == ProbeScreen.Devices && (!DeveloperToolsOpen || _windowsDiscoveryCurrent || _lastWindowsEndpointSnapshot is not null);
         InspectorProvenanceText = windowsDeviceView
-            ? "WINDOWS · Системные метаданные"
-            : Screen == ProbeScreen.Diagnostics ? "WORKER FAKE · Синтетические данные" : "ДЕМО · Данные симуляции";
+            ? Localization.Get("VmInspectorWindowsProvenance")
+            : Screen == ProbeScreen.Diagnostics ? Localization.Get("VmInspectorWorkerProvenance") : Localization.Get("VmInspectorDemoProvenance");
         switch (Screen)
         {
             case ProbeScreen.Devices:
-                InspectorTitle = windowsDeviceView ? "Windows audio device · REAL_WINDOWS_METADATA" : "Устройство · демо";
+                InspectorTitle = windowsDeviceView ? Localization.Get("VmInspectorWindowsDeviceTitle") : Localization.Get("VmInspectorDemoDeviceTitle");
                 InspectorDetails = windowsDeviceView && SelectedWindowsEndpoint is { } windows
                     ? WindowsEndpointDetails(windows).Select(f => $"{f.Label}: {f.Value}").ToArray()
                     : windowsDeviceView
-                    ? ["Реальные endpoints ещё не запрошены или не выбраны.", "Подключите worker, затем вручную обновите список Windows.", "Shared Mode metadata · Exclusive capability NOT TESTED"]
+                    ? [Localization.Get("VmInspectorEndpointsNotRequested"), Localization.Get("VmInspectorConnectWorkerForDiscovery"), "Shared Mode metadata · Exclusive capability NOT TESTED"]
                     : SelectedEndpoint is { } e
                     ? [$"{e.Name}", $"Направление: {ModeLabel(Direction)}", $"Состояние: {e.State}", $"Формат микширования: {e.Format}", $"Каналы Windows: {e.Channels}", "Физические разъёмы: НЕИЗВЕСТНО"]
-                    : [EmptyEndpointMessage, "Пассивный список · проверочные данные"];
+                    : [EmptyEndpointMessage, Localization.Get("VmInspectorPassiveDemoList")];
                 break;
             case ProbeScreen.Formats:
-                InspectorTitle = "Формат · результаты проверки";
+                InspectorTitle = Localization.Get("VmInspectorFormatTitle");
                 InspectorDetails = SelectedFormat is { } f
                     ? [$"{f.Encoding} · {f.SampleRate} Гц · {f.ChannelCount} кан.", .. PeriodDetails("Период: стандартный", f.DefaultPeriod), .. PeriodDetails("Период: минимальный", f.MinimumPeriod)]
-                    : ["Формат не выбран."];
+                    : [Localization.Get("VmInspectorFormatNotSelected")];
                 break;
             case ProbeScreen.Capture:
-                InspectorTitle = "Сессия Capture · демо";
+                InspectorTitle = Localization.Get("VmInspectorCaptureTitle");
                 InspectorDetails = Session is { Mode: SessionMode.Capture } s
                     ? [$"Устройство: {s.EndpointName}", $"Состояние: {s.Lifecycle}", $"Качество потока: {s.Quality}", $"Длительность: {s.DurationSeconds} с", $"Измеритель: {MeterStatusText}", $"Очистка: {s.CleanupStatus ?? "НЕИЗВЕСТНО / нет данных"}"]
-                    : ["Capture-сессия не запускалась.", $"Устройство: {SelectedCaptureEndpoint?.Name ?? "не выбрано"}", $"Измеритель: {MeterStatusText}"];
+                    : [Localization.Get("VmInspectorCaptureNotStarted"), $"Устройство: {SelectedCaptureEndpoint?.Name ?? "не выбрано"}", $"Измеритель: {MeterStatusText}"];
                 break;
             case ProbeScreen.Render:
-                InspectorTitle = "Настройки выхода · демо";
+                InspectorTitle = Localization.Get("VmInspectorRenderTitle");
                 InspectorDetails = Session is { Mode: SessionMode.Render } r
                     ? [$"Устройство: {r.EndpointName}", $"Состояние: {r.Lifecycle}", $"Качество потока: {r.Quality}", $"Канал Windows: {r.RenderChannel}", $"Длительность: {r.DurationSeconds} с", "Физическое соответствие: НЕИЗВЕСТНО", $"Очистка: {r.CleanupStatus ?? "НЕИЗВЕСТНО / нет данных"}"]
-                    : [$"Устройство: {SelectedRenderEndpoint?.Name ?? "не выбрано"}", $"Канал Windows: {RenderChannel}", $"Длительность: {DurationSeconds} с", "Физическое соответствие: НЕИЗВЕСТНО", "Сессия Render не запускалась."];
+                    : [$"Устройство: {SelectedRenderEndpoint?.Name ?? "не выбрано"}", $"Канал Windows: {RenderChannel}", $"Длительность: {DurationSeconds} с", "Физическое соответствие: НЕИЗВЕСТНО", Localization.Get("VmInspectorRenderNotStarted")];
                 break;
             case ProbeScreen.Reports:
-                InspectorTitle = "Результаты проверки · демо";
+                InspectorTitle = Localization.Get("VmInspectorReportsTitle");
                 InspectorDetails = SelectedReport is { } report
                     ? [$"{report.Name}", $"Режим: {ModeLabel(report.Mode)}", $"Состояние: {report.Lifecycle}", $"Качество потока: {report.Quality}", report.Evidence, "ДЕМО · Данные симуляции"]
-                    : ["Отчёт не выбран."];
+                    : [Localization.Get("VmInspectorReportNotSelected")];
                 break;
             case ProbeScreen.Diagnostics:
-                InspectorTitle = "Сведения worker fake";
+                InspectorTitle = Localization.Get("VmInspectorWorkerTitle");
                 InspectorDetails = [
                     $"Соединение: {WorkerState.State}",
-                    WorkerSession is { } ws ? $"Сессия: {ws.Id:D} · {ws.Lifecycle}" : "Worker-сессия не запускалась.",
+                    WorkerSession is { } ws ? $"Сессия: {ws.Id:D} · {ws.Lifecycle}" : Localization.Get("VmInspectorWorkerSessionNotStarted"),
                     $"Качество потока: {WorkerSession?.Quality.ToString() ?? "UNKNOWN"}",
                     $"Cleanup: {WorkerSession?.CleanupStatus ?? "UNKNOWN"}",
-                    WorkerTimeline.LastOrDefault() is { } we ? $"Событие: {we.Name} · IPC sequence {we.ProtocolSequence?.ToString() ?? "локальное"}" : "Worker событий пока нет.",
+                    WorkerTimeline.LastOrDefault() is { } we ? $"Событие: {we.Name} · IPC sequence {we.ProtocolSequence?.ToString() ?? "локальное"}" : Localization.Get("VmInspectorWorkerEventsMissing"),
                     "Физическое соответствие: UNKNOWN · все worker данные синтетические."
                 ];
                 break;
             default:
-                InspectorTitle = "Диагностика · демо";
+                InspectorTitle = Localization.Get("VmInspectorDemoDiagnosticsTitle");
                 InspectorDetails = [$"Сессия: {Session?.Id.ToString() ?? "не запускалась"}", $"Состояние: {Session?.Lifecycle.ToString() ?? "не запускалась"}", $"Качество потока: {Session?.Quality.ToString() ?? "не оценивалось"}", LastEvent is { } ev ? $"Последнее событие: №{ev.Sequence} {ev.Kind} · {ev.Timestamp:HH:mm:ss.fff}" : "Событий пока нет.", LastEvent?.Message ?? "Нет событий.", "ДЕМО · Данные симуляции"];
                 break;
         }
         InspectorSections = Screen == ProbeScreen.Diagnostics ? BuildWorkerInspectorSections() :
-            windowsDeviceView && SelectedWindowsEndpoint is { } selectedWindows ? [new InspectorSectionDto("Windows endpoint · REAL_WINDOWS_METADATA", WindowsEndpointDetails(selectedWindows))] :
-            [new InspectorSectionDto("Сведения", InspectorDetails.Select(d => new InspectorFieldDto(string.Empty, d)).ToArray())];
+            windowsDeviceView && SelectedWindowsEndpoint is { } selectedWindows ? [new InspectorSectionDto(Localization.Get("VmInspectorWindowsSectionTitle"), WindowsEndpointDetails(selectedWindows))] :
+            [new InspectorSectionDto(Localization.Get("VmInspectorDetails"), InspectorDetails.Select(d => new InspectorFieldDto(string.Empty, d)).ToArray())];
         Changed(nameof(InspectorTitle));
         Changed(nameof(InspectorProvenanceText));
         Changed(nameof(InspectorDetails));

@@ -599,4 +599,24 @@
   <data name="VmDurationTenSeconds" xml:space="preserve"><value>10 seconds</value></data>
   <data name="VmDemoRenderConfirmation" xml:space="preserve"><value>Confirm simulated output: {0}, Windows channel {1}, {2} s. No sound will be played.</value></data>
   <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Confirm simulated Capture: {0}, {1} s. No real capture occurs.</value></data>
+  <data name="VmInspectorWindowsProvenance" xml:space="preserve"><value>WINDOWS · System metadata</value></data>
+  <data name="VmInspectorWorkerProvenance" xml:space="preserve"><value>WORKER FAKE · Synthetic data</value></data>
+  <data name="VmInspectorWindowsDeviceTitle" xml:space="preserve"><value>Windows audio device · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorDemoDeviceTitle" xml:space="preserve"><value>Device · demo</value></data>
+  <data name="VmInspectorEndpointsNotRequested" xml:space="preserve"><value>Real endpoints have not been queried or selected.</value></data>
+  <data name="VmInspectorConnectWorkerForDiscovery" xml:space="preserve"><value>Connect the worker, then refresh the Windows list manually.</value></data>
+  <data name="VmInspectorPassiveDemoList" xml:space="preserve"><value>Passive list · demo data</value></data>
+  <data name="VmInspectorFormatTitle" xml:space="preserve"><value>Format · test results</value></data>
+  <data name="VmInspectorFormatNotSelected" xml:space="preserve"><value>No format selected.</value></data>
+  <data name="VmInspectorCaptureTitle" xml:space="preserve"><value>Capture session · demo</value></data>
+  <data name="VmInspectorCaptureNotStarted" xml:space="preserve"><value>Capture session has not started.</value></data>
+  <data name="VmInspectorRenderTitle" xml:space="preserve"><value>Output settings · demo</value></data>
+  <data name="VmInspectorRenderNotStarted" xml:space="preserve"><value>Render session has not started.</value></data>
+  <data name="VmInspectorReportsTitle" xml:space="preserve"><value>Test results · demo</value></data>
+  <data name="VmInspectorReportNotSelected" xml:space="preserve"><value>No report selected.</value></data>
+  <data name="VmInspectorWorkerTitle" xml:space="preserve"><value>Fake Worker details</value></data>
+  <data name="VmInspectorWorkerSessionNotStarted" xml:space="preserve"><value>Worker session has not started.</value></data>
+  <data name="VmInspectorWorkerEventsMissing" xml:space="preserve"><value>No Worker events yet.</value></data>
+  <data name="VmInspectorDemoDiagnosticsTitle" xml:space="preserve"><value>Diagnostics · demo</value></data>
+  <data name="VmInspectorWindowsSectionTitle" xml:space="preserve"><value>Windows endpoint · REAL_WINDOWS_METADATA</value></data>
 </root>

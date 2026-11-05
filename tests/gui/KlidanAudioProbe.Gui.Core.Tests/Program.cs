@@ -1520,13 +1520,13 @@ Check(browserWorker.WindowsDiscoveryCalls == 1, "filtering, search, selection, a
 browserWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker exited."));
 Check(browserVm.HasHistoricalWindowsEndpoints && !browserVm.HasCurrentWindowsEndpoints && browserVm.WindowsEndpointRows.Count == 87 && browserVm.SelectedWindowsEndpoint?.EndpointId == "win-001" && browserWorker.WindowsDiscoveryCalls == 1, "worker disconnect retains all 87 rows and selected details as historical without re-enumerating");
 var provenanceVm = new MainViewModel();
-Check(provenanceVm.InspectorProvenanceText == "WINDOWS · Системные метаданные", "empty Windows device view never shows DEMO provenance");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance"), "empty Windows device view never shows DEMO provenance");
 provenanceVm.Navigate(ProbeScreen.Devices);
-Check(provenanceVm.InspectorProvenanceText == "ДЕМО · Данные симуляции", "local demo inspector retains its demo provenance inside Developer Tools");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDemoProvenance"), "local demo inspector retains its demo provenance inside Developer Tools");
 provenanceVm.Navigate(ProbeScreen.Diagnostics);
-Check(provenanceVm.InspectorProvenanceText == "WORKER FAKE · Синтетические данные", "Worker Fake diagnostics retain separate synthetic provenance");
+Check(provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWorkerProvenance"), "Worker Fake diagnostics retain separate synthetic provenance");
 provenanceVm.CloseDeveloperToolsCommand.Execute(null);
-Check(!provenanceVm.DeveloperToolsOpen && provenanceVm.Screen == ProbeScreen.Devices && provenanceVm.InspectorProvenanceText == "WINDOWS · Системные метаданные", "returning from Developer Tools resets inspector to the real Windows device context");
+Check(!provenanceVm.DeveloperToolsOpen && provenanceVm.Screen == ProbeScreen.Devices && provenanceVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance"), "returning from Developer Tools resets inspector to the real Windows device context");
 string? SelectedComboLabel(ComboBox combo)
 {
     combo.ApplyTemplate();
@@ -1576,7 +1576,7 @@ activeCheck.IsChecked = true; activeCheck.GetBindingExpression(ToggleButton.IsCh
 directionCombo.SelectedValue = "CAPTURE"; directionCombo.GetBindingExpression(Selector.SelectedValueProperty)!.UpdateSource(); endpointWindow.UpdateLayout();
 Check(endpointGrid.Items.Count == browserVm.WindowsEndpointRows.Count && endpointGrid.Items.Cast<object>().Cast<WindowsEndpointDto>().All(e => e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE"), "runtime filtering updates visible virtualized rows for Capture and Active state");
 browserVm.SelectedWindowsEndpoint = browserVm.WindowsEndpointRows.First(); endpointWindow.UpdateLayout();
-Check(inspectorProvenance.Text == "WINDOWS · Системные метаданные" && browserVm.InspectorProvenanceText == "WINDOWS · Системные метаданные" && inspectorProvenance.Text != "ДЕМО · Данные симуляции", "real Windows endpoint inspector reports Windows metadata provenance");
+Check(inspectorProvenance.Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && browserVm.InspectorProvenanceText == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorWindowsProvenance") && inspectorProvenance.Text != KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorDemoProvenance"), "real Windows endpoint inspector reports Windows metadata provenance");
 Check(endpointGrid.Visibility == Visibility.Collapsed || endpointGrid.Columns.Sum(c => c.ActualWidth) <= endpointGrid.ActualWidth + 1, "minimum supported 1024-DIP layout hides the technical endpoint table from the normal view or fits it without horizontal scrolling");
 endpointWindow.Width = 1280; endpointWindow.UpdateLayout();
 Check(endpointGrid.Visibility == Visibility.Collapsed || endpointGrid.Columns.Sum(c => c.ActualWidth) <= endpointGrid.ActualWidth + 1, "1280-DIP layout keeps the technical table hidden from the normal view or fitted without horizontal scrolling");
