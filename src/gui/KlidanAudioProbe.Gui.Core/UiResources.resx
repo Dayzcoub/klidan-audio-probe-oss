@@ -1197,4 +1197,26 @@ Fallback: {1}
   <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Final selection awaits sustained evidence.</value></data>
   <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>No operation-backed automatic stage was scheduled.</value></data>
   <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>No operation was scheduled.</value></data>
+  <data name="UiDeviceProfileSaveError" xml:space="preserve"><value>Profile not saved: {0}</value></data>
+  <data name="UiExportZipFilter" xml:space="preserve"><value>ZIP archive (*.zip)|*.zip</value></data>
+  <data name="UiEventSessionRequested" xml:space="preserve"><value>Session requested</value></data>
+  <data name="UiEventConsentAccepted" xml:space="preserve"><value>Consent accepted</value></data>
+  <data name="UiEventConsentCancelled" xml:space="preserve"><value>Consent cancelled</value></data>
+  <data name="UiEventStarted" xml:space="preserve"><value>Started</value></data>
+  <data name="UiEventMeterSnapshot" xml:space="preserve"><value>Meter snapshot</value></data>
+  <data name="UiEventWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="UiEventDeviceLoss" xml:space="preserve"><value>Device lost</value></data>
+  <data name="UiEventWorkerDisconnected" xml:space="preserve"><value>Worker disconnected</value></data>
+  <data name="UiEventUnknown" xml:space="preserve"><value>Unknown event</value></data>
+  <data name="UiEventUnknownWithValue" xml:space="preserve"><value>Unknown event: {0}</value></data>
+  <data name="UiSessionLifecycleStartedDemo" xml:space="preserve"><value>STARTED · demo</value></data>
+  <data name="UiSessionLifecycleStoppingDemo" xml:space="preserve"><value>STOPPING · demo</value></data>
+  <data name="UiSessionLifecycleStoppedDemo" xml:space="preserve"><value>STOPPED · demo</value></data>
+  <data name="UiSessionLifecycleCompletedDemo" xml:space="preserve"><value>COMPLETED · demo</value></data>
+  <data name="UiSessionLifecycleFailedDemo" xml:space="preserve"><value>FAILED · demo</value></data>
+  <data name="UiSessionUnknownWithValue" xml:space="preserve"><value>Unknown: {0}</value></data>
+  <data name="UiEventReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="UiEventStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="UiEventCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="UiEventFailure" xml:space="preserve"><value>Failure</value></data>
 </root>

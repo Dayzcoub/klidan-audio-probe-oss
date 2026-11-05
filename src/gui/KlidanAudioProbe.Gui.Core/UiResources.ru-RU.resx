@@ -1197,4 +1197,26 @@ Fallback: {1}
   <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Итоговый выбор ожидает результаты длительной проверки.</value></data>
   <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>Автоматический этап на основе операций не запланирован.</value></data>
   <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>Операция не запланирована.</value></data>
+  <data name="UiDeviceProfileSaveError" xml:space="preserve"><value>Профиль не сохранён: {0}</value></data>
+  <data name="UiExportZipFilter" xml:space="preserve"><value>ZIP-архив (*.zip)|*.zip</value></data>
+  <data name="UiEventSessionRequested" xml:space="preserve"><value>Запрошена сессия</value></data>
+  <data name="UiEventConsentAccepted" xml:space="preserve"><value>Согласие принято</value></data>
+  <data name="UiEventConsentCancelled" xml:space="preserve"><value>Согласие отменено</value></data>
+  <data name="UiEventStarted" xml:space="preserve"><value>Запуск</value></data>
+  <data name="UiEventMeterSnapshot" xml:space="preserve"><value>Снимок измерителя</value></data>
+  <data name="UiEventWarning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="UiEventDeviceLoss" xml:space="preserve"><value>Потеря устройства</value></data>
+  <data name="UiEventWorkerDisconnected" xml:space="preserve"><value>Worker отключён</value></data>
+  <data name="UiEventUnknown" xml:space="preserve"><value>Неизвестное событие</value></data>
+  <data name="UiEventUnknownWithValue" xml:space="preserve"><value>Неизвестное событие: {0}</value></data>
+  <data name="UiSessionLifecycleStartedDemo" xml:space="preserve"><value>ЗАПУЩЕНА · демо</value></data>
+  <data name="UiSessionLifecycleStoppingDemo" xml:space="preserve"><value>ОСТАНОВКА · демо</value></data>
+  <data name="UiSessionLifecycleStoppedDemo" xml:space="preserve"><value>ОСТАНОВЛЕНА · демо</value></data>
+  <data name="UiSessionLifecycleCompletedDemo" xml:space="preserve"><value>ЗАВЕРШЕНА · демо</value></data>
+  <data name="UiSessionLifecycleFailedDemo" xml:space="preserve"><value>ОШИБКА · демо</value></data>
+  <data name="UiSessionUnknownWithValue" xml:space="preserve"><value>Неизвестно: {0}</value></data>
+  <data name="UiEventReady" xml:space="preserve"><value>Готово</value></data>
+  <data name="UiEventStopped" xml:space="preserve"><value>Остановлено</value></data>
+  <data name="UiEventCompleted" xml:space="preserve"><value>Завершено</value></data>
+  <data name="UiEventFailure" xml:space="preserve"><value>Ошибка</value></data>
 </root>

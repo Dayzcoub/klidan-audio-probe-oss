@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using KlidanAudioProbe.Gui.Core;
 using KlidanAudioProbe.Gui.Worker;
+using UiLocalization = KlidanAudioProbe.Gui.Core.Localization;
 using System.ComponentModel;
 using Microsoft.Win32;
 
@@ -132,7 +133,7 @@ public partial class MainWindow : Window
             var path = DeviceConfigurationProfileStorage.SaveLocal(profile, _profileDirectory);
             _vm.RecordDeviceProfileSaved(path, profile);
         }
-        catch (Exception ex) { _vm.SetDeviceProfileSaveMessage($"Профиль не сохранён: {ex.Message}"); }
+        catch (Exception ex) { _vm.SetDeviceProfileSaveMessage(string.Format(UiLocalization.CurrentCulture, UiLocalization.Get("UiDeviceProfileSaveError"), ex.Message)); }
     }
     private void UpdateScreenVisibility()
     {
@@ -153,11 +154,11 @@ file sealed class WpfLaboratoryEvidenceBundleExportInteraction(Window owner) : I
 {
     public Task<string?> PickDestinationAsync(string suggestedFileName)
     {
-        var dialog = new SaveFileDialog { Title = "Экспортировать результаты", Filter = "ZIP archive (*.zip)|*.zip", DefaultExt = ".zip", AddExtension = true, FileName = suggestedFileName, OverwritePrompt = true };
+        var dialog = new SaveFileDialog { Title = UiLocalization.Get("ExportResults"), Filter = UiLocalization.Get("UiExportZipFilter"), DefaultExt = ".zip", AddExtension = true, FileName = suggestedFileName, OverwritePrompt = true };
         return Task.FromResult(dialog.ShowDialog(owner) == true ? dialog.FileName : null);
     }
 
-    public Task<bool> ConfirmAsync(string message) => Task.FromResult(MessageBox.Show(owner, message, "Экспорт результатов", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
+    public Task<bool> ConfirmAsync(string message) => Task.FromResult(MessageBox.Show(owner, message, UiLocalization.Get("ExportResults"), MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
 }
 
 public sealed class DbfsProgressConverter : IValueConverter
@@ -180,44 +181,56 @@ public sealed class FormatStatusConverter : IValueConverter
 
 public sealed class EventKindConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value switch
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        ProbeEventKind.SessionRequested => "Запрошена сессия",
-        ProbeEventKind.ConsentAccepted => "Согласие принято",
-        ProbeEventKind.ConsentCancelled => "Согласие отменено",
-        ProbeEventKind.Preparing => "Подготовка",
-        ProbeEventKind.Started => "Запуск",
-        ProbeEventKind.MeterSnapshot => "Снимок измерителя",
-        ProbeEventKind.Stopping => "Остановка",
-        ProbeEventKind.Stopped => "Остановлено",
-        ProbeEventKind.Completed => "Завершено",
-        ProbeEventKind.Warning => "Предупреждение",
-        ProbeEventKind.Failure => "Ошибка",
-        ProbeEventKind.DeviceLoss => "Потеря устройства",
-        ProbeEventKind.WorkerDisconnected => "Worker отключён",
-        _ => value?.ToString() ?? "Неизвестное событие"
-    };
+        var key = value switch
+        {
+            ProbeEventKind.SessionRequested => "UiEventSessionRequested",
+            ProbeEventKind.ConsentAccepted => "UiEventConsentAccepted",
+            ProbeEventKind.ConsentCancelled => "UiEventConsentCancelled",
+            ProbeEventKind.Preparing => "VmInspectorLifecyclePreparing",
+            ProbeEventKind.Ready => "UiEventReady",
+            ProbeEventKind.Started => "UiEventStarted",
+            ProbeEventKind.MeterSnapshot => "UiEventMeterSnapshot",
+            ProbeEventKind.Stopping => "VmInspectorLifecycleStopping",
+            ProbeEventKind.Stopped => "UiEventStopped",
+            ProbeEventKind.Completed => "UiEventCompleted",
+            ProbeEventKind.Warning => "UiEventWarning",
+            ProbeEventKind.Failure => "UiEventFailure",
+            ProbeEventKind.DeviceLoss => "UiEventDeviceLoss",
+            ProbeEventKind.WorkerDisconnected => "UiEventWorkerDisconnected",
+            _ => null
+        };
+        if (key is not null) return UiLocalization.Get(key);
+        return value is null ? UiLocalization.Get("UiEventUnknown") : string.Format(UiLocalization.CurrentCulture, UiLocalization.Get("UiEventUnknownWithValue"), value);
+    }
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
 public sealed class SessionStateConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value switch
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        SessionMode.Capture => "Вход · Capture",
-        SessionMode.Render => "Выход · Render",
-        SessionLifecycle.Preparing => "Подготовка",
-        SessionLifecycle.Started => "ЗАПУЩЕНА · демо",
-        SessionLifecycle.Stopping => "ОСТАНОВКА · демо",
-        SessionLifecycle.Stopped => "ОСТАНОВЛЕНА · демо",
-        SessionLifecycle.Completed => "ЗАВЕРШЕНА · демо",
-        SessionLifecycle.Failed => "ОШИБКА · демо",
-        SessionLifecycle.Unknown => "НЕИЗВЕСТНО",
-        StreamQuality.Clean => "ЧИСТО · проверочные данные",
-        StreamQuality.Warning => "ПРЕДУПРЕЖДЕНИЕ · проверочные данные",
-        StreamQuality.Failed => "ОШИБКА · проверочные данные",
-        StreamQuality.Unknown => "НЕИЗВЕСТНО",
-        _ => value?.ToString() ?? "Неизвестно"
-    };
+        var key = value switch
+        {
+            SessionMode.Capture => "InputCapture",
+            SessionMode.Render => "OutputRender",
+            SessionLifecycle.Preparing => "VmInspectorLifecyclePreparing",
+            SessionLifecycle.Ready => "VmInspectorLifecycleReady",
+            SessionLifecycle.Started => "UiSessionLifecycleStartedDemo",
+            SessionLifecycle.Stopping => "UiSessionLifecycleStoppingDemo",
+            SessionLifecycle.Stopped => "UiSessionLifecycleStoppedDemo",
+            SessionLifecycle.Completed => "UiSessionLifecycleCompletedDemo",
+            SessionLifecycle.Failed => "UiSessionLifecycleFailedDemo",
+            SessionLifecycle.Unknown => "VmInspectorUnknownUpper",
+            StreamQuality.Clean => "VmInspectorQualityClean",
+            StreamQuality.Warning => "VmInspectorQualityWarning",
+            StreamQuality.Failed => "VmInspectorQualityFailed",
+            StreamQuality.Unknown => "VmInspectorUnknownUpper",
+            _ => null
+        };
+        if (key is not null) return UiLocalization.Get(key);
+        return value is null ? UiLocalization.Get("VmInspectorUnknownUpper") : string.Format(UiLocalization.CurrentCulture, UiLocalization.Get("UiSessionUnknownWithValue"), value);
+    }
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
 }

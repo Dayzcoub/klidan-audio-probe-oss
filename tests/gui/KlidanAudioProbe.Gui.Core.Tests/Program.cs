@@ -39,6 +39,39 @@ Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage("ru-RU", false);
 Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("диагностика", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language") == "Язык", "Russian localization resources are complete for the public shell");
 Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow ru-RU without changing SessionMode values");
+var eventConverterCases = new (ProbeEventKind Value, string Resource)[]
+{
+    (ProbeEventKind.SessionRequested, "UiEventSessionRequested"), (ProbeEventKind.ConsentAccepted, "UiEventConsentAccepted"),
+    (ProbeEventKind.ConsentCancelled, "UiEventConsentCancelled"), (ProbeEventKind.Preparing, "VmInspectorLifecyclePreparing"),
+    (ProbeEventKind.Ready, "UiEventReady"), (ProbeEventKind.Started, "UiEventStarted"),
+    (ProbeEventKind.MeterSnapshot, "UiEventMeterSnapshot"), (ProbeEventKind.Stopping, "VmInspectorLifecycleStopping"),
+    (ProbeEventKind.Stopped, "UiEventStopped"), (ProbeEventKind.Completed, "UiEventCompleted"),
+    (ProbeEventKind.Warning, "UiEventWarning"), (ProbeEventKind.Failure, "UiEventFailure"),
+    (ProbeEventKind.DeviceLoss, "UiEventDeviceLoss"), (ProbeEventKind.WorkerDisconnected, "UiEventWorkerDisconnected")
+};
+var sessionStateConverterCases = new (object Value, string Resource)[]
+{
+    (SessionMode.Capture, "InputCapture"), (SessionMode.Render, "OutputRender"),
+    (SessionLifecycle.Preparing, "VmInspectorLifecyclePreparing"), (SessionLifecycle.Ready, "VmInspectorLifecycleReady"),
+    (SessionLifecycle.Started, "UiSessionLifecycleStartedDemo"), (SessionLifecycle.Stopping, "UiSessionLifecycleStoppingDemo"),
+    (SessionLifecycle.Stopped, "UiSessionLifecycleStoppedDemo"), (SessionLifecycle.Completed, "UiSessionLifecycleCompletedDemo"),
+    (SessionLifecycle.Failed, "UiSessionLifecycleFailedDemo"), (SessionLifecycle.Unknown, "VmInspectorUnknownUpper"),
+    (StreamQuality.Clean, "VmInspectorQualityClean"), (StreamQuality.Warning, "VmInspectorQualityWarning"),
+    (StreamQuality.Failed, "VmInspectorQualityFailed"), (StreamQuality.Unknown, "VmInspectorUnknownUpper")
+};
+var eventConverter = new EventKindConverter();
+var sessionStateConverter = new SessionStateConverter();
+foreach (var language in new[] { "en-US", "ru-RU" })
+{
+    KlidanAudioProbe.Gui.Core.Localization.SetLanguage(language, false);
+    var converterCulture = System.Globalization.CultureInfo.GetCultureInfo(language);
+    foreach (var (value, resource) in eventConverterCases)
+        Check((string)eventConverter.Convert(value, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get(resource), $"EventKindConverter localizes {value} in {language}");
+    foreach (var (value, resource) in sessionStateConverterCases)
+        Check((string)sessionStateConverter.Convert(value, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get(resource), $"SessionStateConverter localizes {value} in {language}");
+    Check((string)eventConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknown") && (string)eventConverter.Convert((ProbeEventKind)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiEventUnknownWithValue"), (ProbeEventKind)999), $"EventKindConverter localizes missing and unknown values in {language}");
+    Check((string)sessionStateConverter.Convert(null!, typeof(string), null!, converterCulture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmInspectorUnknownUpper") && (string)sessionStateConverter.Convert((SessionLifecycle)999, typeof(string), null!, converterCulture) == string.Format(converterCulture, KlidanAudioProbe.Gui.Core.Localization.Get("UiSessionUnknownWithValue"), (SessionLifecycle)999), $"SessionStateConverter localizes missing and unknown values in {language}");
+}
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
 var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
 Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
