@@ -35,8 +35,10 @@ void Throws<T>(Action action, string name) where T : Exception
 var originalLanguage = KlidanAudioProbe.Gui.Core.Localization.CurrentCulture.Name;
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage("en-US", false);
 Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("Windows diagnostics", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language").Length > 0, "English localization resources are complete for the public shell");
+Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow en-US without changing SessionMode values");
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage("ru-RU", false);
 Check(KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle").Contains("диагностика", StringComparison.Ordinal) && KlidanAudioProbe.Gui.Core.Localization.Get("Language") == "Язык", "Russian localization resources are complete for the public shell");
+Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.Localization.Get("VmCaptureInputDirection") && MainViewModel.ModeLabel(SessionMode.Render) == KlidanAudioProbe.Gui.Core.Localization.Get("VmRenderOutputDirection"), "public mode labels follow ru-RU without changing SessionMode values");
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
 var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
 Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
@@ -929,6 +931,13 @@ try
     BeginStream(scanWorkflowVm, "minimum");
     PumpUntil(() => !scanWorkflowVm.StreamValidationRunning && scanWorkflowVm.StreamValidationRows.Single(r => r.Period == "MINIMUM").FinalStatus == "UNKNOWN", TimeSpan.FromSeconds(3)); streamResultsWindow.UpdateLayout();
     Check(streamCards.Visibility == Visibility.Visible && scanWorkflowVm.StreamValidationRows.Single(r => r.Period == "MINIMUM") is { FinalStatus: "UNKNOWN", CleanupStatus: "UNKNOWN", Details: var timeoutDetail } && timeoutDetail.Contains("worker response deadline expired", StringComparison.Ordinal) && scanWorkflowVm.StreamEvidencePersistenceStatus.Contains("UNKNOWN", StringComparison.Ordinal) && scanWorkflowVm.OperatorResultOutcome.Contains("worker response deadline expired", StringComparison.Ordinal), $"worker timeout persists UNKNOWN, actual reason and updated persistence/result summaries [{scanWorkflowVm.StreamEvidencePersistenceStatus} | {scanWorkflowVm.OperatorResultOutcome}]");
+
+    using (var missingStreamEvidence = JsonDocument.Parse("{}"))
+    {
+        var missingRow = (StreamValidationResultRow)typeof(MainViewModel).GetMethod("StreamValidationResultRowFromReport", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, ["MINIMUM", missingStreamEvidence.RootElement])!;
+        var unknownText = KlidanAudioProbe.Gui.Core.Localization.Get("VmStreamUnknownValue");
+        Check(missingRow.FinalStatus == "UNKNOWN" && missingRow.ActualBufferFrames == unknownText && missingRow.FramesProcessedExpected == $"{unknownText} / {unknownText}" && missingRow.FrameCoverage == unknownText, "stream projection localizes unknown display values while retaining machine status UNKNOWN");
+    }
 
     var cancelGate = new TaskCompletionSource<RealStreamValidationDto>(TaskCreationOptions.RunContinuationsAsynchronously);
     scanWorkflowWorker.RealStreamHandler = (operationId, endpointId, period, _) => cancelGate.Task;

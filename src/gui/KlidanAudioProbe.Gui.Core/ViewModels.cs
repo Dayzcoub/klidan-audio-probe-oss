@@ -2195,7 +2195,7 @@ public sealed class MainViewModel : ViewModel
             var report = result.Report;
             var row = StreamValidationResultRowFromReport(period, report);
             _streamValidationRows[period] = row;
-            _streamValidationStatus = $"{period}: {row.FinalStatus}. {row.Details}";
+            _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamStatusDetail"), period, row.FinalStatus, row.Details);
             OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamResultOutcome"), period, row.FinalStatus, row.StartOutcome, row.FramesProcessedExpected, row.StreamQuality, Localization.Get("VmStreamStabilityDuplexNotRun"));
             Changed(nameof(DeviceScanResult)); Changed(nameof(DeviceScanResultSummary)); Changed(nameof(StreamValidations)); Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus)); Changed(nameof(OperatorResultStreamEvidenceNote)); Changed(nameof(OperatorResultProfileEvidenceNote)); Changed(nameof(CanSaveDeviceProfile));
         }
@@ -2206,8 +2206,8 @@ public sealed class MainViewModel : ViewModel
                 : ex is TimeoutException or OperationCanceledException or IOException;
             var status = unknown ? "UNKNOWN" : "FAILED";
             var detail = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamFailureDetail"), ex.GetType().Name, ex.Message, Localization.Get("VmDuplexCleanupUnconfirmed"));
-            _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "неизвестно", candidate.InitializeStatus, "UNKNOWN", "неизвестно", "неизвестно", "UNKNOWN", "неизвестно", "UNKNOWN", "UNKNOWN", status, detail);
-            _streamValidationStatus = $"{period}: {status}. {detail}";
+            _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Localization.Get("VmStreamUnknownValue"), candidate.InitializeStatus, "UNKNOWN", Localization.Get("VmStreamUnknownValue"), Localization.Get("VmStreamUnknownValue"), "UNKNOWN", Localization.Get("VmStreamUnknownValue"), "UNKNOWN", "UNKNOWN", status, detail);
+            _streamValidationStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamStatusDetail"), period, status, detail);
             OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamFailureOutcome"), period, status, detail, Localization.Get("VmStreamStabilityDuplexNotRun"));
             Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus));
         }
@@ -2222,6 +2222,7 @@ public sealed class MainViewModel : ViewModel
     {
         string? Text(string name) => report.TryGetProperty(name, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString() : null;
         string Value(string name) => report.TryGetProperty(name, out var v) && v.ValueKind is not (System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined) ? v.ToString() : "неизвестно";
+        string Display(string value) => value == "неизвестно" ? Localization.Get("VmStreamUnknownValue") : value;
         bool? Bool(string name) => report.TryGetProperty(name, out var v) && (v.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False) ? v.GetBoolean() : null;
         string Outcome(string name, string? hresultName = null)
         {
@@ -2230,7 +2231,7 @@ public sealed class MainViewModel : ViewModel
         }
         var frames = Value("framesProcessed"); var expected = Value("expectedFrames");
         var coverage = report.TryGetProperty("frameCoveragePercent", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.Number && c.TryGetDouble(out var percent) && double.IsFinite(percent) ? percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%" : "неизвестно";
-        var faults = string.Join(" · ", new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts" }.Select(name => $"{name}={Value(name)}"));
+        var faults = string.Join(" · ", new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts" }.Select(name => $"{name}={Display(Value(name))}"));
         var quality = Text("streamQuality") ?? "UNKNOWN";
         var cleanup = Text("cleanup") ?? "UNKNOWN";
         var start = Outcome("startSucceeded", "startHresult");
@@ -2244,8 +2245,8 @@ public sealed class MainViewModel : ViewModel
         else if (quality == "CLEAN" && Bool("durationReached") == true && frames != "0" && !cleanup.Contains("FAILED", StringComparison.Ordinal) && !cleanup.Contains("UNKNOWN", StringComparison.Ordinal) && !cleanup.Contains("RELEASE_PENDING", StringComparison.Ordinal)) status = "COMPLETED";
         else status = "COMPLETED_WITH_WARNINGS";
         var errorStage = Text("errorStage"); var errorHresult = Text("errorHresult");
-        var details = errorStage is { Length: > 0 } and not ("none" or "UNKNOWN") ? $"Этап: {errorStage}; HRESULT: {errorHresult ?? "неизвестно"}." : quality == "CLEAN" ? "Отчёт завершён; cleanup содержит только явно наблюдённые этапы." : $"Поток: {quality}; durationReached={Value("durationReached")}; cleanup: {cleanup}.";
-        return new(period, Value("actualBufferFrames"), initialized, start, $"{frames} / {expected}", coverage, quality, faults, stop, cleanup, status, details);
+        var details = errorStage is { Length: > 0 } and not ("none" or "UNKNOWN") ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsStageHresult"), errorStage, Display(errorHresult ?? "неизвестно")) : quality == "CLEAN" ? Localization.Get("VmStreamDetailsCleanReport") : string.Format(Localization.CurrentCulture, Localization.Get("VmStreamDetailsQualityAndCleanup"), quality, Display(Value("durationReached")), cleanup);
+        return new(period, Display(Value("actualBufferFrames")), initialized, start, $"{Display(frames)} / {Display(expected)}", Display(coverage), quality, faults, stop, cleanup, status, details);
     }
 
     private void CancelDeviceScan()
@@ -3227,7 +3228,7 @@ public sealed class MainViewModel : ViewModel
 
     private static string DirectionDisplayLabel(string direction) => direction switch { "CAPTURE" => Localization.Get("VmCaptureLabel"), "RENDER" => Localization.Get("VmRenderLabel"), _ => direction };
 
-    public static string ModeLabel(SessionMode mode) => mode == SessionMode.Capture ? "вход (Capture)" : "выход (Render)";
+    public static string ModeLabel(SessionMode mode) => Localization.Get(mode == SessionMode.Capture ? "VmCaptureInputDirection" : "VmRenderOutputDirection");
 
     private sealed record PendingSession(Guid Id, SessionMode Mode, EndpointDto Endpoint, int? RenderChannel, int DurationSeconds, int ChannelCount);
 }

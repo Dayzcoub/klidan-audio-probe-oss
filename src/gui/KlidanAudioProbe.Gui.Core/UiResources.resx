@@ -1154,4 +1154,8 @@ Fallback: {1}
   <data name="VmInspectorSequenceLocal" xml:space="preserve"><value>local</value></data>
   <data name="VmInspectorWorkerFormatValue" xml:space="preserve"><value>{0} · {1} {2} · {3} {4}</value></data>
   <data name="VmInspectorDurationValue" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="VmStreamStatusDetail" xml:space="preserve"><value>Period {0}: {1}. {2}</value></data>
+  <data name="VmStreamDetailsStageHresult" xml:space="preserve"><value>Stage: {0}; HRESULT: {1}.</value></data>
+  <data name="VmStreamDetailsCleanReport" xml:space="preserve"><value>Report completed; cleanup contains only explicitly observed stages.</value></data>
+  <data name="VmStreamDetailsQualityAndCleanup" xml:space="preserve"><value>Stream: {0}; durationReached={1}; cleanup: {2}.</value></data>
 </root>
