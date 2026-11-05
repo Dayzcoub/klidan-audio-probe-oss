@@ -313,3 +313,42 @@ WORKER_TESTS = PASS (292)
 FINAL_HEAD = c3af6b241ad3bc880c4bc4df477aa1f1cdee618f
 READY_FOR_DPI_QA = YES
 ```
+
+## QA-7 DPI and visual regression — 2026-11-05
+
+QA-7 began from the QA-6B report checkpoint `5b48272b307e8340b1f0515ac04a93199a27d42c`. The Windows system and app window both reported 96 DPI (`GetDpiForSystem` / `GetDpiForWindow`) on a 3440×1440 primary display. No isolated VM or display session was available. The operator desktop scaling was left unchanged; 120 DPI (125%) and 144 DPI (150%) were not tested.
+
+The current Release GUI was started and inspected through Windows UI Automation. The `en-US` launch exposed English controls and accessibility names. Changing the selector to `ru-RU` and restarting produced Russian controls and accessibility names. Screenshots were captured outside the repository in `%LOCALAPPDATA%\Temp`; other desktop windows overlay the right/lower portion of the app, so screenshot-based clipping/overlap review is incomplete. Actual full-window 1440×900 and minimum 1024×720 inspections were not completed in this session. The earlier QA-6B report records six passive discovery refreshes (three per locale); QA-7 did not repeat that matrix. One passive refresh per language was not completed in this session.
+
+Three localization defects discovered in QA-7 were corrected without changing machine values: Russian Windows sidebar presentation, the Russian Windows Inspector title, and English display labels for synthetic demo endpoints. Demo endpoint raw `Name`/`State`/`Format`, session endpoint names, and JSON shape remain unchanged; localized computed properties are excluded from serialization. A further English UI leak from the default disconnected Worker message was fixed at the presentation layer only. The original `WorkerState.Message` and non-default diagnostics remain unchanged. Automated tests cover both locales and raw-data preservation.
+
+Fresh checks on the final source changes:
+
+| Check | Result | Evidence |
+|---|---|---|
+| Resource parity | PASS | 1223 keys per locale; 0 missing, extra, or empty RU values; 0 placeholder mismatches |
+| GUI Core/WPF | PASS | 819 checks via `dotnet run --project tests/gui/KlidanAudioProbe.Gui.Core.Tests/KlidanAudioProbe.Gui.Core.Tests.csproj -c Release`; existing nullable warning CS8602 at Program.cs:1936 |
+| GUI Release | PASS | `dotnet build src/gui/KlidanAudioProbe.Gui.App/KlidanAudioProbe.Gui.App.csproj -c Release --no-restore`; 0 warnings, 0 errors |
+| Worker IPC/process | NOT_RUN | No Worker IPC or protocol implementation changed |
+| Native CTest | NOT_RUN | No native or transport code changed |
+| Diff whitespace | PASS | `git diff --check` |
+
+The Results page was not entered because it requires completed measurement evidence; no active audio operation was run. Discovery timings and Worker stability remain as recorded in QA-6B, not re-measured here. Developer Tools ON and full device/format/result navigation were not revalidated on the final build in this session. Visual QA is therefore partial despite the verified 96-DPI locale startup checks.
+
+```text
+DPI_100 = PASS (96 DPI API readings; visual matrix partial)
+DPI_125 = NOT_RUN (no isolated DPI environment; system settings left unchanged)
+DPI_150 = NOT_RUN (no isolated DPI environment; system settings left unchanged)
+RU_VISUAL = PASS (startup/accessibility text only; full matrix incomplete)
+EN_VISUAL = PASS (startup/accessibility text only; full matrix incomplete)
+MIN_WINDOW = NOT_RUN
+NORMAL_WINDOW = NOT_RUN (actual window geometry not controlled to requested DIP target)
+DISCOVERY_REGRESSION = NOT_RUN (QA-6B six-refresh evidence remains; no QA-7 refresh)
+LANGUAGE_SWITCH = PASS (preference selection and RU restart verified; prior QA-6B records persistence)
+DEV_TOOLS = NOT_RUN on final build
+GUI_TESTS = PASS (819)
+VISUAL_DEFECTS = 4 corrected; residual count NOT_ESTABLISHED due incomplete matrix
+FINAL_HEAD = pending QA-7 commit
+WORKTREE = pending QA-7 commit
+READY_FOR_MERGE = NO
+```

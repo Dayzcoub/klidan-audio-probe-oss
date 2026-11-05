@@ -8,7 +8,18 @@ public enum StreamQuality { Unknown, Clean, Warning, Failed }
 public enum FormatStatus { SupportedReported, Unsupported, Failed, Unknown, NotTested, Initialized, Ready }
 public enum ProbeEventKind { SessionRequested, ConsentAccepted, ConsentCancelled, Preparing, Ready, Started, MeterSnapshot, Stopping, Stopped, Completed, Warning, Failure, DeviceLoss, WorkerDisconnected }
 
-public sealed record EndpointDto(string Name, string Direction, string State, string Format, int Channels, bool IsAvailable, bool IsDemo = true, StreamTopologyDto? Topology = null, IReadOnlyList<FormatTopologyDto>? FormatTopologies = null);
+public sealed record EndpointDto(string Name, string Direction, string State, string Format, int Channels, bool IsAvailable, bool IsDemo = true, StreamTopologyDto? Topology = null, IReadOnlyList<FormatTopologyDto>? FormatTopologies = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayName => IsDemo ? string.Format(Localization.CurrentCulture, Localization.Get("VmDemoEndpointDisplayName"), Direction, Channels) : Name;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayState => IsDemo ? Localization.Get(IsAvailable ? "VmDemoAvailable" : "VmDemoDisabled") : State;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    // shortcut: maps current demo format labels; add mappings when a fixture introduces another display format.
+    public string DisplayFormat => !IsDemo ? Format : Format == "Неизвестно" ? Localization.Get("VmInspectorUnknown") : Format.Replace("кГц", Localization.Get("VmDemoKilohertz"), StringComparison.Ordinal);
+}
 public sealed record PeriodEvidence(FormatStatus Status, string? Hresult, string? InitializeHresult = null, string? Provenance = null)
 {
     public string StatusCode => Status switch
@@ -43,7 +54,13 @@ public sealed record MeterChannelDto(int Channel, double? PeakDbfs, double? RmsD
     private static string ShortLevel(double? value) => value is double db && double.IsFinite(db) ? db.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
 }
 public sealed record MeterSnapshotDto(long Sequence, DateTimeOffset Timestamp, IReadOnlyList<MeterChannelDto> Channels, bool IsCompleteWindow);
-public sealed record SessionDto(Guid Id, SessionMode Mode, string EndpointName, int? RenderChannel, int DurationSeconds, SessionLifecycle Lifecycle, StreamQuality Quality, string Message, string? CleanupStatus, bool IsSynthetic = true, int ChannelCount = 2);
+public sealed record SessionDto(Guid Id, SessionMode Mode, string EndpointName, int? RenderChannel, int DurationSeconds, SessionLifecycle Lifecycle, StreamQuality Quality, string Message, string? CleanupStatus, bool IsSynthetic = true, int ChannelCount = 2)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayEndpointName => IsSynthetic && EndpointName.StartsWith("ДЕМО · Данные симуляции ·", StringComparison.Ordinal)
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmDemoEndpointDisplayName"), Mode, ChannelCount)
+        : EndpointName;
+}
 public sealed record ProbeEventDto(long Sequence, DateTimeOffset Timestamp, Guid SessionId, ProbeEventKind Kind, string Message, string? Hresult = null, bool IsSynthetic = true);
 public sealed record WorkerTimelineEntryDto(long Sequence, DateTimeOffset Timestamp, Guid SessionId, string Name, string Lifecycle, string StreamQuality, string CleanupEvidence, string Detail, long? ProtocolSequence = null, Guid? CorrelationId = null, bool IsSynthetic = true)
 {

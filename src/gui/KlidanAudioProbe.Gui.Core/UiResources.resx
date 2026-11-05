@@ -149,6 +149,10 @@
   <data name="SelectAnotherDevice" xml:space="preserve"><value>Select another device</value></data>
   <data name="SelectActiveEndpoint" xml:space="preserve"><value>Select the exact active endpoint. Discovery starts only after the operator acts.</value></data>
   <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Test data</value></data>
+  <data name="VmDemoEndpointDisplayName" xml:space="preserve"><value>DEMO · Simulation data · {0} · {1} channels</value></data>
+  <data name="VmDemoAvailable" xml:space="preserve"><value>Demo · available</value></data>
+  <data name="VmDemoDisabled" xml:space="preserve"><value>Demo · disabled</value></data>
+  <data name="VmDemoKilohertz" xml:space="preserve"><value>kHz</value></data>
   <data name="InputCapture" xml:space="preserve"><value>Input · Capture</value></data>
   <data name="OutputRender" xml:space="preserve"><value>Output · Render</value></data>
   <data name="EmptyList" xml:space="preserve"><value>Empty list</value></data>

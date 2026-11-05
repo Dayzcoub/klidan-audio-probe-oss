@@ -149,6 +149,10 @@
   <data name="SelectAnotherDevice" xml:space="preserve"><value>Выбрать другое устройство</value></data>
   <data name="SelectActiveEndpoint" xml:space="preserve"><value>Выберите точный активный endpoint. Обнаружение начинается только после нажатия оператором.</value></data>
   <data name="LocalDemoData" xml:space="preserve"><value>LOCAL DEMO · Проверочные данные</value></data>
+  <data name="VmDemoEndpointDisplayName" xml:space="preserve"><value>ДЕМО · Данные симуляции · {0} · {1} кан.</value></data>
+  <data name="VmDemoAvailable" xml:space="preserve"><value>Демо · доступно</value></data>
+  <data name="VmDemoDisabled" xml:space="preserve"><value>Демо · отключено</value></data>
+  <data name="VmDemoKilohertz" xml:space="preserve"><value>кГц</value></data>
   <data name="InputCapture" xml:space="preserve"><value>Вход · Capture</value></data>
   <data name="OutputRender" xml:space="preserve"><value>Выход · Render</value></data>
   <data name="EmptyList" xml:space="preserve"><value>Пустой список</value></data>
@@ -286,7 +290,7 @@
   <data name="StartRenderSimulation" xml:space="preserve"><value>Начать симуляцию Render</value></data>
   <data name="DemoSimulationData" xml:space="preserve"><value>ДЕМО · Данные симуляции</value></data>
   <data name="DemoTestData" xml:space="preserve"><value>ДЕМО · Проверочные данные</value></data>
-  <data name="WindowsExplicitActions" xml:space="preserve"><value>Windows diagnostics · только явные действия</value></data>
+  <data name="WindowsExplicitActions" xml:space="preserve"><value>Диагностика Windows · только явные действия</value></data>
   <data name="RefreshIndex" xml:space="preserve"><value>Обновить индекс</value></data>
   <data name="LocalRebuildableIndex" xml:space="preserve"><value>Локальный rebuildable-индекс. Исторические записи read-only и не разрешают активные операции.</value></data>
   <data name="ExactEndpointIdentityFilter" xml:space="preserve"><value>Фильтр exact endpoint identity</value></data>
@@ -342,7 +346,7 @@
   <data name="StopWorkerFakeSession" xml:space="preserve"><value>Остановить fake-сессию worker</value></data>
   <data name="StopLocal" xml:space="preserve"><value>СТОП LOCAL</value></data>
   <data name="StopLocalDemoSession" xml:space="preserve"><value>Остановить локальную demo-сессию</value></data>
-  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>WINDOWS DIAGNOSTICS · операции выполняются только по явному действию</value></data>
+  <data name="WindowsDiagnosticsExplicit" xml:space="preserve"><value>ДИАГНОСТИКА WINDOWS · операции выполняются только по явному действию</value></data>
   <data name="WorkerFakeSessionState" xml:space="preserve"><value>Состояние fake-сессии worker</value></data>
   <data name="DemoSessionConfirmation" xml:space="preserve"><value>Подтверждение демонстрационной сессии</value></data>
   <data name="DemoSimulationConsent" xml:space="preserve"><value>Я понимаю, что запускается только демонстрационная симуляция.</value></data>
@@ -601,7 +605,7 @@
   <data name="VmDemoCaptureConfirmation" xml:space="preserve"><value>Подтвердите симуляцию Capture: {0}, {1} с. Реального захвата нет.</value></data>
   <data name="VmInspectorWindowsProvenance" xml:space="preserve"><value>WINDOWS · Системные метаданные</value></data>
   <data name="VmInspectorWorkerProvenance" xml:space="preserve"><value>WORKER FAKE · Синтетические данные</value></data>
-  <data name="VmInspectorWindowsDeviceTitle" xml:space="preserve"><value>Windows audio device · REAL_WINDOWS_METADATA</value></data>
+  <data name="VmInspectorWindowsDeviceTitle" xml:space="preserve"><value>Аудиоустройство Windows · REAL_WINDOWS_METADATA</value></data>
   <data name="VmInspectorDemoDeviceTitle" xml:space="preserve"><value>Устройство · демо</value></data>
   <data name="VmInspectorEndpointsNotRequested" xml:space="preserve"><value>Реальные endpoints ещё не запрошены или не выбраны.</value></data>
   <data name="VmInspectorConnectWorkerForDiscovery" xml:space="preserve"><value>Подключите worker, затем вручную обновите список Windows.</value></data>
