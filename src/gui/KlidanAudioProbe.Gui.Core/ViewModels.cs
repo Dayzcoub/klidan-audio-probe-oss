@@ -858,8 +858,8 @@ public sealed class MainViewModel : ViewModel
     public bool CustomRepeatabilityRunning => _customRepeatabilityRunning;
     public string CustomRepeatabilityStatus => _customRepeatabilityStatus;
     public bool CanPrepareCustomRepeatability => CanPrepareCustomRepeatabilityInternal();
-    public string CustomRepeatabilityPlanText => _customRepeatabilityPreparation is not { } p ? "После C4.2A выберите валидный custom period." : $"{p.Periods!.Count} последовательных запусков · {p.Periods[0]}\n5 секунд каждый · пауза {p.PauseMilliseconds} ms · MMCSS OFF\nCapture discarded; Render silence only; без routing.";
-    public string CustomRepeatabilityResultText => _customRepeatabilityResult is not { } r ? "Custom-period repeatability ещё не завершена." : $"{r.Summary}\n{r.ReportPath ?? "Отчёт не сохранён"}";
+    public string CustomRepeatabilityPlanText => _customRepeatabilityPreparation is not { } p ? Localization.Get("VmCustomRepeatabilityPlanMissing") : string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityPlanRunCount"), p.Periods!.Count, p.Periods[0]) + "\n" + string.Format(Localization.CurrentCulture, Localization.Get("VmCustomRepeatabilityPlanTiming"), p.PauseMilliseconds) + "\n" + Localization.Get("VmCustomRepeatabilityPlanSafety");
+    public string CustomRepeatabilityResultText => _customRepeatabilityResult is not { } r ? Localization.Get("VmCustomRepeatabilityResultMissing") : $"{r.Summary}\n{r.ReportPath ?? Localization.Get("VmReportNotSaved")}";
     public IReadOnlyList<WindowsEndpointDto> LastWindowsEndpoints => _lastWindowsEndpointSnapshot?.Endpoints ?? [];
     private IReadOnlyList<WindowsEndpointDto> WindowsEndpointSource => _windowsDiscoveryCurrent ? WindowsEndpoints : HasHistoricalWindowsEndpoints ? LastWindowsEndpoints : [];
     public IReadOnlyList<WindowsEndpointDto> WindowsEndpointRows => WindowsEndpointSource
@@ -883,15 +883,15 @@ public sealed class MainViewModel : ViewModel
     public RealFormatMatrixDto? RealInitializationResult { get => _realInitializationResult; private set { if (Set(ref _realInitializationResult, value)) { Changed(nameof(RealInitializationDetails)); Changed(nameof(RealInitializationSummary)); Changed(nameof(RealFormatSummary)); Changed(nameof(OperatorResultDetails)); Changed(nameof(OperatorResultProvenance)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasOperatorInitializeResult)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); } } }
     public RealFormatCandidateDto? SelectedRealFormatCandidate { get => _selectedRealFormatCandidate; set { if (Set(ref _selectedRealFormatCandidate, value)) { if (RealInitializeConsentPending) CancelRealInitialize(); RequestRealInitializeCommand.Refresh(); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealSelectedCandidateDetails)); Changed(nameof(RealInitializeDisabledReason)); } } }
     public bool RealFormatMatrixIsStale => RealFormatMatrix is not null && (_realQueryInvalidated || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake || SelectedWindowsEndpoint?.EndpointId != RealFormatMatrix.EndpointId || SelectedWindowsEndpoint?.Direction != RealFormatMatrix.Direction);
-    public string RealFormatMatrixStatus => _realFormatError ?? (RealFormatMatrix is null ? "Реальный Exclusive-запрос не выполнялся." : RealFormatMatrixIsStale ? "ИСТОРИЧЕСКИЙ РЕЗУЛЬТАТ · worker, discovery или выбранный endpoint изменились." : $"REAL_WASAPI_QUERY · {RealFormatRows.Count} уникальных форматов. IsFormatSupported выполняется один раз на формат; периоды не проверяются независимо.");
-    public string RealFormatEndpointLabel => RealFormatMatrix is null ? "" : WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == RealFormatMatrix.EndpointId && endpoint.Direction == RealFormatMatrix.Direction)?.FriendlyNameDisplay ?? "Windows endpoint · локальный идентификатор скрыт";
+    public string RealFormatMatrixStatus => _realFormatError ?? (RealFormatMatrix is null ? Localization.Get("VmRealFormatQueryNotRun") : RealFormatMatrixIsStale ? Localization.Get("VmRealFormatHistoryStale") : string.Format(Localization.CurrentCulture, Localization.Get("VmRealFormatQuerySummary"), RealFormatRows.Count));
+    public string RealFormatEndpointLabel => RealFormatMatrix is null ? "" : WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == RealFormatMatrix.EndpointId && endpoint.Direction == RealFormatMatrix.Direction)?.FriendlyNameDisplay ?? Localization.Get("VmWindowsEndpointLocalIdHidden");
     public string RealSelectedCandidateDetails
     {
         get
         {
             if (SelectedRealFormatRow is { IsConflict: true } conflictRow)
-                return $"INCOMPLETE/CONFLICT · Initialize-only заблокирован. {conflictRow.ConflictDetails}\n" + string.Join("\n", conflictRow.EvidenceCandidates.Select(c => $"{c.Period}: Status={c.Status}, IsFormatSupported={c.SupportStatus}, HRESULT={c.SupportHr ?? "не наблюдался"}, query cleanup={c.QueryCleanupStatus}, release attempts={c.QueryClientReleaseAttempts}"));
-            if (SelectedRealFormatCandidate is not { } c) return "Выберите периодный результат, чтобы увидеть HRESULT и технические сведения.";
+                return $"{Localization.Get("VmRealFormatConflictHeader")} {conflictRow.ConflictDetails}\n" + string.Join("\n", conflictRow.EvidenceCandidates.Select(c => $"{c.Period}: Status={c.Status}, IsFormatSupported={c.SupportStatus}, HRESULT={c.SupportHr ?? "не наблюдался"}, query cleanup={c.QueryCleanupStatus}, release attempts={c.QueryClientReleaseAttempts}"));
+            if (SelectedRealFormatCandidate is not { } c) return Localization.Get("VmRealFormatCandidateSelectForDetails");
             static string V<T>(T? value) where T : struct => value?.ToString() ?? "неизвестно";
             static string S(string? value) => value ?? "не наблюдался";
             return $"{c.Status} · {c.Encoding} · {c.SampleRate} Гц · {c.Channels} канал(а) · контейнер/valid bits: {V(c.ContainerBits)}/{V(c.ValidBits)} · канал-маска: {c.ChannelMaskEvidence} · период: {c.Period}\n" +
@@ -906,11 +906,11 @@ public sealed class MainViewModel : ViewModel
         get
         {
             if (_realInitializationError is { } error) return error;
-            if (RealInitializationResult is not { } result) return "Initialize-only ещё не выполнялся.";
+            if (RealInitializationResult is not { } result) return Localization.Get("VmRealInitializeNotPerformed");
             var c = result.Candidates.FirstOrDefault();
             static string V<T>(T? value) where T : struct => value?.ToString() ?? "неизвестно";
             static string S(string? value) => value ?? "не наблюдался";
-            var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? "локальный идентификатор скрыт";
+            var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? Localization.Get("VmWindowsEndpointLocalIdHidden");
             return $"{(RealFormatMatrixIsStale ? "ИСТОРИЧЕСКИЙ · " : string.Empty)}REAL INITIALIZE-ONLY · {c?.Status ?? "INCOMPLETE"} · {endpointName} · {c?.Encoding ?? "формат неизвестен"}, {V(c?.SampleRate)} Гц, {V(c?.Channels)} канал(а), {c?.Period ?? "период неизвестен"}\n" +
                 $"Поддержка: {c?.SupportStatus ?? "неизвестно"} · IsFormatSupported {S(c?.SupportHr)} · Activate {S(c?.ActivationHr)} · query cleanup {c?.QueryCleanupStatus ?? "неизвестно"} ({V(c?.QueryClientReleaseAttempts)} Release попыток)\n" +
                 $"Initialize: period query {S(c?.PeriodQueryHr)}, доступен {V(c?.PeriodAvailable)}, запрос {V(c?.RequestedPeriod100ns)} ×100 нс · первый {S(c?.FirstInitializeHr)} · Alignment retry: GetBufferSize {S(c?.AlignmentGetBufferSizeHr)} / {V(c?.AlignmentFrames)} frames · Activate {S(c?.AlignmentActivateHr)} · retry Initialize {S(c?.AlignmentInitializeHr)} · итог {S(c?.FinalInitializeHr)}\n" +
@@ -922,8 +922,8 @@ public sealed class MainViewModel : ViewModel
         get
         {
             if (_realInitializationError is { } error) return error;
-            if (RealInitializationResult is not { } result || result.Candidates.FirstOrDefault() is not { } c) return "Initialize-only ещё не выполнялся.";
-            var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? "локальный идентификатор скрыт";
+            if (RealInitializationResult is not { } result || result.Candidates.FirstOrDefault() is not { } c) return Localization.Get("VmRealInitializeNotPerformed");
+            var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? Localization.Get("VmWindowsEndpointLocalIdHidden");
             var requestedPeriod = c.RequestedPeriod100ns is { } period ? $"{period / 10000.0:0.##} мс" : "величина неизвестна";
             var initializeHr = c.FinalInitializeHr ?? c.FirstInitializeHr ?? "не наблюдался";
             var eventReady = c.EventHandleReady switch { true => "готовность подтверждена", false => "готовность не достигнута", null => "неизвестно" };
@@ -933,7 +933,7 @@ public sealed class MainViewModel : ViewModel
     }
     public bool RealInitializeConsentPending { get => _realInitializeConsentPending; private set { if (Set(ref _realInitializeConsentPending, value)) { Changed(nameof(RealInitializeConsentChecked)); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealInitializeDisabledReason)); ConfirmRealInitializeCommand.Refresh(); CancelRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
     public bool RealInitializeConsentChecked { get => _realInitializeConsentChecked; set { if (Set(ref _realInitializeConsentChecked, value)) ConfirmRealInitializeCommand.Refresh(); } }
-    public string RealInitializeConsentText => _pendingRealFormatCandidate is { } c && _pendingRealEndpointId is not null ? $"Exclusive Initialize временно резервирует выбранное устройство. Будет проверен только {_pendingRealDirection}, {c.Encoding}, {c.SampleRate} Гц, {c.Channels} канал(а), {c.Period}. Start и PCM не вызываются." : "Выберите точный результат поддерживаемого формата.";
+    public string RealInitializeConsentText => _pendingRealFormatCandidate is { } c && _pendingRealEndpointId is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializeConsentDescription"), _pendingRealDirection, c.Encoding, c.SampleRate, c.Channels, c.Period) : Localization.Get("VmRealInitializeSelectSupportedFormat");
     public bool HasSelectedWindowsEndpoint => SelectedWindowsEndpoint is not null;
     public string WindowsEndpointSearchText
     {

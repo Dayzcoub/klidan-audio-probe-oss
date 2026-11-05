@@ -535,4 +535,18 @@
   <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Выбор точной пары Capture/Render изменился; план периодов сброшен.</value></data>
   <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Обнаружение обновляется; прежний план периодов сброшен.</value></data>
   <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker отключён или изменил идентификатор сессии; план периодов сброшен.</value></data>
+  <data name="VmCustomRepeatabilityPlanMissing" xml:space="preserve"><value>После C4.2A выберите допустимый custom period.</value></data>
+  <data name="VmCustomRepeatabilityPlanRunCount" xml:space="preserve"><value>{0} последовательных запусков · {1}</value></data>
+  <data name="VmCustomRepeatabilityPlanTiming" xml:space="preserve"><value>5 секунд каждый · пауза {0} мс · MMCSS OFF</value></data>
+  <data name="VmCustomRepeatabilityPlanSafety" xml:space="preserve"><value>Данные Capture отбрасываются; Render передаёт только тишину; маршрутизации нет.</value></data>
+  <data name="VmCustomRepeatabilityResultMissing" xml:space="preserve"><value>Проверка custom-period repeatability ещё не завершена.</value></data>
+  <data name="VmRealFormatQueryNotRun" xml:space="preserve"><value>Реальный Exclusive-запрос не выполнялся.</value></data>
+  <data name="VmRealFormatHistoryStale" xml:space="preserve"><value>ИСТОРИЧЕСКИЙ РЕЗУЛЬТАТ · Worker, discovery или выбранный endpoint изменились.</value></data>
+  <data name="VmRealFormatQuerySummary" xml:space="preserve"><value>REAL_WASAPI_QUERY · уникальных форматов: {0}. IsFormatSupported вызывается один раз для каждого формата; периоды отдельно не запрашиваются.</value></data>
+  <data name="VmWindowsEndpointLocalIdHidden" xml:space="preserve"><value>Windows endpoint · локальный идентификатор скрыт</value></data>
+  <data name="VmRealFormatConflictHeader" xml:space="preserve"><value>INCOMPLETE/CONFLICT · Initialize-only заблокирован.</value></data>
+  <data name="VmRealFormatCandidateSelectForDetails" xml:space="preserve"><value>Выберите результат периода, чтобы увидеть HRESULT и технические сведения.</value></data>
+  <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only ещё не выполнялся.</value></data>
+  <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize временно резервирует выбранное устройство. Проверяется только направление {0}, {1}, {2} Гц, каналов: {3}, период {4}. Start и PCM не запускаются.</value></data>
+  <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Выберите точный результат поддерживаемого формата.</value></data>
 </root>

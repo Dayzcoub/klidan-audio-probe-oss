@@ -535,4 +535,18 @@
   <data name="VmPeriodPlanDiscardedPairChanged" xml:space="preserve"><value>Exact Capture/Render selection changed; period plan discarded.</value></data>
   <data name="VmPeriodPlanDiscardedDiscoveryUpdating" xml:space="preserve"><value>Discovery is refreshing; the previous period plan was discarded.</value></data>
   <data name="VmPeriodPlanDiscardedWorkerChanged" xml:space="preserve"><value>Worker disconnected or session identity changed; period plan discarded.</value></data>
+  <data name="VmCustomRepeatabilityPlanMissing" xml:space="preserve"><value>After C4.2A, select a valid custom period.</value></data>
+  <data name="VmCustomRepeatabilityPlanRunCount" xml:space="preserve"><value>{0} sequential runs · {1}</value></data>
+  <data name="VmCustomRepeatabilityPlanTiming" xml:space="preserve"><value>5 seconds each · {0} ms pause · MMCSS OFF</value></data>
+  <data name="VmCustomRepeatabilityPlanSafety" xml:space="preserve"><value>Capture data is discarded; Render sends silence only; no routing.</value></data>
+  <data name="VmCustomRepeatabilityResultMissing" xml:space="preserve"><value>Custom-period repeatability has not completed.</value></data>
+  <data name="VmRealFormatQueryNotRun" xml:space="preserve"><value>Real Exclusive query has not been run.</value></data>
+  <data name="VmRealFormatHistoryStale" xml:space="preserve"><value>HISTORICAL RESULT · Worker, discovery, or selected endpoint changed.</value></data>
+  <data name="VmRealFormatQuerySummary" xml:space="preserve"><value>REAL_WASAPI_QUERY · {0} unique formats. IsFormatSupported is called once per format; periods are not queried independently.</value></data>
+  <data name="VmWindowsEndpointLocalIdHidden" xml:space="preserve"><value>Windows endpoint · local identifier hidden</value></data>
+  <data name="VmRealFormatConflictHeader" xml:space="preserve"><value>INCOMPLETE/CONFLICT · Initialize-only is blocked.</value></data>
+  <data name="VmRealFormatCandidateSelectForDetails" xml:space="preserve"><value>Select a period result to view HRESULT and technical details.</value></data>
+  <data name="VmRealInitializeNotPerformed" xml:space="preserve"><value>Initialize-only has not been run.</value></data>
+  <data name="VmRealInitializeConsentDescription" xml:space="preserve"><value>Exclusive Initialize temporarily reserves the selected device. Only {0}, {1}, {2} Hz, {3} channel(s), {4} period will be checked. Start and PCM transfer will not be invoked.</value></data>
+  <data name="VmRealInitializeSelectSupportedFormat" xml:space="preserve"><value>Select an exact result for a supported format.</value></data>
 </root>
