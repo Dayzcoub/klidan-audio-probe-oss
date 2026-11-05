@@ -978,4 +978,34 @@
   <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>неизвестный путь</value></data>
   <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>состояние не подтверждено</value></data>
   <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Технические сведения отсутствуют.</value></data>
+  <data name="VmDeviceScanConsent" xml:space="preserve"><value>Устройство: {0} · {1}. Пассивный запрос существующей матрицы (44,1/48 кГц, PCM16/PCM24-in-32/Float32), затем до {2} Initialize-only проверок только для поддержанных 48 кГц PCM16 кандидатов (Capture: каналы 1/2; Render: канал 2). Потоки не запускаются, PCM не передаётся, звук не выводится. Initialize может временно занять Exclusive endpoint. Общий предел: {3} секунд. Stream, стабильность и Duplex не подтверждаются.</value></data>
+  <data name="VmDeviceScanResultSummary" xml:space="preserve"><value>{0} · 48 кГц PCM16: сообщено поддерживаемых {1}; Initialize успешно {2}, ошибки/неполные {3}; Stream: {4}; длительная Stability и Duplex: NOT_RUN.</value></data>
+  <data name="VmDeviceScanStreamObservations" xml:space="preserve"><value>принятых наблюдений {0}</value></data>
+  <data name="VmDeviceProfileSaved" xml:space="preserve"><value>Профиль schemaVersion {0} сохранён: {1}</value></data>
+  <data name="VmWorkerChannelSummary" xml:space="preserve"><value>{0} · {1} · {2} каналов потока</value></data>
+  <data name="VmWorkerFormatNotSelected" xml:space="preserve"><value>Топология формата не выбрана.</value></data>
+  <data name="VmEndpointCandidateLoopbackExcluded" xml:space="preserve"><value>Исключён: Loopback name hint</value></data>
+  <data name="VmEndpointCandidateInactive" xml:space="preserve"><value>Исключён: endpoint неактивен или ID недоступен</value></data>
+  <data name="VmEndpointCandidateCaptureExplicit" xml:space="preserve"><value>Явный выбор: FormFactor неизвестен или свойство недоступно</value></data>
+  <data name="VmEndpointCandidateCapture" xml:space="preserve"><value>Capture candidate</value></data>
+  <data name="VmEndpointCandidateRender" xml:space="preserve"><value>Render candidate</value></data>
+  <data name="VmEndpointCandidateUnknownDirection" xml:space="preserve"><value>Исключён: направление неизвестно</value></data>
+  <data name="VmDuplexConsent" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}
+48 кГц · stereo PCM16 · WASAPI Exclusive · {4} · до 5 секунд · MMCSS OFF. Оба endpoint будут открыты Exclusive. Capture packets будут прочитаны и отброшены; микрофонное аудио не сохраняется. Render отправляет только цифровую тишину. Нет Capture→Render маршрутизации или тестового тона. Отмена координирует Stop обеих сторон; при потере worker cleanup остаётся UNKNOWN.</value></data>
+  <data name="VmDuplexSelectActivePair" xml:space="preserve"><value>Выберите активные Capture и Render endpoints.</value></data>
+  <data name="VmRepeatabilityPlanEndpoints" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}</value></data>
+  <data name="VmRepeatabilityPlanFormat" xml:space="preserve"><value>48 кГц · {0} · {1} канала</value></data>
+  <data name="VmRepeatabilityPlanOrder" xml:space="preserve"><value>6 запусков · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT</value></data>
+  <data name="VmRepeatabilityPlanTimeLimit" xml:space="preserve"><value>5 секунд на операцию · 30 секунд общего активного аудио · MMCSS OFF</value></data>
+  <data name="VmRepeatabilityPlanWorkerSession" xml:space="preserve"><value>Worker session: {0} секунд lifetime, {1} секунд на операцию, {2} операций максимум</value></data>
+  <data name="VmRepeatabilityPlanSafetyLimits" xml:space="preserve"><value>Данные Capture отбрасываются; Render передаёт только цифровую тишину. Физическая RTL и активация AudioHost не проверяются.</value></data>
+  <data name="VmMeterWindowMissing" xml:space="preserve"><value>Нет завершённого окна</value></data>
+  <data name="VmMeterStale" xml:space="preserve"><value>Устарело · последнее наблюдение: окно {0}; остановка и cleanup неизвестны.</value></data>
+  <data name="VmMeterFinal" xml:space="preserve"><value>Финальные значения · окно {0}; качество и cleanup не подтверждались.</value></data>
+  <data name="VmMeterStopping" xml:space="preserve"><value>STOPPING · последние значения заморожены до терминального события; окно {0}.</value></data>
+  <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Окно {0} · наблюдалась цифровая тишина</value></data>
+  <data name="VmMeterDemoLive" xml:space="preserve"><value>Окно {0} · LIVE · ДЕМО · Данные симуляции</value></data>
+  <data name="VmWindowsChannelOption" xml:space="preserve"><value>Канал Windows {0}</value></data>
 </root>

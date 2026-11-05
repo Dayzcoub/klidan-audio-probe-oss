@@ -978,4 +978,34 @@ Profiles: {1}</value></data>
   <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>unknown path</value></data>
   <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>state unconfirmed</value></data>
   <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Technical details are unavailable.</value></data>
+  <data name="VmDeviceScanConsent" xml:space="preserve"><value>Device: {0} · {1}. Passively query the existing format matrix (44.1/48 kHz, PCM16/PCM24-in-32/Float32), then run up to {2} Initialize-only checks for supported 48 kHz PCM16 candidates only (Capture: channels 1/2; Render: channel 2). Streams will not start, PCM will not be transferred, and no sound will be played. Initialize may temporarily occupy the Exclusive endpoint. Total limit: {3} seconds. Stream, stability, and Duplex are not confirmed.</value></data>
+  <data name="VmDeviceScanResultSummary" xml:space="preserve"><value>{0} · 48 kHz PCM16: supported reported {1}; Initialize successful {2}, failed/incomplete {3}; Stream: {4}; long-term Stability and Duplex: NOT_RUN.</value></data>
+  <data name="VmDeviceScanStreamObservations" xml:space="preserve"><value>{0} observations accepted</value></data>
+  <data name="VmDeviceProfileSaved" xml:space="preserve"><value>Profile schemaVersion {0} saved: {1}</value></data>
+  <data name="VmWorkerChannelSummary" xml:space="preserve"><value>{0} · {1} · {2} stream channels</value></data>
+  <data name="VmWorkerFormatNotSelected" xml:space="preserve"><value>No format topology selected.</value></data>
+  <data name="VmEndpointCandidateLoopbackExcluded" xml:space="preserve"><value>Excluded: loopback name hint</value></data>
+  <data name="VmEndpointCandidateInactive" xml:space="preserve"><value>Excluded: endpoint inactive or ID unavailable</value></data>
+  <data name="VmEndpointCandidateCaptureExplicit" xml:space="preserve"><value>Explicit selection required: FormFactor unknown or property unavailable</value></data>
+  <data name="VmEndpointCandidateCapture" xml:space="preserve"><value>Capture candidate</value></data>
+  <data name="VmEndpointCandidateRender" xml:space="preserve"><value>Render candidate</value></data>
+  <data name="VmEndpointCandidateUnknownDirection" xml:space="preserve"><value>Excluded: direction unknown</value></data>
+  <data name="VmDuplexConsent" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}
+48 kHz · stereo PCM16 · WASAPI Exclusive · {4} · up to 5 seconds · MMCSS OFF. Both endpoints will be opened Exclusive. Capture packets will be read and discarded; microphone audio is not saved. Render sends digital silence only. No Capture→Render routing or test tone. Cancellation coordinates Stop on both sides; if Worker is lost, cleanup remains UNKNOWN.</value></data>
+  <data name="VmDuplexSelectActivePair" xml:space="preserve"><value>Select active Capture and Render endpoints.</value></data>
+  <data name="VmRepeatabilityPlanEndpoints" xml:space="preserve"><value>Capture: {0} · {1}
+Render: {2} · {3}</value></data>
+  <data name="VmRepeatabilityPlanFormat" xml:space="preserve"><value>48 kHz · {0} · {1} channels</value></data>
+  <data name="VmRepeatabilityPlanOrder" xml:space="preserve"><value>6 runs · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT</value></data>
+  <data name="VmRepeatabilityPlanTimeLimit" xml:space="preserve"><value>5 seconds per operation · 30 seconds total active audio · MMCSS OFF</value></data>
+  <data name="VmRepeatabilityPlanWorkerSession" xml:space="preserve"><value>Worker session: {0} s lifetime, {1} s per operation, at most {2} operations</value></data>
+  <data name="VmRepeatabilityPlanSafetyLimits" xml:space="preserve"><value>Capture data is discarded; Render sends digital silence. Physical RTL and AudioHost activation are excluded.</value></data>
+  <data name="VmMeterWindowMissing" xml:space="preserve"><value>No completed window</value></data>
+  <data name="VmMeterStale" xml:space="preserve"><value>Stale · last observation: window {0}; Stop and cleanup are unknown.</value></data>
+  <data name="VmMeterFinal" xml:space="preserve"><value>Final values · window {0}; quality and cleanup were not confirmed.</value></data>
+  <data name="VmMeterStopping" xml:space="preserve"><value>STOPPING · last values are frozen pending the terminal event; window {0}.</value></data>
+  <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Window {0} · digital silence observed</value></data>
+  <data name="VmMeterDemoLive" xml:space="preserve"><value>Window {0} · LIVE · DEMO · Simulated data</value></data>
+  <data name="VmWindowsChannelOption" xml:space="preserve"><value>Windows channel {0}</value></data>
 </root>

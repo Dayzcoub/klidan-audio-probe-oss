@@ -575,7 +575,7 @@ public sealed class MainViewModel : ViewModel
     public bool HasDeviceScanResult => _deviceScanResult is not null;
     public IReadOnlyList<RealFormatCandidateDto> DeviceScanInitializeCandidates => _deviceScanResult?.Initializations.SelectMany(r => r.Candidates).ToArray() ?? [];
     public string DeviceScanProgress => _deviceScanProgress;
-    public string DeviceScanConsentText => SelectedWindowsEndpoint is { } e ? $"Устройство: {e.FriendlyNameDisplay} · {e.Direction}. Пассивный запрос существующей матрицы (44,1/48 кГц, PCM16/PCM24-in-32/Float32), затем до {DeviceConfigurationScan.MaximumInitializeOperations} Initialize-only проверок только для поддержанных 48 кГц PCM16 кандидатов (Capture: каналы 1/2; Render: канал 2). Потоки не запускаются, PCM не передаётся, звук не выводится. Initialize может временно занять Exclusive endpoint. Общий предел: {DeviceConfigurationScan.MaximumDurationSeconds} секунд. Stream, стабильность и Duplex не подтверждаются." : Localization.Get("VmChooseActiveWindowsDevice");
+    public string DeviceScanConsentText => SelectedWindowsEndpoint is { } e ? string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanConsent"), e.FriendlyNameDisplay, e.Direction, DeviceConfigurationScan.MaximumInitializeOperations, DeviceConfigurationScan.MaximumDurationSeconds) : Localization.Get("VmChooseActiveWindowsDevice");
     public bool CanStartDeviceScan => CanUseSelectedWindowsEndpoint && WorkerState.State == WorkerConnectionState.ConnectedFake && _worker is not null && _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && _worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal) && !_realQueryRunning && !_realInitializeRunning && !_deviceScanRunning && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending;
     public string DeviceScanAvailabilityReason => CanStartDeviceScan ? Localization.Get("VmDeviceScanPlanBound") : WorkerState.State != WorkerConnectionState.ConnectedFake ? Localization.Get("VmConnectWorker") : !_windowsDiscoveryCurrent ? Localization.Get("VmRefreshWindowsDevices") : SelectedWindowsEndpoint is null ? Localization.Get("VmChooseCaptureOrRenderEndpoint") : SelectedWindowsEndpoint.DeviceState != "ACTIVE" ? Localization.Get("VmSelectedEndpointInactive") : !_worker!.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) || !_worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal) ? Localization.Get("VmWorkerOperationsUnsupported") : Localization.Get("VmWaitOrCancelPendingOperation");
     public string DeviceScanResultSummary
@@ -588,7 +588,7 @@ public sealed class MainViewModel : ViewModel
             var initialized = scan.Initializations.SelectMany(r => r.Candidates).Count(c => c.InitializeStatus is "INITIALIZED" or "READY");
             var failed = scan.Initializations.SelectMany(r => r.Candidates).Count(c => c.InitializeStatus is "FAILED" or "UNSUPPORTED" or "INCOMPLETE");
             var streamRuns = _streamValidations.Count(s => s.EndpointId == scan.EndpointId && s.Direction == scan.Direction);
-            return $"{scan.State} · 48 кГц PCM16: сообщено поддерживаемых {supported}; Initialize успешно {initialized}, ошибки/неполные {failed}; Stream: {(streamRuns == 0 ? "NOT_RUN" : $"принятых наблюдений {streamRuns}")}; длительная Stability и Duplex: NOT_RUN.";
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanResultSummary"), scan.State, supported, initialized, failed, streamRuns == 0 ? "NOT_RUN" : string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceScanStreamObservations"), streamRuns));
         }
     }
     public string DeviceScanTechnicalDetails => _deviceScanResult is not { } scan ? Localization.Get("VmDeviceScanDetailsMissing") : string.Join("\n", scan.Initializations.SelectMany(r => r.Candidates).Select(c => $"{c.Encoding} {c.SampleRate} Hz ch={c.Channels} {c.Period}: status={c.Status}; support={c.SupportStatus} IsFormatSupported={c.SupportHr ?? "unknown"}; Initialize={c.InitializeStatus} first={c.FirstInitializeHr ?? "unknown"}; alignment GetBufferSize={c.AlignmentGetBufferSizeHr ?? "not observed"}/{c.AlignmentFrames?.ToString() ?? "unknown"} frames, Activate={c.AlignmentActivateHr ?? "not observed"}, period100ns={c.AlignmentPeriod100ns?.ToString() ?? "unknown"}, Initialize={c.AlignmentInitializeHr ?? "not observed"}; final={c.FinalInitializeHr ?? "unknown"}; requestedPeriod100ns={c.RequestedPeriod100ns?.ToString() ?? "unknown"}; actualPeriod100ns={c.ActualPeriod100ns?.ToString() ?? "unknown"}; bufferFrames={c.ActualBufferFrames?.ToString() ?? "unknown"}; SetEventHandle={c.SetEventHandleHr ?? "not observed"}; eventReady={c.EventHandleReady?.ToString() ?? "unknown"}; cleanup={c.CleanupStatus}; releases={c.ClientReleaseAttempts}"));
@@ -609,7 +609,7 @@ public sealed class MainViewModel : ViewModel
         _savedStreamProfileVersion = profile.SchemaVersion;
         _savedStreamOperationIds = profile.StreamObservations.Select(s => s.OperationId).ToHashSet();
         _streamAttemptedSinceProfileSave = false;
-        _deviceProfileSaveMessage = $"Профиль schemaVersion {profile.SchemaVersion} сохранён: {path}";
+        _deviceProfileSaveMessage = string.Format(Localization.CurrentCulture, Localization.Get("VmDeviceProfileSaved"), profile.SchemaVersion, path);
         Changed(nameof(DeviceProfileSaveMessage)); Changed(nameof(StreamEvidencePersistenceStatus));
     }
     public bool HasOperatorQueryResult => RealFormatMatrix is not null && RealInitializationResult is null && _realFormatError is null;
@@ -659,13 +659,13 @@ public sealed class MainViewModel : ViewModel
     public ReportDto? SelectedReport { get => _selectedReport; set { if (Set(ref _selectedReport, value)) RefreshContext(); } }
     public SessionDto? Session { get => _session; private set { if (value is not null && _session?.Id != value.Id) { _captureBank = 0; Changed(nameof(CaptureChannelBank)); } if (Set(ref _session, value)) { Changed(nameof(IsRunning)); Changed(nameof(CaptureChannelBanks)); Changed(nameof(VisibleMeterChannels)); Changed(nameof(MeterStatusText)); RefreshContext(); RefreshCanExecute(); } } }
     public MeterSnapshotDto? Meter { get => _meter; private set { if (Set(ref _meter, value)) { Changed(nameof(MeterStatusText)); Changed(nameof(VisibleMeterChannels)); RefreshContext(); } } }
-    public string MeterStatusText => Meter is null || !Meter.IsCompleteWindow ? "Нет завершённого окна" : Session?.Lifecycle switch
+    public string MeterStatusText => Meter is null || !Meter.IsCompleteWindow ? Localization.Get("VmMeterWindowMissing") : Session?.Lifecycle switch
     {
-        SessionLifecycle.Unknown => $"Устарело · последнее наблюдение: окно {Meter.Sequence}; остановка и cleanup неизвестны.",
-        SessionLifecycle.Stopped or SessionLifecycle.Completed or SessionLifecycle.Failed => $"Финальные значения · окно {Meter.Sequence}; качество и cleanup не подтверждались.",
-        SessionLifecycle.Stopping => $"STOPPING · последние значения заморожены до терминального события; окно {Meter.Sequence}.",
-        _ when Meter.Channels.All(c => c.Silent == true) => $"Окно {Meter.Sequence} · наблюдалась цифровая тишина",
-        _ => $"Окно {Meter.Sequence} · LIVE · ДЕМО · Данные симуляции"
+        SessionLifecycle.Unknown => string.Format(Localization.CurrentCulture, Localization.Get("VmMeterStale"), Meter.Sequence),
+        SessionLifecycle.Stopped or SessionLifecycle.Completed or SessionLifecycle.Failed => string.Format(Localization.CurrentCulture, Localization.Get("VmMeterFinal"), Meter.Sequence),
+        SessionLifecycle.Stopping => string.Format(Localization.CurrentCulture, Localization.Get("VmMeterStopping"), Meter.Sequence),
+        _ when Meter.Channels.All(c => c.Silent == true) => string.Format(Localization.CurrentCulture, Localization.Get("VmMeterDigitalSilence"), Meter.Sequence),
+        _ => string.Format(Localization.CurrentCulture, Localization.Get("VmMeterDemoLive"), Meter.Sequence)
     };
     public string Notice { get => _notice; private set => Set(ref _notice, value); }
     public bool ConfirmPending { get => _confirmPending; private set { if (Set(ref _confirmPending, value)) { ConfirmCommand.Refresh(); CancelConfirmationCommand.Refresh(); BeginCommand.Refresh(); } } }
@@ -675,17 +675,17 @@ public sealed class MainViewModel : ViewModel
     public int DurationSeconds { get => _durationSeconds; set { if (DurationOptions.Any(o => o.Value == value) && Set(ref _durationSeconds, value)) RefreshContext(); } }
     public int RenderChannelBank { get => _renderBank; set { if (value >= 0 && value < RenderChannelBanks.Count && Set(ref _renderBank, value)) { Changed(nameof(RenderChannelOptions)); RefreshContext(); } } }
     public int CaptureChannelBank { get => _captureBank; set { if (value >= 0 && value < CaptureChannelBanks.Count && Set(ref _captureBank, value)) Changed(nameof(VisibleMeterChannels)); } }
-    public IReadOnlyList<SelectionOption> CaptureChannelBanks => Enumerable.Range(0, Math.Max(1, ((Session?.ChannelCount ?? SelectedCaptureEndpoint?.Topology?.ChannelCount ?? SelectedCaptureEndpoint?.Channels ?? 2) + 7) / 8)).Select(bank => new SelectionOption(bank, $"Каналы {bank * 8 + 1}–{Math.Min(bank * 8 + 8, Session?.ChannelCount ?? SelectedCaptureEndpoint?.Topology?.ChannelCount ?? SelectedCaptureEndpoint?.Channels ?? 2)}")).ToArray();
+    public IReadOnlyList<SelectionOption> CaptureChannelBanks => Enumerable.Range(0, Math.Max(1, ((Session?.ChannelCount ?? SelectedCaptureEndpoint?.Topology?.ChannelCount ?? SelectedCaptureEndpoint?.Channels ?? 2) + 7) / 8)).Select(bank => new SelectionOption(bank, string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterBankRange"), bank * 8 + 1, Math.Min(bank * 8 + 8, Session?.ChannelCount ?? SelectedCaptureEndpoint?.Topology?.ChannelCount ?? SelectedCaptureEndpoint?.Channels ?? 2)))).ToArray();
     public IReadOnlyList<MeterChannelDto> VisibleMeterChannels => Meter?.Channels.Where(c => c.Channel > _captureBank * 8 && c.Channel <= _captureBank * 8 + 8).ToArray() ?? [];
-    public IReadOnlyList<SelectionOption> RenderChannelBanks => Enumerable.Range(0, Math.Max(1, ((SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) + 7) / 8)).Select(bank => new SelectionOption(bank, $"Каналы {bank * 8 + 1}–{Math.Min(bank * 8 + 8, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2)}")).ToArray();
-    public IReadOnlyList<SelectionOption> RenderChannelOptions => Enumerable.Range(_renderBank * 8 + 1, Math.Min(8, Math.Max(1, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) - _renderBank * 8)).Select(i => new SelectionOption(i, $"Канал Windows {i}")).ToArray();
+    public IReadOnlyList<SelectionOption> RenderChannelBanks => Enumerable.Range(0, Math.Max(1, ((SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) + 7) / 8)).Select(bank => new SelectionOption(bank, string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerMeterBankRange"), bank * 8 + 1, Math.Min(bank * 8 + 8, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2)))).ToArray();
+    public IReadOnlyList<SelectionOption> RenderChannelOptions => Enumerable.Range(_renderBank * 8 + 1, Math.Min(8, Math.Max(1, SelectedRenderEndpoint?.Topology?.ChannelCount ?? SelectedRenderEndpoint?.Channels ?? 2) - _renderBank * 8)).Select(i => new SelectionOption(i, string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsChannelOption"), i))).ToArray();
     public WorkerStateDto WorkerState { get; private set; } = new(WorkerConnectionState.Disconnected, "Worker не запускался.");
     public IReadOnlyList<WorkerEndpointDto> WorkerEndpoints { get => _workerEndpoints; private set => Set(ref _workerEndpoints, value); }
     public WorkerEndpointDto? SelectedWorkerEndpoint { get => _selectedWorkerEndpoint; set { if (value is not null && !WorkerEndpoints.Contains(value)) return; if (Set(ref _selectedWorkerEndpoint, value)) { _selectedWorkerFormat = value?.FormatTopologies?.FirstOrDefault(); _workerRenderChannel = 1; Changed(nameof(SelectedWorkerFormat)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelCount)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(WorkerRenderChannelVisible)); Changed(nameof(WorkerRenderChannel)); Changed(nameof(WorkerRenderChannelOptions)); RefreshWorkerCommands(); } } }
     public FormatTopologyDto? SelectedWorkerFormat { get => _selectedWorkerFormat; set { if (value is not null && !WorkerFormatOptions.Contains(value)) return; if (Set(ref _selectedWorkerFormat, value)) { if (_workerRenderChannel < 1 || _workerRenderChannel > WorkerChannelCount) _workerRenderChannel = 1; Changed(nameof(WorkerChannelCount)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(WorkerRenderChannel)); Changed(nameof(WorkerRenderChannelOptions)); RefreshWorkerCommands(); } } }
     public IReadOnlyList<FormatTopologyDto> WorkerFormatOptions => SelectedWorkerEndpoint?.FormatTopologies ?? [];
     public int WorkerChannelCount => SelectedWorkerFormat?.Topology.ChannelCount ?? 0;
-    public string WorkerChannelSummary => SelectedWorkerEndpoint is { } endpoint && WorkerChannelCount > 0 ? $"{endpoint.Direction} · {SelectedWorkerFormat!.FormatId} · {WorkerChannelCount} каналов потока" : "Топология формата не выбрана.";
+    public string WorkerChannelSummary => SelectedWorkerEndpoint is { } endpoint && WorkerChannelCount > 0 ? string.Format(Localization.CurrentCulture, Localization.Get("VmWorkerChannelSummary"), endpoint.Direction, SelectedWorkerFormat!.FormatId, WorkerChannelCount) : Localization.Get("VmWorkerFormatNotSelected");
     public bool WorkerRenderChannelVisible => SelectedWorkerEndpoint?.Direction == "RENDER";
     public bool WorkerCurrentEndpointsVisible => WorkerState.State == WorkerConnectionState.ConnectedFake;
     public IReadOnlyList<WorkerEndpointDto> LastWorkerEndpointSnapshot { get => _lastWorkerEndpointSnapshot; private set { if (Set(ref _lastWorkerEndpointSnapshot, value)) { Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); } } }
@@ -782,10 +782,10 @@ public sealed class MainViewModel : ViewModel
     }
     private static string EndpointCandidateReason(WindowsEndpointDto endpoint)
     {
-        if (endpoint.Direction == "CAPTURE" && PhysicalDeviceGrouping.IsLoopbackEndpoint(endpoint)) return "Исключён: Loopback name hint";
-        if (!PhysicalDeviceGrouping.IsActiveEndpoint(endpoint)) return "Исключён: endpoint неактивен или ID недоступен";
-        if (endpoint.Direction == "CAPTURE" && !PhysicalDeviceGrouping.IsEligibleCapture(endpoint)) return "Явный выбор: FormFactor неизвестен или свойство недоступно";
-        return endpoint.Direction == "CAPTURE" ? "Capture candidate" : endpoint.Direction == "RENDER" ? "Render candidate" : "Исключён: направление неизвестно";
+        if (endpoint.Direction == "CAPTURE" && PhysicalDeviceGrouping.IsLoopbackEndpoint(endpoint)) return Localization.Get("VmEndpointCandidateLoopbackExcluded");
+        if (!PhysicalDeviceGrouping.IsActiveEndpoint(endpoint)) return Localization.Get("VmEndpointCandidateInactive");
+        if (endpoint.Direction == "CAPTURE" && !PhysicalDeviceGrouping.IsEligibleCapture(endpoint)) return Localization.Get("VmEndpointCandidateCaptureExplicit");
+        return Localization.Get(endpoint.Direction == "CAPTURE" ? "VmEndpointCandidateCapture" : endpoint.Direction == "RENDER" ? "VmEndpointCandidateRender" : "VmEndpointCandidateUnknownDirection");
     }
     public WindowsEndpointDto? SelectedDuplexCaptureEndpoint { get => _selectedDuplexCapture; set => SetDuplexEndpoint(ref _selectedDuplexCapture, value, true); }
     public WindowsEndpointDto? SelectedDuplexRenderEndpoint { get => _selectedDuplexRender; set => SetDuplexEndpoint(ref _selectedDuplexRender, value, false); }
@@ -793,7 +793,7 @@ public sealed class MainViewModel : ViewModel
     public bool DuplexConsentChecked { get => _duplexConsentChecked; set { if (Set(ref _duplexConsentChecked, value)) ConfirmDuplexValidationCommand.Refresh(); } }
     public bool DuplexValidationRunning => _duplexValidationRunning;
     public string DuplexStatus => _duplexStatus;
-    public string DuplexConsentText => SelectedDuplexCaptureEndpoint is { } c && SelectedDuplexRenderEndpoint is { } r && _pendingDuplexPeriod is { } p ? $"Capture: {c.FriendlyNameDisplay} · {c.EndpointId}\nRender: {r.FriendlyNameDisplay} · {r.EndpointId}\n48 кГц · stereo PCM16 · WASAPI Exclusive · {p} · до 5 секунд · MMCSS OFF. Оба endpoint будут открыты Exclusive. Capture packets будут прочитаны и отброшены; микрофонное аудио не сохраняется. Render отправляет только цифровую тишину. Нет Capture→Render маршрутизации или тестового тона. Отмена координирует Stop обеих сторон; при потере worker cleanup остаётся UNKNOWN." : "Выберите активные Capture и Render endpoints.";
+    public string DuplexConsentText => SelectedDuplexCaptureEndpoint is { } c && SelectedDuplexRenderEndpoint is { } r && _pendingDuplexPeriod is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexConsent"), c.FriendlyNameDisplay, c.EndpointId, r.FriendlyNameDisplay, r.EndpointId, p) : Localization.Get("VmDuplexSelectActivePair");
     public IReadOnlyList<DuplexCandidateAssessment> DuplexAssessments => _duplexValidations.Values.Select(v => DeviceConfigurationEvaluator.Evaluate(v.Report.GetProperty("requested").GetProperty("period").GetString()!, v.Report, v.CaptureEndpointId, v.RenderEndpointId, v.Report.GetProperty("requested").GetProperty("mmcss").GetString()!)).OrderBy(x => x.Period == "MINIMUM" ? 0 : 1).ToArray();
     public IReadOnlyList<DuplexResultCard> DuplexResultCards => [DeviceConfigurationEvaluator.ProjectCard("MINIMUM", _duplexValidations.GetValueOrDefault("MINIMUM")), DeviceConfigurationEvaluator.ProjectCard("DEFAULT", _duplexValidations.GetValueOrDefault("DEFAULT"))];
     public DuplexRecommendation DuplexRecommendation => DeviceConfigurationEvaluator.Recommend(DuplexAssessments);
@@ -827,12 +827,12 @@ public sealed class MainViewModel : ViewModel
     public string DuplexRepeatabilityAvailabilityReason => DuplexRepeatabilityReadiness.Reason;
     public string DuplexRepeatabilityPlanText => _duplexRepeatabilityPreparation is not { } preparation
         ? Localization.Get("VmRepeatabilitySelectExactEndpoints")
-        : $"Capture: {preparation.Plan.Target.Capture!.FriendlyNameDisplay} · {preparation.Plan.Target.Capture.EndpointId}\nRender: {preparation.Plan.Target.Render!.FriendlyNameDisplay} · {preparation.Plan.Target.Render.EndpointId}\n" +
-          $"48 кГц · {preparation.WorkerPlan.Formats.Single().Encoding} · {preparation.WorkerPlan.Formats.Single().Channels} канала\n" +
-          "6 запусков · MINIMUM → DEFAULT → MINIMUM → DEFAULT → MINIMUM → DEFAULT\n" +
-          $"5 секунд на операцию · 30 секунд общего активного аудио · MMCSS OFF\n" +
-          $"Worker session: {preparation.WorkerPlan.LifetimeSeconds} секунд lifetime, {preparation.WorkerPlan.MaximumOperationDurationSeconds} секунд на операцию, {preparation.WorkerPlan.MaximumOperationCount} операций максимум\n" +
-          "Capture data discarded; Render sends digital silence. Physical RTL excluded. AudioHost activation excluded.";
+        : string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanEndpoints"), preparation.Plan.Target.Capture!.FriendlyNameDisplay, preparation.Plan.Target.Capture.EndpointId, preparation.Plan.Target.Render!.FriendlyNameDisplay, preparation.Plan.Target.Render.EndpointId) + "\n" +
+          string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanFormat"), preparation.WorkerPlan.Formats.Single().Encoding, preparation.WorkerPlan.Formats.Single().Channels) + "\n" +
+          Localization.Get("VmRepeatabilityPlanOrder") + "\n" +
+          Localization.Get("VmRepeatabilityPlanTimeLimit") + "\n" +
+          string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanWorkerSession"), preparation.WorkerPlan.LifetimeSeconds, preparation.WorkerPlan.MaximumOperationDurationSeconds, preparation.WorkerPlan.MaximumOperationCount) + "\n" +
+          Localization.Get("VmRepeatabilityPlanSafetyLimits");
     public string DuplexRepeatabilityResultText => _duplexRepeatabilityResult is not { } result ? Localization.Get("VmRepeatabilityResultMissing") : $"{result.Summary}\n{Localization.Get("VmReportLabel")}: {result.ReportPath ?? Localization.Get("VmNotSaved")}\nPersistence: {result.PersistenceStatus ?? Localization.Get("VmNotConfirmed")}{(result.PersistenceError is null ? "" : $" · {result.PersistenceError}")}";
     public bool PeriodDiscoveryConsentPending => _periodDiscoveryConsentPending;
     public bool PeriodDiscoveryConsentChecked { get => _periodDiscoveryConsentChecked; set { if (Set(ref _periodDiscoveryConsentChecked, value)) ConfirmPeriodDiscoveryCommand.Refresh(); } }
