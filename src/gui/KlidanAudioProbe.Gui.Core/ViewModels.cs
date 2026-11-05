@@ -409,7 +409,7 @@ public sealed class MainViewModel : ViewModel
     public string OperatorResultProfileEvidenceNote => _streamValidations.Count == 0
         ? Localization.Get("VmOperatorProfileEvidenceNoStreams")
         : Localization.Get("VmOperatorProfileEvidenceWithStreams");
-    public string OperatorResultDetails => _realInitializationError ?? _realFormatError ?? (RealInitializationResult is not null ? RealInitializationSummary : RealFormatMatrix is not null ? $"{RealFormatMatrixStatus}\n{_operatorResultEndpoint}\nКонфигурация: {_operatorResultConfiguration}\nУникальных форматов: {RealFormatRows.Count}. Поддержка драйвера не является Initialize или запуском аудио." : "Реальный запрос ещё не выполнялся.");
+    public string OperatorResultDetails => _realInitializationError ?? _realFormatError ?? (RealInitializationResult is not null ? RealInitializationSummary : RealFormatMatrix is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorResultDetails"), RealFormatMatrixStatus, _operatorResultEndpoint, _operatorResultConfiguration, RealFormatRows.Count) : Localization.Get("VmOperatorQueryNotRun"));
     public string OperatorResultProvenance => _operatorResultProvenance;
     public bool DeviceScanConsentPending { get => _deviceScanConsentPending; private set { if (Set(ref _deviceScanConsentPending, value)) { Changed(nameof(DeviceScanConsentText)); ConfirmDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
     public bool DeviceScanConsentChecked { get => _deviceScanConsentChecked; set { if (Set(ref _deviceScanConsentChecked, value)) ConfirmDeviceScanCommand.Refresh(); } }
@@ -425,7 +425,7 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
-            if (_streamValidationRows.Values.Any(r => r.FinalStatus == "RUNNING")) return $"Stream: RUNNING; принятых наблюдений {_streamValidations.Count}; текущая попытка ещё не сохранена.";
+            if (_streamValidationRows.Values.Any(r => r.FinalStatus == "RUNNING")) return string.Format(Localization.CurrentCulture, Localization.Get("VmStreamEvidenceRunningSummary"), _streamValidations.Count);
             if (_streamValidations.Count == 0)
             {
                 var attempt = _lastStreamAttemptPeriod is { } lastPeriod ? _streamValidationRows[lastPeriod] : null;
@@ -473,7 +473,7 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<AutomaticScanProgressRow> AutomaticScanProgressRows => _automaticScanProgressRows;
     public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{s.Stage}: {s.State} · {s.Message}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
     public string AutomaticScanCandidateSummary => _automaticScanResult is { } result
-        ? $"Кандидаты: {result.CandidateInventory.Count}; для теста {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.SUPPORTED_FOR_TEST)}; Initialize accepted {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.INITIALIZE_ACCEPTED)}; not tested {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.NOT_TESTED)}; UNKNOWN {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.UNKNOWN)}."
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanCandidatesSummary"), result.CandidateInventory.Count, result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.SUPPORTED_FOR_TEST), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.INITIALIZE_ACCEPTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.NOT_TESTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.UNKNOWN))
         : Localization.Get("VmAutomaticScanCandidatesAwaitQuery");
     public string AutomaticScanStatus => _automaticScanStatus;
     public string AutomaticScanAvailabilityReason
@@ -496,22 +496,22 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
-            if (_automaticScanPreparation is not { } prepared) return "План ещё не подготовлен.";
+            if (_automaticScanPreparation is not { } prepared) return Localization.Get("VmAutomaticScanPlanMissing");
             var target = prepared.Plan.Target;
             var endpoints = new List<string>();
             if (target.Capture is { } capture) endpoints.Add($"Capture: {capture.FriendlyNameDisplay} · ID {capture.EndpointId}");
             if (target.Render is { } render) endpoints.Add($"Render: {render.FriendlyNameDisplay} · ID {render.EndpointId}");
             var operations = string.Join(", ", prepared.WorkerPlan.AllowedOperations.Select(ScanCommandLabel));
-            var active = prepared.MaximumActiveSeconds == 0 ? "активное время потоков: 0 с (недоступно)" : $"суммарное активное время: не более {prepared.MaximumActiveSeconds} с";
-            var identity = prepared.PairPhysicalIdentityUnconfirmed ? "Общая физическая принадлежность Capture/Render не подтверждена; пара выбрана оператором явно." : "Физическая принадлежность пары ограничена текущей проверкой Windows identity.";
-            var stages = prepared.StagedPlan is { } staged ? string.Join(", ", staged.Stages.Select(s => $"{s.Stage}={s.State}")) : "стадийный план будет сохранён в результате";
-            return $"{string.Join("\n", endpoints)}\n{identity}\nОперации: {operations}. Формат-кандидат: 48 кГц PCM16, периоды MINIMUM, DEFAULT и подтверждённые CUSTOM; MMCSS OFF и PRO_AUDIO проверяются раздельно. Sustained режим: {AutomaticSustainedMode}. {active}; общий лимит плана: не более {prepared.MaximumTotalOperations} операций, wall-clock bound не более {prepared.MaximumWallClockSeconds} с. Worker session: до {prepared.WorkerPlan.LifetimeSeconds} с, не более {prepared.WorkerPlan.MaximumOperationCount} операций за batch. Стадии: {stages}. Exclusive доступ может временно прервать другие приложения. Capture пакеты только считываются и отбрасываются; записи PCM нет. Render передаёт только цифровую тишину. Нет физической маршрутизации, тестового тона или RTL. Неотвечающий драйвер может оставить исход операции UNKNOWN.";
+            var active = prepared.MaximumActiveSeconds == 0 ? Localization.Get("VmAutomaticScanActiveUnavailable") : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanActiveBound"), prepared.MaximumActiveSeconds);
+            var identity = Localization.Get(prepared.PairPhysicalIdentityUnconfirmed ? "VmAutomaticScanIdentityUnconfirmed" : "VmAutomaticScanIdentityCurrent");
+            var stages = prepared.StagedPlan is { } staged ? string.Join(", ", staged.Stages.Select(s => $"{s.Stage}={s.State}")) : Localization.Get("VmAutomaticScanStagesSaved");
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConsentSummary"), string.Join("\n", endpoints), identity, operations, AutomaticSustainedMode, active, prepared.MaximumTotalOperations, prepared.MaximumWallClockSeconds, prepared.WorkerPlan.LifetimeSeconds, prepared.WorkerPlan.MaximumOperationCount, stages);
         }
     }
-    public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? $"СКАНИРОВАНИЕ · {_automaticScanStatus}" :
-        _automaticScanOutcomeUnknown && _automaticScanAttempted ? $"НЕИЗВЕСТНО · {_automaticScanStatus}" :
+    public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
+        _automaticScanOutcomeUnknown && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) :
         _automaticScanResult is { } result ? $"{ScanLifecycleLabel(result.Lifecycle)} · {result.Summary}" :
-        _automaticScanAttempted ? $"НЕИЗВЕСТНО · {_automaticScanStatus}" : Localization.Get("VmAutomaticScanResultMissing");
+        _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) : Localization.Get("VmAutomaticScanResultMissing");
     public string AutomaticScanResultHeadline => _automaticScanResult?.Lifecycle switch
     {
         ScanRunLifecycle.Completed => Localization.Get("VmAutomaticScanCompleted"),
@@ -523,15 +523,15 @@ public sealed class MainViewModel : ViewModel
     } ?? (_automaticScanOutcomeUnknown && _automaticScanAttempted ? Localization.Get("VmAutomaticScanOutcomeUnknown") : Localization.Get("VmAutomaticScanResultMissing"));
     public string AutomaticScanResultDevice => SelectedPhysicalDeviceGroup?.DisplayName ?? (_automaticScanResult is not { } result ? OperatorSelectedDevice :
         string.Join(" + ", new[] { result.Target.Capture?.FriendlyNameDisplay, result.Target.Render?.FriendlyNameDisplay }.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal)));
-    public string AutomaticScanRecommendationText => _automaticScanResult is not { } result ? "Рекомендация отсутствует." : result.Recommendation.Preferred is { } preferred
-        ? $"Выбор {result.Recommendation.Scope}: {preferred.Period} · {preferred.SampleRate / 1000} кГц {preferred.Encoding} · {preferred.CaptureBufferFrames}/{preferred.RenderBufferFrames} frames · MMCSS {preferred.Mmcss} · {preferred.DurationSeconds} с · {preferred.Confidence}. Запасной: {(result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE")}. AudioHost: NOT_CERTIFIED. {string.Join(" ", result.Recommendation.Reasons)}"
-        : $"Финальная конфигурация не выбрана. {string.Join(" ", result.Recommendation.Reasons)} AudioHost: NOT_CERTIFIED.";
-    public string AutomaticScanPhysicalLatencyText => "Не измерена";
+    public string AutomaticScanRecommendationText => _automaticScanResult is not { } result ? Localization.Get("VmAutomaticScanRecommendationMissing") : result.Recommendation.Preferred is { } preferred
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons))
+        : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons));
+    public string AutomaticScanPhysicalLatencyText => Localization.Get("VmAutomaticScanLatencyNotMeasured");
     public string AutomaticScanResultProvenance
     {
         get
         {
-            if (_automaticScanResult is not { } result) return _automaticScanAttempted ? "Исход Worker не подтверждён." : "Данные отсутствуют.";
+            if (_automaticScanResult is not { } result) return _automaticScanAttempted ? Localization.Get("VmAutomaticScanWorkerOutcomeUnconfirmed") : Localization.Get("VmAutomaticScanDataMissing");
             var provenances = result.Evidence.SelectMany(e => new[]
             {
                 e.FormatMatrix?.Provenance,
@@ -546,18 +546,18 @@ public sealed class MainViewModel : ViewModel
     public string AutomaticScanPersistenceText => _automaticScanResult is null
         ? _automaticScanOutcomeUnknown ? Localization.Get("VmAutomaticScanSaveUnknown") : _automaticScanAttempted ? Localization.Get("VmAutomaticScanSaveUnconfirmed") : Localization.Get("VmAutomaticScanReportNotSaved")
         : _automaticScanResult.Persistence is not { } saved ? Localization.Get("VmAutomaticScanReportNotSaved") : saved.Status == "SAVE_FAILED"
-            ? $"SAVE_FAILED · сводка не сохранена: {saved.Error ?? "причина недоступна"}"
+            ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanPersistenceFailed"), saved.Error ?? Localization.Get("VmAutomaticScanErrorUnavailable"))
             : saved.Status == "SUMMARY_SAVED_PROFILE_FAILED"
-                ? $"Сводка сохранена, но профиль не сформирован: {saved.SummaryPath ?? "неизвестный путь"}\nПричина: {saved.Error ?? "причина недоступна"}"
+                ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanProfileNotCreated"), saved.SummaryPath ?? Localization.Get("VmAutomaticScanPathUnknown"), saved.Error ?? Localization.Get("VmAutomaticScanErrorUnavailable"))
             : saved.Status == "SAVED_AND_RELOADED"
-                ? $"Сводка и профиль сохранены и перечитаны: {saved.SummaryPath ?? "неизвестный путь"}\nПрофили: {(saved.ProfilePaths.Count == 0 ? "профиль не сформирован" : string.Join("\n", saved.ProfilePaths))}"
-            : $"Сохранение: {saved.Status} · {saved.Error ?? "состояние не подтверждено"}";
+                ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanSavedAndReloaded"), saved.SummaryPath ?? Localization.Get("VmAutomaticScanPathUnknown"), saved.ProfilePaths.Count == 0 ? Localization.Get("VmAutomaticScanProfileNotCreatedShort") : string.Join("\n", saved.ProfilePaths))
+            : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanSaveStatus"), saved.Status, saved.Error ?? Localization.Get("VmAutomaticScanStateUnconfirmed"));
     public string AutomaticScanTechnicalDetails
     {
         get
         {
             if (_automaticScanResult is not { } result)
-                return _automaticScanAttempted ? _automaticScanStatus : "Технические сведения отсутствуют.";
+                return _automaticScanAttempted ? _automaticScanStatus : Localization.Get("VmAutomaticScanTechnicalDetailsMissing");
             var lines = result.Operations.Select(o => $"{o.Operation.Stage} · {o.Lifecycle} · {o.Operation.OperationId} · {o.Operation.EndpointId ?? "PAIR"} · cleanup={o.CleanupStatus} · {o.Message}").ToList();
             if (result.PeriodDiscoveryDiagnostics is { } diagnostics)
             {

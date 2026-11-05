@@ -943,4 +943,39 @@
   <data name="VmWorkerConsentMissing" xml:space="preserve"><value>Нет настроек для подтверждения.</value></data>
   <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} каналов · топология {4} · период {5} · MMCSS {6} · {7} с · канал Windows {8} · {9}</value></data>
   <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Неизвестно: сессия ещё не принята worker.</value></data>
+  <data name="VmOperatorResultDetails" xml:space="preserve"><value>{0}
+{1}
+Конфигурация: {2}
+Уникальных форматов: {3}. Поддержка драйвера не является Initialize или запуском аудио.</value></data>
+  <data name="VmOperatorQueryNotRun" xml:space="preserve"><value>Реальный запрос ещё не выполнялся.</value></data>
+  <data name="VmStreamEvidenceRunningSummary" xml:space="preserve"><value>Stream: RUNNING; принятых наблюдений {0}; текущая попытка ещё не сохранена.</value></data>
+  <data name="VmAutomaticScanCandidatesSummary" xml:space="preserve"><value>Кандидаты: {0}; для теста {1}; Initialize accepted {2}; not tested {3}; UNKNOWN {4}.</value></data>
+  <data name="VmAutomaticScanPlanMissing" xml:space="preserve"><value>План ещё не подготовлен.</value></data>
+  <data name="VmAutomaticScanActiveUnavailable" xml:space="preserve"><value>Активное время потоков: 0 с (недоступно)</value></data>
+  <data name="VmAutomaticScanActiveBound" xml:space="preserve"><value>Суммарное активное время: не более {0} с</value></data>
+  <data name="VmAutomaticScanIdentityUnconfirmed" xml:space="preserve"><value>Общая физическая принадлежность Capture/Render не подтверждена; пара выбрана оператором явно.</value></data>
+  <data name="VmAutomaticScanIdentityCurrent" xml:space="preserve"><value>Физическая принадлежность пары ограничена текущей проверкой Windows identity.</value></data>
+  <data name="VmAutomaticScanStagesSaved" xml:space="preserve"><value>Стадийный план будет сохранён в результате.</value></data>
+  <data name="VmAutomaticScanConsentSummary" xml:space="preserve"><value>{0}
+{1}
+Операции: {2}. Формат-кандидат: 48 кГц PCM16, периоды MINIMUM, DEFAULT и подтверждённые CUSTOM; MMCSS OFF и PRO_AUDIO проверяются раздельно. Sustained режим: {3}. {4}; общий лимит плана: не более {5} операций и {6} с wall-clock. Worker session: до {7} с и не более {8} операций за batch. Стадии: {9}. Exclusive доступ может временно прервать другие приложения. Capture пакеты только считываются и отбрасываются; записи PCM нет. Render передаёт только цифровую тишину. Нет физической маршрутизации, тестового тона или RTL. Неотвечающий драйвер может оставить исход операции UNKNOWN.</value></data>
+  <data name="VmAutomaticScanResultScanning" xml:space="preserve"><value>СКАНИРОВАНИЕ · {0}</value></data>
+  <data name="VmAutomaticScanResultUnknown" xml:space="preserve"><value>UNKNOWN · {0}</value></data>
+  <data name="VmAutomaticScanRecommendationMissing" xml:space="preserve"><value>Рекомендация отсутствует.</value></data>
+  <data name="VmAutomaticScanRecommendationSelected" xml:space="preserve"><value>Выбор {0}: {1} · {2} кГц {3} · {4}/{5} frames · MMCSS {6} · {7} с · {8}. Запасной: {9}. AudioHost: NOT_CERTIFIED. {10}</value></data>
+  <data name="VmAutomaticScanFinalConfigurationMissing" xml:space="preserve"><value>Финальная конфигурация не выбрана. {0} AudioHost: NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanLatencyNotMeasured" xml:space="preserve"><value>Не измерена</value></data>
+  <data name="VmAutomaticScanWorkerOutcomeUnconfirmed" xml:space="preserve"><value>Исход Worker не подтверждён.</value></data>
+  <data name="VmAutomaticScanDataMissing" xml:space="preserve"><value>Данные отсутствуют.</value></data>
+  <data name="VmAutomaticScanPersistenceFailed" xml:space="preserve"><value>SAVE_FAILED · сводка не сохранена: {0}</value></data>
+  <data name="VmAutomaticScanProfileNotCreated" xml:space="preserve"><value>Сводка сохранена, но профиль не сформирован: {0}
+Причина: {1}</value></data>
+  <data name="VmAutomaticScanSavedAndReloaded" xml:space="preserve"><value>Сводка и профиль сохранены и перечитаны: {0}
+Профили: {1}</value></data>
+  <data name="VmAutomaticScanProfileNotCreatedShort" xml:space="preserve"><value>профиль не сформирован</value></data>
+  <data name="VmAutomaticScanSaveStatus" xml:space="preserve"><value>Сохранение: {0} · {1}</value></data>
+  <data name="VmAutomaticScanErrorUnavailable" xml:space="preserve"><value>причина недоступна</value></data>
+  <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>неизвестный путь</value></data>
+  <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>состояние не подтверждено</value></data>
+  <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Технические сведения отсутствуют.</value></data>
 </root>

@@ -943,4 +943,39 @@
   <data name="VmWorkerConsentMissing" xml:space="preserve"><value>No settings to confirm.</value></data>
   <data name="VmWorkerSessionSettingsSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} channels · topology {4} · period {5} · MMCSS {6} · {7} s · Windows channel {8} · {9}</value></data>
   <data name="VmWorkerSessionSettingsMissing" xml:space="preserve"><value>Unknown: session has not yet been accepted by Worker.</value></data>
+  <data name="VmOperatorResultDetails" xml:space="preserve"><value>{0}
+{1}
+Configuration: {2}
+Unique formats: {3}. Driver support does not mean Initialize or audio start.</value></data>
+  <data name="VmOperatorQueryNotRun" xml:space="preserve"><value>The real query has not been run yet.</value></data>
+  <data name="VmStreamEvidenceRunningSummary" xml:space="preserve"><value>Stream: RUNNING; {0} observations accepted; current attempt has not been saved.</value></data>
+  <data name="VmAutomaticScanCandidatesSummary" xml:space="preserve"><value>Candidates: {0}; eligible for testing: {1}; Initialize accepted: {2}; not tested: {3}; UNKNOWN: {4}.</value></data>
+  <data name="VmAutomaticScanPlanMissing" xml:space="preserve"><value>The plan has not been prepared yet.</value></data>
+  <data name="VmAutomaticScanActiveUnavailable" xml:space="preserve"><value>Active stream time: 0 s (unavailable)</value></data>
+  <data name="VmAutomaticScanActiveBound" xml:space="preserve"><value>Total active stream time: at most {0} s</value></data>
+  <data name="VmAutomaticScanIdentityUnconfirmed" xml:space="preserve"><value>Capture/Render physical pairing is unconfirmed; the pair was explicitly selected by the operator.</value></data>
+  <data name="VmAutomaticScanIdentityCurrent" xml:space="preserve"><value>Physical pairing is limited to the current Windows identity check.</value></data>
+  <data name="VmAutomaticScanStagesSaved" xml:space="preserve"><value>The staged plan will be saved in the result.</value></data>
+  <data name="VmAutomaticScanConsentSummary" xml:space="preserve"><value>{0}
+{1}
+Operations: {2}. Candidate format: 48 kHz PCM16, periods MINIMUM, DEFAULT and confirmed CUSTOM; MMCSS OFF and PRO_AUDIO are checked separately. Sustained mode: {3}. {4}; plan limit: at most {5} operations and {6} s wall-clock. Worker session: up to {7} s and {8} operations per batch. Stages: {9}. Exclusive access may temporarily interrupt other applications. Capture packets are read and discarded; no PCM is recorded. Render sends digital silence only. No physical routing, test tone, or RTL. A nonresponsive driver may leave the operation outcome UNKNOWN.</value></data>
+  <data name="VmAutomaticScanResultScanning" xml:space="preserve"><value>SCANNING · {0}</value></data>
+  <data name="VmAutomaticScanResultUnknown" xml:space="preserve"><value>UNKNOWN · {0}</value></data>
+  <data name="VmAutomaticScanRecommendationMissing" xml:space="preserve"><value>No recommendation.</value></data>
+  <data name="VmAutomaticScanRecommendationSelected" xml:space="preserve"><value>Selection {0}: {1} · {2} kHz {3} · {4}/{5} frames · MMCSS {6} · {7} s · {8}. Fallback: {9}. AudioHost: NOT_CERTIFIED. {10}</value></data>
+  <data name="VmAutomaticScanFinalConfigurationMissing" xml:space="preserve"><value>No final configuration was selected. {0} AudioHost: NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanLatencyNotMeasured" xml:space="preserve"><value>Not measured</value></data>
+  <data name="VmAutomaticScanWorkerOutcomeUnconfirmed" xml:space="preserve"><value>Worker outcome was not confirmed.</value></data>
+  <data name="VmAutomaticScanDataMissing" xml:space="preserve"><value>Data is missing.</value></data>
+  <data name="VmAutomaticScanPersistenceFailed" xml:space="preserve"><value>SAVE_FAILED · summary was not saved: {0}</value></data>
+  <data name="VmAutomaticScanProfileNotCreated" xml:space="preserve"><value>Summary saved, but profile was not created: {0}
+Reason: {1}</value></data>
+  <data name="VmAutomaticScanSavedAndReloaded" xml:space="preserve"><value>Summary and profile saved and reloaded: {0}
+Profiles: {1}</value></data>
+  <data name="VmAutomaticScanProfileNotCreatedShort" xml:space="preserve"><value>profile not created</value></data>
+  <data name="VmAutomaticScanSaveStatus" xml:space="preserve"><value>Save: {0} · {1}</value></data>
+  <data name="VmAutomaticScanErrorUnavailable" xml:space="preserve"><value>reason unavailable</value></data>
+  <data name="VmAutomaticScanPathUnknown" xml:space="preserve"><value>unknown path</value></data>
+  <data name="VmAutomaticScanStateUnconfirmed" xml:space="preserve"><value>state unconfirmed</value></data>
+  <data name="VmAutomaticScanTechnicalDetailsMissing" xml:space="preserve"><value>Technical details are unavailable.</value></data>
 </root>
