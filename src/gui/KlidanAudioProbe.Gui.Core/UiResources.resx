@@ -1158,4 +1158,18 @@ Fallback: {1}
   <data name="VmStreamDetailsStageHresult" xml:space="preserve"><value>Stage: {0}; HRESULT: {1}.</value></data>
   <data name="VmStreamDetailsCleanReport" xml:space="preserve"><value>Report completed; cleanup contains only explicitly observed stages.</value></data>
   <data name="VmStreamDetailsQualityAndCleanup" xml:space="preserve"><value>Stream: {0}; durationReached={1}; cleanup: {2}.</value></data>
+  <data name="VmAutomaticScanProgressDetail" xml:space="preserve"><value>Progress: {0} · {1}: {2}</value></data>
+  <data name="VmRepeatabilityProgressStatus" xml:space="preserve"><value>Progress ({0}): {1}</value></data>
+  <data name="VmDeviceScanStageIdle" xml:space="preserve"><value>Idle</value></data>
+  <data name="VmDeviceScanStagePreflight" xml:space="preserve"><value>Preflight</value></data>
+  <data name="VmDeviceScanStagePassiveQuery" xml:space="preserve"><value>Passive format query</value></data>
+  <data name="VmDeviceScanStageCandidateSelection" xml:space="preserve"><value>Candidate selection</value></data>
+  <data name="VmDeviceScanStageActiveInitialize" xml:space="preserve"><value>Active Initialize</value></data>
+  <data name="VmDeviceScanStageStreamValidation" xml:space="preserve"><value>Stream validation</value></data>
+  <data name="VmDeviceScanStageResultAggregation" xml:space="preserve"><value>Result aggregation</value></data>
+  <data name="VmDeviceScanStageCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmDeviceScanStageCancelling" xml:space="preserve"><value>Cancelling</value></data>
+  <data name="VmDeviceScanStageCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="VmDeviceScanStageFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="VmDeviceScanStageIncomplete" xml:space="preserve"><value>Incomplete</value></data>
 </root>

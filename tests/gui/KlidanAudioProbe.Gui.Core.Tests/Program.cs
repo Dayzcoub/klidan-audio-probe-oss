@@ -42,6 +42,8 @@ Check(MainViewModel.ModeLabel(SessionMode.Capture) == KlidanAudioProbe.Gui.Core.
 KlidanAudioProbe.Gui.Core.Localization.SetLanguage(originalLanguage, false);
 var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
 Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
+typeof(MainViewModel).GetMethod("SetDeviceScanProgress", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lockedDeveloperVm, [DeviceScanStage.Preflight, "fixture"]);
+Check(lockedDeveloperVm.DeviceScanProgress.StartsWith(KlidanAudioProbe.Gui.Core.Localization.Get("VmDeviceScanStagePreflight"), StringComparison.Ordinal), "device scan progress localizes its stage without altering the DeviceScanStage enum");
 WindowsEndpointDto GroupEndpoint(string id, string direction, string name, string? container, string? formFactor = null)
 {
     var available = new WindowsPropertyEvidenceDto(0, "AVAILABLE");

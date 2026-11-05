@@ -1716,7 +1716,7 @@ public sealed class MainViewModel : ViewModel
             var index = _automaticScanProgressRows.ToList().FindIndex(x => x.OperationId == row.OperationId);
             if (index >= 0) _automaticScanProgressRows[index] = row; else _automaticScanProgressRows.Add(row);
             Changed(nameof(AutomaticScanProgressRows));
-            SetAutomaticScanStatus($"{row.Stage} · {row.State}: {row.Action}");
+            SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanProgressDetail"), row.Stage, row.State, row.Action));
         }
         if (_uiContext is null) Apply(); else _uiContext.Post(_ => { try { Apply(); } catch { } }, null);
     }
@@ -1976,7 +1976,7 @@ public sealed class MainViewModel : ViewModel
 
     private void OnDuplexRepeatabilityProgress(ScanProgressEvent progress)
     {
-        void Apply() { _duplexRepeatabilityStatus = $"{progress.Lifecycle}: {progress.Action}"; Changed(nameof(DuplexRepeatabilityStatus)); }
+        void Apply() { _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityProgressStatus"), OperationLifecycleLabel(progress.Lifecycle.ToString()), progress.Action); Changed(nameof(DuplexRepeatabilityStatus)); }
         if (_uiContext is null) Apply(); else _uiContext.Post(_ => { try { Apply(); } catch { } }, null);
     }
 
@@ -2137,7 +2137,7 @@ public sealed class MainViewModel : ViewModel
             if (SelectedDuplexCaptureEndpoint?.EndpointId != captureId || SelectedDuplexRenderEndpoint?.EndpointId != renderId || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake) throw new IOException(Localization.Get("VmDuplexBindingChanged"));
             _duplexValidations[period] = result;
             var assessment = DuplexAssessments.Single(a => a.Period == period);
-            _duplexStatus = $"{period}: {assessment.Classification} · Capture {assessment.CaptureCoverage} · Render {assessment.RenderCoverage}. {assessment.Reason}";
+            _duplexStatus = $"{period}: {assessment.Classification} · {Localization.Get("VmCaptureLabel")} {assessment.CaptureCoverage} · {Localization.Get("VmRenderLabel")} {assessment.RenderCoverage}. {assessment.Reason}";
             _operatorResultEndpoint = $"{Localization.Get("VmCaptureLabel")} · {capture.FriendlyNameDisplay}\n{Localization.Get("VmRenderLabel")} · {render.FriendlyNameDisplay}";
             _operatorResultMode = "Одновременная проверка Duplex";
             _operatorResultProvenance = "REAL_WASAPI_DUPLEX";
@@ -2319,9 +2319,26 @@ public sealed class MainViewModel : ViewModel
 
     private void SetDeviceScanProgress(DeviceScanStage stage, string message)
     {
-        _deviceScanProgress = $"{stage} · {message}";
+        _deviceScanProgress = $"{DeviceScanStageLabel(stage)} · {message}";
         Changed(nameof(DeviceScanProgress));
     }
+
+    private static string DeviceScanStageLabel(DeviceScanStage stage) => stage switch
+    {
+        DeviceScanStage.Idle => Localization.Get("VmDeviceScanStageIdle"),
+        DeviceScanStage.Preflight => Localization.Get("VmDeviceScanStagePreflight"),
+        DeviceScanStage.PassiveQuery => Localization.Get("VmDeviceScanStagePassiveQuery"),
+        DeviceScanStage.CandidateSelection => Localization.Get("VmDeviceScanStageCandidateSelection"),
+        DeviceScanStage.ActiveInitialize => Localization.Get("VmDeviceScanStageActiveInitialize"),
+        DeviceScanStage.StreamValidation => Localization.Get("VmDeviceScanStageStreamValidation"),
+        DeviceScanStage.ResultAggregation => Localization.Get("VmDeviceScanStageResultAggregation"),
+        DeviceScanStage.Completed => Localization.Get("VmDeviceScanStageCompleted"),
+        DeviceScanStage.Cancelling => Localization.Get("VmDeviceScanStageCancelling"),
+        DeviceScanStage.Cancelled => Localization.Get("VmDeviceScanStageCancelled"),
+        DeviceScanStage.Failed => Localization.Get("VmDeviceScanStageFailed"),
+        DeviceScanStage.Incomplete => Localization.Get("VmDeviceScanStageIncomplete"),
+        _ => stage.ToString()
+    };
 
     private bool CanQueryRealFormats() => CanUseSelectedWindowsEndpoint && _worker is not null && WorkerState.State == WorkerConnectionState.ConnectedFake && _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && !_windowsDiscoveryLoading && !_realQueryRunning && !_realInitializeRunning && !_deviceScanRunning && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending;
 
