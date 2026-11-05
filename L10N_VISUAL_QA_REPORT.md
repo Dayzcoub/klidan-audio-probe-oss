@@ -153,7 +153,7 @@ GUI_TESTS = PASS (824)
 GUI_RELEASE = PASS
 DPI_125 = NOT_RUN (no isolated DPI environment; no system scaling changes)
 DPI_150 = NOT_RUN (no isolated DPI environment; no system scaling changes)
-FINAL_HEAD = pending QA report commit SHA
+FINAL_HEAD = 5e671230199244540abb3392392f307fd2e5e2ef
 READY_FOR_EXTERNAL_DPI_QA = YES
 ```
 
@@ -396,4 +396,5 @@ FINAL_HEAD = f65cc82f62def583493d76fbbff2135071c627d7
 WORKTREE = clean after push
 READY_FOR_MERGE = NO
 ```
+
 
