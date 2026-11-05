@@ -890,15 +890,15 @@ public sealed class MainViewModel : ViewModel
         get
         {
             if (SelectedRealFormatRow is { IsConflict: true } conflictRow)
-                return $"{Localization.Get("VmRealFormatConflictHeader")} {conflictRow.ConflictDetails}\n" + string.Join("\n", conflictRow.EvidenceCandidates.Select(c => $"{c.Period}: Status={c.Status}, IsFormatSupported={c.SupportStatus}, HRESULT={c.SupportHr ?? "не наблюдался"}, query cleanup={c.QueryCleanupStatus}, release attempts={c.QueryClientReleaseAttempts}"));
+                return $"{Localization.Get("VmRealFormatConflictHeader")} {conflictRow.ConflictDetails}\n" + string.Join("\n", conflictRow.EvidenceCandidates.Select(c => string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateConflictDetails"), c.Period, c.Status, c.SupportStatus, c.SupportHr ?? Localization.Get("VmRealEvidenceNotObserved"), c.QueryCleanupStatus, c.QueryClientReleaseAttempts)));
             if (SelectedRealFormatCandidate is not { } c) return Localization.Get("VmRealFormatCandidateSelectForDetails");
-            static string V<T>(T? value) where T : struct => value?.ToString() ?? "неизвестно";
-            static string S(string? value) => value ?? "не наблюдался";
-            return $"{c.Status} · {c.Encoding} · {c.SampleRate} Гц · {c.Channels} канал(а) · контейнер/valid bits: {V(c.ContainerBits)}/{V(c.ValidBits)} · канал-маска: {c.ChannelMaskEvidence} · период: {c.Period}\n" +
-                $"Query: Activate {S(c.ActivationHr)} · IsFormatSupported {S(c.SupportHr)} ({c.SupportStatus}) · GetDevicePeriod {S(c.DevicePeriodHr)} · default/minimum {V(c.DefaultPeriod100ns)}/{V(c.MinimumPeriod100ns)} ×100 нс · query cleanup {c.QueryCleanupStatus}, Release попыток {c.QueryClientReleaseAttempts}\n" +
-                $"Initialize: {c.InitializeStatus}, попытка {c.InitializeAttempted} · период API {S(c.PeriodQueryHr)}, доступен {V(c.PeriodAvailable)} · запрос {V(c.RequestedPeriod100ns)} ×100 нс · первый HRESULT {S(c.FirstInitializeHr)}\n" +
-                $"Alignment retry: GetBufferSize {S(c.AlignmentGetBufferSizeHr)}, frames {V(c.AlignmentFrames)}, Activate {S(c.AlignmentActivateHr)}, период {V(c.AlignmentPeriod100ns)} ×100 нс, Initialize {S(c.AlignmentInitializeHr)} · итог {S(c.FinalInitializeHr)}\n" +
-                $"Буфер: HRESULT {S(c.ActualBufferSizeHr)}, {V(c.ActualBufferFrames)} frames, {V(c.ActualPeriod100ns)} ×100 нс · event create {S(c.EventCreateHr)}, SetEventHandle {S(c.SetEventHandleHr)}, close {S(c.EventHandleCloseHr)}, ready {V(c.EventHandleReady)} · cleanup {c.CleanupStatus}, Release попыток {c.ClientReleaseAttempts}";
+            static string V<T>(T? value) where T : struct => value?.ToString() ?? Localization.Get("VmRealEvidenceUnknown");
+            static string S(string? value) => value ?? Localization.Get("VmRealEvidenceNotObserved");
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateFormatDetails"), c.Status, c.Encoding, c.SampleRate, c.Channels, V(c.ContainerBits), V(c.ValidBits), c.ChannelMaskEvidence, c.Period) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateQueryDetails"), S(c.ActivationHr), S(c.SupportHr), c.SupportStatus, S(c.DevicePeriodHr), V(c.DefaultPeriod100ns), V(c.MinimumPeriod100ns), c.QueryCleanupStatus, c.QueryClientReleaseAttempts) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateInitializeDetails"), c.InitializeStatus, c.InitializeAttempted, S(c.PeriodQueryHr), V(c.PeriodAvailable), V(c.RequestedPeriod100ns), S(c.FirstInitializeHr)) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateAlignmentDetails"), S(c.AlignmentGetBufferSizeHr), V(c.AlignmentFrames), S(c.AlignmentActivateHr), V(c.AlignmentPeriod100ns), S(c.AlignmentInitializeHr), S(c.FinalInitializeHr)) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealCandidateBufferDetails"), S(c.ActualBufferSizeHr), V(c.ActualBufferFrames), V(c.ActualPeriod100ns), S(c.EventCreateHr), S(c.SetEventHandleHr), S(c.EventHandleCloseHr), V(c.EventHandleReady), c.CleanupStatus, c.ClientReleaseAttempts);
         }
     }
     public string RealInitializationDetails
@@ -908,13 +908,13 @@ public sealed class MainViewModel : ViewModel
             if (_realInitializationError is { } error) return error;
             if (RealInitializationResult is not { } result) return Localization.Get("VmRealInitializeNotPerformed");
             var c = result.Candidates.FirstOrDefault();
-            static string V<T>(T? value) where T : struct => value?.ToString() ?? "неизвестно";
-            static string S(string? value) => value ?? "не наблюдался";
+            static string V<T>(T? value) where T : struct => value?.ToString() ?? Localization.Get("VmRealEvidenceUnknown");
+            static string S(string? value) => value ?? Localization.Get("VmRealEvidenceNotObserved");
             var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? Localization.Get("VmWindowsEndpointLocalIdHidden");
-            return $"{(RealFormatMatrixIsStale ? "ИСТОРИЧЕСКИЙ · " : string.Empty)}REAL INITIALIZE-ONLY · {c?.Status ?? "INCOMPLETE"} · {endpointName} · {c?.Encoding ?? "формат неизвестен"}, {V(c?.SampleRate)} Гц, {V(c?.Channels)} канал(а), {c?.Period ?? "период неизвестен"}\n" +
-                $"Поддержка: {c?.SupportStatus ?? "неизвестно"} · IsFormatSupported {S(c?.SupportHr)} · Activate {S(c?.ActivationHr)} · query cleanup {c?.QueryCleanupStatus ?? "неизвестно"} ({V(c?.QueryClientReleaseAttempts)} Release попыток)\n" +
-                $"Initialize: period query {S(c?.PeriodQueryHr)}, доступен {V(c?.PeriodAvailable)}, запрос {V(c?.RequestedPeriod100ns)} ×100 нс · первый {S(c?.FirstInitializeHr)} · Alignment retry: GetBufferSize {S(c?.AlignmentGetBufferSizeHr)} / {V(c?.AlignmentFrames)} frames · Activate {S(c?.AlignmentActivateHr)} · retry Initialize {S(c?.AlignmentInitializeHr)} · итог {S(c?.FinalInitializeHr)}\n" +
-                $"Буфер: HRESULT {S(c?.ActualBufferSizeHr)}, {V(c?.ActualBufferFrames)} frames / {V(c?.ActualPeriod100ns)} ×100 нс · событие: create {S(c?.EventCreateHr)}, SetEventHandle {S(c?.SetEventHandleHr)}, close {S(c?.EventHandleCloseHr)}, ready {V(c?.EventHandleReady)} · cleanup {c?.CleanupStatus ?? "неизвестно"} ({V(c?.ClientReleaseAttempts)} Release попыток). Start не вызывался; PCM не передавался.";
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationDetailsFormat"), RealFormatMatrixIsStale ? Localization.Get("VmRealHistoricalPrefix") : string.Empty, c?.Status ?? "INCOMPLETE", endpointName, c?.Encoding ?? Localization.Get("VmRealFormatUnknown"), V(c?.SampleRate), V(c?.Channels), c?.Period ?? Localization.Get("VmRealPeriodUnknown")) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationSupportDetails"), c?.SupportStatus ?? Localization.Get("VmRealEvidenceUnknown"), S(c?.SupportHr), S(c?.ActivationHr), c?.QueryCleanupStatus ?? Localization.Get("VmRealEvidenceUnknown"), V(c?.QueryClientReleaseAttempts)) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationApiDetails"), S(c?.PeriodQueryHr), V(c?.PeriodAvailable), V(c?.RequestedPeriod100ns), S(c?.FirstInitializeHr), S(c?.AlignmentGetBufferSizeHr), V(c?.AlignmentFrames), S(c?.AlignmentActivateHr), S(c?.AlignmentInitializeHr), S(c?.FinalInitializeHr)) + "\n" +
+                string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationBufferDetails"), S(c?.ActualBufferSizeHr), V(c?.ActualBufferFrames), V(c?.ActualPeriod100ns), S(c?.EventCreateHr), S(c?.SetEventHandleHr), S(c?.EventHandleCloseHr), V(c?.EventHandleReady), c?.CleanupStatus ?? Localization.Get("VmRealEvidenceUnknown"), V(c?.ClientReleaseAttempts));
         }
     }
     public string RealInitializationSummary
@@ -924,11 +924,11 @@ public sealed class MainViewModel : ViewModel
             if (_realInitializationError is { } error) return error;
             if (RealInitializationResult is not { } result || result.Candidates.FirstOrDefault() is not { } c) return Localization.Get("VmRealInitializeNotPerformed");
             var endpointName = WindowsEndpointSource.FirstOrDefault(endpoint => endpoint.EndpointId == result.EndpointId && endpoint.Direction == result.Direction)?.FriendlyNameDisplay ?? Localization.Get("VmWindowsEndpointLocalIdHidden");
-            var requestedPeriod = c.RequestedPeriod100ns is { } period ? $"{period / 10000.0:0.##} мс" : "величина неизвестна";
-            var initializeHr = c.FinalInitializeHr ?? c.FirstInitializeHr ?? "не наблюдался";
-            var eventReady = c.EventHandleReady switch { true => "готовность подтверждена", false => "готовность не достигнута", null => "неизвестно" };
-            var cleanup = c.CleanupStatus == "RELEASE_ATTEMPTED" ? "RELEASE_ATTEMPTED · попытка освобождения; очистка не подтверждена" : c.CleanupStatus;
-            return $"REAL INITIALIZE-ONLY RESULT\nУстройство: {endpointName}\nФормат: {c.Encoding} · {c.SampleRate} Гц · {c.Channels} канал(а)\nIsFormatSupported status: {c.SupportStatus}\nЗапрошенный период: {c.Period.ToUpperInvariant()} · {requestedPeriod}\nInitialize status: {c.InitializeStatus} · HRESULT: {initializeHr}\nФактический буфер: {c.ActualBufferFrames?.ToString() ?? "неизвестно"} frames\nEvent readiness: {eventReady}\nCleanup evidence: {cleanup}\nStart: NOT_STARTED · PCM: NOT_TRANSFERRED";
+            var requestedPeriod = c.RequestedPeriod100ns is { } period ? string.Format(Localization.CurrentCulture, Localization.Get("VmRealRequestedPeriodMilliseconds"), period / 10000.0) : Localization.Get("VmRealPeriodValueUnknown");
+            var initializeHr = c.FinalInitializeHr ?? c.FirstInitializeHr ?? Localization.Get("VmRealEvidenceNotObserved");
+            var eventReady = c.EventHandleReady switch { true => Localization.Get("VmRealEventReady"), false => Localization.Get("VmRealEventNotReady"), null => Localization.Get("VmRealEvidenceUnknown") };
+            var cleanup = c.CleanupStatus == "RELEASE_ATTEMPTED" ? Localization.Get("VmRealCleanupReleaseAttempted") : c.CleanupStatus;
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationSummary"), endpointName, c.Encoding, c.SampleRate, c.Channels, c.SupportStatus, c.Period.ToUpperInvariant(), requestedPeriod, c.InitializeStatus, initializeHr, c.ActualBufferFrames?.ToString() ?? Localization.Get("VmRealEvidenceUnknown"), eventReady, cleanup);
         }
     }
     public bool RealInitializeConsentPending { get => _realInitializeConsentPending; private set { if (Set(ref _realInitializeConsentPending, value)) { Changed(nameof(RealInitializeConsentChecked)); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealInitializeDisabledReason)); ConfirmRealInitializeCommand.Refresh(); CancelRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }

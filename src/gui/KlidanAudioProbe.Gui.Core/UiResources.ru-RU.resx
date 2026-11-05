@@ -1008,4 +1008,34 @@ Render: {2} · {3}</value></data>
   <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Окно {0} · наблюдалась цифровая тишина</value></data>
   <data name="VmMeterDemoLive" xml:space="preserve"><value>Окно {0} · LIVE · ДЕМО · Данные симуляции</value></data>
   <data name="VmWindowsChannelOption" xml:space="preserve"><value>Канал Windows {0}</value></data>
+  <data name="VmRealCandidateConflictDetails" xml:space="preserve"><value>{0}: Status={1}, IsFormatSupported={2}, HRESULT={3}, query cleanup={4}, release attempts={5}</value></data>
+  <data name="VmRealEvidenceNotObserved" xml:space="preserve"><value>не наблюдался</value></data>
+  <data name="VmRealEvidenceUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmRealCandidateFormatDetails" xml:space="preserve"><value>{0} · {1} · {2} Гц · {3} канал(а) · контейнер/valid bits: {4}/{5} · канал-маска: {6} · период: {7}</value></data>
+  <data name="VmRealCandidateQueryDetails" xml:space="preserve"><value>Query: Activate {0} · IsFormatSupported {1} ({2}) · GetDevicePeriod {3} · default/minimum {4}/{5} ×100 нс · query cleanup {6}, Release попыток {7}</value></data>
+  <data name="VmRealCandidateInitializeDetails" xml:space="preserve"><value>Initialize: {0}, попытка {1} · период API {2}, доступен {3} · запрос {4} ×100 нс · первый HRESULT {5}</value></data>
+  <data name="VmRealCandidateAlignmentDetails" xml:space="preserve"><value>Alignment retry: GetBufferSize {0}, frames {1}, Activate {2}, период {3} ×100 нс, Initialize {4} · итог {5}</value></data>
+  <data name="VmRealCandidateBufferDetails" xml:space="preserve"><value>Буфер: HRESULT {0}, {1} frames, {2} ×100 нс · event create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7}, Release попыток {8}</value></data>
+  <data name="VmRealInitializationDetailsFormat" xml:space="preserve"><value>{0}REAL INITIALIZE-ONLY · {1} · {2} · {3}, {4} Гц, {5} канал(а), {6}</value></data>
+  <data name="VmRealHistoricalPrefix" xml:space="preserve"><value>ИСТОРИЧЕСКИЙ · </value></data>
+  <data name="VmRealFormatUnknown" xml:space="preserve"><value>формат неизвестен</value></data>
+  <data name="VmRealPeriodUnknown" xml:space="preserve"><value>период неизвестен</value></data>
+  <data name="VmRealInitializationSupportDetails" xml:space="preserve"><value>Поддержка: {0} · IsFormatSupported {1} · Activate {2} · query cleanup {3} ({4} Release попыток)</value></data>
+  <data name="VmRealInitializationApiDetails" xml:space="preserve"><value>Initialize: period query {0}, доступен {1}, запрос {2} ×100 нс · первый {3} · Alignment retry: GetBufferSize {4} / {5} frames · Activate {6} · retry Initialize {7} · итог {8}</value></data>
+  <data name="VmRealInitializationBufferDetails" xml:space="preserve"><value>Буфер: HRESULT {0}, {1} frames / {2} ×100 нс · событие: create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7} ({8} Release попыток). Start не вызывался; PCM не передавался.</value></data>
+  <data name="VmRealRequestedPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} мс</value></data>
+  <data name="VmRealPeriodValueUnknown" xml:space="preserve"><value>величина неизвестна</value></data>
+  <data name="VmRealEventReady" xml:space="preserve"><value>готовность подтверждена</value></data>
+  <data name="VmRealEventNotReady" xml:space="preserve"><value>готовность не достигнута</value></data>
+  <data name="VmRealCleanupReleaseAttempted" xml:space="preserve"><value>RELEASE_ATTEMPTED · попытка освобождения; очистка не подтверждена</value></data>
+  <data name="VmRealInitializationSummary" xml:space="preserve"><value>REAL INITIALIZE-ONLY RESULT
+Устройство: {0}
+Формат: {1} · {2} Гц · {3} канал(а)
+IsFormatSupported status: {4}
+Запрошенный период: {5} · {6}
+Initialize status: {7} · HRESULT: {8}
+Фактический буфер: {9} frames
+Event readiness: {10}
+Cleanup evidence: {11}
+Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
 </root>

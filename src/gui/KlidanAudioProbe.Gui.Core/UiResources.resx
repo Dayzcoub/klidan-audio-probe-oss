@@ -1008,4 +1008,34 @@ Render: {2} · {3}</value></data>
   <data name="VmMeterDigitalSilence" xml:space="preserve"><value>Window {0} · digital silence observed</value></data>
   <data name="VmMeterDemoLive" xml:space="preserve"><value>Window {0} · LIVE · DEMO · Simulated data</value></data>
   <data name="VmWindowsChannelOption" xml:space="preserve"><value>Windows channel {0}</value></data>
+  <data name="VmRealCandidateConflictDetails" xml:space="preserve"><value>{0}: Status={1}, IsFormatSupported={2}, HRESULT={3}, query cleanup={4}, release attempts={5}</value></data>
+  <data name="VmRealEvidenceNotObserved" xml:space="preserve"><value>not observed</value></data>
+  <data name="VmRealEvidenceUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmRealCandidateFormatDetails" xml:space="preserve"><value>{0} · {1} · {2} Hz · {3} channels · container/valid bits: {4}/{5} · channel mask: {6} · period: {7}</value></data>
+  <data name="VmRealCandidateQueryDetails" xml:space="preserve"><value>Query: Activate {0} · IsFormatSupported {1} ({2}) · GetDevicePeriod {3} · default/minimum {4}/{5} ×100 ns · query cleanup {6}, release attempts {7}</value></data>
+  <data name="VmRealCandidateInitializeDetails" xml:space="preserve"><value>Initialize: {0}, attempted {1} · period API {2}, available {3} · requested {4} ×100 ns · first HRESULT {5}</value></data>
+  <data name="VmRealCandidateAlignmentDetails" xml:space="preserve"><value>Alignment retry: GetBufferSize {0}, frames {1}, Activate {2}, period {3} ×100 ns, Initialize {4} · final {5}</value></data>
+  <data name="VmRealCandidateBufferDetails" xml:space="preserve"><value>Buffer: HRESULT {0}, {1} frames, {2} ×100 ns · event create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7}, release attempts {8}</value></data>
+  <data name="VmRealInitializationDetailsFormat" xml:space="preserve"><value>{0}REAL INITIALIZE-ONLY · {1} · {2} · {3}, {4} Hz, {5} channels, {6}</value></data>
+  <data name="VmRealHistoricalPrefix" xml:space="preserve"><value>HISTORICAL · </value></data>
+  <data name="VmRealFormatUnknown" xml:space="preserve"><value>format unknown</value></data>
+  <data name="VmRealPeriodUnknown" xml:space="preserve"><value>period unknown</value></data>
+  <data name="VmRealInitializationSupportDetails" xml:space="preserve"><value>Support: {0} · IsFormatSupported {1} · Activate {2} · query cleanup {3} ({4} release attempts)</value></data>
+  <data name="VmRealInitializationApiDetails" xml:space="preserve"><value>Initialize: period query {0}, available {1}, requested {2} ×100 ns · first {3} · Alignment retry: GetBufferSize {4} / {5} frames · Activate {6} · retry Initialize {7} · final {8}</value></data>
+  <data name="VmRealInitializationBufferDetails" xml:space="preserve"><value>Buffer: HRESULT {0}, {1} frames / {2} ×100 ns · event: create {3}, SetEventHandle {4}, close {5}, ready {6} · cleanup {7} ({8} release attempts). Start was not called; PCM was not transferred.</value></data>
+  <data name="VmRealRequestedPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} ms</value></data>
+  <data name="VmRealPeriodValueUnknown" xml:space="preserve"><value>period unknown</value></data>
+  <data name="VmRealEventReady" xml:space="preserve"><value>readiness confirmed</value></data>
+  <data name="VmRealEventNotReady" xml:space="preserve"><value>readiness not reached</value></data>
+  <data name="VmRealCleanupReleaseAttempted" xml:space="preserve"><value>RELEASE_ATTEMPTED · release attempted; cleanup not confirmed</value></data>
+  <data name="VmRealInitializationSummary" xml:space="preserve"><value>REAL INITIALIZE-ONLY RESULT
+Device: {0}
+Format: {1} · {2} Hz · {3} channels
+IsFormatSupported status: {4}
+Requested period: {5} · {6}
+Initialize status: {7} · HRESULT: {8}
+Actual buffer: {9} frames
+Event readiness: {10}
+Cleanup evidence: {11}
+Start: NOT_STARTED · PCM: NOT_TRANSFERRED</value></data>
 </root>
