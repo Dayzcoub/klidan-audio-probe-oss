@@ -1185,4 +1185,16 @@ Fallback: {1}
   <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>releases</value></data>
   <data name="VmAutomaticScanTimeoutLabel" xml:space="preserve"><value>timeout</value></data>
   <data name="VmAutomaticScanMillisecondsAbbreviation" xml:space="preserve"><value>ms</value></data>
+  <data name="VmAutomaticScanStageSustained" xml:space="preserve"><value>Sustained validation</value></data>
+  <data name="VmAutomaticScanStageFinalSelection" xml:space="preserve"><value>Final selection</value></data>
+  <data name="VmAutomaticScanStatePlanned" xml:space="preserve"><value>PLANNED</value></data>
+  <data name="VmAutomaticScanStateNotRun" xml:space="preserve"><value>NOT RUN</value></data>
+  <data name="VmAutomaticScanStageMessageExactPair" xml:space="preserve"><value>Runs automatically for an exact Capture/Render pair with current custom-period capability.</value></data>
+  <data name="VmAutomaticScanStageMessageApprovedScope" xml:space="preserve"><value>Runs automatically only for candidates within the approved bounded scope.</value></data>
+  <data name="VmAutomaticScanStageMessageSustained" xml:space="preserve"><value>Runs qualified continuous 60-second screening and bounded Standard/Extended MMCSS validation when exact short evidence qualifies.</value></data>
+  <data name="VmAutomaticScanStageMessageSelection" xml:space="preserve"><value>Evidence-based sustained primary/fallback selection; AudioHost remains NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanStageMessageBounded" xml:space="preserve"><value>Bounded stage is included in the immutable scan scope.</value></data>
+  <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Final selection awaits sustained evidence.</value></data>
+  <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>No operation-backed automatic stage was scheduled.</value></data>
+  <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>No operation was scheduled.</value></data>
 </root>

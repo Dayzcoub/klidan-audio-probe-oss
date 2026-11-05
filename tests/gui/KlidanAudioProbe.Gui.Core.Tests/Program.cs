@@ -795,6 +795,7 @@ Check(actualScanButton.IsEnabled, "actual WPF one-click Scan button enables only
 Check(((Grid)buttonWindow.FindName("WindowsEndpointFilterGrid")).Visibility == Visibility.Collapsed && ((DataGrid)buttonWindow.FindName("WindowsEndpointGrid")).Visibility == Visibility.Collapsed, "normal scanner hides endpoint search and technical browser while retaining them for Developer Tools");
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter); buttonWindow.UpdateLayout();
 Check(buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && !actualScanButton.IsEnabled, "one immutable plan prompts once and does not execute before operator consent");
+Check(buttonVm.AutomaticScanStagePlanText.Contains("Проверка выбранных устройств: ЗАПЛАНИРОВАНО", StringComparison.Ordinal) && buttonVm.AutomaticScanStagePlanText.Contains("Этап с ограничениями", StringComparison.Ordinal) && !buttonVm.AutomaticScanStagePlanText.Contains("DISCOVERY: PLANNED", StringComparison.Ordinal), $"stage plan localizes labels and fixed explanations while preserving machine enum values [{buttonVm.AutomaticScanStagePlanText}]");
 buttonVm.CancelAutomaticScanConsentCommand.Execute(null); buttonWindow.UpdateLayout();
 Check(!buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0 && actualScanButton.IsEnabled, "refusing consent clears pending approval and performs no operation");
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter);
@@ -2892,7 +2893,7 @@ sealed class GuiAutomaticScanWorkflow(WindowsEndpointDiscoveryDto discovery) : I
                 ? [new(capture.EndpointId!, capture.Direction), new(render.EndpointId!, render.Direction)]
                 : [new((target.Capture ?? target.Render)!.EndpointId!, (target.Capture ?? target.Render)!.Direction)], ["QueryFormatMatrix", "ValidateFormatMatrix", "ValidateStream"],
             [new(48000, "PCM16", 2, ["MINIMUM", "DEFAULT"], ["OFF"])], 600, 5, 24);
-        return new(fresh, plan, workerPlan, 10, selection.AllowUnconfirmedPair);
+        return new(fresh, plan, workerPlan, 10, selection.AllowUnconfirmedPair) { StagedPlan = AutomaticScanPlanner.Create(fresh, plan, workerPlan) };
     }
 
     public async Task<ScanRunResult> RunApprovedAsync(AutomaticScanPreparation preparation, Guid confirmationId,

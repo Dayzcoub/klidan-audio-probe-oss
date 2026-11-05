@@ -1185,4 +1185,16 @@ Fallback: {1}
   <data name="VmDeviceScanDetailReleases" xml:space="preserve"><value>освобождения</value></data>
   <data name="VmAutomaticScanTimeoutLabel" xml:space="preserve"><value>тайм-аут</value></data>
   <data name="VmAutomaticScanMillisecondsAbbreviation" xml:space="preserve"><value>мс</value></data>
+  <data name="VmAutomaticScanStageSustained" xml:space="preserve"><value>Длительная проверка</value></data>
+  <data name="VmAutomaticScanStageFinalSelection" xml:space="preserve"><value>Итоговый выбор</value></data>
+  <data name="VmAutomaticScanStatePlanned" xml:space="preserve"><value>ЗАПЛАНИРОВАНО</value></data>
+  <data name="VmAutomaticScanStateNotRun" xml:space="preserve"><value>НЕ ЗАПУСКАЛОСЬ</value></data>
+  <data name="VmAutomaticScanStageMessageExactPair" xml:space="preserve"><value>Автоматически запускается для точной пары Capture/Render при наличии актуальной поддержки пользовательского периода.</value></data>
+  <data name="VmAutomaticScanStageMessageApprovedScope" xml:space="preserve"><value>Автоматически запускается только для вариантов в пределах утверждённого лимита.</value></data>
+  <data name="VmAutomaticScanStageMessageSustained" xml:space="preserve"><value>При подходящих кратких результатах выполняет непрерывную проверку 60 с и ограниченную проверку MMCSS в режимах Standard/Extended.</value></data>
+  <data name="VmAutomaticScanStageMessageSelection" xml:space="preserve"><value>Выбор основной/резервной конфигурации по длительным результатам; AudioHost остаётся NOT_CERTIFIED.</value></data>
+  <data name="VmAutomaticScanStageMessageBounded" xml:space="preserve"><value>Этап с ограничениями включён в неизменяемый план сканирования.</value></data>
+  <data name="VmAutomaticScanStageMessageAwaitEvidence" xml:space="preserve"><value>Итоговый выбор ожидает результаты длительной проверки.</value></data>
+  <data name="VmAutomaticScanStageMessageNoAutomaticOperation" xml:space="preserve"><value>Автоматический этап на основе операций не запланирован.</value></data>
+  <data name="VmAutomaticScanStageMessageNoOperation" xml:space="preserve"><value>Операция не запланирована.</value></data>
 </root>

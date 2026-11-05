@@ -471,7 +471,7 @@ public sealed class MainViewModel : ViewModel
     public bool AutomaticScanAttempted => _automaticScanAttempted;
     public ScanRunResult? AutomaticScanResult => _automaticScanResult;
     public IReadOnlyList<AutomaticScanProgressRow> AutomaticScanProgressRows => _automaticScanProgressRows;
-    public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{s.Stage}: {s.State} · {s.Message}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
+    public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{AutomaticScanStageLabel(s.Stage)}: {AutomaticScanStageStateLabel(s.State)} · {AutomaticScanStageMessageLabel(s.Message)}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
     public string AutomaticScanCandidateSummary => _automaticScanResult is { } result
         ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanCandidatesSummary"), result.CandidateInventory.Count, result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.SUPPORTED_FOR_TEST), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.INITIALIZE_ACCEPTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.NOT_TESTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.UNKNOWN))
         : Localization.Get("VmAutomaticScanCandidatesAwaitQuery");
@@ -1850,6 +1850,35 @@ public sealed class MainViewModel : ViewModel
         ScanStage.Initialize => "VmScanStageInitialize", ScanStage.Stream => "VmScanStageStream",
         ScanStage.Duplex => "VmScanStageDuplex", ScanStage.PeriodDiscovery => "VmScanStagePeriodDiscovery", ScanStage.ShortCustomDuplex => "VmScanStageCustomDuplex", ScanStage.Repeatability => "VmScanStageRepeatability", ScanStage.Evaluate => "VmScanStageEvaluate",
         ScanStage.Save => "VmScanStageSave", _ => "VmScanStageComplete"
+    });
+
+    private static string AutomaticScanStageLabel(AutomaticScanStage stage) => Localization.Get(stage switch
+    {
+        AutomaticScanStage.DISCOVERY => "VmScanStageDiscovery", AutomaticScanStage.FORMAT_QUERY => "VmScanStageQuery",
+        AutomaticScanStage.PERIOD_DISCOVERY => "VmScanStagePeriodDiscovery", AutomaticScanStage.INITIALIZE => "VmScanStageInitialize",
+        AutomaticScanStage.SHORT_STREAM => "VmScanStageStream", AutomaticScanStage.SHORT_DUPLEX => "VmScanStageDuplex",
+        AutomaticScanStage.REPEATABILITY => "VmScanStageRepeatability", AutomaticScanStage.SUSTAINED_VALIDATION => "VmAutomaticScanStageSustained",
+        AutomaticScanStage.FINAL_SELECTION => "VmAutomaticScanStageFinalSelection", _ => "VmScanStageSave"
+    });
+
+    private static string AutomaticScanStageStateLabel(AutomaticScanStageState state) => Localization.Get(state switch
+    {
+        AutomaticScanStageState.PLANNED => "VmAutomaticScanStatePlanned", AutomaticScanStageState.COMPLETED => "VmOperationLifecycleCompleted",
+        AutomaticScanStageState.NOT_RUN => "VmAutomaticScanStateNotRun", AutomaticScanStageState.FAILED => "VmOperationLifecycleFailed",
+        AutomaticScanStageState.UNKNOWN => "VmOperationLifecycleUnknown", _ => "VmOperationLifecycleSkipped"
+    });
+
+    private static string AutomaticScanStageMessageLabel(string message) => Localization.Get(message switch
+    {
+        "Runs automatically for an exact Capture/Render pair with current custom-period capability." => "VmAutomaticScanStageMessageExactPair",
+        "Runs automatically only for candidates within the approved bounded scope." => "VmAutomaticScanStageMessageApprovedScope",
+        "Runs qualified continuous 60-second screening and bounded Standard/Extended MMCSS validation when exact short evidence qualifies." => "VmAutomaticScanStageMessageSustained",
+        "Evidence-based sustained primary/fallback selection; AudioHost remains NOT_CERTIFIED." => "VmAutomaticScanStageMessageSelection",
+        "Bounded stage is included in the immutable scan scope." => "VmAutomaticScanStageMessageBounded",
+        "Final selection awaits sustained evidence." => "VmAutomaticScanStageMessageAwaitEvidence",
+        "No operation-backed automatic stage was scheduled." => "VmAutomaticScanStageMessageNoAutomaticOperation",
+        "No operation was scheduled." => "VmAutomaticScanStageMessageNoOperation",
+        _ => message
     });
 
     private static string ScanLifecycleLabel(ScanRunLifecycle lifecycle) => Localization.Get(lifecycle switch
