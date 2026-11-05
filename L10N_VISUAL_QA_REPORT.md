@@ -115,6 +115,50 @@ READY_FOR_MERGE = NO
 READY_FOR_PUBLIC_RELEASE = NO
 ```
 
+## QA-7B 96-DPI visual verification — 2026-11-05
+
+Tested source SHA: `e1029782efc651c2fdcd0309faa549cb9aadb413`; QA report commit SHA: recorded in the following commit. The primary display reported 3440×1440 and 96 DPI; `GetDpiForWindow` returned 96 for the app. `GetWindowRect` verified the requested exact outer sizes 1440×900 and 1024×720 pixels (96-DPI DIP equivalence). No system scaling or other applications were changed. QA automation restored the target app's Topmost state after captures.
+
+The 1440×900 screenshots are saved outside Git at `%LOCALAPPDATA%\Temp\qa7b-en-off-1440x900.png` and `%LOCALAPPDATA%\Temp\qa7b-ru-off-1440x900.png`; the matching 1024×720 files are `qa7b-en-off-1024x720.png` and `qa7b-ru-off-1024x720.png` in the same directory. Full-window screenshots and UI Automation bounds showed the shell and Device preparation screen in both locales. At 1024×720 the Device page uses vertical scrolling; the selector and passive preparation controls remain reachable. No horizontal scroll appeared on this screen. A passive endpoint refresh completed and the UI correctly kept profile binding unconfirmed; no test or scan was launched. Saved profile/history selectors showed empty selections. Results requiring measurement evidence were not fabricated or opened.
+
+Two defects were found in the changed formats view and fixed: the English accessibility HelpText exposed a Russian sentence, and the grid's horizontal scroll pattern allowed unnecessary horizontal scrolling. Presentation now uses a localized computed accessibility string; the existing raw `AccessibleText` and serialized JSON shape remain unchanged. The formats grid disables the horizontal scrollbar. UI regression checks cover both locale resources, JSON exclusion, and the grid setting. This live session could not navigate to Evidence Library or Developer Tools through the available Computer Use click surface, so those live screens are not claimed as visually checked. Developer Tools OFF remains confirmed in the default launch; ON gating was previously exercised during this QA sequence before the final visual fixes. Live ON-screen recheck is incomplete.
+
+| Source check | Result | Evidence |
+|---|---|---|
+| 96-DPI geometry | PASS | `GetDpiForWindow=96`; `GetWindowRect` exact sizes 1440×900 and 1024×720 for both locales |
+| en-US visual | PASS (inspected scope) | Main shell and Device/preparation view captured at both sizes; screenshot files above |
+| ru-RU visual | PASS (inspected scope) | Main shell and Device/preparation view captured at both sizes; screenshot files above |
+| Accessibility names | PASS for inspected Device controls | UIA names are non-empty for action buttons and selectors; disabled scan button correctly announces its purpose |
+| Resource parity/placeholders | PASS | 1224 keys per locale; missing=0, extra=0, empty RU=0, placeholder mismatches=0 |
+| GUI Core/WPF | PASS | 824 checks, fresh Release run after changes |
+| GUI Release | PASS | Fresh Release build, 0 warnings, 0 errors |
+| Developer Tools | PARTIAL | Default OFF confirmed; live ON recheck not completed on final build |
+| Language persistence | PASS | Language selector changes persisted and Russian remained active after application restart; original en-US was restored and confirmed after restart |
+| Worker/native | NOT_RUN | Only GUI presentation/resources/tests changed; no worker, IPC, native, or transport changes |
+| `git diff --check` | PASS | Run after implementation |
+
+Artifacts outside the repository include the four screenshots above. Additional Development Tools or Evidence Library screenshots were not captured because those screens could not be safely reached with the available UI automation surface.
+
+```text
+DPI_100 = PASS
+EN_1440x900 = PASS (shell + Device screen; remaining navigation screens not checked)
+EN_1024x720 = PASS (shell + Device screen; remaining navigation screens not checked)
+RU_1440x900 = PASS (shell + Device screen; remaining navigation screens not checked)
+RU_1024x720 = PASS (shell + Device screen; remaining navigation screens not checked)
+DEV_TOOLS = PARTIAL (OFF confirmed; ON launch path known, live final-build screen not rechecked)
+LANGUAGE_PERSISTENCE = PASS
+VISUAL_DEFECTS_FOUND = 2
+VISUAL_DEFECTS_FIXED = 2
+GUI_TESTS = PASS (824)
+GUI_RELEASE = PASS
+DPI_125 = NOT_RUN (no isolated DPI environment; no system scaling changes)
+DPI_150 = NOT_RUN (no isolated DPI environment; no system scaling changes)
+FINAL_HEAD = pending QA report commit SHA
+READY_FOR_EXTERNAL_DPI_QA = YES
+```
+
+For 125%/150%, `QA-7B-External-DPI.ps1` is the prepared external-laptop runner. It launches both locales with Developer Tools OFF/ON, checks `GetDpiForWindow`, captures exact-size windows and UIA geometry into a timestamped artifact directory, restores the app language preference byte-for-byte, and restores Topmost state. It does not change Windows display scaling. Run from PowerShell with the tested GUI executable, target DPI 120 or 144, and source SHA, for example: `.\QA-7B-External-DPI.ps1 -ExePath C:\QA\KlidanAudioProbe.Gui.App.exe -ExpectedDpi 120 -SourceSha <tested-sha>`.
+
 Remaining blockers are the live GUI endpoint discovery hang, incomplete full
 workflow visual inspection, and missing exact-size 100% plus isolated 125% and
 150% visual runs. Physical QA is explicitly outside this pass.
@@ -352,3 +396,4 @@ FINAL_HEAD = f65cc82f62def583493d76fbbff2135071c627d7
 WORKTREE = clean after push
 READY_FOR_MERGE = NO
 ```
+
