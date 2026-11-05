@@ -2294,7 +2294,7 @@ public sealed class MainViewModel : ViewModel
             _operatorResultMode = "Автоматическое сканирование конфигурации";
             _operatorResultProvenance = "REAL_WASAPI_QUERY + REAL_WASAPI_INITIALIZE_ONLY";
             _operatorResultConfiguration = $"48 кГц PCM16 · {result.Initializations.Count} Initialize-only результатов";
-            OperatorResultOutcome = $"{result.State} · поддержка и Initialize разделены. Запуск потока, стабильность и Duplex не проверялись.";
+            OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmScanOutcome"), result.State);
             SetDeviceScanProgress(result.State, result.Message);
             Changed(nameof(DeviceScanResult)); Changed(nameof(HasDeviceScanResult)); Changed(nameof(HasSingleEndpointScanResult)); Changed(nameof(DeviceScanInitializeCandidates)); Changed(nameof(DeviceScanResultSummary)); Changed(nameof(DeviceScanTechnicalDetails)); Changed(nameof(StreamValidations)); Changed(nameof(StreamValidationRows)); Changed(nameof(StreamValidationStatus)); Changed(nameof(StreamValidationResultsSummary)); Changed(nameof(StreamEvidencePersistenceStatus)); Changed(nameof(OperatorResultStreamEvidenceNote)); Changed(nameof(OperatorResultProfileEvidenceNote)); Changed(nameof(OperatorResultDetails)); Changed(nameof(OperatorResultProvenance)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(CanSaveDeviceProfile));
             NotifyOperatorResult();
@@ -2329,12 +2329,12 @@ public sealed class MainViewModel : ViewModel
         var previousSelectionCurrent = HasCurrentOperatorQueryResult;
         _realQueryRunning = true;
         RequestDeviceScanCommand.Refresh();
-        _realFormatError = "Выполняется новый запрос; предыдущая матрица временно не является текущим результатом.";
+        _realFormatError = Localization.Get("VmQueryInvalidated");
         Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh();
         try
         {
             var requestedChannels = RealQueryChannelCountsText.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(value => int.TryParse(value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var count) ? count : -1).ToArray();
-            if (requestedChannels.Length is < 1 or > 32 || requestedChannels.Any(count => count is < 1 or > 64) || requestedChannels.Distinct().Count() != requestedChannels.Length) throw new ArgumentException("Введите от 1 до 32 уникальных номеров каналов в диапазоне 1–64 через запятую.");
+            if (requestedChannels.Length is < 1 or > 32 || requestedChannels.Any(count => count is < 1 or > 64) || requestedChannels.Distinct().Count() != requestedChannels.Length) throw new ArgumentException(Localization.Get("VmQueryChannelsValidation"));
             _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
             _operatorResultMode = "Запрос Exclusive-форматов";
             _operatorResultProvenance = "REAL_WASAPI_QUERY";
@@ -2345,9 +2345,9 @@ public sealed class MainViewModel : ViewModel
             {
                 _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}";
                 _operatorResultMode = "Запрос Exclusive-форматов";
-                _operatorResultConfiguration = "Результат не подтверждён после потери соединения.";
-                _realFormatError = "REAL_WASAPI_QUERY outcome UNKNOWN · worker/discovery disconnected before result acceptance.";
-                OperatorResultOutcome = "Исход запроса неизвестен; нет подтверждённого результата.";
+                _operatorResultConfiguration = Localization.Get("VmQueryDisconnectedConfiguration");
+                _realFormatError = Localization.Get("VmQueryDisconnectedError");
+                OperatorResultOutcome = Localization.Get("VmQueryDisconnectedOutcome");
                 NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(CanSaveDeviceProfile));
                 if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
                 return;
@@ -2363,12 +2363,12 @@ public sealed class MainViewModel : ViewModel
                 : null;
             SelectedRealFormatRow = preserve ?? rows.FirstOrDefault(row => IsEligibleSupportedRow(row, previousPeriod));
             RealInitializePeriod = previousPeriod;
-            OperatorResultOutcome = "Запрос завершён; поддержка драйвера показана отдельно и не означает Initialize или запуск потока.";
+            OperatorResultOutcome = Localization.Get("VmQuerySuccessOutcome");
             Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile));
             NotifyOperatorResult();
             if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
         }
-        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}"; _operatorResultMode = "Запрос Exclusive-форматов"; _realFormatError = $"Ошибка REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : " Последняя успешная матрица остаётся исторической и не разрешает Initialize-only."); OperatorResultOutcome = "Запрос не завершён; итог операции неизвестен."; NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
+        catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {endpoint.Direction} · {endpoint.DeviceState}"; _operatorResultMode = "Запрос Exclusive-форматов"; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
         finally { _realQueryRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
     }
 
@@ -2388,7 +2388,7 @@ public sealed class MainViewModel : ViewModel
         if (!RealInitializeConsentPending || !RealInitializeConsentChecked || _worker is null || _pendingRealEndpointId is null || _pendingRealDirection is null || _pendingRealFormatCandidate is not { } candidate) return;
         var endpointId = _pendingRealEndpointId; var direction = _pendingRealDirection;
         if (!CanUseSelectedWindowsEndpoint || SelectedWindowsEndpoint?.EndpointId != endpointId || SelectedWindowsEndpoint.Direction != direction || SelectedRealFormatCandidate != candidate || RealFormatMatrixIsStale)
-        { CancelRealInitialize(); WorkerNotice = "Выбор endpoint или формата изменился; подтверждение сброшено."; return; }
+        { CancelRealInitialize(); WorkerNotice = Localization.Get("VmInitializeSelectionChanged"); return; }
         _realInitializeRunning = true;
         RequestDeviceScanCommand.Refresh();
         Changed(nameof(RealInitializeDisabledReason)); RequestRealInitializeCommand.Refresh();
@@ -2404,14 +2404,14 @@ public sealed class MainViewModel : ViewModel
             _realInitializationError = null; Changed(nameof(RealInitializationDetails)); Changed(nameof(RealInitializationSummary)); Changed(nameof(RealFormatSummary));
             var result = await _worker.ValidateFormatMatrixAsync(endpointId, direction, candidate.SampleRate, candidate.Channels, candidate.Encoding, candidate.Period, receipt);
             if (result.Provenance != "REAL_WASAPI_INITIALIZE_ONLY" || result.EndpointId != endpointId || result.Direction != direction || result.ReportLevel != "INITIALIZE_ONLY" || result.Candidates.Count != 1 || result.Candidates[0] is not { } initialized || initialized.SampleRate != candidate.SampleRate || initialized.Channels != candidate.Channels || initialized.Encoding != candidate.Encoding || initialized.Period != candidate.Period)
-                throw new InvalidDataException("Initialize-only response does not match the consented endpoint and exact format.");
+                throw new InvalidDataException(Localization.Get("VmInitializeResponseMismatch"));
             RealInitializationResult = result;
-            OperatorResultOutcome = $"Initialize-only завершён · {RealInitializationResult.Candidates.FirstOrDefault()?.InitializeStatus ?? "результат отсутствует"}. Запуск и аудио-наблюдение не выполнялись.";
+            OperatorResultOutcome = string.Format(Localization.CurrentCulture, Localization.Get("VmInitializeSuccessOutcome"), RealInitializationResult.Candidates.FirstOrDefault()?.InitializeStatus ?? Localization.Get("VmInitializeResultMissing"));
             Changed(nameof(RealInitializationDetails));
             NotifyOperatorResult();
             NavigateOperatorStep(OperatorStep.Result);
         }
-        catch (Exception ex) { _realInitializationError = $"Initialize-only: исход неизвестен или отклонён · {ex.GetType().Name}: {ex.Message}"; OperatorResultOutcome = "Initialize outcome UNKNOWN · worker operation may have committed."; Changed(nameof(RealInitializationDetails)); Changed(nameof(RealInitializationSummary)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorInitializeResult)); NotifyOperatorResult(); WorkerNotice = _realInitializationError; NavigateOperatorStep(OperatorStep.Result); }
+        catch (Exception ex) { _realInitializationError = $"{Localization.Get("VmInitializeErrorPrefix")} · {ex.GetType().Name}: {ex.Message}"; OperatorResultOutcome = Localization.Get("VmInitializeUnknownOutcome"); Changed(nameof(RealInitializationDetails)); Changed(nameof(RealInitializationSummary)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorInitializeResult)); NotifyOperatorResult(); WorkerNotice = _realInitializationError; NavigateOperatorStep(OperatorStep.Result); }
         finally { CancelRealInitialize(); _realInitializeRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(RealFormatSummary)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
     }
 

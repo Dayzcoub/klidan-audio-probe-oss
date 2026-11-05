@@ -785,4 +785,20 @@
   <data name="VmStreamValidationNeedsCurrentInitialize" xml:space="preserve"><value>A current successful Initialize result for the exact selected endpoint and a connected worker are required.</value></data>
   <data name="VmValueUnknown" xml:space="preserve"><value>unknown</value></data>
   <data name="VmValueNotObserved" xml:space="preserve"><value>not observed</value></data>
+  <data name="VmScanOutcome" xml:space="preserve"><value>{0} · support and Initialize are reported separately. Stream start, stability, and Duplex were not tested.</value></data>
+  <data name="VmQueryInvalidated" xml:space="preserve"><value>A new query is running; the previous matrix is temporarily not current.</value></data>
+  <data name="VmQueryChannelsValidation" xml:space="preserve"><value>Enter 1–32 unique channel counts in the range 1–64, separated by commas.</value></data>
+  <data name="VmQueryDisconnectedConfiguration" xml:space="preserve"><value>The result was not confirmed after the connection was lost.</value></data>
+  <data name="VmQueryDisconnectedError" xml:space="preserve"><value>REAL_WASAPI_QUERY outcome UNKNOWN · worker/discovery disconnected before result acceptance.</value></data>
+  <data name="VmQueryDisconnectedOutcome" xml:space="preserve"><value>The query outcome is unknown; no result was confirmed.</value></data>
+  <data name="VmQuerySuccessOutcome" xml:space="preserve"><value>The query completed; driver support is shown separately and does not mean Initialize or stream start.</value></data>
+  <data name="VmQueryErrorPrefix" xml:space="preserve"><value>REAL_WASAPI_QUERY error:</value></data>
+  <data name="VmQueryHistoricalSuffix" xml:space="preserve"><value> The last successful matrix remains historical and does not authorize Initialize-only.</value></data>
+  <data name="VmQueryFailureOutcome" xml:space="preserve"><value>The query did not complete; the operation outcome is unknown.</value></data>
+  <data name="VmInitializeSelectionChanged" xml:space="preserve"><value>The endpoint or format selection changed; confirmation was cleared.</value></data>
+  <data name="VmInitializeResponseMismatch" xml:space="preserve"><value>Initialize-only response does not match the consented endpoint and exact format.</value></data>
+  <data name="VmInitializeSuccessOutcome" xml:space="preserve"><value>Initialize-only completed · {0}. Stream start and audio observation were not performed.</value></data>
+  <data name="VmInitializeResultMissing" xml:space="preserve"><value>result missing</value></data>
+  <data name="VmInitializeErrorPrefix" xml:space="preserve"><value>Initialize-only: outcome unknown or rejected</value></data>
+  <data name="VmInitializeUnknownOutcome" xml:space="preserve"><value>Initialize outcome UNKNOWN · worker operation may have committed.</value></data>
 </root>
