@@ -456,4 +456,20 @@
   <data name="VmAutomaticScanCancelled" xml:space="preserve"><value>Cancelled</value></data>
   <data name="VmAutomaticScanFailed" xml:space="preserve"><value>Did not complete</value></data>
   <data name="VmAutomaticScanOutcomeUnknown" xml:space="preserve"><value>Outcome unknown</value></data>
+  <data name="VmAutomaticScanProvenanceUnknown" xml:space="preserve"><value>UNKNOWN · operation source is unknown.</value></data>
+  <data name="VmAutomaticScanProvenanceDemo" xml:space="preserve"><value>DEMO · Simulation data (UI check only).</value></data>
+  <data name="VmAutomaticScanProvenanceReal" xml:space="preserve"><value>REAL WASAPI · accepted results.</value></data>
+  <data name="VmAutomaticScanProvenanceMixed" xml:space="preserve"><value>Mixed or unknown provenance · recommendation is not considered real.</value></data>
+  <data name="VmAutomaticScanSaveUnknown" xml:space="preserve"><value>The outcome of the new scan is unknown; saving this result is unconfirmed.</value></data>
+  <data name="VmAutomaticScanSaveUnconfirmed" xml:space="preserve"><value>Automatic save is unconfirmed: the operation result is unavailable.</value></data>
+  <data name="VmAutomaticScanReportNotSaved" xml:space="preserve"><value>Report not saved.</value></data>
+  <data name="VmChooseActiveWindowsDevice" xml:space="preserve"><value>Select an active Windows device.</value></data>
+  <data name="VmDeviceScanPlanBound" xml:space="preserve"><value>The plan is limited to the selected active endpoint; the device will not be switched automatically.</value></data>
+  <data name="VmConnectWorker" xml:space="preserve"><value>Connect the worker.</value></data>
+  <data name="VmRefreshWindowsDevices" xml:space="preserve"><value>Refresh the list of real Windows devices.</value></data>
+  <data name="VmChooseCaptureOrRenderEndpoint" xml:space="preserve"><value>Select an active Capture or Render endpoint.</value></data>
+  <data name="VmSelectedEndpointInactive" xml:space="preserve"><value>The selected endpoint is inactive.</value></data>
+  <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>The connected worker does not support the required real operations.</value></data>
+  <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Wait for the current operation to finish or cancel the pending confirmation.</value></data>
+  <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>No scan details are available.</value></data>
 </root>

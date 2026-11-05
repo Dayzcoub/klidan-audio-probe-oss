@@ -456,4 +456,20 @@
   <data name="VmAutomaticScanCancelled" xml:space="preserve"><value>Отменено</value></data>
   <data name="VmAutomaticScanFailed" xml:space="preserve"><value>Не завершено</value></data>
   <data name="VmAutomaticScanOutcomeUnknown" xml:space="preserve"><value>Исход неизвестен</value></data>
+  <data name="VmAutomaticScanProvenanceUnknown" xml:space="preserve"><value>UNKNOWN · источник операций не установлен.</value></data>
+  <data name="VmAutomaticScanProvenanceDemo" xml:space="preserve"><value>DEMO · Данные симуляции (только проверка UI).</value></data>
+  <data name="VmAutomaticScanProvenanceReal" xml:space="preserve"><value>REAL WASAPI · принятые результаты.</value></data>
+  <data name="VmAutomaticScanProvenanceMixed" xml:space="preserve"><value>Смешанное или неизвестное происхождение · рекомендация не считается реальной.</value></data>
+  <data name="VmAutomaticScanSaveUnknown" xml:space="preserve"><value>Исход нового сканирования неизвестен; сохранение этого результата не подтверждено.</value></data>
+  <data name="VmAutomaticScanSaveUnconfirmed" xml:space="preserve"><value>Автоматическое сохранение не подтверждено: результат операции недоступен.</value></data>
+  <data name="VmAutomaticScanReportNotSaved" xml:space="preserve"><value>Отчёт не сохранён.</value></data>
+  <data name="VmChooseActiveWindowsDevice" xml:space="preserve"><value>Выберите активное Windows-устройство.</value></data>
+  <data name="VmDeviceScanPlanBound" xml:space="preserve"><value>План ограничен выбранным активным endpoint; автоматической смены устройства нет.</value></data>
+  <data name="VmConnectWorker" xml:space="preserve"><value>Подключите worker.</value></data>
+  <data name="VmRefreshWindowsDevices" xml:space="preserve"><value>Обновите список реальных Windows-устройств.</value></data>
+  <data name="VmChooseCaptureOrRenderEndpoint" xml:space="preserve"><value>Выберите активный Capture или Render endpoint.</value></data>
+  <data name="VmSelectedEndpointInactive" xml:space="preserve"><value>Выбранный endpoint не активен.</value></data>
+  <data name="VmWorkerOperationsUnsupported" xml:space="preserve"><value>Подключённый worker не поддерживает необходимые реальные операции.</value></data>
+  <data name="VmWaitOrCancelPendingOperation" xml:space="preserve"><value>Дождитесь завершения текущей операции или отмените ожидающее подтверждение.</value></data>
+  <data name="VmDeviceScanDetailsMissing" xml:space="preserve"><value>Нет данных сканирования.</value></data>
 </root>
