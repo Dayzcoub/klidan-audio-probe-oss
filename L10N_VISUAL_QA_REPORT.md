@@ -387,7 +387,7 @@ GUI_TESTS = PASS (824)
 GUI_RELEASE = PASS
 DPI_125 = NOT_RUN (no isolated DPI environment; no system scaling changes)
 DPI_150 = NOT_RUN (no isolated DPI environment; no system scaling changes)
-FINAL_HEAD = pending final report checkpoint
+FINAL_HEAD = source `e1029782efc651c2fdcd0309faa549cb9aadb413`; report-only checkpoints are listed in delivery response
 READY_FOR_EXTERNAL_DPI_QA = YES
 ```
 
@@ -396,5 +396,6 @@ For 125%/150%, `QA-7B-External-DPI.ps1` is the prepared external-laptop runner. 
 Remaining blockers are the live GUI endpoint discovery hang, incomplete full
 workflow visual inspection, and missing exact-size 100% plus isolated 125% and
 150% visual runs. Physical QA is explicitly outside this pass.
+
 
 
