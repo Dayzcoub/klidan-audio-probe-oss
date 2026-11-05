@@ -471,25 +471,25 @@ public sealed class MainViewModel : ViewModel
     public bool AutomaticScanAttempted => _automaticScanAttempted;
     public ScanRunResult? AutomaticScanResult => _automaticScanResult;
     public IReadOnlyList<AutomaticScanProgressRow> AutomaticScanProgressRows => _automaticScanProgressRows;
-    public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{s.Stage}: {s.State} · {s.Message}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : "Ступенчатый план ещё не подготовлен.";
+    public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{s.Stage}: {s.State} · {s.Message}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
     public string AutomaticScanCandidateSummary => _automaticScanResult is { } result
         ? $"Кандидаты: {result.CandidateInventory.Count}; для теста {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.SUPPORTED_FOR_TEST)}; Initialize accepted {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.INITIALIZE_ACCEPTED)}; not tested {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.NOT_TESTED)}; UNKNOWN {result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.UNKNOWN)}."
-        : "Кандидаты появятся после FORMAT_QUERY; ограничения Probe не равны несовместимости устройства.";
+        : Localization.Get("VmAutomaticScanCandidatesAwaitQuery");
     public string AutomaticScanStatus => _automaticScanStatus;
     public string AutomaticScanAvailabilityReason
     {
         get
         {
-            if (_automaticScanWorkflow is null) return "Автоматическое сканирование недоступно в этом окне.";
-            if (_automaticScanOutcomeUnknown) return "Предыдущая операция не завершилась с подтверждённым исходом. Закройте и заново запустите приложение.";
-            if (AutomaticScanBusy) return "Сканирование выполняется; новые операции заблокированы.";
-            if (DeviceScanConsentPending || RealInitializeConsentPending || DuplexConsentPending) return "Сначала отмените другое ожидающее подтверждение.";
+            if (_automaticScanWorkflow is null) return Localization.Get("VmAutomaticScanUnavailable");
+            if (_automaticScanOutcomeUnknown) return Localization.Get("VmAutomaticScanPreviousOutcomeUnknown");
+            if (AutomaticScanBusy) return Localization.Get("VmAutomaticScanInProgress");
+            if (DeviceScanConsentPending || RealInitializeConsentPending || DuplexConsentPending) return Localization.Get("VmAutomaticScanCancelOtherConsent");
             if (AutomaticScanPairEnabled)
-                return SelectedDuplexCaptureEndpoint is null || SelectedDuplexRenderEndpoint is null ? AllowUnconfirmedPhysicalPair ? "Явно выберите Capture и Render; общая физическая принадлежность не подтверждена." : "Для парного сканирования явно выберите Capture и Render endpoints." : AllowUnconfirmedPhysicalPair ? "Будет проверена явно выбранная пара; общая физическая принадлежность не подтверждена." : "Будет проверена только явно выбранная пара точных endpoints.";
+                return SelectedDuplexCaptureEndpoint is null || SelectedDuplexRenderEndpoint is null ? AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanChooseUnconfirmedPair") : Localization.Get("VmAutomaticScanChoosePairEndpoints") : AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanCheckUnconfirmedPair") : Localization.Get("VmAutomaticScanCheckExactPair");
             if (SelectedWindowsEndpoint is not { EndpointId.Length: > 0, DeviceState: "ACTIVE" })
-                return SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? "Выберите активный Capture endpoint для частичного сканирования или разрешите явную пару." : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? "Выберите активный Render endpoint для частичного сканирования или разрешите явную пару." : "Выберите доступный активный endpoint текущей физической группы.";
+                return SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? Localization.Get("VmAutomaticScanChooseCaptureOrPair") : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? Localization.Get("VmAutomaticScanChooseRenderOrPair") : Localization.Get("VmAutomaticScanChooseActiveEndpoint");
             if (WorkerState.State != WorkerConnectionState.ConnectedFake && _workerAttempted) return WorkerRestartExplanation;
-            return "План будет ограничен выбранным endpoint и обновлённой Windows discovery.";
+            return Localization.Get("VmAutomaticScanPlanBoundToEndpoint");
         }
     }
     public string AutomaticScanConsentText
@@ -511,16 +511,16 @@ public sealed class MainViewModel : ViewModel
     public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? $"СКАНИРОВАНИЕ · {_automaticScanStatus}" :
         _automaticScanOutcomeUnknown && _automaticScanAttempted ? $"НЕИЗВЕСТНО · {_automaticScanStatus}" :
         _automaticScanResult is { } result ? $"{ScanLifecycleLabel(result.Lifecycle)} · {result.Summary}" :
-        _automaticScanAttempted ? $"НЕИЗВЕСТНО · {_automaticScanStatus}" : "Результат ещё не получен.";
+        _automaticScanAttempted ? $"НЕИЗВЕСТНО · {_automaticScanStatus}" : Localization.Get("VmAutomaticScanResultMissing");
     public string AutomaticScanResultHeadline => _automaticScanResult?.Lifecycle switch
     {
-        ScanRunLifecycle.Completed => "Завершено",
-        ScanRunLifecycle.Incomplete => "Частично завершено",
-        ScanRunLifecycle.Cancelled => "Отменено",
-        ScanRunLifecycle.Failed => "Не завершено",
-        ScanRunLifecycle.Unknown => "Исход неизвестен",
-        _ => "Результат отсутствует"
-    } ?? (_automaticScanOutcomeUnknown && _automaticScanAttempted ? "Исход неизвестен" : "Результат отсутствует");
+        ScanRunLifecycle.Completed => Localization.Get("VmAutomaticScanCompleted"),
+        ScanRunLifecycle.Incomplete => Localization.Get("VmAutomaticScanPartiallyCompleted"),
+        ScanRunLifecycle.Cancelled => Localization.Get("VmAutomaticScanCancelled"),
+        ScanRunLifecycle.Failed => Localization.Get("VmAutomaticScanFailed"),
+        ScanRunLifecycle.Unknown => Localization.Get("VmAutomaticScanOutcomeUnknown"),
+        _ => Localization.Get("VmAutomaticScanResultMissing")
+    } ?? (_automaticScanOutcomeUnknown && _automaticScanAttempted ? Localization.Get("VmAutomaticScanOutcomeUnknown") : Localization.Get("VmAutomaticScanResultMissing"));
     public string AutomaticScanResultDevice => SelectedPhysicalDeviceGroup?.DisplayName ?? (_automaticScanResult is not { } result ? OperatorSelectedDevice :
         string.Join(" + ", new[] { result.Target.Capture?.FriendlyNameDisplay, result.Target.Render?.FriendlyNameDisplay }.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal)));
     public string AutomaticScanRecommendationText => _automaticScanResult is not { } result ? "Рекомендация отсутствует." : result.Recommendation.Preferred is { } preferred

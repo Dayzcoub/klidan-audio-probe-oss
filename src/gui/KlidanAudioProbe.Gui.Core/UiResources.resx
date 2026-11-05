@@ -436,4 +436,24 @@
   <data name="VmInitializePeriodUnavailable" xml:space="preserve"><value>No usable format result exists for the selected period.</value></data>
   <data name="VmInitializeAwaitingConsent" xml:space="preserve"><value>Waiting for fresh confirmation or cancellation.</value></data>
   <data name="VmInitializeWorkerCapabilityMissing" xml:space="preserve"><value>The connected worker does not support Initialize-only.</value></data>
+  <data name="VmAutomaticScanPlanNotPrepared" xml:space="preserve"><value>The staged plan has not been prepared.</value></data>
+  <data name="VmAutomaticScanCandidatesAwaitQuery" xml:space="preserve"><value>Candidates appear after FORMAT_QUERY; Probe limitations do not mean the device is incompatible.</value></data>
+  <data name="VmAutomaticScanUnavailable" xml:space="preserve"><value>Automatic scanning is unavailable in this window.</value></data>
+  <data name="VmAutomaticScanPreviousOutcomeUnknown" xml:space="preserve"><value>The previous operation did not reach a confirmed outcome. Close and restart the application.</value></data>
+  <data name="VmAutomaticScanInProgress" xml:space="preserve"><value>Scan in progress; new operations are blocked.</value></data>
+  <data name="VmAutomaticScanCancelOtherConsent" xml:space="preserve"><value>Cancel the other pending confirmation first.</value></data>
+  <data name="VmAutomaticScanChooseUnconfirmedPair" xml:space="preserve"><value>Explicitly select Capture and Render; shared physical identity is unconfirmed.</value></data>
+  <data name="VmAutomaticScanChoosePairEndpoints" xml:space="preserve"><value>Explicitly select Capture and Render endpoints for a paired scan.</value></data>
+  <data name="VmAutomaticScanCheckUnconfirmedPair" xml:space="preserve"><value>The explicitly selected pair will be checked; shared physical identity is unconfirmed.</value></data>
+  <data name="VmAutomaticScanCheckExactPair" xml:space="preserve"><value>Only the explicitly selected exact endpoint pair will be checked.</value></data>
+  <data name="VmAutomaticScanChooseCaptureOrPair" xml:space="preserve"><value>Select an active Capture endpoint for a partial scan, or allow an explicit pair.</value></data>
+  <data name="VmAutomaticScanChooseRenderOrPair" xml:space="preserve"><value>Select an active Render endpoint for a partial scan, or allow an explicit pair.</value></data>
+  <data name="VmAutomaticScanChooseActiveEndpoint" xml:space="preserve"><value>Select an available active endpoint in the current physical group.</value></data>
+  <data name="VmAutomaticScanPlanBoundToEndpoint" xml:space="preserve"><value>The plan will be limited to the selected endpoint and refreshed Windows discovery.</value></data>
+  <data name="VmAutomaticScanResultMissing" xml:space="preserve"><value>No result has been received.</value></data>
+  <data name="VmAutomaticScanCompleted" xml:space="preserve"><value>Completed</value></data>
+  <data name="VmAutomaticScanPartiallyCompleted" xml:space="preserve"><value>Partially completed</value></data>
+  <data name="VmAutomaticScanCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="VmAutomaticScanFailed" xml:space="preserve"><value>Did not complete</value></data>
+  <data name="VmAutomaticScanOutcomeUnknown" xml:space="preserve"><value>Outcome unknown</value></data>
 </root>
