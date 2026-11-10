@@ -62,6 +62,10 @@ std::optional<ExclusiveFormatMatrix::PeriodRequest> ParseCustomDuplexPeriod(std:
 constexpr std::string_view kProtocol = "\"protocolVersion\":{\"major\":1,\"minor\":0},\"schemaVersion\":1";
 struct ProtocolFailure : std::runtime_error { using std::runtime_error::runtime_error; };
 struct Rejection : std::runtime_error { std::string code; Rejection(std::string c, const char* m) : std::runtime_error(m), code(std::move(c)) {} };
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+void SignalNamedTestEvent(const char* name) { if(!name||!*name)return;HANDLE event=OpenEventA(EVENT_MODIFY_STATE,FALSE,name);if(event){SetEvent(event);CloseHandle(event);} }
+void WaitNamedTestEvent(const char* name) { if(!name||!*name)return;HANDLE event=OpenEventA(SYNCHRONIZE,FALSE,name);if(event){WaitForSingleObject(event,INFINITE);CloseHandle(event);} }
+#endif
 
 void RejectDuplicateProperties(const rapidjson::Value& root) {
     struct Entry { const rapidjson::Value* value; unsigned depth; };
@@ -695,11 +699,12 @@ bool IsCustomPeriod(std::string_view value) {
 bool IsAuthorizedPeriod(std::string_view value) { return value=="DEFAULT"||value=="MINIMUM"||IsCustomPeriod(value); }
 
 struct ScanAllowedFormat { int rate{},channels{};std::string encoding;std::set<std::string> periods,mmcss; };
+enum class ScanInvalidationReason { None, Cancelled, Closed, DiscoveryRefresh, UnsafeCleanup };
 struct ScanAuthorization {
     std::string id;std::unordered_map<std::string,std::string> endpoints;std::set<std::string> operations;
     std::vector<ScanAllowedFormat> formats;std::unordered_set<std::string> usedOperations;
     std::uint64_t expires{},discoveryGeneration{};int maxDuration{},maxOperations{},used{};
-    bool invalid{},active{};std::string activeOperationId;
+    std::atomic<bool> invalid{},active{};std::atomic<ScanInvalidationReason> invalidationReason{ScanInvalidationReason::None};
 };
 bool HasOnlyMembers(const rapidjson::Value& value,std::initializer_list<std::string_view> names) {if(!value.IsObject())return false;for(auto it=value.MemberBegin();it!=value.MemberEnd();++it){const std::string_view name(it->name.GetString(),it->name.GetStringLength());if(std::find(names.begin(),names.end(),name)==names.end())return false;}return true;}
 std::string ScanPlanFingerprint(const rapidjson::Value& payload) {
@@ -734,20 +739,26 @@ std::shared_ptr<ScanAuthorization> ParseScanAuthorization(const rapidjson::Value
         session->formats.push_back(std::move(item));
     }
     if(ScanPlanFingerprint(payload)!=fingerprint)throw Rejection("SCAN_FINGERPRINT_MISMATCH","Worker-computed immutable scan plan fingerprint does not match.");
-    consumedConfirmations.insert(acceptedId);session->maxDuration=duration;session->maxOperations=count;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;session->discoveryGeneration=generation;return session;
+    consumedConfirmations.insert(acceptedId);session->maxDuration=duration;session->maxOperations=count;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;session->discoveryGeneration=generation;
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+    if(const auto* scenario=std::getenv("KLIDAN_TEST_SCAN_SCENARIO")){if(std::string_view(scenario)=="EXPIRE_ON_REGISTER")session->expires=GetTickCount64();else if(std::string_view(scenario)=="GENERATION_MISMATCH")++session->discoveryGeneration;}
+#endif
+    return session;
 }
 std::string AuthorizeScanOperation(const rapidjson::Value& payload,const std::shared_ptr<ScanAuthorization>& session,const std::unordered_map<std::string,std::string>& discovered,std::uint64_t generation,std::string_view command,const std::vector<ExclusiveFormatMatrix::Format>& formats,std::string_view period,int duration,std::string_view mmcss,std::string_view endpointId,std::string_view direction,std::string_view captureId={},std::string_view renderId={}) {
     const bool hasSession=payload.HasMember("scanSessionId"),hasOperation=payload.HasMember("scanOperationId");if(!hasSession&&!hasOperation)return {};if(!hasSession||!hasOperation||!session)throw Rejection("SCAN_SESSION_INVALID","Both scan session and operation identity are required.");
     std::string sessionId,scanOperationId;if(!ReadString(payload,"scanSessionId",sessionId)||!ReadString(payload,"scanOperationId",scanOperationId)||GuidString(sessionId)!=session->id)throw Rejection("SCAN_SESSION_INVALID","Scan session token is not valid for this Worker connection.");scanOperationId=GuidString(scanOperationId);
     if(payload.HasMember("operationId")&&(!payload["operationId"].IsString()||GuidString(std::string_view(payload["operationId"].GetString(),payload["operationId"].GetStringLength()))!=scanOperationId))throw Rejection("SCAN_OPERATION_ID_MISMATCH","Scan operation identity differs from the operation report identity.");
-    if(session->invalid||GetTickCount64()>=session->expires||generation!=session->discoveryGeneration)throw Rejection("SCAN_SESSION_STALE","Scan authorization expired, was cancelled, or no longer matches current discovery.");
+    if(session->invalid){const auto reason=session->invalidationReason.load();const char* message=reason==ScanInvalidationReason::Cancelled?"Scan authorization was cancelled.":reason==ScanInvalidationReason::Closed?"Scan authorization was closed.":reason==ScanInvalidationReason::DiscoveryRefresh?"Scan authorization was invalidated by endpoint discovery refresh.":"Scan authorization was invalidated after unsafe operation cleanup.";throw Rejection("SCAN_SESSION_STALE",message);}
+    if(GetTickCount64()>=session->expires)throw Rejection("SCAN_SESSION_STALE","Scan authorization expired.");
+    if(generation!=session->discoveryGeneration)throw Rejection("SCAN_SESSION_STALE","Scan authorization discovery generation changed.");
     if(!session->operations.contains(std::string(command))||session->active||session->used>=session->maxOperations||session->usedOperations.contains(scanOperationId))throw Rejection("SCAN_OPERATION_REJECTED","Operation is out of scope, replayed, concurrent, or beyond the approved count.");
     auto endpointAllowed=[&](std::string_view id,std::string_view dir){auto allowed=session->endpoints.find(std::string(id));auto current=discovered.find(std::string(id));return allowed!=session->endpoints.end()&&allowed->second==dir&&current!=discovered.end()&&current->second==dir;};
     if(command=="ValidateDuplex"||command=="ValidateSustainedDuplex"){if(!endpointAllowed(captureId,"CAPTURE")||!endpointAllowed(renderId,"RENDER"))throw Rejection("SCAN_ENDPOINT_OUT_OF_SCOPE","Duplex endpoint pair is outside the approved session.");}
     else if(!endpointAllowed(endpointId,direction))throw Rejection("SCAN_ENDPOINT_OUT_OF_SCOPE","Operation endpoint is outside the approved session.");
     if(duration>session->maxDuration)throw Rejection("SCAN_DURATION_EXCEEDED","Operation duration exceeds the approved scan-session limit.");
     for(const auto& candidate:formats){const auto encoding=ExclusiveFormatMatrix::EncodingText(candidate.encoding);const bool found=std::any_of(session->formats.begin(),session->formats.end(),[&](const auto& item){return item.rate==static_cast<int>(candidate.sampleRate)&&item.channels==candidate.channels&&item.encoding==encoding&&(command=="QueryFormatMatrix"||item.periods.contains(std::string(period)))&&(command=="QueryFormatMatrix"||command=="ValidateFormatMatrix"||item.mmcss.contains(std::string(mmcss)));});if(!found)throw Rejection("SCAN_FORMAT_OUT_OF_SCOPE","Format, period, or MMCSS setting is outside the approved scan plan.");}
-    session->usedOperations.insert(scanOperationId);++session->used;session->active=true;session->activeOperationId=scanOperationId;return scanOperationId;
+    session->usedOperations.insert(scanOperationId);++session->used;session->active=true;return scanOperationId;
 }
 bool ScanReportSafe(std::string_view json) {
     try {
@@ -773,7 +784,7 @@ bool ScanReportSafe(std::string_view json) {
         visit(visit,root);return safe;
     } catch(...) { return false; }
 }
-struct ScanOperationFinish { std::shared_ptr<ScanAuthorization> session;bool accepted{},finished{};void Finish(bool reusable){if(!session||finished)return;session->active=false;session->activeOperationId.clear();if(!reusable)session->invalid=true;accepted=reusable;finished=true;}~ScanOperationFinish(){Finish(accepted);} };
+struct ScanOperationFinish { std::shared_ptr<ScanAuthorization> session;bool accepted{},finished{};void Finish(bool reusable){if(finished){if(!reusable&&session){accepted=false;session->invalidationReason=ScanInvalidationReason::UnsafeCleanup;session->invalid=true;}return;}if(session){session->active=false;if(!reusable){session->invalidationReason=ScanInvalidationReason::UnsafeCleanup;session->invalid=true;}}accepted=reusable;finished=true;}~ScanOperationFinish(){Finish(accepted);} };
 
 bool HandleClient(HANDLE pipe) {
     Writer writer(pipe); FakeOperationService service(writer); std::vector<std::uint8_t> bytes;
@@ -805,6 +816,10 @@ bool HandleClient(HANDLE pipe) {
     while(true) {
         try { if(!ReadFrame(pipe,bytes)) break; }
         catch(const ProtocolFailure& ex) { writer.Error("REQUEST_FRAME","PROTOCOL_ERROR",ex.what()); return false; }
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+        if(const auto* busyEvent=std::getenv("KLIDAN_TEST_OPERATION_BUSY_EVENT"))SignalNamedTestEvent(realOperationBusy.load()?busyEvent:std::getenv("KLIDAN_TEST_OPERATION_IDLE_EVENT"));
+#endif
+        if(!realOperationBusy.load()&&realOperation.joinable())realOperation.join();
         std::string correlation,command;
         try {
             auto request=ParseObject(bytes);
@@ -829,7 +844,7 @@ bool HandleClient(HANDLE pipe) {
                 if(const auto* scenario=std::getenv("KLIDAN_TEST_FORMAT_SCENARIO");scenario&&std::string_view(scenario)=="HOLD_DISCOVERY")std::this_thread::sleep_for(std::chrono::milliseconds(350));
 #endif
                 if(realOperationBusy.load()){writer.Response(correlation,command,"ERROR","BUSY","Discovery cannot change while an Exclusive operation is active.");continue;}
-                if(scanAuthorization)scanAuthorization->invalid=true;
+                if(scanAuthorization){scanAuthorization->invalidationReason=ScanInvalidationReason::DiscoveryRefresh;scanAuthorization->invalid=true;}
                 try {
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     discoveredActive.clear();discoveredActive.emplace("injected-endpoint-capture","CAPTURE");discoveredActive.emplace("injected-endpoint-render","RENDER");
@@ -867,7 +882,7 @@ bool HandleClient(HANDLE pipe) {
                     if(scenario&&std::string_view(scenario)=="NO_RESPONSE") Sleep(30'000);
                 }
 #endif
-                scanAuthorization->invalid=true;
+                scanAuthorization->invalidationReason=command=="CancelScanSession"?ScanInvalidationReason::Cancelled:ScanInvalidationReason::Closed;scanAuthorization->invalid=true;
                 if(command=="CancelScanSession"&&scanAuthorization->active){std::lock_guard lock(streamCancelMutex);if(streamCancelEvent)SetEvent(streamCancelEvent);if(duplexCancelEvent)SetEvent(duplexCancelEvent);}
                 writer.Response(correlation,command,"OK","","","{\"state\":\"INVALIDATED\",\"operationOutcome\":\""+std::string(scanAuthorization->active?"UNKNOWN":"NOT_RUNNING")+"\"}");if(command=="CloseScanSession")scanAuthorization.reset();continue;
             }
@@ -898,20 +913,25 @@ bool HandleClient(HANDLE pipe) {
 #endif
                 realOperation=std::thread([&,operationId=std::move(operationId),endpointId=std::move(endpointId),direction=std::move(direction),period100ns,frames,correlation,operationScanSession,format,periodScenario]() mutable {
                     ScanOperationFinish scanFinish{operationScanSession};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,"InitializeExclusiveCustomPeriod",status,code,message,payload);
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+                        if(sent)WaitNamedTestEvent(std::getenv("KLIDAN_TEST_POST_RESPONSE_GATE"));
+#endif
+                        if(!sent)scanFinish.Finish(false);return sent;};
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     if(periodScenario=="NO_RESPONSE") { Sleep(30000); scanFinish.Finish(false); realOperationBusy=false; return; }
 #endif
-                    const auto publish=[&](const std::string& report) { const auto body="{\"operationId\":"+JsonString(operationId)+",\"endpointId\":"+JsonString(endpointId)+",\"direction\":"+JsonString(direction)+",\"report\":"+report+"}"; const bool safe=ScanReportSafe(body); scanFinish.Finish(safe); if(!writer.Response(correlation,"InitializeExclusiveCustomPeriod","OK","","",body))scanFinish.Finish(false); };
+                    const auto publish=[&](const std::string& report) { const auto body="{\"operationId\":"+JsonString(operationId)+",\"endpointId\":"+JsonString(endpointId)+",\"direction\":"+JsonString(direction)+",\"report\":"+report+"}"; terminal("OK","","",body,ScanReportSafe(body)); };
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     try { InjectedWasapiApi api; auto attempt=api.InitializeOnly(format,ExclusiveFormatMatrix::PeriodRequest::Custom(period100ns,static_cast<std::uint32_t>(frames))); static std::atomic<int> rejectedFirstFour{}; if(periodScenario=="REJECT_FIRST_FOUR" && rejectedFirstFour.fetch_add(1)<4) attempt.finalInitializeHr=ExclusiveFormatMatrix::kUnsupportedFormat; const auto classification=ExclusivePeriodDiscovery::Classify(attempt); ExclusiveFormatMatrix::Attempt reportAttempt=attempt; const auto report=ExclusivePeriodDiscovery::Report{endpointId,direction=="CAPTURE"?ExclusiveFormatMatrix::Direction::Capture:ExclusiveFormatMatrix::Direction::Render,format,{30'000,100'000},operationId,NewGuid(),{{period100ns,static_cast<std::uint32_t>(frames),classification,ExclusivePeriodDiscovery::ClassificationText(classification),reportAttempt}}}; publish(ExclusivePeriodDiscovery::ToJson(report,"2026-11-01T00:00:00Z","TEST_FAKE_PERIOD_BACKEND")); }
-                    catch(...) { writer.Response(correlation,"InitializeExclusiveCustomPeriod","ERROR","INJECTED_BACKEND_FAILED","The injected custom-period backend did not produce a complete response."); }
+                    catch(...) { terminal("ERROR","INJECTED_BACKEND_FAILED","The injected custom-period backend did not produce a complete response."); }
 #else
                     HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
-                    if(FAILED(com)){writer.Response(correlation,"InitializeExclusiveCustomPeriod","ERROR","COM_INITIALIZE_FAILED","Custom-period operation thread could not initialize COM.");realOperationBusy=false;return;}
+                    if(FAILED(com)){terminal("ERROR","COM_INITIALIZE_FAILED","Custom-period operation thread could not initialize COM.");return;}
                     IMMDevice* device=nullptr;
                     try { const auto validation=RevalidateEndpoint(endpointId,direction,&device); if(!validation.empty())throw Rejection("ENDPOINT_INVALID","Endpoint was not active immediately before custom-period Initialize."); ExclusiveFormatMatrix::WasapiApi api(device); const auto query=api.QuerySupport(format); if(!query.minimumDevicePeriod100ns||!query.defaultDevicePeriod100ns||period100ns<*query.minimumDevicePeriod100ns||period100ns>*query.defaultDevicePeriod100ns)throw Rejection("CUSTOM_PERIOD_OUT_OF_BOUNDS","Requested period is outside this endpoint's current minimum/default bounds."); const auto attempt=api.InitializeOnly(format,ExclusiveFormatMatrix::PeriodRequest::Custom(period100ns,static_cast<std::uint32_t>(frames))); const auto classification=ExclusivePeriodDiscovery::Classify(attempt); ExclusivePeriodDiscovery::Report report{endpointId,direction=="CAPTURE"?ExclusiveFormatMatrix::Direction::Capture:ExclusiveFormatMatrix::Direction::Render,format,{*query.minimumDevicePeriod100ns,*query.defaultDevicePeriod100ns},operationId,NewGuid(),{{period100ns,static_cast<std::uint32_t>(frames),classification,ExclusivePeriodDiscovery::ClassificationText(classification),attempt}}}; const auto text=ExclusivePeriodDiscovery::ToJson(report,MatrixTimestampUtc(),"REAL_WASAPI_INITIALIZE_ONLY"); device->Release();CoUninitialize();publish(text); }
-                    catch(const Rejection& ex){if(device)device->Release();CoUninitialize();scanFinish.Finish(false);writer.Response(correlation,"InitializeExclusiveCustomPeriod","ERROR",ex.code,ex.what());}
-                    catch(...){if(device)device->Release();CoUninitialize();scanFinish.Finish(false);writer.Response(correlation,"InitializeExclusiveCustomPeriod","ERROR","NATIVE_OPERATION_FAILED","Custom-period WASAPI operation did not produce a complete response.");}
+                    catch(const Rejection& ex){if(device)device->Release();CoUninitialize();terminal("ERROR",ex.code,ex.what());}
+                    catch(...){if(device)device->Release();CoUninitialize();terminal("ERROR","NATIVE_OPERATION_FAILED","Custom-period WASAPI operation did not produce a complete response.");}
 #endif
                     realOperationBusy=false;
                 });
@@ -966,6 +986,7 @@ bool HandleClient(HANDLE pipe) {
                 const auto operationCommand=command;
                 realOperation=std::thread([&,endpointId=std::move(endpointId),direction=std::move(direction),formats=std::move(formats),period,correlation,operationCommand,operationScanSession]() mutable {
                     ScanOperationFinish scanFinish{operationScanSession};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,operationCommand,status,code,message,payload);if(!sent)scanFinish.Finish(false);return sent;};
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     try {
                         InjectedWasapiApi api;
@@ -974,17 +995,17 @@ bool HandleClient(HANDLE pipe) {
                         if(operationCommand=="QueryFormatMatrix")report=ExclusiveFormatMatrix::RunCandidates(dir,ExclusiveFormatMatrix::Level::PassiveQuery,api,formats);
                         else report={dir,ExclusiveFormatMatrix::Level::InitializeOnly,{ExclusiveFormatMatrix::RunSingle(dir,formats.front(),period,api,true)}};
                         const auto result=SerializeRealMatrix(endpointId,direction,report);
-                        if(result.size()>kMaximumFrame-1024)writer.Response(correlation,operationCommand,"ERROR","RESPONSE_TOO_LARGE","Injected test result exceeds the IPC frame limit.");
-                        else {const bool safe=!operationScanSession||ScanReportSafe(result);scanFinish.Finish(safe);if(!writer.Response(correlation,operationCommand,"OK","","",result))scanFinish.Finish(false);}
-                    } catch(const std::exception&) { writer.Response(correlation,operationCommand,"ERROR","INJECTED_BACKEND_FAILED","The injected test backend did not produce a complete response."); }
+                        if(result.size()>kMaximumFrame-1024)terminal("ERROR","RESPONSE_TOO_LARGE","Injected test result exceeds the IPC frame limit.");
+                        else terminal("OK","","",result,!operationScanSession||ScanReportSafe(result));
+                    } catch(const std::exception&) { terminal("ERROR","INJECTED_BACKEND_FAILED","The injected test backend did not produce a complete response."); }
                     realOperationBusy=false;return;
 #else
                     HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
-                    if(FAILED(com)) { writer.Response(correlation,operationCommand,"ERROR","COM_INITIALIZE_FAILED","Dedicated operation thread could not initialize COM.","{\"stage\":\"COM_INITIALIZE\",\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");realOperationBusy=false;return; }
+                    if(FAILED(com)) { terminal("ERROR","COM_INITIALIZE_FAILED","Dedicated operation thread could not initialize COM.","{\"stage\":\"COM_INITIALIZE\",\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");return; }
                     IMMDevice* device=nullptr;
                     try {
                         const auto validation=RevalidateEndpoint(endpointId,direction,&device);
-                        if(!validation.empty()) { CoUninitialize();writer.Response(correlation,operationCommand,"ERROR",validation,"Endpoint was not active with the requested direction immediately before the operation.");realOperationBusy=false;return; }
+                        if(!validation.empty()) { CoUninitialize();terminal("ERROR",validation,"Endpoint was not active with the requested direction immediately before the operation.");return; }
                         ExclusiveFormatMatrix::WasapiApi api(device);
                         const auto dir=direction=="CAPTURE"?ExclusiveFormatMatrix::Direction::Capture:ExclusiveFormatMatrix::Direction::Render;
                         ExclusiveFormatMatrix::Report report;
@@ -992,9 +1013,9 @@ bool HandleClient(HANDLE pipe) {
                         else report={dir,ExclusiveFormatMatrix::Level::InitializeOnly,{ExclusiveFormatMatrix::RunSingle(dir,formats.front(),period,api,true)}};
                         const auto result=SerializeRealMatrix(endpointId,direction,report);
                         device->Release();CoUninitialize();
-                        if(result.size()>kMaximumFrame-1024)writer.Response(correlation,operationCommand,"ERROR","RESPONSE_TOO_LARGE","Format result exceeds the IPC frame limit.");
-                        else {const bool safe=!operationScanSession||ScanReportSafe(result);scanFinish.Finish(safe);if(!writer.Response(correlation,operationCommand,"OK","","",result))scanFinish.Finish(false);}
-                    } catch(const std::exception&) { if(device)device->Release();CoUninitialize();writer.Response(correlation,operationCommand,"ERROR","NATIVE_OPERATION_FAILED","The real WASAPI format operation failed before a complete result was produced."); }
+                        if(result.size()>kMaximumFrame-1024)terminal("ERROR","RESPONSE_TOO_LARGE","Format result exceeds the IPC frame limit.");
+                        else terminal("OK","","",result,!operationScanSession||ScanReportSafe(result));
+                    } catch(const std::exception&) { if(device)device->Release();CoUninitialize();terminal("ERROR","NATIVE_OPERATION_FAILED","The real WASAPI format operation failed before a complete result was produced."); }
                     realOperationBusy=false;
 #endif
                 });
@@ -1049,11 +1070,12 @@ bool HandleClient(HANDLE pipe) {
 #endif
                     ]() mutable {
                     ScanOperationFinish scanFinish{operationScanSession};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,"ValidateStream",status,code,message,payload);if(!sent)scanFinish.Finish(false);return sent;};
                     HANDLE cancellation=INVALID_HANDLE_VALUE;
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     SECURITY_ATTRIBUTES testSecurity{sizeof(SECURITY_ATTRIBUTES),nullptr,TRUE};
                     cancellation=CreateEventW(&testSecurity,TRUE,FALSE,nullptr);
-                    if(!cancellation){writer.Response(correlation,"ValidateStream","ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create injected cancellation event.");realOperationBusy=false;return;}
+                    if(!cancellation){terminal("ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create injected cancellation event.");return;}
                     {std::lock_guard lock(streamCancelMutex);streamCancelEvent=cancellation;}
                     if(scenario=="WAIT_FOR_CANCEL"&&WaitForSingleObject(cancellation,(duration+5)*1000)==WAIT_OBJECT_0)scenario="CANCELLED";
                     const auto expected=static_cast<std::uint64_t>(48000)*static_cast<std::uint64_t>(duration);
@@ -1082,24 +1104,24 @@ bool HandleClient(HANDLE pipe) {
                     const std::string responseOperationId=scenario=="MISMATCH_OPERATION_ID"?NewGuid():operationId;
                     const std::string responseEndpointId=scenario=="MISMATCH_ENDPOINT"?"injected-other-endpoint":endpointId;
                     const std::string responseDirection=scenario=="MISMATCH_RESPONSE_DIRECTION"?(direction=="CAPTURE"?"RENDER":"CAPTURE"):direction;
-                    const auto response="{\"operationId\":"+JsonString(responseOperationId)+",\"endpointId\":"+JsonString(responseEndpointId)+",\"direction\":"+JsonString(responseDirection)+",\"report\":"+report+"}";scanFinish.Finish(!operationScanSession||ScanReportSafe(response));if(!writer.Response(correlation,command,"OK","","",response))scanFinish.Finish(false);
                     {std::lock_guard lock(streamCancelMutex);streamCancelEvent=nullptr;}
                     CloseHandle(cancellation);
+                    const auto response="{\"operationId\":"+JsonString(responseOperationId)+",\"endpointId\":"+JsonString(responseEndpointId)+",\"direction\":"+JsonString(responseDirection)+",\"report\":"+report+"}";terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
 #else
                     const HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
-                    if(FAILED(com)){writer.Response(correlation,"ValidateStream","ERROR","COM_INITIALIZE_FAILED","Stream operation thread could not initialize COM.","{\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");realOperationBusy=false;return;}
+                    if(FAILED(com)){terminal("ERROR","COM_INITIALIZE_FAILED","Stream operation thread could not initialize COM.","{\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");return;}
                     IMMDevice* device=nullptr;const auto validation=RevalidateEndpoint(endpointId,direction,&device);
                     if(device)device->Release();CoUninitialize();
-                    if(!validation.empty()){writer.Response(correlation,"ValidateStream","ERROR",validation,"Endpoint failed exact active-state/direction revalidation immediately before stream operation.");realOperationBusy=false;return;}
+                    if(!validation.empty()){terminal("ERROR",validation,"Endpoint failed exact active-state/direction revalidation immediately before stream operation.");return;}
                     SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES),nullptr,TRUE};
                     cancellation=CreateEventW(&security,TRUE,FALSE,nullptr);
-                    if(!cancellation){writer.Response(correlation,"ValidateStream","ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create a cancellation event.");realOperationBusy=false;return;}
+                    if(!cancellation){terminal("ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create a cancellation event.");return;}
                     {std::lock_guard lock(streamCancelMutex);streamCancelEvent=cancellation;}
                     std::string failure,failureField;auto report=RunStreamCli(endpointId,direction,period,static_cast<unsigned>(duration),mmcss,cancellation,failure,failureField);
                     {std::lock_guard lock(streamCancelMutex);streamCancelEvent=nullptr;}
                     CloseHandle(cancellation);
-                    if(!report){const auto message=failureField.empty()?"The native stream subprocess did not return complete structured evidence; operation outcome may be unknown.":"The native stream report contract failed at field "+failureField+"; operation outcome may be unknown.";writer.Response(correlation,"ValidateStream","ERROR",failure,message);realOperationBusy=false;return;}
-                    const auto response="{\"operationId\":\""+operationId+"\",\"endpointId\":"+JsonString(endpointId)+",\"direction\":\""+direction+"\",\"report\":"+*report+"}";scanFinish.Finish(!operationScanSession||ScanReportSafe(response));if(!writer.Response(correlation,"ValidateStream","OK","","",response))scanFinish.Finish(false);
+                    if(!report){const auto message=failureField.empty()?"The native stream subprocess did not return complete structured evidence; operation outcome may be unknown.":"The native stream report contract failed at field "+failureField+"; operation outcome may be unknown.";terminal("ERROR",failure,message);return;}
+                    const auto response="{\"operationId\":\""+operationId+"\",\"endpointId\":"+JsonString(endpointId)+",\"direction\":\""+direction+"\",\"report\":"+*report+"}";terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
 #endif
                     realOperationBusy=false;
                 });
@@ -1149,16 +1171,16 @@ bool HandleClient(HANDLE pipe) {
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                 std::string scenario="CLEAN";
                 if(payload.HasMember("testScenario")) {
-                    if(!payload["testScenario"].IsString()){writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Test-only Duplex scenario must be a string.");realOperationBusy=false;continue;}
+                    if(!payload["testScenario"].IsString()){if(operationScanSession){operationScanSession->active=false;operationScanSession->invalid=true;operationScanSession->invalidationReason=ScanInvalidationReason::UnsafeCleanup;}realOperationBusy=false;writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Test-only Duplex scenario must be a string.");continue;}
                     scenario.assign(payload["testScenario"].GetString(),payload["testScenario"].GetStringLength());
-                    if(scenario!="CLEAN"&&scenario!="BENIGN_INTERMEDIATE_WAIT"&&scenario!="SERVICE_FAILURE"&&scenario!="WATCHDOG"&&scenario!="LONG_EVENT_INTERVAL"&&scenario!="PACKET_DRAIN_LIMIT"&&scenario!="CAPTURE_FAIL"&&scenario!="RENDER_FAIL"&&scenario!="INSUFFICIENT_FRAMES"&&scenario!="NO_OVERLAP"&&scenario!="CANCELLED"&&scenario!="CLEANUP_UNKNOWN"&&scenario!="WAIT_FOR_CANCEL"&&scenario!="DELAY_RESPONSE"&&scenario!="NO_RESPONSE") { writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Unknown test-only Duplex scenario.");realOperationBusy=false;continue; }
+                    if(scenario!="CLEAN"&&scenario!="BENIGN_INTERMEDIATE_WAIT"&&scenario!="SERVICE_FAILURE"&&scenario!="WATCHDOG"&&scenario!="LONG_EVENT_INTERVAL"&&scenario!="PACKET_DRAIN_LIMIT"&&scenario!="CAPTURE_FAIL"&&scenario!="RENDER_FAIL"&&scenario!="INSUFFICIENT_FRAMES"&&scenario!="NO_OVERLAP"&&scenario!="CANCELLED"&&scenario!="CLEANUP_UNKNOWN"&&scenario!="WAIT_FOR_CANCEL"&&scenario!="DELAY_RESPONSE"&&scenario!="NO_RESPONSE") { if(operationScanSession){operationScanSession->active=false;operationScanSession->invalid=true;operationScanSession->invalidationReason=ScanInvalidationReason::UnsafeCleanup;}realOperationBusy=false;writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Unknown test-only Duplex scenario.");continue; }
                 }
 #else
-                if(payload.HasMember("testScenario")){writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Test-only Duplex scenarios are unavailable in the production worker.");realOperationBusy=false;continue;}
+                if(payload.HasMember("testScenario")){if(operationScanSession){operationScanSession->active=false;operationScanSession->invalid=true;operationScanSession->invalidationReason=ScanInvalidationReason::UnsafeCleanup;}realOperationBusy=false;writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Test-only Duplex scenarios are unavailable in the production worker.");continue;}
 #endif
                 SECURITY_ATTRIBUTES cancellationSecurity{sizeof(SECURITY_ATTRIBUTES),nullptr,TRUE};
                 HANDLE cancellation=CreateEventW(&cancellationSecurity,TRUE,FALSE,nullptr);
-                if(!cancellation){writer.Response(correlation,command,"ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create Duplex cancellation event.");realOperationBusy=false;continue;}
+                if(!cancellation){if(operationScanSession){operationScanSession->active=false;operationScanSession->invalidationReason=ScanInvalidationReason::UnsafeCleanup;operationScanSession->invalid=true;}realOperationBusy=false;writer.Response(correlation,command,"ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create Duplex cancellation event.");continue;}
                 {std::lock_guard lock(streamCancelMutex);duplexCancelEvent=cancellation;}
                 if(pendingDuplexCancelId==operationId){SetEvent(cancellation);pendingDuplexCancelId.clear();}
                 realOperation=std::thread([&,command,operationId,captureId,renderId,period,mmcss,duration,correlation,cancellation,operationScanSession,sustained
@@ -1167,6 +1189,7 @@ bool HandleClient(HANDLE pipe) {
 #endif
                     ]() mutable {
                     ScanOperationFinish scanFinish{operationScanSession};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,command,status,code,message,payload);if(!sent)scanFinish.Finish(false);return sent;};
                     const auto finishCancellation=[&](){std::lock_guard lock(streamCancelMutex);if(duplexCancelEvent==cancellation)duplexCancelEvent=nullptr;CloseHandle(cancellation);};
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     DuplexValidationReport::Report fake;fake.schemaVersion=sustained?1:2;fake.reportType=sustained?"wasapi-sustained-duplex-validation":"wasapi-duplex-validation";fake.provenance=sustained?"TEST_FAKE_WASAPI_SUSTAINED_DUPLEX":"TEST_FAKE_WASAPI_DUPLEX";fake.operationId=operationId;fake.reportId=NewGuid();fake.timestampUtc="2026-10-31T00:00:00.000Z";fake.probeVersion="test";fake.captureEndpointId=captureId;fake.renderEndpointId=renderId;fake.period=period;fake.mmcss=mmcss;fake.durationSeconds=duration;fake.bothReady=true;fake.startAuthorized=true;fake.status="DUPLEX_CLEAN";fake.startDifferenceMilliseconds=0.025;fake.simultaneousRuntimeMilliseconds=duration*1000.0;
@@ -1202,19 +1225,19 @@ bool HandleClient(HANDLE pipe) {
                     if(scenario=="NO_RESPONSE") { Sleep(8000);finishCancellation();realOperationBusy=false;return; }
                     if(scenario=="DELAY_RESPONSE") Sleep(5500);
                     const auto report=DuplexValidationReport::ToJson(fake);
-                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"report\":"+report+"}";scanFinish.Finish(!operationScanSession||ScanReportSafe(response));if(!writer.Response(correlation,command,"OK","","",response))scanFinish.Finish(false);
                     finishCancellation();
+                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"report\":"+report+"}";terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
 #else
                     const HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
-                    if(FAILED(com)){writer.Response(correlation,command,"ERROR","COM_INITIALIZE_FAILED","Duplex operation thread could not initialize COM.","{\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");finishCancellation();realOperationBusy=false;return;}
+                    if(FAILED(com)){finishCancellation();terminal("ERROR","COM_INITIALIZE_FAILED","Duplex operation thread could not initialize COM.","{\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");return;}
                     IMMDevice* device=nullptr;auto validation=RevalidateEndpoint(captureId,"CAPTURE",&device);if(device)device->Release();
                     if(validation.empty()){validation=RevalidateEndpoint(renderId,"RENDER",&device);if(device)device->Release();}
                     CoUninitialize();
-                    if(!validation.empty()){writer.Response(correlation,command,"ERROR",validation,"Exact endpoint pair failed active-state/direction revalidation before operation.");finishCancellation();realOperationBusy=false;return;}
+                    if(!validation.empty()){finishCancellation();terminal("ERROR",validation,"Exact endpoint pair failed active-state/direction revalidation before operation.");return;}
                     std::string failure, failureDetail;auto report=RunDuplexCli(operationId,captureId,renderId,period,static_cast<unsigned>(duration),mmcss,cancellation,failure,failureDetail,sustained);
                     finishCancellation();
-                    if(!report){writer.Response(correlation,command,"ERROR",failure,"Structured Duplex evidence unavailable; operation or cleanup outcome may be unknown. "+failureDetail);realOperationBusy=false;return;}
-                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"report\":"+*report+"}";scanFinish.Finish(!operationScanSession||ScanReportSafe(response));if(!writer.Response(correlation,command,"OK","","",response))scanFinish.Finish(false);
+                    if(!report){terminal("ERROR",failure,"Structured Duplex evidence unavailable; operation or cleanup outcome may be unknown. "+failureDetail);return;}
+                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"report\":"+*report+"}";terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
 #endif
                     realOperationBusy=false;
                 });

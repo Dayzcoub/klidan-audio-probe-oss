@@ -354,8 +354,8 @@ public sealed class WorkerAutomaticScanWorkflow(NativeWorkerClient worker) : IAu
                 }
                 catch (WorkerCommandException ex) when (ex.Command == "RegisterScanSession")
                 {
-                    repeatabilityStage = new(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.UNKNOWN,
-                        $"RegisterScanSession завершился неопределённо: {ex.ErrorCode}. {ex.Message}");
+                    repeatabilityStage = new(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.FAILED,
+                        $"RegisterScanSession получил подтверждённый отказ {ex.ErrorCode}. {ex.Message}");
                 }
                 catch (Exception ex)
                 {
