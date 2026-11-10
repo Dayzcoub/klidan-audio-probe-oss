@@ -34,6 +34,10 @@ target_compile_definitions(KlidanProbeWorker PRIVATE NOMINMAX WIN32_LEAN_AND_MEA
 target_include_directories(KlidanProbeWorker PRIVATE src/third_party/rapidjson/include src/probe)
 target_link_libraries(KlidanProbeWorker PRIVATE ole32 propsys uuid bcrypt)
 set_target_properties(KlidanProbeWorker PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/worker")
+
+add_executable(probe_duplex_v2_worker_cli_contract tests/duplex_v2_worker_cli_contract.cpp)
+target_compile_features(probe_duplex_v2_worker_cli_contract PRIVATE cxx_std_20)
+target_compile_definitions(probe_duplex_v2_worker_cli_contract PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 if(MSVC)
   target_compile_options(KlidanProbeWorker PRIVATE /utf-8)
 endif()
@@ -57,6 +61,7 @@ if(MSVC)
 endif()
 
 enable_testing()
+add_test(NAME probe_duplex_v2_worker_cli_contract COMMAND probe_duplex_v2_worker_cli_contract $<TARGET_FILE:KlidanAudioProbe>)
 add_test(NAME probe_worker_protocol COMMAND KlidanProbeWorker --self-test)
 add_executable(probe_stream_validation_report_tests tests/stream_validation_report_tests.cpp)
 target_compile_features(probe_stream_validation_report_tests PRIVATE cxx_std_20)

@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $manifestName = 'audio-probe-qa-build.json'
-$supportedBranches = @('feat/audio-probe-as-n3c-gui-integration', 'feat/audio-probe-as-n4b-bounded-physical-qa')
+$supportedBranches = @('feat/audio-probe-as-n3c-gui-integration', 'feat/audio-probe-as-n4b-bounded-physical-qa', 'fix/as-n4b1-native-duplex-v2-cli')
 
 function Get-WorkspaceContext {
     if (-not (Test-Path -LiteralPath $WorkspaceRegistryPath -PathType Leaf)) { throw "Workspace registry missing: $WorkspaceRegistryPath" }
@@ -49,7 +49,7 @@ function Get-BinaryIdentity([string]$GuiPath, [string]$WorkerPath, [string]$CliP
     }
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($GuiPath)
     $binaryCommit = [regex]::Match([string]$version.ProductVersion, '[0-9a-fA-F]{40}')
-    if ($SourceCommit -and $binaryCommit.Success -and $binaryCommit.Value -ne $SourceCommit) { throw "GUI binary identifies source commit $($binaryCommit.Value), expected ${SourceCommit}: $GuiPath" }
+    if (-not $SourceCommit -or -not $binaryCommit.Success -or $binaryCommit.Value -ine $SourceCommit) { throw "GUI ProductVersion must contain exact source commit ${SourceCommit}: $GuiPath" }
     [pscustomobject]@{
         gui = [pscustomobject]@{ path = [IO.Path]::GetFullPath($GuiPath); sha256 = (Get-FileHash -LiteralPath $GuiPath -Algorithm SHA256).Hash; fileVersion = $version.FileVersion; productVersion = $version.ProductVersion }
         nativeWorker = [pscustomobject]@{ path = [IO.Path]::GetFullPath($WorkerPath); sha256 = (Get-FileHash -LiteralPath $WorkerPath -Algorithm SHA256).Hash }
@@ -70,6 +70,7 @@ function Register-CurrentBuild {
     $identity = Get-BinaryIdentity $gui $worker $cli $source.Commit
     $manifest = [pscustomobject]@{ schemaVersion = 2; sourceBranch = $source.Branch; sourceCommit = $source.Commit; registeredUtc = [DateTime]::UtcNow.ToString('O'); binaries = $identity }
     $manifestPath = Join-Path $directory $manifestName
+    if (Test-Path -LiteralPath $manifestPath) { throw "Refusing to overwrite an existing QA build manifest: $manifestPath" }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding utf8
     Write-Output $manifestPath
 }
