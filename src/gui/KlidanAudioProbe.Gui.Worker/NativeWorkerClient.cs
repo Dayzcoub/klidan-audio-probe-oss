@@ -43,6 +43,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     private bool _everStarted, _disposed, _shutdownRequested;
     private int _transportEnded;
     private int _sharedOperation;
+    private ulong _discoveryGeneration;
     private long _lastEventSequence;
     private string? _pipeName;
 
@@ -186,6 +187,12 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=payload-parse workerState={0}", _state.State);
         var discovery = response.RootElement.GetProperty("payload").Deserialize<WindowsEndpointDiscoveryDto>(JsonOptions)
             ?? throw new InvalidDataException("Windows endpoint response payload is missing.");
+        if (response.RootElement.GetProperty("payload").TryGetProperty("discoveryGeneration", out var generation))
+        {
+            if (!generation.TryGetUInt64(out _discoveryGeneration) || _discoveryGeneration == 0) throw new InvalidDataException("Worker discovery returned an invalid generation identity.");
+        }
+        else if (_capabilities.Contains("ScanSessionAuthorizationV2", StringComparer.Ordinal)) throw new InvalidDataException("V2-capable Worker discovery omitted its generation identity.");
+        else checked { _discoveryGeneration++; }
         WindowsEndpointDiscoveryValidation.Validate(discovery, _capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal));
         System.Diagnostics.Trace.TraceInformation("EndpointDiscovery stage=validated endpointCount={0} workerState={1}", discovery.Endpoints.Count, _state.State);
         return discovery;
@@ -202,6 +209,19 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var payload = response.RootElement.GetProperty("payload");
         if (!payload.TryGetProperty("scanSessionId", out var id) || id.ValueKind != System.Text.Json.JsonValueKind.String || !id.TryGetGuid(out var sessionId) || sessionId == Guid.Empty || payload.GetProperty("state").GetString() != "AUTHORIZED") throw new InvalidDataException("Worker did not return a valid opaque scan-session token.");
         return new(sessionId);
+    }
+
+    public async Task<WorkerScanSessionToken> RegisterScanSessionV2Async(string captureEndpointId, string renderEndpointId, WorkerScanPlanV2 plan, bool operatorAccepted, Guid confirmationId, CancellationToken cancellationToken = default)
+    {
+        if (!_capabilities.Contains("ScanSessionAuthorizationV2", StringComparer.Ordinal)) throw new WorkerCommandException("RegisterScanSessionV2", "NOT_SUPPORTED", "Worker does not implement V2 scan authorization.");
+        if (!operatorAccepted || confirmationId == Guid.Empty || _discoveryGeneration == 0) throw new ArgumentException("Fresh discovery and explicit operator acceptance are required for V2 scan authorization.", nameof(plan));
+        var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, plan.Route);
+        var planFingerprint = WorkerScanPlanV2Fingerprint.Compute(captureEndpointId, renderEndpointId, plan, _discoveryGeneration);
+        var route = new { mode = plan.Route.Mode, capture = new { sampleRateHz = plan.Route.Capture.SampleRateHz, channels = plan.Route.Capture.Channels, encoding = plan.Route.Capture.Encoding, channelMask = plan.Route.Capture.ChannelMask, selectedIndicesZeroBased = plan.Route.Capture.SelectedIndicesZeroBased }, render = new { sampleRateHz = plan.Route.Render.SampleRateHz, channels = plan.Route.Render.Channels, encoding = plan.Route.Render.Encoding, channelMask = plan.Route.Render.ChannelMask, selectedIndicesZeroBased = plan.Route.Render.SelectedIndicesZeroBased } };
+        using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 2, captureEndpointId, renderEndpointId, route, routeFingerprint, periods = plan.Periods, mmcssModes = plan.MmcssModes, sustainedDurationsSeconds = new[] { 60, 300, 600 }, lifetimeSeconds = plan.LifetimeSeconds, maximumOperationDurationSeconds = plan.MaximumOperationDurationSeconds, maximumOperationCount = plan.MaximumOperationCount, maximumTotalDurationSeconds = plan.MaximumTotalDurationSeconds, planFingerprint, authorization = new { accepted = true, confirmationId } }, cancellationToken).ConfigureAwait(false);
+        var payload = response.RootElement.GetProperty("payload");
+        if (!payload.TryGetProperty("scanSessionId", out var id) || !id.TryGetGuid(out var sessionId) || sessionId == Guid.Empty || payload.GetProperty("contractVersion").GetInt32() != 2 || payload.GetProperty("state").GetString() != "AUTHORIZED") throw new InvalidDataException("Worker did not return a valid V2 scan-session token.");
+        return new(sessionId, 2, routeFingerprint);
     }
 
     public async Task CancelScanSessionAsync(WorkerScanSessionToken session, CancellationToken cancellationToken = default) => await EndScanSessionAsync("CancelScanSession", session, cancellationToken).ConfigureAwait(false);
@@ -364,6 +384,28 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
 
     public Task<DuplexValidationDto> ValidateSustainedDuplexInScanAsync(string operationId, string captureEndpointId, string renderEndpointId, string period, int durationSeconds, string mmcss, WorkerScanSessionToken session, Guid scanOperationId, CancellationToken cancellationToken = default) =>
         ValidateDuplexCoreAsync(operationId, captureEndpointId, renderEndpointId, period, durationSeconds, mmcss, null, cancellationToken, null, session, scanOperationId, true);
+
+    public Task<DuplexValidationDto> ValidateDuplexV2InScanAsync(string operationId, WorkerScanSessionToken session, Guid scanOperationId, WorkerScanV2Route route, string captureEndpointId, string renderEndpointId, string period, int durationSeconds, string mmcss, bool sustained = false, CancellationToken cancellationToken = default)
+    {
+        var command = sustained ? "ValidateSustainedDuplexV2" : "ValidateDuplexV2";
+        if (session.ContractVersion != 2 || session.ScanSessionId == Guid.Empty || scanOperationId == Guid.Empty || !Guid.TryParse(operationId, out var operation) || operation != scanOperationId || session.RouteFingerprint != WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route) || !_capabilities.Contains(sustained ? "RealExclusiveSustainedDuplexValidationV2" : "RealExclusiveDuplexValidationV2", StringComparer.Ordinal) || period is not ("MINIMUM" or "DEFAULT") || mmcss is not ("OFF" or "PRO_AUDIO") || (sustained ? durationSeconds is not (60 or 300 or 600) : durationSeconds is < 1 or > 10)) throw new ArgumentException("V2 operation must match its authorized route, operation identity, and bounded stage.");
+        var payload = new { contractVersion = 2, operationId = operation, captureEndpointId, renderEndpointId, mode = route.Mode,
+            capture = new { sampleRateHz = route.Capture.SampleRateHz, channels = route.Capture.Channels, encoding = route.Capture.Encoding, channelMask = route.Capture.ChannelMask, selectedIndicesZeroBased = route.Capture.SelectedIndicesZeroBased },
+            render = new { sampleRateHz = route.Render.SampleRateHz, channels = route.Render.Channels, encoding = route.Render.Encoding, channelMask = route.Render.ChannelMask, selectedIndicesZeroBased = route.Render.SelectedIndicesZeroBased },
+            period, durationSeconds, mmcss, scanSessionId = session.ScanSessionId, scanOperationId };
+        return ValidateDuplexV2CoreAsync(command, operation, session, route, captureEndpointId, renderEndpointId, period, durationSeconds, mmcss, payload, cancellationToken);
+    }
+
+    private async Task<DuplexValidationDto> ValidateDuplexV2CoreAsync(string command, Guid operation, WorkerScanSessionToken session, WorkerScanV2Route route, string captureId, string renderId, string period, int duration, string mmcss, object payload, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(command, payload, cancellationToken).ConfigureAwait(false);
+        var body = response.RootElement.GetProperty("payload"); var report = body.GetProperty("report"); var evidenceRoute = report.GetProperty("route");
+        var expectedType = command == "ValidateSustainedDuplexV2" ? "wasapi-sustained-duplex-validation-v2" : "wasapi-duplex-validation-v2";
+        var expectedProvenance = _capabilities.Contains("TestInjectedDuplexBackend", StringComparer.Ordinal) ? command == "ValidateSustainedDuplexV2" ? "TEST_FAKE_WASAPI_SUSTAINED_DUPLEX_V2" : "TEST_FAKE_WASAPI_DUPLEX_V2" : command == "ValidateSustainedDuplexV2" ? "REAL_WASAPI_SUSTAINED_DUPLEX_V2" : "REAL_WASAPI_DUPLEX_V2";
+        static bool RouteSideMatches(JsonElement side, string endpointId, WorkerScanV2Side expected) => side.ValueKind == JsonValueKind.Object && side.GetProperty("endpointId").GetString() == endpointId && side.GetProperty("sampleRateHz").GetInt32() == expected.SampleRateHz && side.GetProperty("channels").GetInt32() == expected.Channels && side.GetProperty("encoding").GetString() == expected.Encoding && side.GetProperty("channelMask").GetUInt32() == expected.ChannelMask && side.GetProperty("selectedIndicesZeroBased").EnumerateArray().Select(i => i.GetInt32()).SequenceEqual(expected.SelectedIndicesZeroBased);
+        if (!Guid.TryParse(body.GetProperty("operationId").GetString(), out var returned) || returned != operation || body.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || body.GetProperty("captureEndpointId").GetString() != captureId || body.GetProperty("renderEndpointId").GetString() != renderId || !Guid.TryParse(report.GetProperty("operationId").GetString(), out var reportOperation) || reportOperation != operation || report.GetProperty("reportType").GetString() != expectedType || report.GetProperty("provenance").GetString() != expectedProvenance || evidenceRoute.GetProperty("fingerprint").GetString() != session.RouteFingerprint || evidenceRoute.GetProperty("mode").GetString() != route.Mode || evidenceRoute.GetProperty("renderPolicy").GetString() != "SILENCE_ONLY" || !RouteSideMatches(evidenceRoute.GetProperty("capture"), captureId, route.Capture) || !RouteSideMatches(evidenceRoute.GetProperty("render"), renderId, route.Render) || report.GetProperty("requested").GetProperty("captureEndpointId").GetString() != captureId || report.GetProperty("requested").GetProperty("renderEndpointId").GetString() != renderId || report.GetProperty("requested").GetProperty("period").GetString() != period || report.GetProperty("requested").GetProperty("durationSeconds").GetInt32() != duration || report.GetProperty("requested").GetProperty("mmcss").GetString() != mmcss) throw new InvalidDataException("V2 Duplex response differs from its authorized operation or route.");
+        return new(operation.ToString("D"), captureId, renderId, report.Clone());
+    }
 
     private async Task<DuplexValidationDto> ValidateDuplexCoreAsync(string operationId, string captureEndpointId, string renderEndpointId, string period, int durationSeconds, string mmcss, DuplexConsentDto? consent, CancellationToken cancellationToken, string? testScenario, WorkerScanSessionToken? scanSession, Guid? scanOperationId, bool sustained = false)
     {
@@ -600,7 +642,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
                 if (!pending.TryAbandon(out _)) return completion.Task.GetAwaiter().GetResult();
                 completion.TrySetCanceled();
                 RaiseSafely(TransportFault, new WorkerTransportFaultDto("RESPONSE_TIMEOUT", $"No response arrived for {command}; command outcome remains unknown.", CorrelationId: id, Command: command));
-                if (IsSupervisedNativeOperation(command)) EndTransport(command is "ValidateDuplex" or "ValidateSustainedDuplex" ? "DUPLEX_SUPERVISION_TIMEOUT" : command == "InitializeExclusiveCustomPeriod" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
+                if (IsSupervisedNativeOperation(command)) EndTransport(command.Contains("Duplex", StringComparison.Ordinal) ? "DUPLEX_SUPERVISION_TIMEOUT" : command == "InitializeExclusiveCustomPeriod" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
                 throw new TimeoutException($"No response arrived for {command} within the response deadline.");
             }
         }
@@ -621,13 +663,15 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         finally { if (acquired) _writeGate.Release(); Trace("send-complete"); }
     }
 
-    private static bool IsSupervisedNativeOperation(string command) => command is "QueryFormatMatrix" or "ValidateFormatMatrix" or "ValidateStream" or "ValidateDuplex" or "ValidateSustainedDuplex" or "InitializeExclusiveCustomPeriod" or "CloseScanSession";
+    private static bool IsSupervisedNativeOperation(string command) => command is "QueryFormatMatrix" or "ValidateFormatMatrix" or "ValidateStream" or "ValidateDuplex" or "ValidateSustainedDuplex" or "ValidateDuplexV2" or "ValidateSustainedDuplexV2" or "InitializeExclusiveCustomPeriod" or "CloseScanSession";
 
     private static TimeSpan GetResponseTimeout(string command) => command switch
     {
         "ValidateStream" => TimeSpan.FromSeconds(45),
         "ValidateDuplex" => DuplexResponseTimeout,
         "ValidateSustainedDuplex" => SustainedDuplexResponseTimeout,
+        "ValidateDuplexV2" => DuplexResponseTimeout,
+        "ValidateSustainedDuplexV2" => SustainedDuplexResponseTimeout,
         "InitializeExclusiveCustomPeriod" => TimeSpan.FromSeconds(20),
         "QueryFormatMatrix" or "ValidateFormatMatrix" => TimeSpan.FromSeconds(30),
         "CloseScanSession" => TimeSpan.FromSeconds(SessionCloseTimeoutSeconds),
