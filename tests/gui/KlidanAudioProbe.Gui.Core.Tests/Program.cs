@@ -935,6 +935,30 @@ Check(Localization.Get("VmV4AudioGateClosed", ruCulture).Contains("профил�
 v2RouteVm.V4RepeatabilityRuns = 4;
 Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt is null, "changing repeatability budget invalidates the prepared v4 plan and receipt");
 v2RouteVm.V4RepeatabilityRuns = 5;
+void PrepareFreshV4ForInvalidation(string label)
+{
+    v2RouteVm.PrepareV4CustomPlanCommand.Execute(null);
+    Check(PumpUntil(() => v2RouteVm.V4ConsentPending, TimeSpan.FromSeconds(3)), label);
+}
+PrepareFreshV4ForInvalidation("v4 plan can be prepared again for route-field invalidation");
+v2RouteVm.AutomaticScanV2CaptureChannel1 = 7;
+Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ConsentPending, "changing the selected Capture channel invalidates the v4 plan");
+v2RouteVm.AutomaticScanV2CaptureChannel1 = 8;
+PrepareFreshV4ForInvalidation("v4 plan can be prepared again for format-domain invalidation");
+v2RouteVm.AutomaticScanV2CaptureFormat = "44100|PCM16";
+Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ConsentPending, "changing the selected Capture format invalidates the v4 candidate domain");
+v2RouteVm.AutomaticScanV2CaptureFormat = "48000|PCM16";
+PrepareFreshV4ForInvalidation("v4 plan can be prepared again for route-mode invalidation");
+v2RouteVm.AutomaticScanV2Mode = "STEREO_TO_STEREO";
+Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ConsentPending, "changing route mode invalidates the prepared v4 plan");
+v2RouteVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
+var savedV4RenderEndpoint = v2RouteVm.SelectedDuplexRenderEndpoint;
+PrepareFreshV4ForInvalidation("v4 plan can be prepared again for endpoint invalidation");
+v2RouteVm.SelectedDuplexRenderEndpoint = null;
+Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ConsentPending, "changing the Render endpoint invalidates the prepared v4 plan");
+v2RouteVm.SelectedDuplexRenderEndpoint = savedV4RenderEndpoint;
+v2RouteVm.AutomaticScanV2CaptureChannels = 8;
+v2RouteVm.AutomaticScanV2CaptureChannel1 = 8;
 var latePassive = new TaskCompletionSource<RealFormatMatrixDto>(TaskCreationOptions.RunContinuationsAsynchronously);
 v2RouteWorker.RealQueryFactory = (_, direction, _, _) => latePassive.Task;
 var previousV4Queries = v2RouteWorker.RealQueryCalls; var previousV4Completions = v2RouteWorker.RealQueryCompletions;
