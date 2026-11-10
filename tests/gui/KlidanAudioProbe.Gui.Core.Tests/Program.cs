@@ -46,6 +46,20 @@ V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, 
 var autoCaptureId = "auto-capture"; var autoRenderId = "auto-render";
 var autoRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
 var autoRouteFingerprint = WorkerScanPlanV2Fingerprint.Route(autoCaptureId, autoRenderId, autoRoute);
+RealFormatCandidateDto PassiveCandidate(int channels, string period, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000) => new("PCM16", rate, channels, period, "UNKNOWN_NOT_ASSIGNED", support, support, "0x00000000", "0x00000000", "0x00000000", @default, min, "NOT_TESTED", false, null, null, null, null, null, "NOT_ACQUIRED") { QueryCleanupStatus = "RELEASE_ATTEMPTED", QueryClientReleaseAttempts = 1 };
+RealFormatMatrixDto PassiveMatrix(string endpoint, string direction, int channels, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000, bool omitBounds = false) => new("REAL_WASAPI_QUERY", "2026-11-10T00:00:00Z", endpoint, direction, "PASSIVE_QUERY", omitBounds ? [] : [PassiveCandidate(channels, "minimum", min, @default, support, rate), PassiveCandidate(channels, "default", min, @default, support, rate)]);
+var passiveRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 8, "PCM16", 0, [7]), new(48000, 2, "PCM16", 0, [0, 1]));
+var preparedFromPassiveBounds = WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("cap", "CAPTURE", 8), PassiveMatrix("ren", "RENDER", 2), 9, 5);
+Check(preparedFromPassiveBounds.Candidates.Select(c => c.CaptureFrames).SequenceEqual(new[] { 144, 192, 240, 288, 336, 384, 432, 480 }) && preparedFromPassiveBounds.CaptureBounds.AlignmentFrames is null && preparedFromPassiveBounds.RenderBounds.AlignmentFrames is null, "passive preparation uses exact reported 3–10 ms bounds, independently selected formats, and explicit unknown alignment");
+var flow8Route = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 1, "PCM16", 0, [0]), new(48000, 2, "PCM16", 0, [0, 1]));
+var flow8Prepared = WorkerScanV2PlanPreparation.Prepare("cap", "ren", flow8Route, PassiveMatrix("cap", "CAPTURE", 1), PassiveMatrix("ren", "RENDER", 2), 9, 2);
+Check(flow8Prepared.Route.Capture.Channels == 1 && flow8Prepared.Route.Render.Channels == 2 && flow8Prepared.Candidates.First().CaptureFrames == 144 && flow8Prepared.Candidates.First().RenderFrames == 144, "FLOW 8 passive plan preserves mono Capture and stereo Render at their selected exact formats");
+var mixedPrepared = WorkerScanV2PlanPreparation.Prepare("cap", "ren", flow8Route with { Capture = flow8Route.Capture with { SampleRateHz = 44100 } }, PassiveMatrix("cap", "CAPTURE", 1, rate: 44100), PassiveMatrix("ren", "RENDER", 2), 9, 0);
+Check(mixedPrepared.Candidates.All(c => c.CaptureFrames == (int)(((decimal)c.RequestedDuration100ns * 44100 + 5_000_000m) / 10_000_000m) && c.RenderFrames == (int)(((decimal)c.RequestedDuration100ns * 48000 + 5_000_000m) / 10_000_000m)), "passive plan independently converts mixed Capture/Render sample rates to frames");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("wrong", "CAPTURE", 8), PassiveMatrix("ren", "RENDER", 2), 9, 5), "passive preparation blocks mismatched endpoint identity");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("cap", "CAPTURE", 8, omitBounds: true), PassiveMatrix("ren", "RENDER", 2), 9, 5), "passive preparation blocks missing selected-format period bounds");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("cap", "CAPTURE", 8, support: "NOT_SUPPORTED"), PassiveMatrix("ren", "RENDER", 2), 9, 5), "passive preparation blocks an unsupported selected format");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("cap", "CAPTURE", 8, min: 60_000, @default: 70_000), PassiveMatrix("ren", "RENDER", 2, min: 30_000, @default: 50_000), 9, 5), "passive preparation blocks disjoint endpoint period ranges");
 var v4Grid = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(autoRoute);
 var v4Budget = WorkerScanV2ContractV4Fingerprint.Budget(8, 5);
 Check(v4Grid.Select(c => c.CaptureFrames).SequenceEqual(new[] { 144, 192, 240, 288, 336, 384, 432, 480 }) && v4Grid.All(c => c.RenderFrames > 0 && c.RequestedDuration100ns == c.CapturePeriod100ns && c.RequestedDuration100ns == c.RenderPeriod100ns), "V4 48 kHz grid has exact frame and period geometry");
@@ -53,9 +67,10 @@ var asymmetricRoute = autoRoute with { Capture = autoRoute.Capture with { Sample
 var asymmetricCandidates = WorkerScanV2CandidatePlanning.Generate(asymmetricRoute, 132, 441, 144, 480);
 Check(asymmetricCandidates.Count is > 0 and <= 8 && asymmetricCandidates.All(c => c.CaptureFrames == (int)(((decimal)c.RequestedDuration100ns * 44100 + 5_000_000m) / 10_000_000m) && c.RenderFrames == (int)(((decimal)c.RequestedDuration100ns * 48000 + 5_000_000m) / 10_000_000m)) && asymmetricCandidates.Zip(asymmetricCandidates.Skip(1)).All(p => p.First.CapturePeriod100ns < p.Second.CapturePeriod100ns), "V4 computes independently rounded asymmetric 44.1/48 kHz geometry in ascending unique actual periods");
 Check(v4Budget == new WorkerScanV2Budget(29, 65, 1171) && WorkerScanV2ContractV4Fingerprint.Budget(1, 0) == new WorkerScanV2Budget(3, 5, 139), "V4 budget is checked at maximum and minimum operation scopes");
-var v4Plan = new WorkerScanV2ContractV4(autoRoute, v4Grid, ["OFF"], 5, 29, 65, 30, 1171, 8);
+var v4Bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+var v4Plan = new WorkerScanV2ContractV4(autoRoute, v4Grid, ["OFF"], 5, 29, 65, 30, 1171, 8, v4Bounds, v4Bounds);
 var v4Canonical = WorkerScanV2ContractV4Fingerprint.Canonicalize("capture-кириллица", "render-音声", v4Plan, 7);
-var v4ExpectedCanonical = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|29|65|30|1171|8|\n" + string.Join("\n", v4Grid.Select(c => $"C|{c.Index}|{c.RequestedDuration100ns}|{c.CaptureFrames}|{c.RenderFrames}|{c.CapturePeriod100ns}|{c.RenderPeriod100ns}|{c.CaptureAlignmentFrames}|{c.RenderAlignmentFrames}|{c.CaptureMinimumFrames}|{c.CaptureMaximumFrames}|{c.RenderMinimumFrames}|{c.RenderMaximumFrames}|{c.RejectionReason}")) + "\nM|OFF\n";
+var v4ExpectedCanonical = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|29|65|30|1171|8|\nB|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n" + string.Join("\n", v4Grid.Select(c => $"C|{c.Index}|{c.RequestedDuration100ns}|{c.CaptureFrames}|{c.RenderFrames}|{c.CapturePeriod100ns}|{c.RenderPeriod100ns}|{c.CaptureAlignmentFrames}|{c.CaptureAlignmentKnown.ToString().ToLowerInvariant()}|{c.RenderAlignmentFrames}|{c.RenderAlignmentKnown.ToString().ToLowerInvariant()}|{c.CaptureMinimumFrames}|{c.CaptureMaximumFrames}|{c.RenderMinimumFrames}|{c.RenderMaximumFrames}|{c.RejectionReason}")) + "\nM|OFF\n";
 Check(v4Canonical == v4ExpectedCanonical && WorkerScanV2ContractV4Fingerprint.Compute("capture-кириллица", "render-音声", v4Plan, 7).Length == 64, "C# and C++ v4 Unicode canonical serialization matches the shared full 8-candidate byte vector and discriminator");
 var v4Consent = WorkerScanV2ContractV4Fingerprint.ConsentSummary("capture-кириллица", "render-音声", v4Plan, 7);
 Check(v4Consent.Contains("Capture capture-кириллица", StringComparison.Ordinal) && v4Consent.Contains("Render render-音声", StringComparison.Ordinal) && v4Consent.Contains("48000 Hz", StringComparison.Ordinal) && v4Consent.Contains("8 candidates", StringComparison.Ordinal) && v4Consent.Contains("repeatability=5", StringComparison.Ordinal) && v4Consent.Contains("max audio operations=29", StringComparison.Ordinal) && v4Consent.Contains("active Duplex=65s", StringComparison.Ordinal) && v4Consent.Contains("session=1171s", StringComparison.Ordinal) && v4Consent.Contains("transport is not enabled", StringComparison.Ordinal), "V4 consent summary displays exact endpoints, route, candidate list and all ceilings while keeping runtime unavailable");
@@ -63,7 +78,7 @@ Throws<ArgumentException>(() => WorkerScanV2ContractV4Fingerprint.Canonicalize("
 Throws<ArgumentException>(() => WorkerScanV2ContractV4Fingerprint.Canonicalize("capture", "render", v4Plan with { Candidates = v4Grid.Reverse().ToArray() }, 7), "V4 rejects reordered candidates");
 V2CandidateMatrixEntry MatrixRow(WorkerScanV2Candidate c) => new(c, "NOT_TESTED", "NOT_TESTED", "NOT_TESTED", "NOT_ATTEMPTED", "NOT_ATTEMPTED", ["B1_PLAN_ONLY"], true, "V4_AUDIO_EXECUTION_NOT_ENABLED", "INCOMPLETE", "NOT_RUN", "PLAN_ONLY");
 var matrixRows = v4Grid.Select(MatrixRow).ToArray();
-var matrixEvidence = new V2CandidateMatrixEvidence(1, WorkerScanV2ContractV4Fingerprint.Compute("capture-кириллица", "render-音声", v4Plan, 7), WorkerScanPlanV2Fingerprint.Route("capture-кириллица", "render-音声", autoRoute), "PLANNED", v4Grid, matrixRows, "MINIMUM_NOT_PROVEN", "PLAN_ONLY");
+var matrixEvidence = new V2CandidateMatrixEvidence(1, WorkerScanV2ContractV4Fingerprint.Compute("capture-кириллица", "render-音声", v4Plan, 7), WorkerScanPlanV2Fingerprint.Route("capture-кириллица", "render-音声", autoRoute), "PLANNED", v4Bounds, v4Bounds, v4Grid, matrixRows, "MINIMUM_NOT_PROVEN", "PLAN_ONLY");
 Check(V2CandidateMatrixEvidenceJson.SerializeRoundTrip(matrixEvidence).Contains("V4_AUDIO_EXECUTION_NOT_ENABLED", StringComparison.Ordinal), "V4 candidate matrix schema model validates and round-trips plan-only NOT_TESTED evidence");
 Throws<InvalidDataException>(() => V2CandidateMatrixEvidenceJson.Validate(matrixEvidence with { Candidates = [matrixRows[0] with { DuplexNotRun = false }, .. matrixRows.Skip(1)] }), "V4 evidence rejects contradictory NOT_TESTED duplex state");
 JsonElement AutoShortReport(string period, string status = "DUPLEX_CLEAN", int captureWaits = 0, int renderWaits = 0, int serviceFaults = 0, bool watchdog = false, string cleanup = "RELEASE_ATTEMPTED")
@@ -850,7 +865,8 @@ bool RunV1Confirmation(string endpointId, bool pair)
 Check(RunV1Confirmation("local-windows-id", false), "V1 single Capture WPF confirmation invokes the workflow command with the planned endpoint");
 Check(RunV1Confirmation("local-render-id", false), "V1 single Render WPF confirmation invokes the workflow command with the planned endpoint");
 Check(RunV1Confirmation("local-render-id", true), "V1 paired Duplex WPF confirmation invokes the workflow command with the planned endpoint pair");
-var v2RouteWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true };
+var v2RouteWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 1,
+    RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, direction == "CAPTURE" ? 8 : 2)) };
 var v2Workflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
 var v2RouteVm = new MainViewModel(worker: v2RouteWorker, automaticScanWorkflow: v2Workflow);
 v2RouteWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V2 route selection fixture."));
@@ -871,6 +887,64 @@ foreach (var mode in new[] { "MONO_TO_STEREO", "STEREO_TO_STEREO", "MONO_TO_MONO
 v2RouteVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
 var v2LayoutWindow = new MainWindow(v2RouteVm) { Width = 1280, Height = 800, ShowActivated = false };
 v2LayoutWindow.Show(); v2LayoutWindow.UpdateLayout();
+var v4PlanCard = (Border)v2LayoutWindow.FindName("V4CustomPlanCard");
+var v4PrepareButton = (Button)v2LayoutWindow.FindName("V4PreparePlanButton");
+Check(v2RouteVm.V4CustomPlanControlsVisible && v4PlanCard.Visibility == Visibility.Visible && !v2RouteVm.AcceptV4CustomPlanCommand.CanExecute(null), "WPF exposes separate v4 plan preview while keeping consent unavailable before passive preparation");
+v4PrepareButton.Command!.Execute(null);
+Check(PumpUntil(() => v2RouteVm.V4ConsentPending, TimeSpan.FromSeconds(3)) && v2RouteWorker.RealQueryCalls == 2 && v2RouteVm.V4ConsentSummary.Contains("144", StringComparison.Ordinal) && v2RouteVm.V4ConsentSummary.Contains("480", StringComparison.Ordinal) && v2RouteVm.V4ConsentSummary.Contains("ALIGNMENT_UNKNOWN", StringComparison.Ordinal) && v2RouteVm.V4ConsentSummary.Contains("29", StringComparison.Ordinal) && v2RouteVm.V4PlanFingerprint.Length == 64, "GUI prepares exact eight-candidate v4 consent from passive Capture/Render bounds with alignment explicitly unknown");
+v2LayoutWindow.UpdateLayout();
+var v4ConsentSummaryText = v2LayoutWindow.FindName("V4ConsentSummaryText") as TextBlock;
+var v4CaptureNameField = typeof(MainViewModel).GetField("_v4CaptureFriendlyName", BindingFlags.Instance | BindingFlags.NonPublic)!;
+var v4RenderNameField = typeof(MainViewModel).GetField("_v4RenderFriendlyName", BindingFlags.Instance | BindingFlags.NonPublic)!;
+var originalV4CaptureName = v4CaptureNameField.GetValue(v2RouteVm); var originalV4RenderName = v4RenderNameField.GetValue(v2RouteVm);
+v4CaptureNameField.SetValue(v2RouteVm, "BEHRINGER FLOW 8 USB Capture endpoint with long studio and location label");
+v4RenderNameField.SetValue(v2RouteVm, "BEHRINGER FLOW 8 USB Render endpoint with long studio and location label");
+typeof(ViewModel).GetMethod("Changed", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, ["V4ConsentSummary"]);
+v2LayoutWindow.UpdateLayout();
+Check(v4ConsentSummaryText?.Text.Contains("long studio and location label", StringComparison.Ordinal) == true && v4ConsentSummaryText.TextWrapping == TextWrapping.Wrap, "V4 consent wraps long Capture/Render endpoint labels without clipping the summary");
+v4PlanCard.BringIntoView(); v2LayoutWindow.UpdateLayout();
+var v4ScrollViewer = (ScrollViewer)v2LayoutWindow.FindName("OperatorContentScrollViewer");
+v4ScrollViewer.ScrollToVerticalOffset(Math.Max(0, v4ScrollViewer.VerticalOffset - 140)); v2LayoutWindow.UpdateLayout();
+foreach (var scale in new[] { 1d, 1.25d, 1.5d })
+{
+    v2LayoutWindow.Width = 1920 / scale; v2LayoutWindow.Height = 1080 / scale; v2LayoutWindow.UpdateLayout();
+    Check(v4PlanCard.ActualWidth <= v2LayoutWindow.ActualWidth && v4PrepareButton.ActualWidth > 0 && v4ConsentSummaryText?.TextWrapping == TextWrapping.Wrap, $"V4 consent and long plan text remain in the WPF layout at Full HD {scale:P0} scaling");
+    CaptureUiScreenshot(v2LayoutWindow, $"AS-N4B.2.2B1.1-v4-consent-{scale:P0}.png", scale);
+}
+var v4EvidenceCulture = Localization.CurrentCulture.Name; Localization.SetLanguage("en-US", false);
+var v4EnglishWindow = new MainWindow(v2RouteVm) { Width = 1920, Height = 1080, ShowActivated = false }; v4EnglishWindow.Show(); v4EnglishWindow.UpdateLayout();
+var v4EnglishCard = (Border)v4EnglishWindow.FindName("V4CustomPlanCard"); v4EnglishCard.BringIntoView();
+var v4EnglishScroll = (ScrollViewer)v4EnglishWindow.FindName("OperatorContentScrollViewer");
+v4EnglishScroll.ScrollToEnd(); PumpUntil(() => v4EnglishScroll.VerticalOffset > 0, TimeSpan.FromSeconds(2)); v4EnglishWindow.UpdateLayout();
+var v4EnglishCardTop = v4EnglishCard.TransformToAncestor(v4EnglishScroll).Transform(new Point(0, 0)).Y;
+v4EnglishScroll.ScrollToVerticalOffset(Math.Max(0, v4EnglishScroll.VerticalOffset + v4EnglishCardTop - 80));
+PumpUntil(() => { v4EnglishWindow.UpdateLayout(); var y = v4EnglishCard.TransformToAncestor(v4EnglishScroll).Transform(new Point(0, 0)).Y; return y is >= 20 and <= 120; }, TimeSpan.FromSeconds(2));
+Check(((TextBlock)v4EnglishWindow.FindName("V4ConsentSummaryText")).Text.Contains("Requested", StringComparison.Ordinal) && ((TextBlock)v4EnglishWindow.FindName("V4AudioGateText")).Text.Contains("Preview and consent only", StringComparison.Ordinal) && ((TextBlock)v4EnglishWindow.FindName("V4PlanStatusText")).Text.StartsWith("Plan prepared", StringComparison.Ordinal), "English WPF consent, status and closed audio gate render from English resources");
+CaptureUiScreenshot(v4EnglishWindow, "AS-N4B.2.2B1.1-v4-consent-en.png", 1d); v4EnglishWindow.Close();
+Localization.SetLanguage(v4EvidenceCulture, false); v2LayoutWindow.UpdateLayout();
+v4CaptureNameField.SetValue(v2RouteVm, originalV4CaptureName); v4RenderNameField.SetValue(v2RouteVm, originalV4RenderName);
+typeof(ViewModel).GetMethod("Changed", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, ["V4ConsentSummary"]);
+v2LayoutWindow.UpdateLayout();
+var v4AcceptButton = (Button)v2LayoutWindow.FindName("V4AcceptPlanButton"); var v4ConsentCheck = (CheckBox)v2LayoutWindow.FindName("V4ConsentCheckBox");
+Check(!v4AcceptButton.IsEnabled && v2RouteWorker.RealInitializeCalls == 0 && v2RouteWorker.DuplexCalls == 0, "v4 consent cannot accept before operator check and preparation performs no Initialize or Duplex");
+v4ConsentCheck.IsChecked = true; v2LayoutWindow.UpdateLayout();
+Check(v4AcceptButton.IsEnabled, "WPF enables v4 consent acceptance only after explicit plan review");
+v4AcceptButton.Command!.Execute(null);
+Check(v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt?.PlanFingerprint == v2RouteVm.V4PlanFingerprint && v2RouteVm.V4ConsentReceipt?.DiscoveryGeneration == v2RouteWorker.DiscoveryGeneration && v2RouteWorker.RealInitializeCalls == 0 && v2RouteWorker.DuplexCalls == 0, "v4 receipt binds the displayed plan fingerprint and Worker generation without opening audio transport");
+Check(Localization.Get("VmV4AudioGateClosed", ruCulture).Contains("профиля", StringComparison.Ordinal) && Localization.Get("V4PlanHeading", System.Globalization.CultureInfo.GetCultureInfo("en-US")).Contains("CUSTOM", StringComparison.Ordinal), "v4 consent gate is localized in Russian and English");
+v2RouteVm.V4RepeatabilityRuns = 4;
+Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt is null, "changing repeatability budget invalidates the prepared v4 plan and receipt");
+v2RouteVm.V4RepeatabilityRuns = 5;
+var latePassive = new TaskCompletionSource<RealFormatMatrixDto>(TaskCreationOptions.RunContinuationsAsynchronously);
+v2RouteWorker.RealQueryFactory = (_, direction, _, _) => latePassive.Task;
+var previousV4Queries = v2RouteWorker.RealQueryCalls; var previousV4Completions = v2RouteWorker.RealQueryCompletions;
+var previousV4Context = SynchronizationContext.Current; SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+v2RouteVm.PrepareV4CustomPlanCommand.Execute(null); SynchronizationContext.SetSynchronizationContext(previousV4Context);
+Check(PumpUntil(() => v2RouteWorker.RealQueryCalls > previousV4Queries && v2RouteVm.V4PlanPreparing, TimeSpan.FromSeconds(2)), "v4 passive query begins before the stale-response cancellation test");
+v2RouteVm.CancelV4CustomPlanCommand.Execute(null);
+latePassive.SetResult(PassiveMatrix("local-windows-id", "CAPTURE", 8));
+Check(PumpUntil(() => v2RouteWorker.RealQueryCompletions > previousV4Completions && v2RouteVm.PrepareV4CustomPlanCommand.CanExecute(null), TimeSpan.FromSeconds(2)) && !v2RouteVm.V4PlanReady && !v2RouteVm.V4ConsentPending && v2RouteVm.V4ConsentReceipt is null, "late passive response cannot restore a cancelled prepared plan or consent");
+v2RouteWorker.RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, direction == "CAPTURE" ? 8 : 2));
 var v2RouteCard = (Border)v2LayoutWindow.FindName("V2RouteSelectionCard");
 var v2ScanButton = (Button)v2LayoutWindow.FindName("DeviceScanButton");
 foreach (var size in new[] { (1920d, 1080d), (1536d, 864d), (1280d, 720d), (1366d, 768d) })
@@ -887,7 +961,7 @@ Check(!v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null) && !confirmV2Butto
 v2ConsentCheckBox.IsChecked = true; v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null) && confirmV2Button.IsEnabled, "WPF confirmation button becomes enabled for a current authorized V2 route");
 confirmV2Button.Command!.Execute(confirmV2Button.CommandParameter);
-Check(PumpUntil(() => v2RouteVm.HasAutomaticScanResult && v2RouteVm.AutomaticScanResultHeadline == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCompleted"), TimeSpan.FromSeconds(2)) && v2Workflow.RunV2Calls == 1 && v2Workflow.LastV2CaptureId == "local-windows-id" && v2Workflow.LastV2RenderId == "local-render-id" && v2Workflow.LastV2Period == "MINIMUM" && v2Workflow.LastV2Route?.Capture.SelectedIndicesZeroBased.SequenceEqual([7]) == true, "WPF V2 selection, prepare, checked consent and confirmation invoke the V2 workflow with exact endpoint, route and period and show result");
+Check(PumpUntil(() => v2RouteVm.HasAutomaticScanResult && v2RouteVm.AutomaticScanResultHeadline == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCompleted"), TimeSpan.FromSeconds(2)) && v2Workflow.RunV2Calls == 1 && v2Workflow.LastV2CaptureId == "local-windows-id" && v2Workflow.LastV2RenderId == "local-render-id" && v2Workflow.LastV2Period == "MINIMUM" && v2Workflow.LastV2Route?.Capture.SelectedIndicesZeroBased.SequenceEqual([7]) == true, $"WPF V2 selection, prepare, checked consent and confirmation invoke the V2 workflow with exact endpoint, route and period and show result [has={v2RouteVm.HasAutomaticScanResult}; headline={v2RouteVm.AutomaticScanResultHeadline}; calls={v2Workflow.RunV2Calls}; capture={v2Workflow.LastV2CaptureId}; render={v2Workflow.LastV2RenderId}; period={v2Workflow.LastV2Period}; route={v2Workflow.LastV2Route}; status={v2RouteVm.AutomaticScanStatus}; consent={v2RouteVm.AutomaticScanConsentPending}]");
 v2RouteVm.PrepareAutomaticScanCommand.Execute(null); Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "V2 consent is prepared before mode-switch regression");
 v2RouteVm.AutomaticScanEngine = "V1_COMPATIBLE";
 Check(!v2RouteVm.AutomaticScanConsentPending && !v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null) && v2RouteVm.AutomaticScanEngineDescription == Localization.Get("VmScanEngineV1Description"), "switching V2 to V1 clears pending consent without starting audio and updates the explanation");
@@ -3298,13 +3372,17 @@ sealed class GuiStateWorkerClient(IReadOnlyList<WorkerEndpointDto> endpoints) : 
     public bool AdvertiseWindowsDiscovery { get; set; }
     public bool AdvertiseRealFormatProbe { get; set; }
     public bool AdvertiseV2 { get; set; }
+    public bool AdvertisePassiveFormatQuery { get; set; }
     public bool AdvertiseCustomPeriod { get; set; }
     public WindowsEndpointDiscoveryDto? WindowsDiscovery { get; set; }
     public int WindowsDiscoveryCalls { get; private set; }
     public int RealQueryCalls { get; private set; }
+    public int RealQueryCompletions { get; private set; }
     public int RealInitializeCalls { get; private set; }
     public int RealStreamCalls { get; private set; }
     public RealFormatMatrixDto? RealMatrixResponse { get; set; }
+    public Func<string, string, IReadOnlyList<int>?, CancellationToken, Task<RealFormatMatrixDto>>? RealQueryFactory { get; set; }
+    public ulong DiscoveryGeneration { get; set; }
     public RealFormatMatrixDto? RealInitializeResponse { get; set; }
     public Func<string, int, string, string, RealFormatMatrixDto>? RealInitializeFactory { get; set; }
     public Func<string, string, string, CancellationToken, Task<RealStreamValidationDto>>? RealStreamHandler { get; set; }
@@ -3319,8 +3397,9 @@ sealed class GuiStateWorkerClient(IReadOnlyList<WorkerEndpointDto> endpoints) : 
     public string? LastRealEndpointId { get; private set; }
     public string? LastRealDirection { get; private set; }
     public RealFormatConsentDto? LastRealConsent { get; private set; }
-    public IReadOnlyList<string> Capabilities => (AdvertiseWindowsDiscovery ? new[] { "ListWindowsEndpoints" } : []).Concat(AdvertiseRealFormatProbe ? ["RealExclusiveFormatQuery", "RealExclusiveFormatInitialize", "RealExclusiveStreamValidation", "RealExclusiveDuplexValidation", "ScanSessionAuthorizationV1"] : []).Concat(AdvertiseV2 ? ["RealExclusiveDuplexValidationV2"] : []).Concat(AdvertiseCustomPeriod ? ["RealExclusiveCustomPeriodInitialize"] : []).ToArray();
+    public IReadOnlyList<string> Capabilities => (AdvertiseWindowsDiscovery ? new[] { "ListWindowsEndpoints" } : []).Concat(AdvertiseRealFormatProbe ? ["RealExclusiveFormatQuery", "RealExclusiveFormatInitialize", "RealExclusiveStreamValidation", "RealExclusiveDuplexValidation", "ScanSessionAuthorizationV1"] : []).Concat(AdvertisePassiveFormatQuery ? ["RealExclusiveFormatQuery"] : []).Concat(AdvertiseV2 ? ["RealExclusiveDuplexValidationV2"] : []).Concat(AdvertiseCustomPeriod ? ["RealExclusiveCustomPeriodInitialize"] : []).ToArray();
     public WorkerStateDto State { get; private set; } = new(WorkerConnectionState.Disconnected, "Not started.");
+    ulong IWorkerClient.DiscoveryGeneration => DiscoveryGeneration;
     public WorkerSessionSettingsDto? LastStartSettings { get; private set; }
     public ConsentReceiptDto? LastConsent { get; private set; }
     public event Action<WorkerStateDto>? StateChanged;
@@ -3344,6 +3423,7 @@ sealed class GuiStateWorkerClient(IReadOnlyList<WorkerEndpointDto> endpoints) : 
     {
         RealQueryCalls++; LastRealEndpointId = endpointId; LastRealDirection = direction;
         if (QueryGate is not null) await QueryGate.Task.WaitAsync(cancellationToken);
+        if (RealQueryFactory is not null) { var result = await RealQueryFactory(endpointId, direction, channelCounts, cancellationToken); RealQueryCompletions++; return result; }
         return RealMatrixResponse ?? throw new NotSupportedException();
     }
     public Task<RealFormatMatrixDto> ValidateFormatMatrixAsync(string endpointId, string direction, int sampleRate, int channels, string encoding, string period, RealFormatConsentDto consent, CancellationToken cancellationToken = default)

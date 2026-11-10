@@ -718,7 +718,8 @@ try
     await v2SessionClient.CloseScanSessionAsync(shortSession);
     var v4Candidates=WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
     var v4Budget=WorkerScanV2ContractV4Fingerprint.Budget(v4Candidates.Count,5);
-    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["OFF"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8);
+    var v4Bounds=new WorkerScanV2PeriodBounds(30000,100000);
+    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["OFF"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8,v4Bounds,v4Bounds);
     var v4Confirmation=Guid.NewGuid();var v4Consent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,v4Plan,1,true,v4Confirmation);
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { PlanFingerprint = new string('0',64) }),"V4 consent bound to a different plan is rejected before IPC");
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { DiscoveryGeneration = 2 }),"V4 consent from an older discovery generation is rejected before IPC");
@@ -731,9 +732,11 @@ try
     Check(v4Replay.ErrorCode=="SCAN_CONSENT_REPLAY","Worker consumes v4 confirmation once and cancellation leaves no audio transport available");
     await v2SessionClient.CloseScanSessionAsync(v4Session);
     var mixedRateRoute=route with { Capture=route.Capture with { SampleRateHz=44100 } };
-    var mixedRateCandidates=WorkerScanV2CandidatePlanning.Generate(mixedRateRoute,132,441,144,480);
+    var mixedRateCandidates=WorkerScanV2CandidatePlanning.GenerateFromBounds(mixedRateRoute,new WorkerScanV2PeriodBounds(30000,100000),new WorkerScanV2PeriodBounds(30000,100000));
     var mixedRateBudget=WorkerScanV2ContractV4Fingerprint.Budget(mixedRateCandidates.Count,0);
-    var mixedRatePlan=new WorkerScanV2ContractV4(mixedRateRoute,mixedRateCandidates,["OFF"],0,mixedRateBudget.MaximumOperations,mixedRateBudget.MaximumActiveDuplexSeconds,30,mixedRateBudget.SessionLifetimeSeconds,8);
+    var mixedCaptureBounds=new WorkerScanV2PeriodBounds(30000,100000);
+    var mixedRenderBounds=new WorkerScanV2PeriodBounds(30000,100000);
+    var mixedRatePlan=new WorkerScanV2ContractV4(mixedRateRoute,mixedRateCandidates,["OFF"],0,mixedRateBudget.MaximumOperations,mixedRateBudget.MaximumActiveDuplexSeconds,30,mixedRateBudget.SessionLifetimeSeconds,8,mixedCaptureBounds,mixedRenderBounds);
     var mixedRateConsent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,mixedRatePlan,1,true,Guid.NewGuid());
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");

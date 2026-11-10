@@ -44,6 +44,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     private int _transportEnded;
     private int _sharedOperation;
     private ulong _discoveryGeneration;
+    public ulong DiscoveryGeneration => _discoveryGeneration;
     private long _lastEventSequence;
     private string? _pipeName;
 
@@ -233,9 +234,11 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var planFingerprint = WorkerScanV2ContractV4Fingerprint.Compute(captureEndpointId, renderEndpointId, plan, _discoveryGeneration);
         if (!string.Equals(consent.PlanFingerprint, planFingerprint, StringComparison.Ordinal)) throw new ArgumentException("V4 consent does not bind the exact prepared plan.", nameof(consent));
         var route = new { mode = plan.Route.Mode, capture = new { sampleRateHz = plan.Route.Capture.SampleRateHz, channels = plan.Route.Capture.Channels, encoding = plan.Route.Capture.Encoding, channelMask = plan.Route.Capture.ChannelMask, selectedIndicesZeroBased = plan.Route.Capture.SelectedIndicesZeroBased }, render = new { sampleRateHz = plan.Route.Render.SampleRateHz, channels = plan.Route.Render.Channels, encoding = plan.Route.Render.Encoding, channelMask = plan.Route.Render.ChannelMask, selectedIndicesZeroBased = plan.Route.Render.SelectedIndicesZeroBased } };
-        var candidates = plan.Candidates.Select(c => new { index = c.Index, requestedDuration100ns = c.RequestedDuration100ns, captureFrames = c.CaptureFrames, renderFrames = c.RenderFrames, capturePeriod100ns = c.CapturePeriod100ns, renderPeriod100ns = c.RenderPeriod100ns, captureAlignmentFrames = c.CaptureAlignmentFrames, renderAlignmentFrames = c.RenderAlignmentFrames, captureMinimumFrames = c.CaptureMinimumFrames, captureMaximumFrames = c.CaptureMaximumFrames, renderMinimumFrames = c.RenderMinimumFrames, renderMaximumFrames = c.RenderMaximumFrames, rejectionReason = c.RejectionReason }).ToArray();
+        var candidates = plan.Candidates.Select(c => new { index = c.Index, requestedDuration100ns = c.RequestedDuration100ns, captureFrames = c.CaptureFrames, renderFrames = c.RenderFrames, capturePeriod100ns = c.CapturePeriod100ns, renderPeriod100ns = c.RenderPeriod100ns, captureAlignmentFrames = c.CaptureAlignmentFrames, captureAlignmentKnown = c.CaptureAlignmentKnown, renderAlignmentFrames = c.RenderAlignmentFrames, renderAlignmentKnown = c.RenderAlignmentKnown, captureMinimumFrames = c.CaptureMinimumFrames, captureMaximumFrames = c.CaptureMaximumFrames, renderMinimumFrames = c.RenderMinimumFrames, renderMaximumFrames = c.RenderMaximumFrames, rejectionReason = c.RejectionReason }).ToArray();
+        var captureBounds = new { minimumPeriod100ns = plan.CaptureBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.CaptureBounds.DefaultPeriod100ns, alignmentFrames = plan.CaptureBounds.AlignmentFrames };
+        var renderBounds = new { minimumPeriod100ns = plan.RenderBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.RenderBounds.DefaultPeriod100ns, alignmentFrames = plan.RenderBounds.AlignmentFrames };
         using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 4, captureEndpointId, renderEndpointId, route, routeFingerprint,
-            candidates, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns,
+            candidates, captureBounds, renderBounds, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns,
             maximumOperationCount = plan.MaximumOperations, maximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
             initializeTimeoutSeconds = plan.InitializeTimeoutSeconds, sessionLifetimeSeconds = plan.SessionLifetimeSeconds,
             cleanupDeadlineSeconds = plan.CleanupDeadlineSeconds, planFingerprint, authorization = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } }, cancellationToken).ConfigureAwait(false);

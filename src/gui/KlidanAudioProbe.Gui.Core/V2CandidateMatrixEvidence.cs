@@ -13,7 +13,7 @@ public sealed record V2CandidateMatrixEntry(WorkerScanV2Candidate Candidate, str
     public long? ActualRenderPeriod100ns { get; init; }
 }
 public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFingerprint, string RouteFingerprint,
-    string Lifecycle, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
+    string Lifecycle, WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
     IReadOnlyList<V2CandidateMatrixEntry> Candidates, string SelectionState, string Provenance);
 
 public static class V2CandidateMatrixEvidenceJson
@@ -36,6 +36,8 @@ public static class V2CandidateMatrixEvidenceJson
         static bool State(string s) => s is "NOT_TESTED" or "SKIPPED" or "REJECTED" or "FAILED" or "UNSUPPORTED" or "UNKNOWN" or "CLEAN";
         if (value.SchemaVersion != 1 || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
             throw new InvalidDataException("Candidate matrix envelope is invalid.");
+        if (value.CaptureBounds.MinimumPeriod100ns <= 0 || value.CaptureBounds.DefaultPeriod100ns < value.CaptureBounds.MinimumPeriod100ns || value.CaptureBounds.AlignmentFrames is <= 0 || value.RenderBounds.MinimumPeriod100ns <= 0 || value.RenderBounds.DefaultPeriod100ns < value.RenderBounds.MinimumPeriod100ns || value.RenderBounds.AlignmentFrames is <= 0)
+            throw new InvalidDataException("Candidate matrix device bounds or alignment state is invalid.");
         for (var i = 0; i < value.Candidates.Count; i++)
         {
             var item = value.Candidates[i];
