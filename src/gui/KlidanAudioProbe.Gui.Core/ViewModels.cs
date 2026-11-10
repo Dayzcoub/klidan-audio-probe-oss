@@ -183,6 +183,7 @@ public sealed class MainViewModel : ViewModel
     private V2AutomaticScanResult? _automaticScanV2Result;
     private WorkerScanV2Route? _automaticScanV2Route;
     private string? _automaticScanV2DiscoveryGeneration;
+    private string? _automaticScanV2CaptureEndpointId, _automaticScanV2RenderEndpointId;
     private string _automaticScanEngine = "V2_ADAPTIVE", _automaticScanV2Mode = "MONO_TO_STEREO", _automaticScanV2Period = "MINIMUM";
     private string _automaticScanV2CaptureFormat = "48000|PCM16", _automaticScanV2RenderFormat = "48000|PCM16";
     private int _automaticScanV2CaptureChannels = 2, _automaticScanV2RenderChannels = 2;
@@ -286,7 +287,7 @@ public sealed class MainViewModel : ViewModel
         QueryWorkerEndpointsCommand = new(QueryWorkerEndpointsAsync, () => WorkerState.State == WorkerConnectionState.ConnectedFake);
         DiscoverWindowsEndpointsCommand = new(DiscoverWindowsEndpointsAsync, CanDiscoverWindowsEndpoints);
         PrepareAutomaticScanCommand = new(PrepareAutomaticScanAsync, CanPrepareAutomaticScan);
-        ConfirmAutomaticScanCommand = new(ConfirmAutomaticScanAsync, () => AutomaticScanConsentPending && AutomaticScanConsentChecked && _automaticScanPreparation is not null && !_automaticScanRunning);
+        ConfirmAutomaticScanCommand = new(ConfirmAutomaticScanAsync, CanConfirmAutomaticScan);
         CancelAutomaticScanConsentCommand = new(CancelAutomaticScanConsent, () => AutomaticScanConsentPending);
         CancelAutomaticScanCommand = new(CancelAutomaticScan, () => _automaticScanPreparing || _automaticScanRunning);
         OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, () => _automaticScanResult?.Persistence?.SummaryPath is { Length: > 0 });
@@ -1617,7 +1618,36 @@ public sealed class MainViewModel : ViewModel
         if (AutomaticScanConsentPending) CancelAutomaticScanConsent();
         _automaticScanV2Route = null;
         _automaticScanV2DiscoveryGeneration = null;
+        _automaticScanV2CaptureEndpointId = _automaticScanV2RenderEndpointId = null;
         Changed(nameof(AutomaticScanConsentText));
+    }
+
+    private bool CanConfirmAutomaticScan()
+    {
+        if (!AutomaticScanConsentPending || !AutomaticScanConsentChecked || AutomaticScanBusy || WorkerOperationActive ||
+            WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent) return false;
+        if (AutomaticScanEngine == "V2_ADAPTIVE")
+        {
+            var captureId = SelectedDuplexCaptureEndpoint?.EndpointId;
+            var renderId = SelectedDuplexRenderEndpoint?.EndpointId;
+            var route = BuildV2Route();
+            return _automaticScanV2Route is { } approvedRoute && route is not null &&
+                _worker?.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) == true &&
+                _automaticScanV2DiscoveryGeneration == _windowsDiscoveryGeneration &&
+                captureId == _automaticScanV2CaptureEndpointId && renderId == _automaticScanV2RenderEndpointId &&
+                captureId is { Length: > 0 } && renderId is { Length: > 0 } &&
+                WorkerScanPlanV2Fingerprint.Route(captureId, renderId, route) == WorkerScanPlanV2Fingerprint.Route(captureId, renderId, approvedRoute);
+        }
+
+        if (_automaticScanPreparation is not { } preparation || _worker?.Capabilities.Contains("ScanSessionAuthorizationV1", StringComparer.Ordinal) != true) return false;
+        var target = preparation.Plan.Target;
+        if (AutomaticScanPairEnabled)
+            return target.Capture?.EndpointId == SelectedDuplexCaptureEndpoint?.EndpointId &&
+                target.Render?.EndpointId == SelectedDuplexRenderEndpoint?.EndpointId &&
+                target.Capture?.EndpointId is { Length: > 0 } && target.Render?.EndpointId is { Length: > 0 };
+        var selectedId = SelectedWindowsEndpoint?.EndpointId;
+        var plannedId = target.Capture?.EndpointId ?? target.Render?.EndpointId;
+        return selectedId is { Length: > 0 } && selectedId == plannedId && (target.Capture is null ^ target.Render is null);
     }
 
     private void SetV2Channels(ref int field, int value, bool capture)
@@ -1633,6 +1663,26 @@ public sealed class MainViewModel : ViewModel
     {
         if (AutomaticScanBusy || value < 1 || value > (propertyName.Contains("Capture", StringComparison.Ordinal) ? _automaticScanV2CaptureChannels : _automaticScanV2RenderChannels) || !Set(ref field, value, propertyName)) return;
         ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanV2RouteSummary)); PrepareAutomaticScanCommand.Refresh();
+    }
+
+    private void ApplyV2RouteSelection(WorkerScanV2Route route)
+    {
+        _automaticScanV2Mode = route.Mode;
+        _automaticScanV2CaptureChannels = route.Capture.Channels;
+        _automaticScanV2RenderChannels = route.Render.Channels;
+        _automaticScanV2CaptureFormat = $"{route.Capture.SampleRateHz}|{route.Capture.Encoding}";
+        _automaticScanV2RenderFormat = $"{route.Render.SampleRateHz}|{route.Render.Encoding}";
+        _automaticScanV2CaptureChannel1 = route.Capture.SelectedIndicesZeroBased[0] + 1;
+        _automaticScanV2CaptureChannel2 = route.Capture.SelectedIndicesZeroBased.LastOrDefault() + 1;
+        _automaticScanV2RenderChannel1 = route.Render.SelectedIndicesZeroBased[0] + 1;
+        _automaticScanV2RenderChannel2 = route.Render.SelectedIndicesZeroBased.LastOrDefault() + 1;
+        Changed(nameof(AutomaticScanV2Mode)); Changed(nameof(AutomaticScanV2CaptureChannels)); Changed(nameof(AutomaticScanV2RenderChannels));
+        Changed(nameof(AutomaticScanV2CaptureFormat)); Changed(nameof(AutomaticScanV2RenderFormat));
+        Changed(nameof(AutomaticScanV2CaptureChannel1)); Changed(nameof(AutomaticScanV2CaptureChannel2));
+        Changed(nameof(AutomaticScanV2RenderChannel1)); Changed(nameof(AutomaticScanV2RenderChannel2));
+        Changed(nameof(AutomaticScanV2SecondCaptureVisible)); Changed(nameof(AutomaticScanV2SecondRenderVisible));
+        Changed(nameof(AutomaticScanV2CaptureChannelOptions)); Changed(nameof(AutomaticScanV2RenderChannelOptions));
+        Changed(nameof(AutomaticScanV2ChannelControlsText)); Changed(nameof(AutomaticScanV2RouteSummary));
     }
 
     private WorkerScanV2Route? BuildV2Route()
@@ -1678,8 +1728,11 @@ public sealed class MainViewModel : ViewModel
             {
                 if (SelectedDuplexCaptureEndpoint?.EndpointId is not { } captureId || SelectedDuplexRenderEndpoint?.EndpointId is not { } renderId || _worker is null || _worker.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) != true)
                     throw new InvalidOperationException(Localization.Get("VmV2SelectPair"));
+                ApplyV2RouteSelection(v2Route);
                 _automaticScanV2Route = v2Route;
                 _automaticScanV2DiscoveryGeneration = _windowsDiscoveryGeneration;
+                _automaticScanV2CaptureEndpointId = captureId;
+                _automaticScanV2RenderEndpointId = renderId;
                 _automaticScanPreparation = null;
                 _automaticScanProgressRows.Clear(); Changed(nameof(AutomaticScanProgressRows));
                 AutomaticScanConsentChecked = false; AutomaticScanConsentPending = true;
@@ -1767,15 +1820,14 @@ public sealed class MainViewModel : ViewModel
 
     private async Task ConfirmAutomaticScanAsync()
     {
-        if (_automaticScanWorkflow is null || !AutomaticScanConsentPending || !AutomaticScanConsentChecked || _automaticScanRunning) return;
+        if (_automaticScanWorkflow is null || !CanConfirmAutomaticScan()) return;
         var isV2 = AutomaticScanEngine == "V2_ADAPTIVE";
         var preparation = _automaticScanPreparation;
         var route = isV2 ? BuildV2Route() : null;
         var preparedCapture = isV2 ? SelectedDuplexCaptureEndpoint?.EndpointId : preparation?.Plan.Target.Capture?.EndpointId;
         var preparedRender = isV2 ? SelectedDuplexRenderEndpoint?.EndpointId : preparation?.Plan.Target.Render?.EndpointId;
         if (isV2 && (_automaticScanV2Route is null || route is null || WorkerScanPlanV2Fingerprint.Route(preparedCapture ?? "", preparedRender ?? "", route) != WorkerScanPlanV2Fingerprint.Route(preparedCapture ?? "", preparedRender ?? "", _automaticScanV2Route) || _automaticScanV2DiscoveryGeneration != _windowsDiscoveryGeneration) ||
-            !isV2 && preparation is null ||
-            WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent || string.IsNullOrWhiteSpace(preparedCapture) || isV2 && string.IsNullOrWhiteSpace(preparedRender))
+            !isV2 && preparation is null || string.IsNullOrWhiteSpace(preparedCapture) || isV2 && string.IsNullOrWhiteSpace(preparedRender))
         {
             CancelAutomaticScanConsent();
             SetAutomaticScanStatus(Localization.Get("VmScanAuthorizationInvalidated"));
