@@ -28,6 +28,32 @@ void Check(bool condition, string name)
     Console.WriteLine($"PASS: {name}");
 }
 V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, period == "DEFAULT" ? 100000 : 30000, period == "DEFAULT" ? 480 : 144, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", status, "fixture");
+var autoCaptureId = "auto-capture"; var autoRenderId = "auto-render";
+var autoRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
+var autoRouteFingerprint = WorkerScanPlanV2Fingerprint.Route(autoCaptureId, autoRenderId, autoRoute);
+JsonElement AutoShortReport(string period, string status = "DUPLEX_CLEAN", int captureWaits = 0, int renderWaits = 0, int serviceFaults = 0, bool watchdog = false, string cleanup = "RELEASE_ATTEMPTED")
+{
+    var operationId = Guid.NewGuid().ToString("D");
+    object Side(string endpoint, string direction, int waits) => new { endpointId = endpoint, direction, quality = status == "DUPLEX_CLEAN" && serviceFaults == 0 ? "CLEAN" : "ANOMALIES_PRESENT", cleanup, startSucceeded = true, stopSucceeded = true, durationReached = true, framesProcessed = 240000, expectedFrames = 240000, actualBufferFrames = 480, frameCoveragePercent = 99.8, discontinuities = 0, timestampErrors = 0, serviceFaults, intermediateWaitTimeouts = waits, packetDrainLimitHits = 0, longEventIntervals = 0, deviceInvalidated = false, watchdogTimedOut = watchdog, cancelled = false };
+    var report = new { schemaVersion = 3, reportType = "wasapi-duplex-validation-v2", reportId = Guid.NewGuid().ToString("D"), operationId, provenance = "TEST_FAKE_WASAPI_DUPLEX_V2",
+        requested = new { captureEndpointId = autoCaptureId, renderEndpointId = autoRenderId, period, durationSeconds = 5, mmcss = "OFF", sampleRateHz = 48000, channels = 2, encoding = "PCM16" },
+        route = new { fingerprint = autoRouteFingerprint, mode = autoRoute.Mode,
+            capture = new { endpointId = autoCaptureId, sampleRateHz = 48000, encoding = "PCM16", channels = 2, channelMask = 3, selectedIndicesZeroBased = new[] { 0 } },
+            render = new { endpointId = autoRenderId, sampleRateHz = 48000, encoding = "PCM16", channels = 2, channelMask = 3, selectedIndicesZeroBased = new[] { 0, 1 } } },
+        capture = Side(autoCaptureId, "CAPTURE", captureWaits), render = Side(autoRenderId, "RENDER", renderWaits), duplex = new { status } };
+    return JsonDocument.Parse(JsonSerializer.Serialize(report)).RootElement.Clone();
+}
+V2AutoShortCandidate Classified(string period, JsonElement report) => V2AutoShortEvaluator.ClassifyReport(period, period == "DEFAULT" ? 100000 : 30000, period == "DEFAULT" ? 480 : 144, report.GetProperty("operationId").GetString()!, autoCaptureId, autoRenderId, autoRoute, autoRouteFingerprint, report);
+var waitCaptureClean = Classified("DEFAULT", AutoShortReport("DEFAULT", captureWaits: 1));
+var waitRenderClean = Classified("DEFAULT", AutoShortReport("DEFAULT", renderWaits: 4));
+Check(waitCaptureClean.Status == "SHORT_CLEAN" && waitRenderClean.Status == "SHORT_CLEAN", "production V2 report classifier permits benign intermediate waits when Native Duplex remains CLEAN");
+var defaultCleanCandidate = Classified("DEFAULT", AutoShortReport("DEFAULT", captureWaits: 1));
+var minimumFailedCandidate = Classified("MINIMUM", AutoShortReport("MINIMUM", "DUPLEX_WARNINGS"));
+Check(V2AutoShortEvaluator.Evaluate([defaultCleanCandidate, minimumFailedCandidate]).RecommendedPeriod == "DEFAULT", "schema-backed DEFAULT CLEAN with benign wait followed by MINIMUM FAILED recommends DEFAULT");
+var serviceFailureCandidate = Classified("DEFAULT", AutoShortReport("DEFAULT", serviceFaults: 1));
+var watchdogCandidate = Classified("DEFAULT", AutoShortReport("DEFAULT", watchdog: true));
+var cleanupUnknownCandidate = Classified("DEFAULT", AutoShortReport("DEFAULT", cleanup: "UNKNOWN"));
+Check(serviceFailureCandidate.Status != "SHORT_CLEAN" && serviceFailureCandidate.Reason.Contains("SERVICEFAULTS", StringComparison.Ordinal) && watchdogCandidate.Status != "SHORT_CLEAN" && watchdogCandidate.Reason.Contains("WATCHDOG", StringComparison.Ordinal) && cleanupUnknownCandidate.Status == "UNKNOWN" && cleanupUnknownCandidate.Reason.Contains("CLEANUP_UNCONFIRMED", StringComparison.Ordinal), "V2 evaluator retains service-fault, watchdog and cleanup reasons without upgrading unsafe reports to SHORT_CLEAN");
 var autoAssessments = new[]
 {
     ("CLEAN_FAILED", new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN"), AutoCandidate("MINIMUM", "SHORT_FAILED") }, "DEFAULT"),

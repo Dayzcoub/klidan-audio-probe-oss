@@ -68,15 +68,28 @@ public static class V2AutoShortEvaluator
                     s.GetProperty("frameCoveragePercent").GetDouble() >= 99.0 &&
                     s.GetProperty("discontinuities").GetInt64() == 0 &&
                     s.GetProperty("timestampErrors").GetInt64() == 0 &&
-                    s.GetProperty("serviceFaults").GetInt64() == 0 && s.GetProperty("intermediateWaitTimeouts").GetInt64() == 0 &&
+                    s.GetProperty("serviceFaults").GetInt64() == 0 &&
                     s.GetProperty("packetDrainLimitHits").GetInt64() == 0 && s.GetProperty("longEventIntervals").GetInt64() == 0 &&
                     (!s.TryGetProperty("deviceInvalidated", out var invalid) || !invalid.GetBoolean()) &&
                     (!s.TryGetProperty("watchdogTimedOut", out var watchdog) || !watchdog.GetBoolean()));
             var safeCleanup = new[] { capture, render }.All(s => s.TryGetProperty("cleanup", out var cleanup) && cleanup.GetString() == "RELEASE_ATTEMPTED");
             var unsafeSignal = new[] { capture, render }.Any(s => new[] { "deviceInvalidated", "watchdogTimedOut", "cancelled" }.Any(n => s.TryGetProperty(n, out var flag) && flag.ValueKind == JsonValueKind.True));
-            var outcome = clean ? "SHORT_CLEAN" : safeCleanup && !unsafeSignal && duplex.GetProperty("status").GetString() is "DUPLEX_WARNINGS" or "FAILED" ? "SHORT_FAILED" : "UNKNOWN";
+            var status = duplex.GetProperty("status").GetString();
+            var outcome = clean ? "SHORT_CLEAN" : safeCleanup && !unsafeSignal && status is "DUPLEX_WARNINGS" or "FAILED" ? "SHORT_FAILED" : "UNKNOWN";
+            var reasons = new List<string>();
+            if (status != "DUPLEX_CLEAN") reasons.Add($"DUPLEX_STATUS_{status ?? "UNKNOWN"}");
+            foreach (var (name, side) in new[] { ("CAPTURE", capture), ("RENDER", render) })
+            {
+                if (side.GetProperty("quality").GetString() != "CLEAN") reasons.Add($"{name}_QUALITY_NON_CLEAN");
+                if (side.GetProperty("frameCoveragePercent").GetDouble() < 99.0) reasons.Add($"{name}_COVERAGE_BELOW_99");
+                foreach (var counter in new[] { "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "longEventIntervals" })
+                    if (side.GetProperty(counter).GetInt64() != 0) reasons.Add($"{name}_{counter.ToUpperInvariant()}_NONZERO");
+                foreach (var flag in new[] { "watchdogTimedOut", "deviceInvalidated", "cancelled" })
+                    if (side.TryGetProperty(flag, out var value) && value.ValueKind == JsonValueKind.True) reasons.Add($"{name}_{flag.ToUpperInvariant()}");
+                if (side.GetProperty("cleanup").GetString() != "RELEASE_ATTEMPTED") reasons.Add($"{name}_CLEANUP_UNCONFIRMED");
+            }
             return new(period, period100ns, frames, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", outcome,
-                clean ? "DUPLEX_CLEAN" : outcome == "SHORT_FAILED" ? "CONFIRMED_NON_CLEAN" : "INCOMPLETE_OR_UNSAFE_REPORT", report.Clone());
+                clean ? "DUPLEX_CLEAN" : reasons.Count > 0 ? string.Join(";", reasons) : outcome == "SHORT_FAILED" ? "CONFIRMED_NON_CLEAN" : "INCOMPLETE_OR_UNSAFE_REPORT", report.Clone());
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or FormatException)
         { return new(period, period100ns, frames, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", "UNKNOWN", "REPORT_INCOMPLETE", report.Clone()); }
