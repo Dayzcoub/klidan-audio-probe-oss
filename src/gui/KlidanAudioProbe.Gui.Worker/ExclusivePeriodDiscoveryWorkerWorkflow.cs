@@ -43,6 +43,7 @@ public sealed class ExclusivePeriodDiscoveryWorkerWorkflow(NativeWorkerClient wo
         WorkerScanSessionToken? session = null;
         NativeWorkerClient.SharedOperationLease? sharedOperation = null;
         var registrationAttempted = false;
+        var registrationRejected = false;
         try
         {
             sharedOperation = worker.AcquireSharedOperation("period discovery");
@@ -90,7 +91,16 @@ public sealed class ExclusivePeriodDiscoveryWorkerWorkflow(NativeWorkerClient wo
             }
         }
         catch (OperationCanceledException ex) { lifecycle = "UNKNOWN"; terminationReason = "CANCELLED"; exceptionType = ex.GetType().Name; messages.Add("Cancellation did not confirm that all native state was closed."); }
-        catch (WorkerCommandException ex) { lifecycle = "UNKNOWN"; terminationReason = "WORKER_ERROR"; exceptionType = ex.GetType().Name; workerErrorCode = ex.ErrorCode; messages.Add($"UNKNOWN: Worker {ex.ErrorCode}."); }
+        catch (WorkerCommandException ex)
+        {
+            exceptionType = ex.GetType().Name; workerErrorCode = ex.ErrorCode;
+            if (session is null && registrationAttempted && ex.Command == "RegisterScanSession")
+            {
+                registrationRejected = true; lifecycle = "FAILED"; terminationReason = ex.ErrorCode == "BUSY" ? "REGISTRATION_BUSY" : "REGISTRATION_REJECTED";
+                messages.Add($"Worker confirmed registration rejection {ex.ErrorCode}: {ex.Message}");
+            }
+            else { lifecycle = "UNKNOWN"; terminationReason = "WORKER_ERROR"; messages.Add($"UNKNOWN: Worker {ex.ErrorCode}: {ex.Message}"); }
+        }
         catch (TimeoutException ex) { lifecycle = "UNKNOWN"; terminationReason = "IPC_TIMEOUT"; exceptionType = ex.GetType().Name; messages.Add($"UNKNOWN: IPC timeout after {OperationTimeoutSeconds} seconds."); }
         catch (IOException ex) { lifecycle = "UNKNOWN"; terminationReason = "WORKER_TRANSPORT"; exceptionType = ex.GetType().Name; messages.Add($"UNKNOWN: Worker transport: {ex.Message}"); }
         catch (InvalidDataException ex) { lifecycle = "UNKNOWN"; terminationReason = "REPORT_INVALID"; exceptionType = ex.GetType().Name; messages.Add($"UNKNOWN: invalid period report: {ex.Message}"); }
@@ -109,7 +119,7 @@ public sealed class ExclusivePeriodDiscoveryWorkerWorkflow(NativeWorkerClient wo
                 catch (WorkerCommandException ex) { lifecycle = "UNKNOWN"; sessionCloseStatus = ex.ErrorCode == "BUSY" ? "BUSY" : "FAILED"; if (exceptionType is null) { terminationReason = "SESSION_CLOSE_FAILED"; exceptionType = ex.GetType().Name; workerErrorCode = ex.ErrorCode; } Volatile.Write(ref _mayBeActive, 1); sharedOperation?.Keep(); messages.Add($"UNKNOWN session close: Worker {ex.ErrorCode}."); }
                 catch (Exception ex) { lifecycle = "UNKNOWN"; sessionCloseStatus = worker.State.State == WorkerConnectionState.Disconnected ? "WORKER_DISCONNECTED" : "FAILED"; if (exceptionType is null) { terminationReason = "SESSION_CLOSE_FAILED"; exceptionType = ex.GetType().Name; } Volatile.Write(ref _mayBeActive, 1); sharedOperation?.Keep(); messages.Add($"UNKNOWN session close: {ex.GetType().Name}: {ex.Message}"); }
             }
-            else if (registrationAttempted) { lifecycle = "UNKNOWN"; terminationReason = "REGISTRATION_OUTCOME_UNKNOWN"; sessionCloseStatus = "NOT_ATTEMPTED_REGISTRATION_UNKNOWN"; Volatile.Write(ref _mayBeActive, 1); sharedOperation?.Keep(); messages.Add("UNKNOWN: Worker registration may have committed before its response was lost."); }
+            else if (registrationAttempted && !registrationRejected) { lifecycle = "UNKNOWN"; terminationReason = "REGISTRATION_OUTCOME_UNKNOWN"; sessionCloseStatus = "NOT_ATTEMPTED_REGISTRATION_UNKNOWN"; Volatile.Write(ref _mayBeActive, 1); sharedOperation?.Keep(); messages.Add("UNKNOWN: Worker registration may have committed before its response was lost."); }
             if (lifecycle == "UNKNOWN") { Volatile.Write(ref _mayBeActive, 1); sharedOperation?.Keep(); }
             sharedOperation?.Dispose();
             Volatile.Write(ref _running, 0);
