@@ -181,7 +181,7 @@ public sealed record WorkerScanSessionToken(Guid ScanSessionId, int ContractVers
 public sealed record WorkerScanV2Side(int SampleRateHz, int Channels, string Encoding, uint ChannelMask, IReadOnlyList<int> SelectedIndicesZeroBased);
 public sealed record WorkerScanV2Route(string Mode, WorkerScanV2Side Capture, WorkerScanV2Side Render);
 public sealed record WorkerScanPlanV2(WorkerScanV2Route Route, IReadOnlyList<string> Periods, IReadOnlyList<string> MmcssModes,
-    int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds, string QaMode = "FULL");
+    int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds, string QaMode = "DISCOVERY");
 public static class WorkerScanPlanV2Fingerprint
 {
     public static string Route(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route)

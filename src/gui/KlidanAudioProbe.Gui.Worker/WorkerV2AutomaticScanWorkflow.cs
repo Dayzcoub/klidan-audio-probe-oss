@@ -14,7 +14,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
     public async Task<V2AutomaticScanResult> RunAsync(string captureEndpointId, string renderEndpointId,
         WorkerScanV2Route route, bool operatorAccepted, Guid confirmationId, string? evidenceRoot = null,
         CancellationToken cancellationToken = default, Func<string, int, string?>? testScenarioForOperation = null,
-        string period = "MINIMUM", Action<V2AutomaticScanProgress>? progress = null, string qaMode = "FULL")
+        string period = "MINIMUM", Action<V2AutomaticScanProgress>? progress = null, string qaMode = "DISCOVERY")
     {
         ArgumentNullException.ThrowIfNull(route);
         if (!operatorAccepted || confirmationId == Guid.Empty) throw new ArgumentException("Explicit scan acceptance is required.");

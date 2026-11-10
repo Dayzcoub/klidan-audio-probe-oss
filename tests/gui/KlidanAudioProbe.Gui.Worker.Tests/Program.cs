@@ -683,6 +683,7 @@ try
     var v2Render=v2Discovery.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
     var routeFingerprint=RouteFingerprint(v2Capture,v2Render,"MONO_TO_STEREO",48000,2,"PCM16",0,48000,2,"PCM16",3,0,0,1);
     var route=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
+    Check(new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],120,5,3,5).QaMode=="DISCOVERY","V2 scan plan defaults to passive Discovery, never an audio-test depth");
     var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1200,600,12,995,"FULL");
     var confirmationId=Guid.NewGuid();var session=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId);
     Check(session.ContractVersion==3&&session.RouteFingerprint==routeFingerprint,"typed V2 session token binds QA contract, route, and worker discovery generation");
@@ -744,7 +745,9 @@ try
     var automaticRender=automaticDiscovery.Endpoints.Single(e=>e.Direction=="RENDER");
     var automaticRoute=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
     var automaticRoot=Path.Combine(buildRoot,"as-n3b-v2-evidence");Directory.CreateDirectory(automaticRoot);
-    var automaticResult=await new WorkerAutomaticScanWorkflow(automaticV2Client).RunV2Async(automaticCapture.EndpointId!,automaticRender.EndpointId!,automaticRoute,true,Guid.NewGuid(),automaticRoot);
+    var omittedDepthResult=await new WorkerV2AutomaticScanWorkflow(automaticV2Client).RunAsync(automaticCapture.EndpointId!,automaticRender.EndpointId!,automaticRoute,true,Guid.NewGuid(),automaticRoot);
+    Check(omittedDepthResult.QaMode=="DISCOVERY"&&omittedDepthResult.Operations.Count==0,"omitting V2 workflow depth runs passive Discovery with no audio operations");
+    var automaticResult=await new WorkerAutomaticScanWorkflow(automaticV2Client).RunV2Async(automaticCapture.EndpointId!,automaticRender.EndpointId!,automaticRoute,"MINIMUM","FULL",Guid.NewGuid(),null,CancellationToken.None);
     Check(automaticResult.Lifecycle=="COMPLETED"&&automaticResult.Stages.Single(s=>s.Stage==AutomaticScanStage.REPEATABILITY).State==AutomaticScanStageState.COMPLETED,"V2 Automatic Scan runs a caller-selected route through six-run repeatability");
     Check(automaticResult.Operations.Count(o=>o.Stage=="REPEATABILITY")==6&&automaticResult.Operations.Where(o=>o.Stage=="SUSTAINED_VALIDATION").Select(o=>o.DurationSeconds).SequenceEqual(new int?[]{60,300,600}),"V2 orchestration gates 60/300/600 on clean short and repeatability evidence");
     using var savedV2=JsonDocument.Parse(File.ReadAllBytes(automaticResult.EvidencePath!));
@@ -752,7 +755,7 @@ try
     var legacyV2 = savedV2.RootElement.GetProperty("result").Deserialize<V2AutomaticScanResult>()! with { EvidencePath = null };
     Check(legacyV2.EvidencePath is null && JsonSerializer.Deserialize<V2AutomaticScanResult>(JsonSerializer.Serialize(legacyV2))?.EvidencePath is null,"legacy V2 result JSON with null EvidencePath remains readable");
     var noOverwrite = false;
-    try { V2AutomaticScanEvidenceStorage.Save(automaticResult, savedV2.RootElement.GetProperty("captureQuery").Deserialize<RealFormatMatrixDto>()!, savedV2.RootElement.GetProperty("renderQuery").Deserialize<RealFormatMatrixDto>()!, null, null, automaticRoot); }
+    try { V2AutomaticScanEvidenceStorage.Save(automaticResult, savedV2.RootElement.GetProperty("captureQuery").Deserialize<RealFormatMatrixDto>()!, savedV2.RootElement.GetProperty("renderQuery").Deserialize<RealFormatMatrixDto>()!, null, null, Path.GetDirectoryName(automaticResult.EvidencePath)!); }
     catch (IOException) { noOverwrite = true; }
     Check(noOverwrite,"V2 evidence storage refuses to overwrite an existing session report");
 }
