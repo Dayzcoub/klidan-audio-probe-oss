@@ -1163,13 +1163,14 @@ bool HandleClient(HANDLE pipe) {
                     writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Duplex validation requires an explicit distinct endpoint pair and bounded 48 kHz stereo PCM16 settings.");continue;
                 }
                 std::optional<ChannelRouting::Configuration> route;
-                std::string routeMode;int routeVersion=0;
+                std::string routeMode;
                 const auto readSide=[&](const char* key,ChannelRouting::EndpointFormat& endpoint,std::array<std::uint16_t,2>& indices,std::uint16_t count){
                     const auto member=payload.FindMember(key);if(member==payload.MemberEnd()||!member->value.IsObject()||!HasOnlyMembers(member->value,{"sampleRateHz","channels","encoding","channelMask","selectedIndicesZeroBased"}))return false;
-                    int r{},c{};std::string encoding;if(!ReadInt(member->value,"sampleRateHz",r)||!ReadInt(member->value,"channels",c)||!ReadString(member->value,"encoding",encoding)||!member->value.HasMember("channelMask")||!member->value["channelMask"].IsUint()||!member->value.HasMember("selectedIndicesZeroBased")||!member->value["selectedIndicesZeroBased"].IsArray()||member->value["selectedIndicesZeroBased"].Size()!=count)return false;
+                    const auto rate=member->value.FindMember("sampleRateHz"),channelsValue=member->value.FindMember("channels");std::string encoding;
+                    if(rate==member->value.MemberEnd()||!rate->value.IsUint()||(rate->value.GetUint()!=44100&&rate->value.GetUint()!=48000)||channelsValue==member->value.MemberEnd()||!channelsValue->value.IsUint()||channelsValue->value.GetUint()<1||channelsValue->value.GetUint()>32||!ReadString(member->value,"encoding",encoding)||!member->value.HasMember("channelMask")||!member->value["channelMask"].IsUint()||!member->value.HasMember("selectedIndicesZeroBased")||!member->value["selectedIndicesZeroBased"].IsArray()||member->value["selectedIndicesZeroBased"].Size()!=count)return false;
                     auto enc=encoding=="PCM16"?ExclusiveFormatMatrix::Encoding::Pcm16:encoding=="PCM24_IN_32"?ExclusiveFormatMatrix::Encoding::Pcm24In32:encoding=="FLOAT32"?ExclusiveFormatMatrix::Encoding::Float32:static_cast<ExclusiveFormatMatrix::Encoding>(255);
-                    endpoint.format={static_cast<std::uint32_t>(r),static_cast<std::uint16_t>(c),enc};endpoint.channelMask=member->value["channelMask"].GetUint();
-                    for(std::uint16_t i=0;i<count;++i){const auto& item=member->value["selectedIndicesZeroBased"][i];if(!item.IsUint()||item.GetUint()>UINT16_MAX)return false;indices[i]=static_cast<std::uint16_t>(item.GetUint());}
+                    endpoint.format={rate->value.GetUint(),static_cast<std::uint16_t>(channelsValue->value.GetUint()),enc};endpoint.channelMask=member->value["channelMask"].GetUint();
+                    for(std::uint16_t i=0;i<count;++i){const auto& item=member->value["selectedIndicesZeroBased"][i];if(!item.IsUint()||item.GetUint()>=channelsValue->value.GetUint())return false;indices[i]=static_cast<std::uint16_t>(item.GetUint());}
                     return true;
                 };
                 if(routeV2){int version{};if(!ReadInt(payload,"contractVersion",version)||version!=ChannelRouting::kContractVersion||!ReadString(payload,"mode",routeMode)){writer.Response(correlation,command,"ERROR","ROUTE_CONTRACT_UNSUPPORTED","A supported versioned routing contract is required.");continue;}
@@ -1187,6 +1188,7 @@ bool HandleClient(HANDLE pipe) {
                 if(captureEntry==discoveredActive.end()||renderEntry==discoveredActive.end()) { writer.Response(correlation,command,"ERROR","ENDPOINT_NOT_DISCOVERED","Both exact endpoints must come from the latest explicit Windows discovery.");continue; }
                 if(captureEntry->second!="CAPTURE"||renderEntry->second!="RENDER") { writer.Response(correlation,command,"ERROR","ENDPOINT_DIRECTION_MISMATCH","The selected endpoint pair must contain one Capture and one Render endpoint.");continue; }
                 if(routeV2&&(payload.HasMember("scanSessionId")||payload.HasMember("scanOperationId"))){writer.Response(correlation,command,"ERROR","SCAN_V2_REQUIRES_PLAN_V2","V1 scan sessions cannot authorize a route V2 operation.");continue;}
+                if(routeV2&&scanAuthorization){writer.Response(correlation,command,"ERROR","SCAN_SESSION_CONFLICT","Close the existing scan session before starting a standalone V2 operation.");continue;}
                 if(!routeV2&&scanAuthorization&&!scanAuthorization->invalid&&!payload.HasMember("scanSessionId")){writer.Response(correlation,command,"ERROR","SCAN_SESSION_REQUIRED","Operations must use the active approved scan token until that session is closed.");continue;}
                 const bool scanRequested=payload.HasMember("scanSessionId")||payload.HasMember("scanOperationId");
                 if(!scanRequested){
