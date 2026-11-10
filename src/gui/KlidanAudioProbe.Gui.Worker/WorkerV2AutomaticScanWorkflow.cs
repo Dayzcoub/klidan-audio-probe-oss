@@ -13,7 +13,9 @@ public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, s
 /// <summary>Executes one caller-selected immutable V2 route. Format query is passive; Initialize and audio operations use the same V2 authorization.</summary>
 public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 {
-    private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(8);\r\n\r\n    // shortcut: one caller-selected route per consent; add bounded alternate-route iteration only with explicit per-route authorization budgeting.
+    private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(8);
+
+    // shortcut: one caller-selected route per consent; add bounded alternate-route iteration only with explicit per-route authorization budgeting.
 
     public async Task<V2AutomaticScanResult> RunAsync(string captureEndpointId, string renderEndpointId,
         WorkerScanV2Route route, bool operatorAccepted, Guid confirmationId, string? evidenceRoot = null,

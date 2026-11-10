@@ -457,7 +457,7 @@ public:
         if(f.channels==48){a.firstInitializeHr=static_cast<std::int32_t>(0x8889000AU);a.finalInitializeHr=a.firstInitializeHr;a.actualBufferSizeHr.reset();a.actualBufferFrames.reset();a.actualPeriod100ns.reset();a.eventCreateHr.reset();a.setEventHandleHr.reset();a.eventHandleCloseHr.reset();}
         if(f.channels==32){a.firstInitializeHr=kBufferSizeNotAligned;a.alignmentGetBufferSizeHr=0;a.alignmentFrames=256;a.alignmentActivateHr=0;a.alignmentPeriod100ns=53'333;a.alignmentInitializeHr=0;a.finalInitializeHr=0;a.actualBufferFrames=256;a.actualPeriod100ns=53'333;a.clientReleaseAttempts=2;}
         if(f.channels==16)a.setEventHandleHr=static_cast<std::int32_t>(0x80004005U);
-        if(f.channels==8){a.eventHandleCloseHr=static_cast<std::int32_t>(0x80004005U);a.cleanup=Cleanup::Failed;}
+        if(f.channels==8){const auto* scenario=std::getenv("KLIDAN_TEST_SCAN_SCENARIO");if(!scenario||std::string_view(scenario)!="ALLOW_8CH_INITIALIZE_CLEAN"){a.eventHandleCloseHr=static_cast<std::int32_t>(0x80004005U);a.cleanup=Cleanup::Failed;}}
         return a;
     }
     ExclusiveFormatMatrix::Attempt InitializeOnly(const ExclusiveFormatMatrix::Format& f,const ExclusiveFormatMatrix::PeriodRequest& request) override {

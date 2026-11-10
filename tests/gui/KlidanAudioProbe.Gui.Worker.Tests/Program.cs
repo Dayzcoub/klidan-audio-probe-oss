@@ -760,8 +760,12 @@ var stereoToStereo=await RunV2Fixture(new("STEREO_TO_STEREO",new(48000,2,"PCM16"
 var independentFormats=await RunV2Fixture(new("STEREO_TO_STEREO",new(44100,2,"PCM24_IN_32",3,[0,1]),new(48000,2,"FLOAT32",3,[0,1])),"independent-formats");
 Check(new[]{monoToMono,stereoToStereo,independentFormats}.All(r=>r.Lifecycle=="COMPLETED"&&r.Operations.Count(o=>o.Stage=="REPEATABILITY")==6),"Mono-to-Mono, Stereo-to-Stereo and independent Capture/Render format routes complete through bounded qualification");
 var capture8Render2=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,8,"PCM16",0,[7]),new(48000,2,"PCM16",3,[0,1])),"capture8-render2");
+V2AutomaticScanResult capture8Render2Clean;
+Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO","ALLOW_8CH_INITIALIZE_CLEAN");
+try{capture8Render2Clean=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,8,"PCM16",0,[7]),new(48000,2,"PCM16",3,[0,1])),"capture8-render2-clean");}
+finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);}
 var capture32Render32=await RunV2Fixture(new("STEREO_TO_STEREO",new(48000,32,"PCM16",0,[30,31]),new(48000,32,"PCM16",0,[30,31])),"capture32-render32");
-Check(capture8Render2.Lifecycle=="UNKNOWN"&&capture8Render2.Operations.All(o=>o.Stage=="INITIALIZE")&&capture32Render32.Lifecycle=="COMPLETED"&&capture32Render32.Route.Capture.SelectedIndicesZeroBased.SequenceEqual(new[]{30,31}),"8ch/2ch cleanup uncertainty blocks audio while a 32ch/32ch explicitly selected pair remains testable");
+Check(capture8Render2.Lifecycle=="UNKNOWN"&&capture8Render2.Operations.All(o=>o.Stage=="INITIALIZE")&&capture8Render2Clean.Lifecycle=="COMPLETED"&&capture8Render2Clean.Operations.Count(o=>o.Stage=="REPEATABILITY")==6&&capture32Render32.Lifecycle=="COMPLETED"&&capture32Render32.Route.Capture.SelectedIndicesZeroBased.SequenceEqual(new[]{30,31}),"8ch/2ch cleanup uncertainty blocks audio, explicit-clean 8ch/2ch completes, and the selected 32ch pair remains testable");
 var deviceUnsupported=await RunV2Fixture(new("MONO_TO_STEREO",new(44100,1,"PCM24_IN_32",0,[0]),new(48000,2,"PCM16",3,[0,1])),"unsupported-format");
 Check(deviceUnsupported.Operations.Count==0&&deviceUnsupported.Error!.Contains("CAPTURE=UNSUPPORTED_BY_DEVICE",StringComparison.Ordinal)&&File.Exists(deviceUnsupported.EvidencePath),"confirmed device format rejection is distinguished, saved, and does not start Initialize or audio");
 var unqueriedFormat=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,6,"PCM16",0,[5]),new(48000,2,"PCM16",3,[0,1])),"unqueried-format");
