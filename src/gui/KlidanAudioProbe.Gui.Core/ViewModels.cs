@@ -480,7 +480,7 @@ public sealed class MainViewModel : ViewModel
     public bool AutomaticScanV1ControlsVisible => AutomaticScanEngine == "V1_COMPATIBLE";
     public IReadOnlyList<ChoiceOption> AutomaticScanV2Modes { get; } = [new("MONO_TO_STEREO", Localization.Get("VmRouteMonoStereo")), new("STEREO_TO_STEREO", Localization.Get("VmRouteStereoStereo")), new("MONO_TO_MONO", Localization.Get("VmRouteMonoMono"))];
     public IReadOnlyList<ChoiceOption> AutomaticScanV2Periods { get; } = [new("MINIMUM", Localization.Get("VmPeriodMinimum")), new("DEFAULT", Localization.Get("VmPeriodDefault"))];
-    public IReadOnlyList<ChoiceOption> AutomaticScanV2QaModes { get; } = [new("DISCOVERY", Localization.Get("VmV2QaDiscovery")), new("SHORT", Localization.Get("VmV2QaShort")), new("FULL", Localization.Get("VmV2QaFull"))];
+    public IReadOnlyList<ChoiceOption> AutomaticScanV2QaModes { get; } = [new("DISCOVERY", Localization.Get("VmV2QaDiscovery")), new("SHORT", Localization.Get("VmV2QaShort")), new("AUTO_SHORT", Localization.Get("VmV2QaAutoShort")), new("FULL", Localization.Get("VmV2QaFull"))];
     public IReadOnlyList<ChoiceOption> AutomaticScanV2Formats { get; } = [new("48000|PCM16", "48 kHz · PCM16"), new("48000|PCM24_IN_32", "48 kHz · PCM24-in-32"), new("48000|FLOAT32", "48 kHz · Float32"), new("44100|PCM16", "44.1 kHz · PCM16"), new("44100|PCM24_IN_32", "44.1 kHz · PCM24-in-32"), new("44100|FLOAT32", "44.1 kHz · Float32")];
     public IReadOnlyList<SelectionOption> AutomaticScanV2ChannelCounts => V2ChannelCounts(SelectedDuplexCaptureEndpoint);
     public IReadOnlyList<SelectionOption> AutomaticScanV2RenderChannelCounts => V2ChannelCounts(SelectedDuplexRenderEndpoint);
@@ -546,13 +546,14 @@ public sealed class MainViewModel : ViewModel
             if (AutomaticScanEngine == "V2_ADAPTIVE" && _automaticScanV2Route is { } v2 && SelectedDuplexCaptureEndpoint?.EndpointId is { } v2Capture && SelectedDuplexRenderEndpoint?.EndpointId is { } v2Render)
             {
                 var fingerprint = WorkerScanPlanV2Fingerprint.Route(v2Capture, v2Render, v2);
-                return string.Format(Localization.CurrentCulture, Localization.Get("VmV2ScanConsentSummary"), SelectedDuplexCaptureEndpoint.FriendlyNameDisplay, v2Capture,
+                var consent = string.Format(Localization.CurrentCulture, Localization.Get("VmV2ScanConsentSummary"), SelectedDuplexCaptureEndpoint.FriendlyNameDisplay, v2Capture,
                     SelectedDuplexRenderEndpoint.FriendlyNameDisplay, v2Render, v2.Mode, string.Join("/", v2.Capture.SelectedIndicesZeroBased.Select(i => i + 1)),
                     v2.Capture.Channels, v2.Capture.SampleRateHz, v2.Capture.Encoding, string.Join("/", v2.Render.SelectedIndicesZeroBased.Select(i => i + 1)),
-                    v2.Render.Channels, v2.Render.SampleRateHz, v2.Render.Encoding, AutomaticScanV2Period, fingerprint,
-                    AutomaticScanV2QaMode, AutomaticScanV2QaMode == "FULL" ? 12 : AutomaticScanV2QaMode == "SHORT" ? 3 : 0,
-                    AutomaticScanV2QaMode == "FULL" ? 995 : AutomaticScanV2QaMode == "SHORT" ? 5 : 0,
-                    AutomaticScanV2QaMode == "FULL" ? 1200 : 120);
+                    v2.Render.Channels, v2.Render.SampleRateHz, v2.Render.Encoding, AutomaticScanV2QaMode == "AUTO_SHORT" ? "DEFAULT + MINIMUM" : AutomaticScanV2Period, fingerprint,
+                    AutomaticScanV2QaMode, AutomaticScanV2QaMode == "FULL" ? 12 : AutomaticScanV2QaMode == "AUTO_SHORT" ? 6 : AutomaticScanV2QaMode == "SHORT" ? 3 : 0,
+                    AutomaticScanV2QaMode == "FULL" ? 995 : AutomaticScanV2QaMode == "AUTO_SHORT" ? 10 : AutomaticScanV2QaMode == "SHORT" ? 5 : 0,
+                    AutomaticScanV2QaMode == "FULL" ? 1200 : AutomaticScanV2QaMode == "AUTO_SHORT" ? 180 : 120);
+                return AutomaticScanV2QaMode == "AUTO_SHORT" ? consent + " " + Localization.Get("VmV2QaAutoShortConsent") : consent;
             }
             if (_automaticScanPreparation is not { } prepared) return Localization.Get("VmAutomaticScanPlanMissing");
             var target = prepared.Plan.Target;
@@ -587,6 +588,8 @@ public sealed class MainViewModel : ViewModel
     public string AutomaticScanRecommendationText => _automaticScanV2Result is { } v2Result ? V2RecommendationText(v2Result) : _automaticScanResult is not { } result ? Localization.Get("VmAutomaticScanRecommendationMissing") : result.Recommendation.Preferred is { } preferred
         ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)))
         : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)));
+    public bool AutomaticScanAutoShortVisible => _automaticScanV2Result?.QaMode == "AUTO_SHORT";
+    public IReadOnlyList<V2AutoShortCandidate> AutomaticScanAutoShortCandidates => _automaticScanV2Result?.AutoShortCandidates ?? [];
     public string AutomaticScanPhysicalLatencyText => Localization.Get("VmAutomaticScanLatencyNotMeasured");
     public string AutomaticScanResultProvenance
     {
@@ -1878,7 +1881,7 @@ public sealed class MainViewModel : ViewModel
         _automaticScanTerminal = false;
         _automaticScanResult = null;
         _automaticScanV2Result = null;
-        Changed(nameof(AutomaticScanAttempted)); Changed(nameof(AutomaticScanResultSummary)); Changed(nameof(AutomaticScanPersistenceText));
+        Changed(nameof(AutomaticScanAttempted)); Changed(nameof(AutomaticScanResultSummary)); Changed(nameof(AutomaticScanPersistenceText)); Changed(nameof(AutomaticScanAutoShortVisible)); Changed(nameof(AutomaticScanAutoShortCandidates));
         OpenAutomaticScanLocationCommand.Refresh();
         _automaticScanCancellation = new CancellationTokenSource();
         var confirmationId = Guid.NewGuid(); // Created only after the operator accepts the displayed immutable plan.
@@ -2122,6 +2125,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(AutomaticScanResultDevice));
         Changed(nameof(AutomaticScanResultSummary));
         Changed(nameof(AutomaticScanRecommendationText));
+        Changed(nameof(AutomaticScanAutoShortVisible)); Changed(nameof(AutomaticScanAutoShortCandidates));
         Changed(nameof(AutomaticScanPersistenceText));
         Changed(nameof(AutomaticScanStagePlanText));
         Changed(nameof(AutomaticScanCandidateSummary));
@@ -2205,8 +2209,8 @@ public sealed class MainViewModel : ViewModel
         "FAILED" => "VmAutomaticScanFailed", _ => "VmAutomaticScanPartiallyCompleted"
     });
 
-    private static string V2QaModeLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscovery", "SHORT" => "VmV2QaShort", _ => "VmV2QaFull" });
-    private static string V2QaModeSummaryLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscoverySummary", "SHORT" => "VmV2QaShortSummary", _ => "VmV2QaFullSummary" });
+    private static string V2QaModeLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscovery", "SHORT" => "VmV2QaShort", "AUTO_SHORT" => "VmV2QaAutoShort", _ => "VmV2QaFull" });
+    private static string V2QaModeSummaryLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscoverySummary", "SHORT" => "VmV2QaShortSummary", "AUTO_SHORT" => "VmV2QaAutoShortSummary", _ => "VmV2QaFullSummary" });
     private static string V2ResultErrorLabel(V2AutomaticScanResult result) => result.Error is null ? Localization.Get("VmValueUnknown") :
         result.Error.Contains("SHORT_DUPLEX_NOT_CLEAN", StringComparison.Ordinal) ? Localization.Get("VmV2ProgressShortUnknown") :
         result.Error.Contains("REPEATABILITY_NOT_CLEAN", StringComparison.Ordinal) ? Localization.Get("VmV2ProgressRepeatabilityFailed") :
@@ -2215,6 +2219,13 @@ public sealed class MainViewModel : ViewModel
 
     private static string V2RecommendationText(V2AutomaticScanResult result)
     {
+        if (result.QaMode == "AUTO_SHORT")
+        {
+            var captureFormat = $"{result.Route.Capture.SampleRateHz} Hz {result.Route.Capture.Encoding} {result.Route.Capture.Channels}ch [{string.Join("/", result.Route.Capture.SelectedIndicesZeroBased.Select(i => i + 1))}]";
+            var renderFormat = $"{result.Route.Render.SampleRateHz} Hz {result.Route.Render.Encoding} {result.Route.Render.Channels}ch [{string.Join("/", result.Route.Render.SelectedIndicesZeroBased.Select(i => i + 1))}]";
+            var recommendation = result.RecommendedPeriod is { } p ? $"{p} / Capture {captureFormat} / Render {renderFormat} / {result.Route.Mode}" : Localization.Get("VmAutomaticScanRecommendationMissing");
+            return $"{Localization.Get("VmV2QaAutoShortRecommendation")}: {recommendation} · {result.Qualification} / NOT_CERTIFIED";
+        }
         var report = result.Operations.FirstOrDefault(o => o.Stage == "SHORT_DUPLEX" && o.Evidence is not null)?.Evidence;
         var captureFrames = report is { } c && c.TryGetProperty("capture", out var capture) && capture.TryGetProperty("actualBufferFrames", out var cf) ? cf.ToString() : Localization.Get("VmValueUnknown");
         var renderFrames = report is { } r && r.TryGetProperty("render", out var render) && render.TryGetProperty("actualBufferFrames", out var rf) ? rf.ToString() : Localization.Get("VmValueUnknown");

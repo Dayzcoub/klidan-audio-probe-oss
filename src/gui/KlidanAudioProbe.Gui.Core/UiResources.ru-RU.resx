@@ -1341,9 +1341,20 @@ Fallback: {1}
   <data name="V2QaModeLabel" xml:space="preserve"><value>Глубина V2 QA</value></data>
   <data name="VmV2QaDiscovery" xml:space="preserve"><value>Обнаружение</value></data>
   <data name="VmV2QaShort" xml:space="preserve"><value>Короткая проверка</value></data>
+  <data name="VmV2QaAutoShort" xml:space="preserve"><value>Автоподбор · короткая проверка</value></data>
   <data name="VmV2QaFull" xml:space="preserve"><value>Полная проверка</value></data>
   <data name="VmV2QaDiscoverySummary" xml:space="preserve"><value>Только обнаружение; аудиопотоки не открывались</value></data>
   <data name="VmV2QaShortSummary" xml:space="preserve"><value>Короткая проверка; полная устойчивость не сертифицирована</value></data>
+  <data name="VmV2QaAutoShortSummary" xml:space="preserve"><value>До двух проверок по 5 секунд: DEFAULT, затем MINIMUM; MMCSS OFF; не сертифицировано</value></data>
+  <data name="VmV2QaAutoShortConsent" xml:space="preserve"><value>Одно согласие разрешает DEFAULT, затем MINIMUM: не более двух коротких Duplex по 5 секунд (всего 10 секунд), MMCSS OFF. Остановка при UNKNOWN, тайм-ауте, отключении Worker, смене устройства, неопределённой отмене или неподтверждённой очистке.</value></data>
+  <data name="VmV2QaAutoShortRecommendation" xml:space="preserve"><value>Предварительная рекомендация</value></data>
+  <data name="VmV2QaAutoShortCandidates" xml:space="preserve"><value>Сравнение кандидатов AUTO_SHORT</value></data>
+  <data name="VmAutoPeriodColumn" xml:space="preserve"><value>Период</value></data>
+  <data name="VmAutoStatusColumn" xml:space="preserve"><value>Результат</value></data>
+  <data name="VmAutoSupportColumn" xml:space="preserve"><value>Поддержка Capture / Render</value></data>
+  <data name="VmAutoPeriodLengthColumn" xml:space="preserve"><value>Период 100 нс (C/R)</value></data>
+  <data name="VmAutoFramesColumn" xml:space="preserve"><value>Буферные кадры (C/R)</value></data>
+  <data name="VmAutoReasonColumn" xml:space="preserve"><value>Причина</value></data>
   <data name="VmV2QaFullSummary" xml:space="preserve"><value>Полная проверка</value></data>
   <data name="V2FullBudgetConfirmation" xml:space="preserve"><value>Отдельно подтверждаю полный бюджет квалификации (до 995 секунд аудио и 12 операций).</value></data>
   <data name="VmV2ProgressDiscoveryComplete" xml:space="preserve"><value>Обнаружение и пассивный запрос форматов завершены; аудиопотоки не открывались.</value></data>

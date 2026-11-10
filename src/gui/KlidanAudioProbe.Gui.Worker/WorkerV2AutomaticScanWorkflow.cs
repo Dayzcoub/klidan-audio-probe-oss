@@ -19,7 +19,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
         ArgumentNullException.ThrowIfNull(route);
         if (!operatorAccepted || confirmationId == Guid.Empty) throw new ArgumentException("Explicit scan acceptance is required.");
         if (period is not ("MINIMUM" or "DEFAULT")) throw new ArgumentOutOfRangeException(nameof(period));
-        if (qaMode is not ("DISCOVERY" or "SHORT" or "FULL")) throw new ArgumentOutOfRangeException(nameof(qaMode));
+        if (qaMode is not ("DISCOVERY" or "SHORT" or "AUTO_SHORT" or "FULL")) throw new ArgumentOutOfRangeException(nameof(qaMode));
         using var operationLease = worker.AcquireSharedOperation("V2 Automatic Scan");
         var discovery = await worker.ListWindowsEndpointsAsync(cancellationToken).ConfigureAwait(false);
         var capture = discovery.Endpoints.SingleOrDefault(e => e.EndpointId == captureEndpointId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE")
@@ -37,7 +37,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
         IReadOnlyDictionary<string, string> StageStatuses() => stages.ToDictionary(s => s.Stage.ToString(), s => s.Message == "V2_QUALIFICATION_NOT_REQUESTED" ? "NOT_REQUESTED" : s.State switch
         {
             AutomaticScanStageState.COMPLETED => "COMPLETED", AutomaticScanStageState.FAILED => "FAILED",
-            AutomaticScanStageState.UNKNOWN => "UNKNOWN", AutomaticScanStageState.NOT_RUN => "NOT_RUN", _ => "NOT_RUN"
+            AutomaticScanStageState.UNKNOWN => "UNKNOWN", AutomaticScanStageState.SKIPPED => "SKIPPED", AutomaticScanStageState.NOT_RUN => "NOT_RUN", _ => "NOT_RUN"
         }, StringComparer.Ordinal);
 
         var captureCounts = QueryChannelCounts(capture.SharedModeFormat.ReportedChannelCount);
@@ -49,6 +49,122 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 
         bool QuerySupports(string endpointId, WorkerScanV2Side side, string period, RealFormatMatrixDto matrix) =>
             matrix.EndpointId == endpointId && matrix.Candidates.Any(c => c.SampleRate == side.SampleRateHz && c.Channels == side.Channels && c.Encoding == side.Encoding && c.Period == period.ToLowerInvariant() && c.Status == "SUPPORTED_REPORTED" && c.SupportStatus == "SUPPORTED_REPORTED");
+        if (qaMode == "AUTO_SHORT")
+        {
+            Stage(AutomaticScanStage.DISCOVERY, AutomaticScanStageState.COMPLETED, "V2_DISCOVERY_VERIFIED");
+            Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.COMPLETED, "V2_DEFAULT_MINIMUM_QUERY_COMPLETED");
+            var candidatePeriods = new[] { "DEFAULT", "MINIMUM" };
+            RealFormatCandidateDto? FindCandidate(RealFormatMatrixDto matrix, WorkerScanV2Side side, string p) => matrix.Candidates.FirstOrDefault(c => c.SampleRate == side.SampleRateHz && c.Channels == side.Channels && c.Encoding == side.Encoding && c.Period == p.ToLowerInvariant());
+            long? QueryPeriod(RealFormatCandidateDto? c, string p) => p == "DEFAULT" ? c?.DefaultPeriod100ns : c?.MinimumPeriod100ns;
+            int? PeriodFrames(long? hns, WorkerScanV2Side side) => hns is > 0 ? checked((int)(hns.Value * side.SampleRateHz / 10_000_000L)) : null;
+            var inventory = candidatePeriods.Select(p =>
+            {
+                var cap = FindCandidate(captureQuery, route.Capture, p); var ren = FindCandidate(renderQuery, route.Render, p);
+                var captureSupport = QuerySupports(captureEndpointId, route.Capture, p, captureQuery) ? "SUPPORTED_REPORTED" : QueryState(route.Capture, captureQuery);
+                var renderSupport = QuerySupports(renderEndpointId, route.Render, p, renderQuery) ? "SUPPORTED_REPORTED" : QueryState(route.Render, renderQuery);
+                var supportedBoth = captureSupport == "SUPPORTED_REPORTED" && renderSupport == "SUPPORTED_REPORTED";
+                var capPeriod = QueryPeriod(cap, p); var renPeriod = QueryPeriod(ren, p);
+                return new V2AutoShortCandidate(p, capPeriod, PeriodFrames(capPeriod, route.Capture), captureSupport, renderSupport,
+                    supportedBoth ? "QUERY_SUPPORTED" : "UNSUPPORTED", supportedBoth ? "BOTH_ENDPOINTS_CONFIRM_SUPPORT" : $"CAPTURE={captureSupport};RENDER={renderSupport}")
+                    { RenderPeriod100ns = renPeriod, RenderBufferFrames = PeriodFrames(renPeriod, route.Render), CaptureSupportSource = captureQuery.Provenance, RenderSupportSource = renderQuery.Provenance };
+            }).ToArray();
+            var supported = inventory.Where(c => c.Status == "QUERY_SUPPORTED").ToArray();
+            if (supported.Length == 0)
+            {
+                var noCandidates = V2AutoShortEvaluator.Evaluate(inventory);
+                Stage(AutomaticScanStage.INITIALIZE, AutomaticScanStageState.SKIPPED, "NO_SUPPORTED_PERIOD_CANDIDATES");
+                Stage(AutomaticScanStage.SHORT_DUPLEX, AutomaticScanStageState.SKIPPED, "NO_SUPPORTED_PERIOD_CANDIDATES");
+                Stage(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+                Stage(AutomaticScanStage.SUSTAINED_VALIDATION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+                Stage(AutomaticScanStage.FINAL_SELECTION, AutomaticScanStageState.SKIPPED, "NO_SUPPORTED_PERIOD_CANDIDATES");
+                var emptyResult = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "COMPLETED", captureEndpointId, renderEndpointId, routeFingerprint, route, "", [], stages, null, null)
+                    { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, QaMode = qaMode, AutoShortCandidates = noCandidates.Candidates, Qualification = noCandidates.Qualification, QaStageStatuses = StageStatuses(), RepeatabilityStatus = "NOT_REQUESTED", SustainedStatus = "NOT_REQUESTED" };
+                try { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "V2_EVIDENCE_SAVED_READBACK"); emptyResult = emptyResult with { Stages = stages, QaStageStatuses = StageStatuses() }; var path = V2AutomaticScanEvidenceStorage.Save(emptyResult, captureQuery, renderQuery, null, null, evidenceRoot); return emptyResult with { EvidencePath = path, Stages = stages, QaStageStatuses = StageStatuses() }; }
+                catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, "V2_EVIDENCE_SAVE_FAILED"); return emptyResult with { Lifecycle = "INCOMPLETE", Stages = stages, QaStageStatuses = StageStatuses(), Error = ex.Message }; }
+            }
+            var autoPeriods = supported.Select(c => c.Period).ToArray();
+            var autoPlan = new WorkerScanPlanV2(route, autoPeriods, ["OFF"], 180, 5, 6, 10, "AUTO_SHORT");
+            WorkerScanSessionToken? autoSession = null; var autoOperations = new List<V2AutomaticScanOperation>();
+            string autoLifecycle = "INCOMPLETE", autoError = "", autoCleanupOutcome = "NOT_ATTEMPTED", autoCancellationOutcome = "NOT_ATTEMPTED", activeAutoOperation = "", activeAutoStage = "INITIALIZE", activeAutoPeriod = "";
+            V2WorkerErrorDiagnostics? autoWorkerError = null; var assessed = new List<V2AutoShortCandidate>(inventory);
+            try
+            {
+                autoSession = await worker.RegisterScanSessionV2Async(captureEndpointId, renderEndpointId, autoPlan, true, confirmationId, cancellationToken).ConfigureAwait(false);
+                foreach (var candidate in supported)
+                {
+                    if (autoSession.RouteFingerprint != routeFingerprint ||
+                        WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route) != routeFingerprint)
+                        throw new IOException("AUTO_SHORT_ENDPOINT_OR_ROUTE_CHANGED");
+                    foreach (var (endpointId, direction, side) in new[] { (captureEndpointId, "CAPTURE", route.Capture), (renderEndpointId, "RENDER", route.Render) })
+                    {
+                        var id = Guid.NewGuid();
+                        activeAutoStage = "INITIALIZE"; activeAutoPeriod = candidate.Period;
+                        activeAutoOperation = id.ToString("D");
+                        var init = await worker.ValidateFormatMatrixInScanAsync(autoSession, id, endpointId, direction, side.SampleRateHz, side.Channels, side.Encoding, candidate.Period, cancellationToken).ConfigureAwait(false);
+                        var item = init.Candidates.Single();
+                        var ready = item.InitializeAttempted && item.InitializeStatus is "INITIALIZED" or "READY" && item.CleanupStatus == "RELEASE_ATTEMPTED";
+                        autoOperations.Add(new("INITIALIZE", id.ToString("D"), endpointId, direction, ready ? "COMPLETED" : item.CleanupStatus == "RELEASE_ATTEMPTED" ? "FAILED" : "UNKNOWN", candidate.Period, null, item.CleanupStatus, init.Provenance, JsonSerializer.SerializeToElement(init)));
+                        activeAutoOperation = "";
+                        if (!ready) throw new IOException(item.CleanupStatus == "RELEASE_ATTEMPTED" ? "AUTO_SHORT_INITIALIZE_FAILED" : "AUTO_SHORT_INITIALIZE_UNKNOWN");
+                    }
+                    Stage(AutomaticScanStage.INITIALIZE, AutomaticScanStageState.COMPLETED, $"INITIALIZE_READY_{candidate.Period}");
+                    assessed.RemoveAll(c => c.Period == candidate.Period); assessed.Add(candidate with { Status = "INITIALIZE_READY", Reason = "BOTH_INITIALIZE_AND_CLEANUP_CONFIRMED" });
+                    var operationId = Guid.NewGuid();
+                    activeAutoStage = "SHORT_DUPLEX"; activeAutoPeriod = candidate.Period;
+                    activeAutoOperation = operationId.ToString("D");
+                    var scenario = testScenarioForOperation?.Invoke("SHORT_DUPLEX", autoOperations.Count(o => o.Stage == "SHORT_DUPLEX") + 1);
+                    var duplex = await worker.ValidateDuplexV2InScanAsync(operationId.ToString("D"), autoSession, operationId, route, captureEndpointId, renderEndpointId, candidate.Period, 5, "OFF", false, cancellationToken, scenario).ConfigureAwait(false);
+                    var report = duplex.Report;
+                    var periodInfo = FindCandidate(captureQuery, route.Capture, candidate.Period);
+                    var buffer = report.GetProperty("capture").GetProperty("actualBufferFrames").GetInt32();
+                    var classified = V2AutoShortEvaluator.ClassifyReport(candidate.Period, candidate.Period == "DEFAULT" ? periodInfo?.DefaultPeriod100ns : periodInfo?.MinimumPeriod100ns, buffer, operationId.ToString("D"), captureEndpointId, renderEndpointId, route, routeFingerprint, report)
+                        with { RenderBufferFrames = report.GetProperty("render").GetProperty("actualBufferFrames").GetInt32(), RenderPeriod100ns = candidate.RenderPeriod100ns, CaptureSupportSource = candidate.CaptureSupportSource, RenderSupportSource = candidate.RenderSupportSource };
+                    autoOperations.Add(new("SHORT_DUPLEX", operationId.ToString("D"), null, null, classified.Status == "SHORT_CLEAN" ? "COMPLETED" : classified.Status == "SHORT_FAILED" ? "FAILED" : "UNKNOWN", candidate.Period, 5, "REPORT_CLEANUP", report.GetProperty("provenance").GetString(), report.Clone()));
+                    activeAutoOperation = "";
+                    assessed.RemoveAll(c => c.Period == candidate.Period); assessed.Add(classified);
+                    Stage(AutomaticScanStage.SHORT_DUPLEX, classified.Status switch { "SHORT_CLEAN" => AutomaticScanStageState.COMPLETED, "SHORT_FAILED" => AutomaticScanStageState.FAILED, _ => AutomaticScanStageState.UNKNOWN }, $"{candidate.Period}_{classified.Status}");
+                    if (classified.Status == "UNKNOWN") { autoLifecycle = "UNKNOWN"; autoError = "AUTO_SHORT_OUTCOME_UNKNOWN"; break; }
+                }
+                if (autoLifecycle != "UNKNOWN") autoLifecycle = "AUTO_SHORT_COMPLETED";
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (activeAutoOperation.Length > 0)
+                {
+                    autoOperations.Add(new(activeAutoStage, activeAutoOperation, null, null, "UNKNOWN", activeAutoPeriod, activeAutoStage == "SHORT_DUPLEX" ? 5 : null, "UNKNOWN", null, null));
+                    if (activeAutoStage == "SHORT_DUPLEX")
+                    {
+                        using var cancel = new CancellationTokenSource(CleanupTimeout);
+                        try { await worker.CancelDuplexValidationAsync(activeAutoOperation, cancel.Token).ConfigureAwait(false); autoCancellationOutcome = "CANCEL_REQUEST_ACCEPTED;FINAL_REPORT_UNCONFIRMED"; }
+                        catch { autoCancellationOutcome = "UNKNOWN"; operationLease.Keep(); }
+                    }
+                    else { autoCancellationOutcome = "OPERATION_OUTCOME_UNKNOWN"; operationLease.Keep(); }
+                }
+                else autoCancellationOutcome = "CANCELLED_BEFORE_OPERATION";
+                autoLifecycle = "UNKNOWN"; autoError = "AUTO_SHORT_CANCELLED_OUTCOME_UNKNOWN";
+                autoWorkerError = new(null, ex.Message, ex.GetType().Name, activeAutoStage, autoSession?.ScanSessionId.ToString("D"), activeAutoOperation, "CANCELLED", worker.State.State.ToString(), autoCancellationOutcome, "PENDING");
+            }
+            catch (Exception ex) { if (activeAutoOperation.Length > 0) autoOperations.Add(new(activeAutoStage, activeAutoOperation, null, null, "UNKNOWN", activeAutoPeriod, activeAutoStage == "SHORT_DUPLEX" ? 5 : null, "UNKNOWN", null, null)); autoLifecycle = autoOperations.Any(o => o.State == "UNKNOWN") || worker.State.State == WorkerConnectionState.Disconnected ? "UNKNOWN" : "INCOMPLETE"; autoError = ex.Message; autoWorkerError = new((ex as WorkerCommandException)?.ErrorCode, ex.Message, ex.GetType().Name, activeAutoStage, autoSession?.ScanSessionId.ToString("D"), activeAutoOperation, ex is WorkerCommandException ? "RESPONSE_ERROR" : ex is TimeoutException ? "RESPONSE_TIMEOUT" : "UNKNOWN", worker.State.State.ToString(), "NOT_ATTEMPTED", "PENDING"); }
+            finally
+            {
+                if (autoSession is { } token)
+                {
+                    using var close = new CancellationTokenSource(CleanupTimeout);
+                    try { if (autoLifecycle == "UNKNOWN") { await worker.CancelScanSessionAsync(token, close.Token).ConfigureAwait(false); autoCleanupOutcome = "CANCELLED"; } else { await worker.CloseScanSessionAsync(token, close.Token).ConfigureAwait(false); autoCleanupOutcome = "CLOSED"; } }
+                    catch (Exception ex) { autoLifecycle = "UNKNOWN"; autoError = "AUTO_SHORT_SESSION_CLEANUP_UNKNOWN"; autoCleanupOutcome = "UNKNOWN"; if (autoWorkerError is not null) autoWorkerError = autoWorkerError with { SessionCleanupOutcome = "UNKNOWN", ErrorMessage = $"{autoWorkerError.ErrorMessage}; {ex.GetType().Name}: {ex.Message}" }; operationLease.Keep(); }
+                }
+            }
+            var assessment = V2AutoShortEvaluator.Evaluate(assessed);
+            Stage(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.SUSTAINED_VALIDATION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.FINAL_SELECTION, assessment.RecommendedPeriod is not null ? AutomaticScanStageState.COMPLETED : autoLifecycle == "UNKNOWN" ? AutomaticScanStageState.UNKNOWN : AutomaticScanStageState.FAILED,
+                assessment.RecommendedPeriod is not null ? $"PRELIMINARY_RECOMMENDATION_{assessment.RecommendedPeriod}_NOT_CERTIFIED" : assessment.Outcome);
+            Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "V2_EVIDENCE_SAVED_READBACK");
+            var autoResult = new V2AutomaticScanResult(autoSession?.ScanSessionId.ToString("D") ?? Guid.NewGuid().ToString("D"), autoLifecycle, captureEndpointId, renderEndpointId, routeFingerprint, route, "", autoOperations, stages, null, string.IsNullOrEmpty(autoError) ? null : autoError)
+                { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, QaMode = qaMode, QaStageStatuses = StageStatuses(), AutoShortCandidates = assessment.Candidates, RecommendedPeriod = assessment.RecommendedPeriod, Qualification = assessment.RecommendedPeriod is null ? assessment.Outcome : "SHORT_CLEAN", SourceSha = V2AutomaticScanEvidenceStorage.SourceSha, SessionCleanupOutcome = autoCleanupOutcome, WorkerError = autoWorkerError, RepeatabilityStatus = "NOT_REQUESTED", SustainedStatus = "NOT_REQUESTED" };
+            try { var path = V2AutomaticScanEvidenceStorage.Save(autoResult, captureQuery, renderQuery, autoOperations.FirstOrDefault(o => o.Direction == "CAPTURE")?.Evidence?.Deserialize<RealFormatMatrixDto>(), autoOperations.FirstOrDefault(o => o.Direction == "RENDER")?.Evidence?.Deserialize<RealFormatMatrixDto>(), evidenceRoot); return autoResult with { EvidencePath = path }; }
+            catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, "V2_EVIDENCE_SAVE_FAILED"); return autoResult with { Lifecycle = autoResult.Lifecycle == "UNKNOWN" ? "UNKNOWN" : "INCOMPLETE", RecommendedPeriod = null, Qualification = "UNKNOWN", Stages = stages, QaStageStatuses = StageStatuses(), Error = $"EVIDENCE_SAVE_FAILED: {ex.Message}" }; }
+        }
         var periodConfirmed = QuerySupports(captureEndpointId, route.Capture, period, captureQuery) && QuerySupports(renderEndpointId, route.Render, period, renderQuery);
         if (!periodConfirmed)
         {
@@ -290,6 +406,15 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 public static class V2AutomaticScanEvidenceStorage
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    public static string SourceSha
+    {
+        get
+        {
+            var version = System.Reflection.Assembly.GetEntryAssembly()?.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion;
+            var match = System.Text.RegularExpressions.Regex.Match(version ?? "", "[0-9a-fA-F]{40}");
+            return match.Success ? match.Value.ToLowerInvariant() : "UNKNOWN";
+        }
+    }
     public static string Save(V2AutomaticScanResult result, RealFormatMatrixDto captureQuery, RealFormatMatrixDto renderQuery,
         RealFormatMatrixDto? captureInitialize, RealFormatMatrixDto? renderInitialize, string? rootDirectory = null)
     {

@@ -1341,9 +1341,20 @@ Fallback: {1}
   <data name="V2QaModeLabel" xml:space="preserve"><value>V2 QA depth</value></data>
   <data name="VmV2QaDiscovery" xml:space="preserve"><value>Discovery</value></data>
   <data name="VmV2QaShort" xml:space="preserve"><value>Short check</value></data>
+  <data name="VmV2QaAutoShort" xml:space="preserve"><value>Automatic period selection · short checks</value></data>
   <data name="VmV2QaFull" xml:space="preserve"><value>Full qualification</value></data>
   <data name="VmV2QaDiscoverySummary" xml:space="preserve"><value>Discovery only; no audio streams opened</value></data>
   <data name="VmV2QaShortSummary" xml:space="preserve"><value>Short check; full stability not certified</value></data>
+  <data name="VmV2QaAutoShortSummary" xml:space="preserve"><value>Up to two 5-second checks, DEFAULT then MINIMUM; MMCSS OFF; not certified</value></data>
+  <data name="VmV2QaAutoShortConsent" xml:space="preserve"><value>One consent covers DEFAULT then MINIMUM: at most two 5-second SHORT Duplex runs (10 seconds total), MMCSS OFF. Stops on UNKNOWN, timeout, disconnect, device change, cancellation uncertainty, or unconfirmed cleanup.</value></data>
+  <data name="VmV2QaAutoShortRecommendation" xml:space="preserve"><value>Preliminary recommendation</value></data>
+  <data name="VmV2QaAutoShortCandidates" xml:space="preserve"><value>AUTO_SHORT candidate comparison</value></data>
+  <data name="VmAutoPeriodColumn" xml:space="preserve"><value>Period</value></data>
+  <data name="VmAutoStatusColumn" xml:space="preserve"><value>Result</value></data>
+  <data name="VmAutoSupportColumn" xml:space="preserve"><value>Capture / Render support</value></data>
+  <data name="VmAutoPeriodLengthColumn" xml:space="preserve"><value>Period 100 ns (C/R)</value></data>
+  <data name="VmAutoFramesColumn" xml:space="preserve"><value>Buffer frames (C/R)</value></data>
+  <data name="VmAutoReasonColumn" xml:space="preserve"><value>Reason</value></data>
   <data name="VmV2QaFullSummary" xml:space="preserve"><value>Full qualification</value></data>
   <data name="V2FullBudgetConfirmation" xml:space="preserve"><value>I separately approve the full qualification budget (up to 995 seconds of audio and 12 operations).</value></data>
   <data name="VmV2ProgressDiscoveryComplete" xml:space="preserve"><value>Discovery and passive format queries completed; audio was not opened.</value></data>
