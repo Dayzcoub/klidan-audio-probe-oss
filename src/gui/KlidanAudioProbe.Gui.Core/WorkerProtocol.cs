@@ -11,7 +11,7 @@ public sealed record WindowsPropertyEvidenceDto(int Hresult, string State);
 public sealed record WindowsSharedModeFormatDto(WindowsPropertyEvidenceDto Property, string ParseState, int? FormatTag, string? Encoding, int? ReportedChannelCount, uint? SampleRate, int? BitsPerSample, int? ValidBitsPerSample, string TopologyState, uint? SpeakerMask, string SpeakerMaskState);
 public sealed record WindowsEndpointDto(string? EndpointId, WindowsPropertyEvidenceDto EndpointIdEvidence, string? FriendlyName, WindowsPropertyEvidenceDto FriendlyNameEvidence, string Direction, string DeviceState, uint? RawDeviceState, WindowsPropertyEvidenceDto DeviceStateEvidence, string FormFactor, WindowsPropertyEvidenceDto FormFactorEvidence, WindowsSharedModeFormatDto SharedModeFormat, string? ContainerId = null, WindowsPropertyEvidenceDto? ContainerIdEvidence = null)
 {
-    public string FriendlyNameDisplay => FriendlyNameEvidence.State == "AVAILABLE" && !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName : "Имя недоступно";
+    public string FriendlyNameDisplay => FriendlyNameEvidence.State == "AVAILABLE" && !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName : Localization.Get("VmEndpointNameUnavailable");
     public string DirectionLabel => Direction == "CAPTURE" ? "Capture · вход" : Direction == "RENDER" ? "Render · выход" : "Направление неизвестно";
     public string DirectionTableLabel => Direction == "CAPTURE" ? "Вход" : Direction == "RENDER" ? "Выход" : "Неизвестно";
     public string DeviceStateLabel => DeviceState switch { "ACTIVE" => "Активно", "DISABLED" => "Отключено", "UNPLUGGED" => "Не подключено", "NOT_PRESENT" => "Отсутствует", _ => "Неизвестно" };

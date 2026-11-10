@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Globalization;
 
 namespace KlidanAudioProbe.Gui.Core;
 
@@ -527,7 +528,7 @@ public sealed class MainViewModel : ViewModel
             if (AutomaticScanPairEnabled)
                 return SelectedDuplexCaptureEndpoint is null || SelectedDuplexRenderEndpoint is null ? AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanChooseUnconfirmedPair") : Localization.Get("VmAutomaticScanChoosePairEndpoints") : AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanCheckUnconfirmedPair") : Localization.Get("VmAutomaticScanCheckExactPair");
             if (SelectedWindowsEndpoint is not { EndpointId.Length: > 0, DeviceState: "ACTIVE" })
-                return SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? Localization.Get("VmAutomaticScanChooseCaptureOrPair") : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? Localization.Get("VmAutomaticScanChooseRenderOrPair") : Localization.Get("VmAutomaticScanChooseActiveEndpoint");
+                return PhysicalDeviceGroups.Count == 0 ? Localization.Get("VmNoActiveAudioDevices") : SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? Localization.Get("VmAutomaticScanChooseCaptureOrPair") : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? Localization.Get("VmAutomaticScanChooseRenderOrPair") : Localization.Get("VmAutomaticScanChooseActiveEndpoint");
             if (WorkerState.State != WorkerConnectionState.ConnectedFake && _workerAttempted) return WorkerRestartExplanation;
             return Localization.Get("VmAutomaticScanPlanBoundToEndpoint");
         }
@@ -675,7 +676,7 @@ public sealed class MainViewModel : ViewModel
     public bool HasCurrentOperatorQueryResult => RealFormatMatrix is { Provenance: "REAL_WASAPI_QUERY", ReportLevel: "PASSIVE_QUERY" } matrix && _realFormatError is null && !RealFormatMatrixIsStale && SelectedWindowsEndpoint is { } selected && selected.EndpointId == matrix.EndpointId && selected.Direction == matrix.Direction;
     public bool HasCurrentDuplexPair => _windowsDiscoveryCurrent && WorkerState.State == WorkerConnectionState.ConnectedFake && SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexCaptureEndpoint.EndpointId != SelectedDuplexRenderEndpoint.EndpointId && DuplexCaptureEndpoints.Contains(SelectedDuplexCaptureEndpoint) && DuplexRenderEndpoints.Contains(SelectedDuplexRenderEndpoint);
     public bool HasDuplexPairProfileEvidence => !_duplexValidationRunning && _duplexValidations.Count > 0 && SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } capture && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } render && _duplexValidations.Values.All(v => v.CaptureEndpointId == capture.EndpointId && v.RenderEndpointId == render.EndpointId && v.Report.GetProperty("provenance").GetString() == "REAL_WASAPI_DUPLEX");
-    public string WorkerStateDisplayMessage => WorkerState.State == WorkerConnectionState.Disconnected && WorkerState.Message == "Worker отключён." ? Localization.Get("VmWorkerDisconnectedMessage") : WorkerState.Message;
+    public string WorkerStateDisplayMessage => WorkerState.State == WorkerConnectionState.Disconnected && WorkerState.Message == Localization.Get("VmWorkerDisconnectedDefaultSource", CultureInfo.GetCultureInfo("ru-RU")) ? Localization.Get("VmWorkerDisconnectedMessage") : WorkerState.Message;
     public string DuplexWorkerAvailability => WorkerState.State == WorkerConnectionState.ConnectedFake ? Localization.Get("VmWorkerConnected") : $"{Localization.Get("VmWorkerLabel")}: {WorkerState.State switch { WorkerConnectionState.Disconnected => Localization.Get("VmWorkerDisconnected"), WorkerConnectionState.Starting => Localization.Get("VmWorkerStarting"), WorkerConnectionState.Connecting => Localization.Get("VmWorkerConnecting"), WorkerConnectionState.Handshaking => Localization.Get("VmWorkerHandshaking"), WorkerConnectionState.Stopping => Localization.Get("VmWorkerStopping"), WorkerConnectionState.Incompatible => Localization.Get("VmWorkerIncompatible"), _ => Localization.Get("VmWorkerError") }} · {WorkerStateDisplayMessage}";
     public string DuplexDiscoveryFreshness => _windowsDiscoveryCurrent ? Localization.Get("VmWindowsDiscoveryCurrent") : _windowsDiscoveryLoading ? Localization.Get("VmWindowsDiscoveryRefreshing") : _windowsDiscoveryError is { Length: > 0 } error ? string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsDiscoveryError"), error) : Localization.Get("VmWindowsDiscoveryStale");
     public string DuplexEvidenceFreshness => $"{DuplexWorkerAvailability} · {DuplexDiscoveryFreshness}";
@@ -758,13 +759,27 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<WorkerEndpointDto> LastWorkerEndpointSnapshot { get => _lastWorkerEndpointSnapshot; private set { if (Set(ref _lastWorkerEndpointSnapshot, value)) { Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); } } }
     public bool HasHistoricalWorkerEndpoints => WorkerState.State == WorkerConnectionState.Disconnected && LastWorkerEndpointSnapshot.Count > 0;
     public IReadOnlyList<WindowsEndpointDto> WindowsEndpoints => _windowsDiscoveryCurrent ? _windowsEndpointSnapshot?.Endpoints ?? [] : [];
-    public IReadOnlyList<PhysicalDeviceGroupDto> PhysicalDeviceGroups => _physicalDeviceGroups;
+    public IReadOnlyList<PhysicalDeviceGroupDto> PhysicalDeviceGroups
+    {
+        get
+        {
+            var active = _physicalDeviceGroups.Where(group => group.CaptureEndpoints.Concat(group.RenderEndpoints).Any(PhysicalDeviceGrouping.IsActiveEndpoint)).ToArray();
+            if (active.Length == _physicalDeviceGroups.Count && active.Select(group => group.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count() == active.Length) return _physicalDeviceGroups;
+            return active.GroupBy(group => group.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(groups => groups.Count() == 1 ? groups : groups.OrderBy(group => group.GroupId, StringComparer.OrdinalIgnoreCase)
+                    .Select((group, index) => group with { DisplayName = string.Format(Localization.CurrentCulture, Localization.Get("VmPhysicalGroupDuplicateName"), group.DisplayName, index + 1) }))
+                .OrderBy(group => group.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(group => group.GroupId, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+    }
+    public string PhysicalDeviceGroupStatusText => PhysicalDeviceGroups.Count == 0 ? Localization.Get("VmNoActiveAudioDevices") : Localization.Get("VmPhysicalGroupEndpointNote");
     public PhysicalDeviceGroupDto? SelectedPhysicalDeviceGroup
     {
         get => _selectedPhysicalDeviceGroup;
         set
         {
-            if (AutomaticScanBusy) return;
+            if (AutomaticScanBusy || value is not null && !PhysicalDeviceGroups.Any(group => group.GroupId == value.GroupId)) return;
             if (!Set(ref _selectedPhysicalDeviceGroup, value)) return;
             CancelAutomaticScanConsent();
             CancelDuplexRepeatabilityAuthorization();
@@ -1603,7 +1618,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(SelectedWorkerEndpoint)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); RefreshWorkerCommands(); RefreshContext();
     }
 
-    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !_bindingCheckRunning && !AutomaticScanBusy && !AutomaticScanConsentPending && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
+    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !_bindingCheckRunning && !AutomaticScanBusy && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
         (WorkerState.State == WorkerConnectionState.ConnectedFake && _worker.Capabilities.Contains("ListWindowsEndpoints", StringComparer.Ordinal) ||
          WorkerState.State == WorkerConnectionState.Disconnected && !_workerAttempted);
 
@@ -1714,6 +1729,7 @@ public sealed class MainViewModel : ViewModel
             AutomaticScanPairEnabled ? SelectedDuplexCaptureEndpoint?.EndpointId : null,
             AutomaticScanPairEnabled ? SelectedDuplexRenderEndpoint?.EndpointId : null,
             SelectedPhysicalDeviceGroup?.GroupId, SelectedPhysicalDeviceGroup?.CanAutoSelectPair == true, AllowUnconfirmedPhysicalPair, AutomaticSustainedMode.StartsWith("Extended", StringComparison.Ordinal));
+        CancelAutomaticScanConsent();
         AutomaticScanPreparing = true;
         _automaticScanPreparation = null;
         AutomaticScanConsentPending = false;
@@ -1760,6 +1776,7 @@ public sealed class MainViewModel : ViewModel
     private void ApplyAutomaticDiscovery(WindowsEndpointDiscoveryDto discovery, AutomaticScanSelection selection)
     {
         WindowsEndpointDiscoveryValidation.Validate(discovery, _worker?.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal) == true);
+        CancelAutomaticScanConsent();
         InvalidateSavedProfileBinding(DeviceProfileBindingInvalidationReason.EndpointRediscovered);
         _windowsDiscoveryGeneration = Guid.NewGuid().ToString("D");
         var previousId = selection.EndpointId;
@@ -1772,8 +1789,8 @@ public sealed class MainViewModel : ViewModel
         var refreshedGroups = PhysicalDeviceGrouping.Group(discovery.Endpoints);
         _physicalDeviceGroups = refreshedGroups;
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryRefreshed"));
-        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
-        var refreshedGroup = refreshedGroups.FirstOrDefault(g => g.GroupId == selection.PhysicalGroupId);
+        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails)); Changed(nameof(PhysicalDeviceGroupStatusText));
+        var refreshedGroup = PhysicalDeviceGroups.FirstOrDefault(g => g.GroupId == selection.PhysicalGroupId);
         if (selection.PhysicalGroupId is not null && refreshedGroup is null)
         {
             InvalidateAutomaticDeviceSelection();
@@ -1788,9 +1805,9 @@ public sealed class MainViewModel : ViewModel
         Set(ref _selectedDuplexCapture, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == captureId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE"), nameof(SelectedDuplexCaptureEndpoint));
         Set(ref _selectedDuplexRender, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == renderId && e.Direction == "RENDER" && e.DeviceState == "ACTIVE"), nameof(SelectedDuplexRenderEndpoint));
         var group = refreshedGroup ?? (captureId is not null && renderId is not null
-            ? refreshedGroups.FirstOrDefault(g => g.CaptureEndpointId == captureId && g.RenderEndpointId == renderId)
+            ? PhysicalDeviceGroups.FirstOrDefault(g => g.CaptureEndpointId == captureId && g.RenderEndpointId == renderId)
             : previousId is not null
-                ? refreshedGroups.FirstOrDefault(g => g.CaptureEndpointId == previousId || g.RenderEndpointId == previousId)
+                ? PhysicalDeviceGroups.FirstOrDefault(g => g.CaptureEndpointId == previousId || g.RenderEndpointId == previousId)
                 : null);
         Set(ref _selectedPhysicalDeviceGroup, group, nameof(SelectedPhysicalDeviceGroup));
         RefreshV2EndpointBindings();
@@ -1802,13 +1819,17 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(WindowsEndpointInspectorFields)); Changed(nameof(DeviceScanAvailabilityReason)); Changed(nameof(DuplexDiscoveryFreshness));
         Changed(nameof(AutomaticScanAvailabilityReason)); Changed(nameof(AutomaticScanConsentText));
         if (previousId is not null && SelectedWindowsEndpoint is null || captureId is not null && SelectedDuplexCaptureEndpoint is null || renderId is not null && SelectedDuplexRenderEndpoint is null)
+        {
+            InvalidateAutomaticDeviceSelection();
             throw new InvalidOperationException(Localization.Get("VmAutomaticScanEndpointUnavailable"));
+        }
         RefreshWindowsEndpointBrowser();
         DiscoverWindowsEndpointsCommand.Refresh();
     }
 
     private void InvalidateAutomaticDeviceSelection()
     {
+        CancelAutomaticScanConsent();
         Set(ref _selectedPhysicalDeviceGroup, null, nameof(SelectedPhysicalDeviceGroup));
         Set(ref _selectedWindowsEndpoint, null, nameof(SelectedWindowsEndpoint));
         Set(ref _selectedDuplexCapture, null, nameof(SelectedDuplexCaptureEndpoint));
@@ -2143,7 +2164,7 @@ public sealed class MainViewModel : ViewModel
         var completed = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Completed);
         var skipped = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Skipped);
         var errors = result.Operations.Count(o => o.Lifecycle is ScanOperationLifecycle.Failed or ScanOperationLifecycle.Unknown);
-        var sourceSummary = $"{result.Lifecycle} · завершено {completed} · пропущено {skipped} · ошибки {errors}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.";
+        var sourceSummary = string.Format(CultureInfo.GetCultureInfo("ru-RU"), Localization.Get("VmAutomaticScanSummarySource", CultureInfo.GetCultureInfo("ru-RU")), result.Lifecycle, completed, skipped, errors);
         return result.Summary != sourceSummary ? result.Summary : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanSummaryDisplay"), ScanLifecycleLabel(result.Lifecycle), completed, skipped, errors);
     }
 
@@ -2168,7 +2189,7 @@ public sealed class MainViewModel : ViewModel
     {
         var counts = result.Counts ?? new(result.Runs.Count, result.Runs.Count(r => !string.IsNullOrWhiteSpace(r.OperationId)), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Completed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Failed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Unknown), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Skipped));
         var periods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {p.Classification}"));
-        var sourceSummary = $"План: {counts.Planned}; attempted: {counts.Attempted}; completed: {counts.Completed}; failed: {counts.Failed}; unknown: {counts.Unknown}; skipped: {counts.Skipped}. {periods}";
+        var sourceSummary = string.Format(CultureInfo.GetCultureInfo("ru-RU"), Localization.Get("VmRepeatabilitySummarySource", CultureInfo.GetCultureInfo("ru-RU")), counts.Planned, counts.Attempted, counts.Completed, counts.Failed, counts.Unknown, counts.Skipped, periods);
         if (result.Summary != sourceSummary) return result.Summary;
         var displayPeriods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {Localization.Get(p.Classification switch
         {
@@ -2184,14 +2205,14 @@ public sealed class MainViewModel : ViewModel
     {
         var key = reason switch
         {
-            "Для одного периода получено несколько кандидатов; автоматический выбор из неоднозначных записей заблокирован." => "VmRecommendationReasonAmbiguousPeriod",
-            "Кандидаты относятся к разным точным парам или несовместимым настройкам; они не ранжируются совместно." => "VmRecommendationReasonDifferentPairs",
-            "Кандидат MINIMUM выбран по чистому короткому Duplex evidence для этой точной пары." => "VmRecommendationReasonMinimumSelected",
-            "Рекомендация не разрешает активацию AudioHost; требуется длительная и production QA." => "VmRecommendationReasonNoAudioHostActivation",
-            "DEFAULT выбран: MINIMUM не имеет независимого чистого Duplex подтверждения." => "VmRecommendationReasonDefaultSelected",
-            "Проверка ограничена коротким запуском; AudioHost не сертифицирован." => "VmRecommendationReasonShortRunOnly",
-            "Нет кандидата с полным чистым Duplex evidence для этой точной пары." => "VmRecommendationReasonNoCleanCandidate",
-            "Формат support и отдельные Capture/Render результаты не заменяют совместную Duplex проверку." => "VmRecommendationReasonNoSeparateProof",
+            var source when source == Localization.Get("VmRecommendationReasonAmbiguousPeriod", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonAmbiguousPeriod",
+            var source when source == Localization.Get("VmRecommendationReasonDifferentPairs", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonDifferentPairs",
+            var source when source == Localization.Get("VmRecommendationReasonMinimumSelected", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonMinimumSelected",
+            var source when source == Localization.Get("VmRecommendationReasonNoAudioHostActivation", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoAudioHostActivation",
+            var source when source == Localization.Get("VmRecommendationReasonDefaultSelected", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonDefaultSelected",
+            var source when source == Localization.Get("VmRecommendationReasonShortRunOnly", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonShortRunOnly",
+            var source when source == Localization.Get("VmRecommendationReasonNoCleanCandidate", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoCleanCandidate",
+            var source when source == Localization.Get("VmRecommendationReasonNoSeparateProof", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoSeparateProof",
             _ => null
         };
         return key is null ? reason : Localization.Get(key);
@@ -3088,7 +3109,7 @@ public sealed class MainViewModel : ViewModel
         EndpointDiscoveryQaTrace.Write("loading-enter", state: WorkerState.State.ToString(), loading: true);
         Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh();
         _physicalDeviceGroups = [];
-        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
+        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails)); Changed(nameof(PhysicalDeviceGroupStatusText));
         Changed(nameof(DuplexWorkerAvailability)); Changed(nameof(DuplexDiscoveryFreshness)); Changed(nameof(DuplexEvidenceFreshness));
         Changed(nameof(WindowsDiscoveryLoading));Changed(nameof(WindowsDiscoveryStatusText));Changed(nameof(WindowsEndpoints));Changed(nameof(DuplexCaptureEndpoints));Changed(nameof(DuplexRenderEndpoints));Changed(nameof(HasCurrentWindowsEndpoints));Changed(nameof(HasHistoricalWindowsEndpoints));Changed(nameof(DeviceScanAvailabilityReason));Changed(nameof(RealFormatMatrixIsStale));Changed(nameof(RealFormatMatrixStatus));Changed(nameof(HasCurrentOperatorQueryResult));Changed(nameof(NeedsInitializeFormatQuery));Changed(nameof(CanSaveDeviceProfile));RequestRealInitializeCommand.Refresh();RequestDeviceScanCommand.Refresh();
         RefreshWindowsEndpointBrowser();

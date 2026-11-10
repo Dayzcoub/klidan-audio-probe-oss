@@ -11,6 +11,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Localization = KlidanAudioProbe.Gui.Core.Localization;
 
 var testThread = new Thread(RunTests);
 testThread.SetApartmentState(ApartmentState.STA);
@@ -119,11 +120,11 @@ var lockedDeveloperVm = new MainViewModel(developerToolsAvailable: false);
 Check(!lockedDeveloperVm.DeveloperToolsAvailable && !lockedDeveloperVm.OpenDeveloperToolsCommand.CanExecute(null) && !lockedDeveloperVm.NavigateCommand.CanExecute("Diagnostics"), "Developer Tools are unavailable without the explicit startup flag");
 typeof(MainViewModel).GetMethod("SetDeviceScanProgress", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(lockedDeveloperVm, [DeviceScanStage.Preflight, "fixture"]);
 Check(lockedDeveloperVm.DeviceScanProgress.StartsWith(KlidanAudioProbe.Gui.Core.Localization.Get("VmDeviceScanStagePreflight"), StringComparison.Ordinal), "device scan progress localizes its stage without altering the DeviceScanStage enum");
-WindowsEndpointDto GroupEndpoint(string id, string direction, string name, string? container, string? formFactor = null)
+WindowsEndpointDto GroupEndpoint(string id, string direction, string name, string? container, string? formFactor = null, string state = "ACTIVE")
 {
     var available = new WindowsPropertyEvidenceDto(0, "AVAILABLE");
     var containerEvidence = container is null ? new WindowsPropertyEvidenceDto(unchecked((int)0x80070490), "UNAVAILABLE") : available;
-    return new(id, available, name, available, direction, "ACTIVE", 1, available, formFactor ?? "MICROPHONE", available,
+    return new(id, available, name, available, direction, state, 1, available, formFactor ?? "MICROPHONE", available,
         new(new(unchecked((int)0x80070490), "UNAVAILABLE"), "UNKNOWN", null, null, null, null, null, null, "UNKNOWN", null, "UNKNOWN"), container, containerEvidence);
 }
 var grouped = PhysicalDeviceGrouping.Group([
@@ -143,7 +144,14 @@ Check(!reversedAudient.DisplayName.Contains("Loop-back", StringComparison.Ordina
 var duplicateDisplayGroups = PhysicalDeviceGrouping.Group([
     GroupEndpoint("same-name-a", "CAPTURE", "Analogue 1/2 (Audient iD4)", "{GROUP-A}"),
     GroupEndpoint("same-name-b", "CAPTURE", "Analogue 1/2 (Audient iD4)", "{GROUP-B}")]);
-Check(duplicateDisplayGroups.Count == 2 && duplicateDisplayGroups.Select(g => g.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 2 && duplicateDisplayGroups.All(g => g.DisplayName.Contains("физическая группа", StringComparison.OrdinalIgnoreCase)), "different trusted grouping keys with duplicate friendly names remain separate and visibly disambiguated");
+Check(duplicateDisplayGroups.Count == 2 && duplicateDisplayGroups.All(g => g.DisplayName == "Analogue 1/2 (Audient iD4)") && duplicateDisplayGroups.Select(g => g.GroupId).Distinct().Count() == 2, "same-name endpoints with different Container IDs remain separate without asserting physical identity");
+var mixedActiveGroup = PhysicalDeviceGrouping.Group([GroupEndpoint("active-input", "CAPTURE", "Interface", "{MIXED}"), GroupEndpoint("disabled-output", "RENDER", "Interface", "{MIXED}", state: "DISABLED")]).Single();
+Check(mixedActiveGroup.CaptureEndpoints.Count == 1 && mixedActiveGroup.RenderEndpoints.Single().DeviceState == "DISABLED" && mixedActiveGroup.DirectionSummary == Localization.Get("VmPhysicalGroupInput"), "diagnostic grouping retains inactive endpoints while operator direction summary shows only active directions");
+var originalUiCulture = Localization.CurrentCulture.Name;
+Localization.SetLanguage("en-US", false); var groupStatusEnglish = mixedActiveGroup.VerificationLabel;
+Localization.SetLanguage("ru-RU", false); var groupStatusRussian = mixedActiveGroup.VerificationLabel;
+Localization.SetLanguage(originalUiCulture, false);
+Check(groupStatusEnglish != groupStatusRussian && groupStatusEnglish == Localization.Get("VmPhysicalGroupCaptureAvailable", System.Globalization.CultureInfo.GetCultureInfo("en-US")) && groupStatusRussian == Localization.Get("VmPhysicalGroupCaptureAvailable", System.Globalization.CultureInfo.GetCultureInfo("ru-RU")), "physical grouping operator statuses are localized in English and Russian resources");
 Check(PhysicalDeviceGrouping.Group([GroupEndpoint("a", "CAPTURE", "Loopback", "{LOOP}"), GroupEndpoint("b", "RENDER", "Output", "{LOOP}")]).Single().CaptureCandidates.Count == 0, "loopback-only Capture is never asserted analogue");
 Check(PhysicalDeviceGrouping.Group([GroupEndpoint("a", "CAPTURE", "Loop back", "{LOOP}"), GroupEndpoint("b", "RENDER", "Output", "{LOOP}")]).Single().CaptureCandidates.Count == 0, "space-separated loopback is excluded");
 Check(PhysicalDeviceGrouping.Group([GroupEndpoint("a", "CAPTURE", "loop_back", "{LOOP}"), GroupEndpoint("b", "RENDER", "Output", "{LOOP}")]).Single().CaptureCandidates.Count == 0, "underscore loopback is excluded");
@@ -518,6 +526,15 @@ while (configuredRepoRoot is null && repoRoot is not null && !File.Exists(Path.C
 if (repoRoot is null) throw new InvalidOperationException("Could not locate repository source for static WPF checks.");
 var mainWindowXaml = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml"));
 var appXaml = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/App.xaml"));
+var localizedXamlFiles = Directory.GetFiles(Path.Combine(repoRoot.FullName, "src/gui"), "*.xaml", SearchOption.AllDirectories);
+var requiredLocalizationKeys = localizedXamlFiles.SelectMany(path => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path), @"\{loc:Loc\s+([A-Za-z0-9_]+)").Cast<System.Text.RegularExpressions.Match>().Select(match => match.Groups[1].Value)).Distinct(StringComparer.Ordinal).ToArray();
+foreach (var resourceFile in new[] { "UiResources.resx", "UiResources.ru-RU.resx" })
+{
+    var resourcePath = Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.Core", resourceFile);
+    var resourceKeys = System.Xml.Linq.XDocument.Load(resourcePath).Root!.Elements("data").Select(element => (string?)element.Attribute("name")).Where(name => name is not null).ToHashSet(StringComparer.Ordinal);
+    var missing = requiredLocalizationKeys.Where(key => !resourceKeys.Contains(key)).ToArray();
+    Check(missing.Length == 0, $"all {requiredLocalizationKeys.Length} XAML localization keys exist in {resourceFile}" + (missing.Length == 0 ? string.Empty : $": {string.Join(", ", missing)}"));
+}
 var mainWindowCode = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml.cs"));
 using (var profileSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v1.schema.json"))))
 using (var streamSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v2.schema.json"))))
@@ -551,7 +568,7 @@ Directory.Delete(customRoot, true);
 Check(mainWindowXaml.Contains("ShowNormalPairSelection", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc AmbiguousCaptureRender}", StringComparison.Ordinal) && !mainWindowXaml.Contains("в Developer Tools. Loopback", StringComparison.Ordinal), "ambiguous physical pairing is exposed in the normal device screen while manual tools remain isolated");
 Check(mainWindowXaml.Contains("Content=\"{loc:Loc SaveKlidanProfile}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("IsEnabled=\"{Binding CanSaveDeviceProfile}\"", StringComparison.Ordinal) && mainWindowCode.Contains("DeviceConfigurationProfileStorage.SaveLocal(profile, _profileDirectory)", StringComparison.Ordinal) && mainWindowCode.Contains("_vm.RecordDeviceProfileSaved(path, profile)", StringComparison.Ordinal), "real operator result exposes a current-evidence-gated local profile save action with schema/path reporting");
 Check(appXaml.Contains("<ContentPresenter x:Name=\"SelectionPresenter\" Grid.Column=\"0\"", StringComparison.Ordinal) && appXaml.Contains("<ColumnDefinition Width=\"34\"/>", StringComparison.Ordinal), "selected ComboBox text is constrained to the area before the visible arrow");
-Check(appXaml.Contains("HorizontalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) && appXaml.Contains("MaxHeight=\"320\"", StringComparison.Ordinal), "long dropdown choices remain reachable in a bounded-height popup");
+Check(appXaml.Contains("HorizontalScrollBarVisibility=\"Disabled\"", StringComparison.Ordinal) && appXaml.Contains("CanContentScroll=\"False\"", StringComparison.Ordinal) && appXaml.Contains("MaxHeight=\"320\"", StringComparison.Ordinal), "long dropdown choices remain reachable in a bounded-height pixel-scrolling popup");
 Check(mainWindowXaml.Contains("x:Name=\"WorkerFakeSettingsGrid\"", StringComparison.Ordinal) && mainWindowXaml.Contains("WorkerFakeSettingsGrid_SizeChanged", StringComparison.Ordinal) && !mainWindowXaml.Contains("StackPanel Orientation=\"Horizontal\" Margin=\"0,8,0,0\"", StringComparison.Ordinal), "Worker Fake controls use the responsive labeled grid, not content-sized horizontal rows");
 Check(new[] { "WorkerDurationSetting", "WorkerPeriodSetting", "WorkerMmcssSetting", "WorkerScenarioSetting" }.All(name => mainWindowXaml.Contains($"x:Name=\"{name}\"", StringComparison.Ordinal)) && mainWindowXaml.Contains("MinWidth=\"160\"", StringComparison.Ordinal), "all four Worker Fake selectors have labeled, minimum-width grid cells");
 Check(mainWindowXaml.Split("<ComboBox ", StringSplitOptions.None).Length - 1 >= 23 && !mainWindowXaml.Contains("<ComboBox Style=", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal), "all dropdowns, including language, V2 routing and saved profile selection, use the shared ComboBox presentation");
@@ -602,8 +619,77 @@ var physicalWorkflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
 var physicalVm = new MainViewModel(worker: physicalWorker, automaticScanWorkflow: physicalWorkflow);
 physicalVm.AutomaticScanEngine = "V1_COMPATIBLE";
 physicalWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for physical selector fixture."));
+var mixedActiveDiscovery = physicalPairFixture with { Endpoints = physicalPairFixture.Endpoints.Select(e => e with { DeviceState = e.Direction == "CAPTURE" ? "ACTIVE" : "DISABLED" }).Append(physicalPairFixture.Endpoints[0] with { EndpointId = "not-present-endpoint", DeviceState = "NOT_PRESENT", ContainerId = "{INACTIVE-ONLY}" }).ToArray() };
+var activeFilterWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = mixedActiveDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
+var activeFilterWorkflow = new GuiAutomaticScanWorkflow(mixedActiveDiscovery);
+var activeFilterVm = new MainViewModel(worker: activeFilterWorker, automaticScanWorkflow: activeFilterWorkflow) { AutomaticScanEngine = "V1_COMPATIBLE" };
+activeFilterWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for active endpoint filtering fixture."));
+activeFilterVm.DiscoverWindowsEndpointsCommand.Execute(null);
+var activeFilterReady = PumpUntil(() => activeFilterVm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2));
+Check(activeFilterReady && activeFilterVm.PhysicalDeviceGroups.Count == 1 && activeFilterVm.PhysicalDeviceGroups[0].DisplayName == "Fixture Interface" && activeFilterVm.PhysicalDeviceGroupDetails.Count == 3 && activeFilterVm.PhysicalDeviceGroups[0].DirectionSummary == Localization.Get("VmPhysicalGroupInput") && activeFilterVm.DuplexRenderEndpoints.Count == 0, $"operator picker includes only ACTIVE endpoint groups without numbering inactive same-name groups while diagnostics retain disabled and NOT_PRESENT endpoints [ready={activeFilterReady}, groups={activeFilterVm.PhysicalDeviceGroups.Count}, name={activeFilterVm.PhysicalDeviceGroups.FirstOrDefault()?.DisplayName}, details={activeFilterVm.PhysicalDeviceGroupDetails.Count}, direction={activeFilterVm.PhysicalDeviceGroups.FirstOrDefault()?.DirectionSummary}, render={activeFilterVm.DuplexRenderEndpoints.Count}]");
+activeFilterVm.SelectedPhysicalDeviceGroup = activeFilterVm.PhysicalDeviceGroups.Single();
+activeFilterVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => activeFilterVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "active single Capture prepares a scan consent before endpoint-loss refresh");
+activeFilterWorker.WindowsDiscovery = mixedActiveDiscovery with { Endpoints = mixedActiveDiscovery.Endpoints.Select(e => e with { DeviceState = "DISABLED" }).ToArray() };
+activeFilterWorkflow.Discovery = activeFilterWorker.WindowsDiscovery;
+Check(activeFilterVm.DiscoverWindowsEndpointsCommand.CanExecute(null), "endpoint discovery refresh remains available while consent is pending so stale authorization can be invalidated");
+activeFilterVm.DiscoverWindowsEndpointsCommand.Execute(null);
+var lostEndpointRefresh = PumpUntil(() => !activeFilterVm.WindowsDiscoveryLoading, TimeSpan.FromSeconds(2));
+Check(lostEndpointRefresh && activeFilterVm.PhysicalDeviceGroups.Count == 0 && activeFilterVm.SelectedPhysicalDeviceGroup is null && activeFilterVm.SelectedWindowsEndpoint is null && !activeFilterVm.AutomaticScanConsentPending && activeFilterVm.AutomaticScanAvailabilityReason == Localization.Get("VmNoActiveAudioDevices"), $"after refresh removes all active endpoints, picker and selection clear, consent resets, and the scan reason explains no active devices [done={lostEndpointRefresh}, groups={activeFilterVm.PhysicalDeviceGroups.Count}, group={activeFilterVm.SelectedPhysicalDeviceGroup?.GroupId}, endpoint={activeFilterVm.SelectedWindowsEndpoint?.EndpointId}, consent={activeFilterVm.AutomaticScanConsentPending}, reason={activeFilterVm.AutomaticScanAvailabilityReason}, status={activeFilterVm.WindowsDiscoveryStatusText}]");
+var manyDevicesDiscovery = physicalPairFixture with { Endpoints = Enumerable.Range(1, 12).Select(i => physicalPairFixture.Endpoints[0] with { EndpointId = $"choice-{i}", FriendlyName = "USB Interface", ContainerId = $"{{CHOICE-{i}}}" }).ToArray() };
+var manyDevicesWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = manyDevicesDiscovery, AdvertiseWindowsDiscovery = true };
+var manyDevicesVm = new MainViewModel(worker: manyDevicesWorker); manyDevicesWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for picker scrolling fixture."));
+manyDevicesVm.DiscoverWindowsEndpointsCommand.Execute(null);
+Check(PumpUntil(() => manyDevicesVm.PhysicalDeviceGroups.Count == 12, TimeSpan.FromSeconds(2)), "large device picker fixture discovers twelve separately identified groups");
+manyDevicesVm.SelectedPhysicalDeviceGroup = manyDevicesVm.PhysicalDeviceGroups[0];
+var manyDevicesWindow = new MainWindow(manyDevicesVm) { Width = 1280, Height = 720, ShowActivated = false }; manyDevicesWindow.Show(); manyDevicesWindow.UpdateLayout();
+var pickerCombo = (ComboBox)manyDevicesWindow.FindName("PhysicalDeviceSelector");
+pickerCombo.ApplyTemplate();
+var physicalPopup = (Popup)pickerCombo.Template.FindName("PART_Popup", pickerCombo);
+pickerCombo.IsDropDownOpen = true; Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background); manyDevicesWindow.UpdateLayout();
+System.Windows.DependencyObject popupFind(System.Windows.DependencyObject parent, Type wanted)
+{
+    if (wanted.IsInstanceOfType(parent)) return parent;
+    for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        if (popupFind(System.Windows.Media.VisualTreeHelper.GetChild(parent, i), wanted) is { } found) return found;
+    return null!;
+}
+var popupScroll = (ScrollViewer)popupFind((System.Windows.DependencyObject)physicalPopup.Child, typeof(ScrollViewer));
+pickerCombo.SelectedIndex = 0;
+var initialOffset = popupScroll.VerticalOffset;
+popupScroll.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -120) { RoutedEvent = UIElement.MouseWheelEvent });
+manyDevicesWindow.UpdateLayout();
+Check(!popupScroll.CanContentScroll && popupScroll.ScrollableHeight > 0 && Math.Abs(popupScroll.VerticalOffset - initialOffset) > 0 && pickerCombo.SelectedIndex == 0, "mouse wheel scrolls the bounded picker in pixel mode without changing endpoint selection");
+var popupKey = new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(pickerCombo), Environment.TickCount, Key.Down) { RoutedEvent = Keyboard.KeyDownEvent };
+pickerCombo.RaiseEvent(popupKey); manyDevicesWindow.UpdateLayout();
+Check(pickerCombo.SelectedItem is PhysicalDeviceGroupDto selectedAfterKey && manyDevicesVm.PhysicalDeviceGroups.Contains(selectedAfterKey), "keyboard navigation remains available within the device picker");
+Check(new[] { (Width: 1920d, Height: 1080d, Dpi: 100), (Width: 1536d, Height: 864d, Dpi: 125), (Width: 1280d, Height: 720d, Dpi: 150) }.All(size => { manyDevicesWindow.Width = size.Width; manyDevicesWindow.Height = size.Height; manyDevicesWindow.UpdateLayout(); return pickerCombo.ActualWidth > 0 && pickerCombo.ActualWidth <= manyDevicesWindow.ActualWidth && pickerCombo.ActualHeight > 0; }), "device picker remains reachable at Full HD effective work areas for 100%, 125% and 150% scaling");
+var screenshotDirectory = Environment.GetEnvironmentVariable("KLIDAN_UI_SCREENSHOT_DIR");
+if (!string.IsNullOrWhiteSpace(screenshotDirectory))
+{
+    Directory.CreateDirectory(screenshotDirectory);
+    manyDevicesWindow.Width = 1280; manyDevicesWindow.Height = 720; pickerCombo.IsDropDownOpen = false; manyDevicesWindow.UpdateLayout();
+    void SavePng(string path, System.Windows.Media.Visual visual, int width, int height)
+    {
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(width, height, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); bitmap.Render(visual);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder(); encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap)); using var output = File.Create(path); encoder.Save(output);
+    }
+    SavePng(Path.Combine(screenshotDirectory, "device-picker-closed.png"), manyDevicesWindow, (int)manyDevicesWindow.ActualWidth, (int)manyDevicesWindow.ActualHeight);
+    pickerCombo.IsDropDownOpen = true; Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background); manyDevicesWindow.UpdateLayout();
+    var popupChild = (System.Windows.FrameworkElement)physicalPopup.Child; var popupPoint = manyDevicesWindow.PointFromScreen(popupChild.PointToScreen(new Point(0, 0)));
+    var baseImage = new System.Windows.Media.Imaging.RenderTargetBitmap((int)manyDevicesWindow.ActualWidth, (int)manyDevicesWindow.ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); baseImage.Render(manyDevicesWindow);
+    var popupImage = new System.Windows.Media.Imaging.RenderTargetBitmap((int)popupChild.ActualWidth, (int)popupChild.ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32); popupImage.Render(popupChild);
+    var combined = new System.Windows.Media.DrawingVisual(); using (var dc = combined.RenderOpen()) { dc.DrawImage(baseImage, new Rect(0, 0, baseImage.Width, baseImage.Height)); dc.DrawImage(popupImage, new Rect(popupPoint.X, popupPoint.Y, popupChild.ActualWidth, popupChild.ActualHeight)); }
+    SavePng(Path.Combine(screenshotDirectory, "device-picker-open.png"), combined, (int)manyDevicesWindow.ActualWidth, (int)manyDevicesWindow.ActualHeight);
+}
+manyDevicesWindow.Close();
 var physicalWindow = new MainWindow(physicalVm) { Width = 1280, Height = 800, ShowActivated = false };
 physicalWindow.Show(); physicalWindow.UpdateLayout();
+var inspectorPane = (Border)physicalWindow.FindName("Inspector");
+Check(inspectorPane.Visibility == Visibility.Collapsed, "operator scan screen hides the technical inspector by default");
+physicalVm.DeveloperToolsOpen = true; physicalWindow.UpdateLayout();
+Check(inspectorPane.Visibility == Visibility.Visible, "technical inspector remains available in Developer Tools");
+physicalVm.DeveloperToolsOpen = false; physicalWindow.UpdateLayout();
 physicalVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(PumpUntil(() => physicalVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "physical selector discovery exposes one confirmed group");
 physicalWindow.UpdateLayout();

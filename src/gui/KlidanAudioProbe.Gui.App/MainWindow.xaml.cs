@@ -99,7 +99,7 @@ public partial class MainWindow : Window
     {
         var collapsed = ActualWidth < 1280;
         InspectorColumn.Width = collapsed ? new GridLength(0) : new GridLength(292);
-        var showInspector = !collapsed && (_vm.DeveloperToolsOpen || _vm.WorkflowStep == OperatorStep.Device);
+        var showInspector = !collapsed && _vm.DeveloperToolsOpen;
         Inspector.Visibility = showInspector ? Visibility.Visible : Visibility.Collapsed;
         UpdateWindowsEndpointDetailsVisibility();
     }

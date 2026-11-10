@@ -1274,4 +1274,44 @@ Fallback: {1}
   <data name="VmV2SelectPair" xml:space="preserve"><value>Select a Capture and Render endpoint.</value></data>
   <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} channels</value></data>
   <data name="VmV2StreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="VmPhysicalGroupRenderAvailable" xml:space="preserve"><value>Render endpoint available</value></data>
+  <data name="RenderFormatLabel" xml:space="preserve"><value>Render format</value></data>
+  <data name="VmNoActiveAudioDevices" xml:space="preserve"><value>No active audio devices were found. Refresh device discovery or connect/enable an audio device.</value></data>
+  <data name="CaptureFormatLabel" xml:space="preserve"><value>Capture format</value></data>
+  <data name="V2RouteSelection" xml:space="preserve"><value>V2 route selection</value></data>
+  <data name="V2RouteSummaryLabel" xml:space="preserve"><value>Selected route</value></data>
+  <data name="VmPhysicalDeviceNameUnavailable" xml:space="preserve"><value>Device name unavailable</value></data>
+  <data name="VmPhysicalGroupChooseCapture" xml:space="preserve"><value>Choose an input endpoint</value></data>
+  <data name="ReportsSectionHeading" xml:space="preserve"><value>REPORTS</value></data>
+  <data name="CaptureChannelsLabel" xml:space="preserve"><value>Capture channels</value></data>
+  <data name="ProfilesSectionHeading" xml:space="preserve"><value>PROFILES</value></data>
+  <data name="VmPhysicalGroupCaptureAvailable" xml:space="preserve"><value>Capture endpoint available</value></data>
+  <data name="RenderChannelOneBased" xml:space="preserve"><value>Render channel (1-based)</value></data>
+  <data name="VmPhysicalGroupInput" xml:space="preserve"><value>Input</value></data>
+  <data name="VmPhysicalGroupEndpointNote" xml:space="preserve"><value>ACTIVE is the Windows endpoint state, not proof of physical presence. A physical device group may contain multiple audio endpoints; it does not identify a jack or channel.</value></data>
+  <data name="V2RouteModeLabel" xml:space="preserve"><value>Route mode</value></data>
+  <data name="V2PeriodLabel" xml:space="preserve"><value>Buffer period</value></data>
+  <data name="VmPhysicalGroupContainerSource" xml:space="preserve"><value>Grouping evidence: Windows Container ID</value></data>
+  <data name="VmPhysicalGroupConfirmedPair" xml:space="preserve"><value>Confirmed endpoint pair</value></data>
+  <data name="VmPhysicalGroupInputOutput" xml:space="preserve"><value>Input + output</value></data>
+  <data name="VmPhysicalGroupChooseRender" xml:space="preserve"><value>Choose an output endpoint</value></data>
+  <data name="VmEndpointNameUnavailable" xml:space="preserve"><value>Name unavailable</value></data>
+  <data name="RenderStreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="VmPhysicalGroupChoosePair" xml:space="preserve"><value>Choose the endpoints explicitly</value></data>
+  <data name="CaptureStreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="CaptureChannelOneBased" xml:space="preserve"><value>Capture channel (1-based)</value></data>
+  <data name="VmPhysicalGroupDuplicateName" xml:space="preserve"><value>{0} · option {1}</value></data>
+  <data name="RenderChannelTwoOneBased" xml:space="preserve"><value>Second Render channel (1-based)</value></data>
+  <data name="VmPhysicalGroupOutput" xml:space="preserve"><value>Output</value></data>
+  <data name="CaptureChannelTwoOneBased" xml:space="preserve"><value>Second Capture channel (1-based)</value></data>
+  <data name="RenderChannelsLabel" xml:space="preserve"><value>Render channels</value></data>
+  <data name="ScannerSectionHeading" xml:space="preserve"><value>SCAN</value></data>
+  <data name="ScanEngineLabel" xml:space="preserve"><value>Scan engine</value></data>
+  <data name="VmPhysicalGroupIdentityUnknown" xml:space="preserve"><value>Grouping evidence does not confirm physical identity</value></data>
+  <data name="VmPhysicalGroupUnconfirmed" xml:space="preserve"><value>Physical identity is unconfirmed</value></data>
+  <data name="VmPhysicalGroupChooseEndpoint" xml:space="preserve"><value>Choose an audio endpoint</value></data>
+  <data name="ProgressSectionHeading" xml:space="preserve"><value>PROGRESS</value></data>
+  <data name="VmWorkerDisconnectedDefaultSource" xml:space="preserve"><value>Worker is disconnected.</value></data>
+  <data name="VmAutomaticScanSummarySource" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmRepeatabilitySummarySource" xml:space="preserve"><value>План: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
 </root>
