@@ -1314,4 +1314,28 @@ Fallback: {1}
   <data name="VmWorkerDisconnectedDefaultSource" xml:space="preserve"><value>Worker is disconnected.</value></data>
   <data name="VmAutomaticScanSummarySource" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
   <data name="VmRepeatabilitySummarySource" xml:space="preserve"><value>План: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmScanEngineV1Description" xml:space="preserve"><value>Basic check: tests one Capture or Render endpoint, or a compatible Capture/Render pair. Suitable for ordinary device diagnostics.</value></data>
+  <data name="VmScanEngineV2Description" xml:space="preserve"><value>Selected-channel check: tests this exact Capture → Render route, with independent stream formats and logical channel selection. Requires one active Capture and one active Render endpoint. Changing mode only resets prior consent; it does not start audio.</value></data>
+  <data name="VmV2CheckStopped" xml:space="preserve"><value>Check stopped</value></data>
+  <data name="VmV2StageShortDuplex" xml:space="preserve"><value>Short Duplex</value></data>
+  <data name="VmV2UnknownOperatorSummary" xml:space="preserve"><value>Stage: {0}. Result: UNKNOWN. Worker error code: {1}. The operation or cleanup was not confirmed. Worker state: {3}. No automatic retry was made. {4}</value></data>
+  <data name="VmV2WorkerErrorCodeUnavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="VmV2WorkerStateUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmV2OperationCleanupUnconfirmed" xml:space="preserve"><value>Operation or cleanup could not be confirmed</value></data>
+  <data name="VmV2OpenReportForDetails" xml:space="preserve"><value>Open the saved report for details.</value></data>
+  <data name="VmV2ProgressDiscoveryVerified" xml:space="preserve"><value>Active endpoints and current discovery verified.</value></data>
+  <data name="VmV2ProgressFormatQuery" xml:space="preserve"><value>Passive format query completed.</value></data>
+  <data name="VmV2ProgressRouteConfirmed" xml:space="preserve"><value>Selected route and period confirmed.</value></data>
+  <data name="VmV2ProgressInitializeClean" xml:space="preserve"><value>Both streams initialized and cleaned up.</value></data>
+  <data name="VmV2ProgressShortClean" xml:space="preserve"><value>Short Duplex completed cleanly.</value></data>
+  <data name="VmV2ProgressShortUnknown" xml:space="preserve"><value>Short Duplex did not qualify; later audio operations stopped.</value></data>
+  <data name="VmV2ProgressRepeatabilityClean" xml:space="preserve"><value>Six sequential Duplex operations completed cleanly.</value></data>
+  <data name="VmV2ProgressRepeatabilityFailed" xml:space="preserve"><value>Repeatability failed; Sustained was not started.</value></data>
+  <data name="VmV2ProgressSustainedClean" xml:space="preserve"><value>60/300/600-second checks completed cleanly in order.</value></data>
+  <data name="VmV2ProgressSustainedStopped" xml:space="preserve"><value>Sustained checks stopped because evidence was not clean.</value></data>
+  <data name="VmV2ProgressFinalSelection" xml:space="preserve"><value>Selected the fully qualified route; this does not certify physical RTL or AudioHost.</value></data>
+  <data name="VmV2ProgressEvidenceSaved" xml:space="preserve"><value>Evidence saved and read back.</value></data>
+  <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>The selected route and period were not confirmed; audio was not started.</value></data>
+  <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Evidence could not be saved.</value></data>
+  <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize failed; later audio operations were stopped.</value></data>
 </root>

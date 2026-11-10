@@ -132,6 +132,8 @@ public sealed record AutomaticScanProgressRow(string OperationId, string Stage, 
 
 public sealed record V2AutomaticScanOperation(string Stage, string OperationId, string? EndpointId, string? Direction,
     string State, string? Period, int? DurationSeconds, string Cleanup, string? Provenance, System.Text.Json.JsonElement? Evidence);
+public sealed record V2WorkerErrorDiagnostics(string? ErrorCode, string? ErrorMessage, string ExceptionType, string Stage,
+    string? SessionId, string? OperationId, string IpcState, string WorkerState, string CancellationOutcome, string SessionCleanupOutcome);
 public sealed record V2AutomaticScanProgress(string Stage, string State, string Message, string? OperationId = null, int? DurationSeconds = null);
 public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, string CaptureEndpointId, string RenderEndpointId,
     string RouteFingerprint, WorkerScanV2Route Route, string Period, IReadOnlyList<V2AutomaticScanOperation> Operations,
@@ -139,6 +141,7 @@ public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, s
 {
     public string CaptureFriendlyName { get; init; } = string.Empty;
     public string RenderFriendlyName { get; init; } = string.Empty;
+    public V2WorkerErrorDiagnostics? WorkerError { get; init; }
 }
 
 public interface IAutomaticScanWorkflow

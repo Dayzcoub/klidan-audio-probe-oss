@@ -473,7 +473,8 @@ public sealed class MainViewModel : ViewModel
         set { if (AutomaticScanBusy || _automaticScanRunning) return; if (Set(ref _automaticScanPairEnabled, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); Changed(nameof(AutomaticScanAvailabilityReason)); PrepareAutomaticScanCommand.Refresh(); RefreshContext(); } }
     }
     public IReadOnlyList<ChoiceOption> AutomaticScanEngineOptions { get; } = [new("V2_ADAPTIVE", Localization.Get("VmScanEngineAdaptiveV2")), new("V1_COMPATIBLE", Localization.Get("VmScanEngineCompatibleV1"))];
-    public string AutomaticScanEngine { get => _automaticScanEngine; set { if (AutomaticScanBusy || value is not ("V2_ADAPTIVE" or "V1_COMPATIBLE") || !Set(ref _automaticScanEngine, value)) return; if (value == "V2_ADAPTIVE") AutomaticScanPairEnabled = true; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanV2ControlsVisible)); Changed(nameof(AutomaticScanV2Availability)); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public string AutomaticScanEngineDescription => Localization.Get(AutomaticScanEngine == "V2_ADAPTIVE" ? "VmScanEngineV2Description" : "VmScanEngineV1Description");
+    public string AutomaticScanEngine { get => _automaticScanEngine; set { if (AutomaticScanBusy || value is not ("V2_ADAPTIVE" or "V1_COMPATIBLE") || !Set(ref _automaticScanEngine, value)) return; if (value == "V2_ADAPTIVE") AutomaticScanPairEnabled = true; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanEngineDescription)); Changed(nameof(AutomaticScanV2ControlsVisible)); Changed(nameof(AutomaticScanV1ControlsVisible)); Changed(nameof(AutomaticScanAvailabilityReason)); Changed(nameof(AutomaticScanV2Availability)); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
     public bool AutomaticScanV2ControlsVisible => AutomaticScanEngine == "V2_ADAPTIVE";
     public bool AutomaticScanV1ControlsVisible => AutomaticScanEngine == "V1_COMPATIBLE";
     public IReadOnlyList<ChoiceOption> AutomaticScanV2Modes { get; } = [new("MONO_TO_STEREO", Localization.Get("VmRouteMonoStereo")), new("STEREO_TO_STEREO", Localization.Get("VmRouteStereoStereo")), new("MONO_TO_MONO", Localization.Get("VmRouteMonoMono"))];
@@ -559,11 +560,12 @@ public sealed class MainViewModel : ViewModel
         }
     }
     public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
+        _automaticScanV2Result is { Lifecycle: "UNKNOWN" } unknownV2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2UnknownOperatorSummary"), V2StageLabel(unknownV2.WorkerError?.Stage ?? unknownV2.Operations.LastOrDefault(o => o.State == "UNKNOWN")?.Stage ?? "SHORT_DUPLEX"), unknownV2.WorkerError?.ErrorCode ?? Localization.Get("VmV2WorkerErrorCodeUnavailable"), Localization.Get("VmV2OperationCleanupUnconfirmed"), unknownV2.WorkerError?.WorkerState ?? Localization.Get("VmV2WorkerStateUnknown"), Localization.Get("VmV2OpenReportForDetails")) :
         _automaticScanOutcomeUnknown && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) :
-        _automaticScanV2Result is { } v2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2ResultSummary"), v2.Lifecycle, v2.Route.Mode, v2.Period, v2.Operations.Count(o => o.State == "COMPLETED"), v2.Error ?? Localization.Get("VmValueUnknown")) :
+        _automaticScanV2Result is { } v2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2ResultSummary"), V2LifecycleLabel(v2.Lifecycle), v2.Route.Mode, v2.Period, v2.Operations.Count(o => o.State == "COMPLETED"), v2.Error ?? Localization.Get("VmValueUnknown")) :
         _automaticScanResult is { } result ? AutomaticScanSummaryDisplay(result) :
         _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) : Localization.Get("VmAutomaticScanResultMissing");
-    public string AutomaticScanResultHeadline => _automaticScanV2Result is { } v2Headline ? V2LifecycleLabel(v2Headline.Lifecycle) : _automaticScanResult?.Lifecycle switch
+    public string AutomaticScanResultHeadline => _automaticScanV2Result is { Lifecycle: "UNKNOWN" } ? Localization.Get("VmV2CheckStopped") : _automaticScanV2Result is { } v2Headline ? V2LifecycleLabel(v2Headline.Lifecycle) : _automaticScanResult?.Lifecycle switch
     {
         ScanRunLifecycle.Completed => Localization.Get("VmAutomaticScanCompleted"),
         ScanRunLifecycle.Incomplete => Localization.Get("VmAutomaticScanPartiallyCompleted"),
@@ -613,7 +615,7 @@ public sealed class MainViewModel : ViewModel
         get
         {
             if (_automaticScanV2Result is { } v2)
-                return string.Join("\n", v2.Operations.Select(o => $"{o.Stage} · {o.State} · {o.Period} · {o.DurationSeconds} · {Localization.Get("CleanupLabel")}={o.Cleanup} · {o.Provenance}")) + $"\nroute={v2.RouteFingerprint}\n{v2.Error}";
+                return string.Join("\n", v2.Operations.Select(o => $"{o.Stage} · {o.State} · {o.Period} · {o.DurationSeconds} · {Localization.Get("CleanupLabel")}={o.Cleanup} · {o.Provenance}")) + $"\nroute={v2.RouteFingerprint}\n{v2.Error}" + (v2.WorkerError is { } d ? $"\nworkerCode={d.ErrorCode ?? "UNKNOWN"}\nworkerMessage={d.ErrorMessage ?? "UNKNOWN"}\nexceptionType={d.ExceptionType}\nstage={d.Stage}\nsessionId={d.SessionId}\noperationId={d.OperationId}\nipcState={d.IpcState}\nworkerState={d.WorkerState}\ncancellation={d.CancellationOutcome}\nsessionCleanup={d.SessionCleanupOutcome}" : string.Empty);
             if (_automaticScanResult is not { } result)
                 return _automaticScanAttempted ? _automaticScanStatus : Localization.Get("VmAutomaticScanTechnicalDetailsMissing");
             var lines = result.Operations.Select(o => $"{o.Operation.Stage} · {o.Lifecycle} · {o.Operation.OperationId} · {o.Operation.EndpointId ?? "PAIR"} · {Localization.Get("CleanupLabel")}={o.CleanupStatus} · {o.Message}").ToList();
@@ -1938,12 +1940,13 @@ public sealed class MainViewModel : ViewModel
         void Apply()
         {
             if (_automaticScanTerminal) return;
-            var stage = Enum.TryParse<AutomaticScanStage>(progress.Stage, true, out var parsedStage) ? AutomaticScanStageLabel(parsedStage) : progress.Stage;
+            var stage = V2StageLabel(progress.Stage);
             var state = Enum.TryParse<AutomaticScanStageState>(progress.State, true, out var parsedState) ? AutomaticScanStageStateLabel(parsedState) : progress.State;
             var operationId = progress.OperationId ?? $"v2-{progress.Stage}";
+            var action = V2ProgressMessageLabel(progress.Message);
             var row = new AutomaticScanProgressRow(operationId, stage, state, progress.DurationSeconds is int duration
-                ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2OperationProgress"), progress.Message, duration)
-                : progress.Message);
+                ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2OperationProgress"), action, duration)
+                : action);
             var index = _automaticScanProgressRows.ToList().FindIndex(x => x.OperationId == row.OperationId);
             if (index >= 0) _automaticScanProgressRows[index] = row; else _automaticScanProgressRows.Add(row);
             Changed(nameof(AutomaticScanProgressRows));
@@ -1951,6 +1954,25 @@ public sealed class MainViewModel : ViewModel
         }
         if (_uiContext is null) Apply(); else _uiContext.Post(_ => { try { Apply(); } catch { } }, null);
     }
+
+    private static string V2ProgressMessageLabel(string code) => Localization.Get(code switch
+    {
+        "V2_DISCOVERY_VERIFIED" => "VmV2ProgressDiscoveryVerified", "V2_FORMAT_QUERY_COMPLETED" => "VmV2ProgressFormatQuery", "V2_FORMAT_NOT_CONFIRMED" => "VmV2ProgressFormatNotConfirmed",
+        "V2_ROUTE_PERIOD_CONFIRMED" => "VmV2ProgressRouteConfirmed", "V2_INITIALIZE_CLEAN" => "VmV2ProgressInitializeClean",
+        "V2_SHORT_DUPLEX_CLEAN" => "VmV2ProgressShortClean", "V2_SHORT_DUPLEX_NOT_QUALIFIED" => "VmV2ProgressShortUnknown",
+        "V2_REPEATABILITY_CLEAN" => "VmV2ProgressRepeatabilityClean", "V2_REPEATABILITY_FAILED" => "VmV2ProgressRepeatabilityFailed",
+        "V2_SUSTAINED_CLEAN" => "VmV2ProgressSustainedClean", "V2_SUSTAINED_NOT_QUALIFIED" => "VmV2ProgressSustainedStopped",
+        "V2_FINAL_SELECTION_COMPLETE" => "VmV2ProgressFinalSelection", "V2_EVIDENCE_SAVED_READBACK" => "VmV2ProgressEvidenceSaved", "V2_EVIDENCE_SAVE_FAILED" => "VmV2ProgressEvidenceSaveFailed", "V2_INITIALIZE_FAILED" => "VmV2ProgressInitializeFailed",
+        _ => code
+    });
+
+    private static string V2StageLabel(string stage) => Localization.Get(stage switch
+    {
+        "DISCOVERY" => "VmScanStageDiscovery", "FORMAT_QUERY" => "VmScanStageQuery", "INITIALIZE" => "VmScanStageInitialize",
+        "SHORT_DUPLEX" => "VmV2StageShortDuplex", "REPEATABILITY" => "VmScanStageRepeatability",
+        "SUSTAINED_VALIDATION" => "VmAutomaticScanStageSustained", "FINAL_SELECTION" => "VmAutomaticScanStageFinalSelection",
+        "SAVE" => "VmScanStageSave", _ => stage
+    });
 
     private void OnAutomaticScanProgress(ScanProgressEvent progress)
     {

@@ -1314,4 +1314,28 @@ Fallback: {1}
   <data name="VmWorkerDisconnectedDefaultSource" xml:space="preserve"><value>Worker отключён.</value></data>
   <data name="VmAutomaticScanSummarySource" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
   <data name="VmRepeatabilitySummarySource" xml:space="preserve"><value>План: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmScanEngineV1Description" xml:space="preserve"><value>Базовая проверка: проверяет один endpoint Capture или Render либо совместимую пару Capture/Render. Подходит для обычной диагностики устройств.</value></data>
+  <data name="VmScanEngineV2Description" xml:space="preserve"><value>Проверка выбранных каналов: проверяет точный маршрут Capture → Render, независимые форматы потоков и логические каналы. Нужны активные endpoint Capture и Render. Смена режима сбрасывает прежнее согласие и не запускает аудио.</value></data>
+  <data name="VmV2CheckStopped" xml:space="preserve"><value>Проверка остановлена</value></data>
+  <data name="VmV2StageShortDuplex" xml:space="preserve"><value>Короткий Duplex</value></data>
+  <data name="VmV2UnknownOperatorSummary" xml:space="preserve"><value>Этап: {0}. Результат: UNKNOWN. Код ошибки Worker: {1}. Результат операции или очистки не подтверждён. Состояние Worker: {3}. Автоматический повтор не выполнялся. {4}</value></data>
+  <data name="VmV2WorkerErrorCodeUnavailable" xml:space="preserve"><value>недоступен</value></data>
+  <data name="VmV2WorkerStateUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmV2OperationCleanupUnconfirmed" xml:space="preserve"><value>Результат операции или очистки не подтверждён</value></data>
+  <data name="VmV2OpenReportForDetails" xml:space="preserve"><value>Откройте сохранённый отчёт для подробностей.</value></data>
+  <data name="VmV2ProgressDiscoveryVerified" xml:space="preserve"><value>Активные endpoint и актуальное обнаружение проверены.</value></data>
+  <data name="VmV2ProgressFormatQuery" xml:space="preserve"><value>Пассивный запрос форматов завершён.</value></data>
+  <data name="VmV2ProgressRouteConfirmed" xml:space="preserve"><value>Выбранный маршрут и период подтверждены.</value></data>
+  <data name="VmV2ProgressInitializeClean" xml:space="preserve"><value>Оба потока открыты и очищены.</value></data>
+  <data name="VmV2ProgressShortClean" xml:space="preserve"><value>Короткий Duplex завершён без ошибок.</value></data>
+  <data name="VmV2ProgressShortUnknown" xml:space="preserve"><value>Короткий Duplex не прошёл квалификацию; дальнейшие аудиооперации остановлены.</value></data>
+  <data name="VmV2ProgressRepeatabilityClean" xml:space="preserve"><value>Шесть последовательных операций Duplex завершены без ошибок.</value></data>
+  <data name="VmV2ProgressRepeatabilityFailed" xml:space="preserve"><value>Повторяемость не подтверждена; Sustained не запускался.</value></data>
+  <data name="VmV2ProgressSustainedClean" xml:space="preserve"><value>Проверки 60/300/600 секунд завершены последовательно без ошибок.</value></data>
+  <data name="VmV2ProgressSustainedStopped" xml:space="preserve"><value>Sustained-проверки остановлены: данные не подтвердили стабильность.</value></data>
+  <data name="VmV2ProgressFinalSelection" xml:space="preserve"><value>Выбран квалифицированный маршрут; это не подтверждает физическую RTL или AudioHost.</value></data>
+  <data name="VmV2ProgressEvidenceSaved" xml:space="preserve"><value>Данные сохранены и проверены чтением.</value></data>
+  <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>Выбранный маршрут и период не подтверждены; аудиопроверка не запускалась.</value></data>
+  <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Не удалось сохранить результаты.</value></data>
+  <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize не пройден; последующие аудиооперации остановлены.</value></data>
 </root>
