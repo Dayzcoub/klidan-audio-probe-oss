@@ -27,6 +27,23 @@ void Check(bool condition, string name)
     if (!condition) throw new InvalidOperationException($"FAIL: {name}");
     Console.WriteLine($"PASS: {name}");
 }
+V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, period == "DEFAULT" ? 100000 : 30000, period == "DEFAULT" ? 480 : 144, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", status, "fixture");
+var autoAssessments = new[]
+{
+    ("CLEAN_FAILED", new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN"), AutoCandidate("MINIMUM", "SHORT_FAILED") }, "DEFAULT"),
+    ("FAILED_CLEAN", new[] { AutoCandidate("DEFAULT", "SHORT_FAILED"), AutoCandidate("MINIMUM", "SHORT_CLEAN") }, "MINIMUM"),
+    ("CLEAN_CLEAN", new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN"), AutoCandidate("MINIMUM", "SHORT_CLEAN") }, "MINIMUM"),
+    ("FAILED_FAILED", new[] { AutoCandidate("DEFAULT", "SHORT_FAILED"), AutoCandidate("MINIMUM", "SHORT_FAILED") }, null),
+    ("UNKNOWN_NONE", new[] { AutoCandidate("DEFAULT", "UNKNOWN") }, null),
+    ("CLEAN_UNKNOWN", new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN"), AutoCandidate("MINIMUM", "UNKNOWN") }, null),
+    ("UNSUPPORTED_CLEAN", new[] { AutoCandidate("DEFAULT", "UNSUPPORTED"), AutoCandidate("MINIMUM", "SHORT_CLEAN") }, "MINIMUM"),
+    ("CLEAN_UNSUPPORTED", new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN"), AutoCandidate("MINIMUM", "UNSUPPORTED") }, "DEFAULT")
+};
+foreach (var (name, candidates, expectedPeriod) in autoAssessments)
+{
+    var evaluated = V2AutoShortEvaluator.Evaluate(candidates);
+    Check(evaluated.RecommendedPeriod == expectedPeriod && evaluated.Qualification == "NOT_CERTIFIED" && (name != "CLEAN_UNKNOWN" || evaluated.Candidates.Any(c => c.Status == "SHORT_CLEAN")), $"AUTO_SHORT evaluator {name} preserves bounded recommendation and uncertainty semantics");
+}
 void Throws<T>(Action action, string name) where T : Exception
 {
     try { action(); }
@@ -779,12 +796,16 @@ v2RouteWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V
 v2RouteVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "V2 route discovery completes from deterministic endpoint fixtures");
 var enCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US"); var ruCulture = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
-Check(Localization.Get("VmScanEngineV1Description", enCulture).Contains("Basic check", StringComparison.Ordinal) && Localization.Get("VmScanEngineV1Description", ruCulture).Contains("Базовая проверка", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", enCulture).Contains("active Capture", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", ruCulture).Contains("Нужны активные endpoint", StringComparison.Ordinal) && Localization.Get("VmV2CheckStopped", ruCulture) == "Проверка остановлена" && Localization.Get("VmV2CheckStopped", enCulture) == "Check stopped" && Localization.Get("VmV2QaShortSummary", enCulture).Contains("not certified", StringComparison.Ordinal) && Localization.Get("VmV2QaShortSummary", ruCulture).Contains("не сертифицирована", StringComparison.Ordinal), "V1/V2 descriptions, Short non-certification, and stopped state are localized in RU and EN");
+Check(Localization.Get("VmScanEngineV1Description", enCulture).Contains("Basic check", StringComparison.Ordinal) && Localization.Get("VmScanEngineV1Description", ruCulture).Contains("Базовая проверка", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", enCulture).Contains("active Capture", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", ruCulture).Contains("Нужны активные endpoint", StringComparison.Ordinal) && Localization.Get("VmV2CheckStopped", ruCulture) == "Проверка остановлена" && Localization.Get("VmV2CheckStopped", enCulture) == "Check stopped" && Localization.Get("VmV2QaShortSummary", enCulture).Contains("not certified", StringComparison.Ordinal) && Localization.Get("VmV2QaShortSummary", ruCulture).Contains("не сертифицирована", StringComparison.Ordinal) && Localization.Get("VmAutoSupportColumn", enCulture).Contains("Capture / Render", StringComparison.Ordinal) && Localization.Get("VmAutoSupportColumn", ruCulture).Contains("Capture / Render", StringComparison.Ordinal), "V1/V2 descriptions, Short non-certification, and AUTO_SHORT comparison headings are localized in RU and EN");
 v2RouteVm.SelectedPhysicalDeviceGroup = v2RouteVm.PhysicalDeviceGroups.Single();
 v2RouteVm.AutomaticScanV2CaptureChannels = 8;
 v2RouteVm.AutomaticScanV2CaptureChannel1 = 8;
 v2RouteVm.AutomaticScanV2RenderChannels = 2;
 Check(v2RouteVm.AutomaticScanEngine == "V2_ADAPTIVE" && v2RouteVm.AutomaticScanV2Period == "MINIMUM" && v2RouteVm.AutomaticScanV2QaMode == "DISCOVERY" && v2RouteVm.AutomaticScanV2RouteSummary.Contains("8", StringComparison.Ordinal), "V2 starts with Discovery and MINIMUM-first while permitting the last one-based channel in a multichannel stream");
+v2RouteVm.AutomaticScanV2QaMode = "AUTO_SHORT";
+v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(v2RouteVm.AutomaticScanV2QaModes.Any(m => m.Value == "AUTO_SHORT") && v2RouteVm.AutomaticScanConsentText.Contains("DEFAULT + MINIMUM", StringComparison.Ordinal) && v2RouteVm.AutomaticScanConsentText.Contains("local-windows-id", StringComparison.Ordinal) && v2RouteVm.AutomaticScanConsentText.Contains("local-render-id", StringComparison.Ordinal) && v2RouteVm.AutomaticScanConsentText.Contains(WorkerScanPlanV2Fingerprint.Route("local-windows-id", "local-render-id", new("MONO_TO_STEREO", new(48000, 8, "PCM16", 0, [7]), new(48000, 2, "PCM16", 0, [0, 1]))), StringComparison.Ordinal) && v2RouteVm.AutomaticScanConsentText.Contains(Localization.Get("VmV2QaAutoShortConsent"), StringComparison.Ordinal) && Localization.Get("VmV2QaAutoShort", ruCulture).Contains("Автоподбор", StringComparison.Ordinal), $"AUTO_SHORT consent names periods, formats, route, duration ceiling, MMCSS OFF, and uncertainty stop conditions in localized UI [mode={v2RouteVm.AutomaticScanV2QaMode}; text={v2RouteVm.AutomaticScanConsentText}; expected={Localization.Get("VmV2QaAutoShortConsent")}; ru={Localization.Get("VmV2QaAutoShort", ruCulture)}]");
+v2RouteVm.AutomaticScanV2QaMode = "DISCOVERY";
 foreach (var mode in new[] { "MONO_TO_STEREO", "STEREO_TO_STEREO", "MONO_TO_MONO" }) { v2RouteVm.AutomaticScanV2Mode = mode; Check(v2RouteVm.AutomaticScanV2Modes.Any(m => m.Value == v2RouteVm.AutomaticScanV2Mode), $"V2 route mode {mode} is selectable"); }
 v2RouteVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
 var v2LayoutWindow = new MainWindow(v2RouteVm) { Width = 1280, Height = 800, ShowActivated = false };
@@ -816,6 +837,15 @@ Check(!openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationComma
 var v2OpenFolder = Path.Combine(Path.GetTempPath(), $"klidan-v2-open-folder-{Guid.NewGuid():N}"); Directory.CreateDirectory(v2OpenFolder);
 var v2OpenEvidence = Path.Combine(v2OpenFolder, "evidence.json"); File.WriteAllText(v2OpenEvidence, "{}");
 var currentV2Result = (V2AutomaticScanResult)typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm)!;
+var autoUiCandidates = new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN") with { RenderBufferFrames = 480, RenderPeriod100ns = 100000 }, AutoCandidate("MINIMUM", "SHORT_FAILED") with { RenderBufferFrames = 144, RenderPeriod100ns = 30000 } };
+typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result with { QaMode = "AUTO_SHORT", AutoShortCandidates = autoUiCandidates, RecommendedPeriod = "DEFAULT", Qualification = "SHORT_CLEAN" });
+typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
+v2LayoutWindow.Width = 1920; v2LayoutWindow.Height = 1080; v2LayoutWindow.UpdateLayout();
+var autoComparison = (Expander)v2LayoutWindow.FindName("AutomaticScanAutoShortComparison");
+Check(v2RouteVm.AutomaticScanAutoShortVisible && v2RouteVm.AutomaticScanAutoShortCandidates.Count == 2 && autoComparison.Visibility == Visibility.Visible && v2RouteVm.AutomaticScanRecommendationText.Contains("DEFAULT", StringComparison.Ordinal) && v2RouteVm.AutomaticScanRecommendationText.Contains("NOT_CERTIFIED", StringComparison.Ordinal) && autoComparison.ActualWidth <= 1920 && autoComparison.ActualHeight <= 1080, "AUTO_SHORT results show two comparison rows and a separate preliminary NOT_CERTIFIED recommendation within a 1920×1080 window");
+typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result);
+typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
+v2LayoutWindow.Width = 1280; v2LayoutWindow.Height = 800; v2LayoutWindow.UpdateLayout();
 var unknownDiagnostics = new V2WorkerErrorDiagnostics("BUSY", "Worker rejected command", "WorkerCommandException", "SHORT_DUPLEX", currentV2Result.SessionId, Guid.NewGuid().ToString("D"), "RESPONSE_ERROR", "ConnectedFake", "NOT_CANCELLED", "CANCELLED");
 typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result with { Lifecycle = "UNKNOWN", EvidencePath = v2OpenEvidence, WorkerError = unknownDiagnostics });
 typeof(MainViewModel).GetField("_automaticScanOutcomeUnknown", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, true);
@@ -3054,6 +3084,7 @@ try
 }
 finally { if (Directory.Exists(bundleSecurityRoot)) Directory.Delete(bundleSecurityRoot, true); }
 Check(mainWindowXaml.Contains("{loc:Loc ExportResults}", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanExportStatusText", StringComparison.Ordinal) && mainWindowXaml.Contains("LOCAL_FULL_EVIDENCE", StringComparison.Ordinal) == false, "L2-B result screen exposes one explicit export action with a separate status and technical-details area");
+Check(mainWindowXaml.Contains("AutomaticScanAutoShortComparison", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanAutoShortCandidates", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoPeriodLengthColumn", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoFramesColumn", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoReasonColumn", StringComparison.Ordinal), "AUTO_SHORT result screen exposes candidate comparison for support, period, buffer frames, and exclusion reason");
 Check(!new MainViewModel().CanExportAutomaticScan && !new MainViewModel().ExportAutomaticScanCommand.CanExecute(null), "L2-B export is disabled without an explicitly completed persisted result and native export interaction");
 var bundleUiRoot = Path.Combine(Path.GetTempPath(), $"klidan-bundle-ui-{Guid.NewGuid():N}");
 var bundleUiScans = Path.Combine(bundleUiRoot, "Scans");
