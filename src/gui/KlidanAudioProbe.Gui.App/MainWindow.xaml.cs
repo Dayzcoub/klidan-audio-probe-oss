@@ -99,7 +99,7 @@ public partial class MainWindow : Window
     {
         var collapsed = ActualWidth < 1280;
         InspectorColumn.Width = collapsed ? new GridLength(0) : new GridLength(292);
-        var showInspector = !collapsed && (_vm.DeveloperToolsOpen || _vm.WorkflowStep == OperatorStep.Device);
+        var showInspector = !collapsed && _vm.DeveloperToolsOpen;
         Inspector.Visibility = showInspector ? Visibility.Visible : Visibility.Collapsed;
         UpdateWindowsEndpointDetailsVisibility();
     }
@@ -154,7 +154,8 @@ file sealed class WpfLaboratoryEvidenceBundleExportInteraction(Window owner) : I
 {
     public Task<string?> PickDestinationAsync(string suggestedFileName)
     {
-        var dialog = new SaveFileDialog { Title = UiLocalization.Get("ExportResults"), Filter = UiLocalization.Get("UiExportZipFilter"), DefaultExt = ".zip", AddExtension = true, FileName = suggestedFileName, OverwritePrompt = true };
+        var json = suggestedFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+        var dialog = new SaveFileDialog { Title = UiLocalization.Get("ExportResults"), Filter = UiLocalization.Get(json ? "UiExportJsonFilter" : "UiExportZipFilter"), DefaultExt = json ? ".json" : ".zip", AddExtension = true, FileName = suggestedFileName, OverwritePrompt = true };
         return Task.FromResult(dialog.ShowDialog(owner) == true ? dialog.FileName : null);
     }
 

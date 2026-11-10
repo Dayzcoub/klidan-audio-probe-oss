@@ -39,20 +39,22 @@ public sealed record PhysicalDeviceGroupDto(
     public bool RequiresExplicitRender => Verification == PhysicalIdentityStatus.Ambiguous && ActiveRenderCount > 1 && ActiveCaptureSelectableCount == 0;
     public bool HasPartialCapture => ActiveCaptureSelectableCount == 1 && ActiveRenderCount == 0;
     public bool HasPartialRender => ActiveRenderCount == 1 && ActiveCaptureSelectableCount == 0;
+    public string DirectionSummary => Localization.Get(CaptureEndpoints.Any(PhysicalDeviceGrouping.IsActiveEndpoint) && RenderEndpoints.Any(PhysicalDeviceGrouping.IsActiveEndpoint)
+        ? "VmPhysicalGroupInputOutput" : CaptureEndpoints.Any(PhysicalDeviceGrouping.IsActiveEndpoint) ? "VmPhysicalGroupInput" : "VmPhysicalGroupOutput");
     public string VerificationLabel => Verification switch
     {
-        PhysicalIdentityStatus.Confirmed when CanAutoSelectPair => "Подтверждённая пара Capture + Render",
-        PhysicalIdentityStatus.Confirmed when HasPartialCapture => "Подтверждённое устройство · доступен Capture scan",
-        PhysicalIdentityStatus.Confirmed when HasPartialRender => "Подтверждённое устройство · доступен Render scan",
-        PhysicalIdentityStatus.Confirmed => "Подтверждённое устройство · выбор endpoint требуется",
-        PhysicalIdentityStatus.Ambiguous when RequiresExplicitCapture => "Неоднозначно · выберите Capture",
-        PhysicalIdentityStatus.Ambiguous when RequiresExplicitRender => "Неоднозначно · выберите Render",
-        PhysicalIdentityStatus.Ambiguous => "Неоднозначно · выберите пару явно",
-        _ => "Физическая принадлежность не подтверждена"
+        PhysicalIdentityStatus.Confirmed when CanAutoSelectPair => Localization.Get("VmPhysicalGroupConfirmedPair"),
+        PhysicalIdentityStatus.Confirmed when HasPartialCapture => Localization.Get("VmPhysicalGroupCaptureAvailable"),
+        PhysicalIdentityStatus.Confirmed when HasPartialRender => Localization.Get("VmPhysicalGroupRenderAvailable"),
+        PhysicalIdentityStatus.Confirmed => Localization.Get("VmPhysicalGroupChooseEndpoint"),
+        PhysicalIdentityStatus.Ambiguous when RequiresExplicitCapture => Localization.Get("VmPhysicalGroupChooseCapture"),
+        PhysicalIdentityStatus.Ambiguous when RequiresExplicitRender => Localization.Get("VmPhysicalGroupChooseRender"),
+        PhysicalIdentityStatus.Ambiguous => Localization.Get("VmPhysicalGroupChoosePair"),
+        _ => Localization.Get("VmPhysicalGroupUnconfirmed")
     };
     public string IdentityProvenanceLabel => IdentityProvenance == "WINDOWS_DEVICE_CONTAINER_ID"
-        ? "Источник: Windows Device Container ID"
-        : "Источник: доверенная физическая идентичность отсутствует";
+        ? Localization.Get("VmPhysicalGroupContainerSource")
+        : Localization.Get("VmPhysicalGroupIdentityUnknown");
 }
 
 public static class PhysicalDeviceGrouping
@@ -83,23 +85,19 @@ public static class PhysicalDeviceGrouping
                     renderCandidates.Length == 1 ? renderCandidates[0].EndpointId : null);
             })
             .ToArray();
-        return groups
-            .GroupBy(g => g.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .SelectMany(colliding => colliding.Count() == 1
-                ? colliding
-                : colliding.OrderBy(g => g.GroupId, StringComparer.OrdinalIgnoreCase)
-                    .Select((g, index) => g with { DisplayName = $"{g.DisplayName} · физическая группа {index + 1}" }))
-            .OrderBy(g => g.DisplayName, StringComparer.OrdinalIgnoreCase)
+        return groups.OrderBy(g => g.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(g => g.GroupId, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     private static string StableDisplayName(IEnumerable<WindowsEndpointDto> endpoints) => endpoints
-        .OrderBy(IsLoopbackEndpoint)
+        .OrderBy(e => !IsActiveEndpoint(e))
+        .ThenBy(IsLoopbackEndpoint)
         .ThenBy(e => e.FriendlyNameDisplay, StringComparer.OrdinalIgnoreCase)
         .ThenBy(e => e.EndpointId, StringComparer.OrdinalIgnoreCase)
-        .Select(e => e.FriendlyNameDisplay)
-        .FirstOrDefault(name => name != "Имя недоступно") ?? "Имя устройства недоступно";
+        .Where(e => e.FriendlyNameEvidence.State == "AVAILABLE" && !string.IsNullOrWhiteSpace(e.FriendlyName))
+        .Select(e => e.FriendlyName!)
+        .FirstOrDefault() ?? Localization.Get("VmPhysicalDeviceNameUnavailable");
 
     internal static bool IsLoopbackEndpoint(WindowsEndpointDto endpoint)
     {

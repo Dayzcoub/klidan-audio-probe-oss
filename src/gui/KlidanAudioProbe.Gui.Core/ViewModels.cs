@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Globalization;
 
 namespace KlidanAudioProbe.Gui.Core;
 
@@ -179,6 +181,14 @@ public sealed class MainViewModel : ViewModel
     private string _deviceScanProgress = Localization.Get("VmDeviceScanNotStarted");
     private AutomaticScanPreparation? _automaticScanPreparation;
     private ScanRunResult? _automaticScanResult;
+    private V2AutomaticScanResult? _automaticScanV2Result;
+    private WorkerScanV2Route? _automaticScanV2Route;
+    private string? _automaticScanV2DiscoveryGeneration;
+    private string? _automaticScanV2CaptureEndpointId, _automaticScanV2RenderEndpointId;
+    private string _automaticScanEngine = "V2_ADAPTIVE", _automaticScanV2Mode = "MONO_TO_STEREO", _automaticScanV2Period = "MINIMUM";
+    private string _automaticScanV2CaptureFormat = "48000|PCM16", _automaticScanV2RenderFormat = "48000|PCM16";
+    private int _automaticScanV2CaptureChannels = 2, _automaticScanV2RenderChannels = 2;
+    private int _automaticScanV2CaptureChannel1 = 1, _automaticScanV2CaptureChannel2 = 2, _automaticScanV2RenderChannel1 = 1, _automaticScanV2RenderChannel2 = 2;
     private CancellationTokenSource? _automaticScanCancellation;
     private Task? _automaticScanTask;
     private bool _automaticScanPairEnabled, _automaticScanPreparing, _automaticScanConsentPending, _automaticScanConsentChecked, _automaticScanRunning, _automaticScanOutcomeUnknown, _automaticScanAttempted, _automaticScanTerminal;
@@ -278,10 +288,10 @@ public sealed class MainViewModel : ViewModel
         QueryWorkerEndpointsCommand = new(QueryWorkerEndpointsAsync, () => WorkerState.State == WorkerConnectionState.ConnectedFake);
         DiscoverWindowsEndpointsCommand = new(DiscoverWindowsEndpointsAsync, CanDiscoverWindowsEndpoints);
         PrepareAutomaticScanCommand = new(PrepareAutomaticScanAsync, CanPrepareAutomaticScan);
-        ConfirmAutomaticScanCommand = new(ConfirmAutomaticScanAsync, () => AutomaticScanConsentPending && AutomaticScanConsentChecked && _automaticScanPreparation is not null && !_automaticScanRunning);
+        ConfirmAutomaticScanCommand = new(ConfirmAutomaticScanAsync, CanConfirmAutomaticScan);
         CancelAutomaticScanConsentCommand = new(CancelAutomaticScanConsent, () => AutomaticScanConsentPending);
         CancelAutomaticScanCommand = new(CancelAutomaticScan, () => _automaticScanPreparing || _automaticScanRunning);
-        OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, () => _automaticScanResult?.Persistence?.SummaryPath is { Length: > 0 });
+        OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, CanOpenAutomaticScanLocation);
         ExportAutomaticScanCommand = new(ExportAutomaticScanAsync, () => CanExportAutomaticScan);
         QueryRealFormatsCommand = new(QueryRealFormatsAsync, CanQueryRealFormats);
         RequestRealInitializeCommand = new(RequestRealInitialize, CanRequestRealInitialize);
@@ -462,6 +472,34 @@ public sealed class MainViewModel : ViewModel
         get => _automaticScanPairEnabled;
         set { if (AutomaticScanBusy || _automaticScanRunning) return; if (Set(ref _automaticScanPairEnabled, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); Changed(nameof(AutomaticScanAvailabilityReason)); PrepareAutomaticScanCommand.Refresh(); RefreshContext(); } }
     }
+    public IReadOnlyList<ChoiceOption> AutomaticScanEngineOptions { get; } = [new("V2_ADAPTIVE", Localization.Get("VmScanEngineAdaptiveV2")), new("V1_COMPATIBLE", Localization.Get("VmScanEngineCompatibleV1"))];
+    public string AutomaticScanEngineDescription => Localization.Get(AutomaticScanEngine == "V2_ADAPTIVE" ? "VmScanEngineV2Description" : "VmScanEngineV1Description");
+    public string AutomaticScanEngine { get => _automaticScanEngine; set { if (AutomaticScanBusy || value is not ("V2_ADAPTIVE" or "V1_COMPATIBLE") || !Set(ref _automaticScanEngine, value)) return; if (value == "V2_ADAPTIVE") AutomaticScanPairEnabled = true; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanEngineDescription)); Changed(nameof(AutomaticScanV2ControlsVisible)); Changed(nameof(AutomaticScanV1ControlsVisible)); Changed(nameof(AutomaticScanAvailabilityReason)); Changed(nameof(AutomaticScanV2Availability)); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public bool AutomaticScanV2ControlsVisible => AutomaticScanEngine == "V2_ADAPTIVE";
+    public bool AutomaticScanV1ControlsVisible => AutomaticScanEngine == "V1_COMPATIBLE";
+    public IReadOnlyList<ChoiceOption> AutomaticScanV2Modes { get; } = [new("MONO_TO_STEREO", Localization.Get("VmRouteMonoStereo")), new("STEREO_TO_STEREO", Localization.Get("VmRouteStereoStereo")), new("MONO_TO_MONO", Localization.Get("VmRouteMonoMono"))];
+    public IReadOnlyList<ChoiceOption> AutomaticScanV2Periods { get; } = [new("MINIMUM", Localization.Get("VmPeriodMinimum")), new("DEFAULT", Localization.Get("VmPeriodDefault"))];
+    public IReadOnlyList<ChoiceOption> AutomaticScanV2Formats { get; } = [new("48000|PCM16", "48 kHz · PCM16"), new("48000|PCM24_IN_32", "48 kHz · PCM24-in-32"), new("48000|FLOAT32", "48 kHz · Float32"), new("44100|PCM16", "44.1 kHz · PCM16"), new("44100|PCM24_IN_32", "44.1 kHz · PCM24-in-32"), new("44100|FLOAT32", "44.1 kHz · Float32")];
+    public IReadOnlyList<SelectionOption> AutomaticScanV2ChannelCounts => V2ChannelCounts(SelectedDuplexCaptureEndpoint);
+    public IReadOnlyList<SelectionOption> AutomaticScanV2RenderChannelCounts => V2ChannelCounts(SelectedDuplexRenderEndpoint);
+    public IReadOnlyList<SelectionOption> AutomaticScanV2CaptureChannelOptions => Enumerable.Range(1, Math.Max(1, _automaticScanV2CaptureChannels)).Select(i => new SelectionOption(i, i.ToString(System.Globalization.CultureInfo.CurrentCulture))).ToArray();
+    public IReadOnlyList<SelectionOption> AutomaticScanV2RenderChannelOptions => Enumerable.Range(1, Math.Max(1, _automaticScanV2RenderChannels)).Select(i => new SelectionOption(i, i.ToString(System.Globalization.CultureInfo.CurrentCulture))).ToArray();
+    public string AutomaticScanV2Mode { get => _automaticScanV2Mode; set { if (AutomaticScanBusy || !AutomaticScanV2Modes.Any(o => o.Value == value) || !Set(ref _automaticScanV2Mode, value)) return; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanV2RouteSummary)); Changed(nameof(AutomaticScanV2ChannelControlsText)); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public string AutomaticScanV2Period { get => _automaticScanV2Period; set { if (AutomaticScanBusy || value is not ("MINIMUM" or "DEFAULT") || !Set(ref _automaticScanV2Period, value)) return; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public string AutomaticScanV2CaptureFormat { get => _automaticScanV2CaptureFormat; set { if (AutomaticScanBusy || !AutomaticScanV2Formats.Any(o => o.Value == value) || !Set(ref _automaticScanV2CaptureFormat, value)) return; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public string AutomaticScanV2RenderFormat { get => _automaticScanV2RenderFormat; set { if (AutomaticScanBusy || !AutomaticScanV2Formats.Any(o => o.Value == value) || !Set(ref _automaticScanV2RenderFormat, value)) return; ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanConsentText)); PrepareAutomaticScanCommand.Refresh(); } }
+    public int AutomaticScanV2CaptureChannels { get => _automaticScanV2CaptureChannels; set => SetV2Channels(ref _automaticScanV2CaptureChannels, value, true); }
+    public int AutomaticScanV2RenderChannels { get => _automaticScanV2RenderChannels; set => SetV2Channels(ref _automaticScanV2RenderChannels, value, false); }
+    public int AutomaticScanV2CaptureChannel1 { get => _automaticScanV2CaptureChannel1; set => SetV2Channel(ref _automaticScanV2CaptureChannel1, value, nameof(AutomaticScanV2CaptureChannel1)); }
+    public int AutomaticScanV2CaptureChannel2 { get => _automaticScanV2CaptureChannel2; set => SetV2Channel(ref _automaticScanV2CaptureChannel2, value, nameof(AutomaticScanV2CaptureChannel2)); }
+    public int AutomaticScanV2RenderChannel1 { get => _automaticScanV2RenderChannel1; set => SetV2Channel(ref _automaticScanV2RenderChannel1, value, nameof(AutomaticScanV2RenderChannel1)); }
+    public int AutomaticScanV2RenderChannel2 { get => _automaticScanV2RenderChannel2; set => SetV2Channel(ref _automaticScanV2RenderChannel2, value, nameof(AutomaticScanV2RenderChannel2)); }
+    public bool AutomaticScanV2SecondCaptureVisible => AutomaticScanV2Mode == "STEREO_TO_STEREO";
+    public bool AutomaticScanV2SecondRenderVisible => AutomaticScanV2Mode != "MONO_TO_MONO";
+    public string AutomaticScanV2ChannelControlsText => string.Format(Localization.CurrentCulture, Localization.Get("VmV2StreamGeometry"), _automaticScanV2CaptureChannels, _automaticScanV2RenderChannels);
+    public string AutomaticScanV2PhysicalMappingWarning => Localization.Get("VmV2PhysicalMappingUnknown");
+    public string AutomaticScanV2RouteSummary => BuildV2Route() is { } route ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2RouteSummary"), route.Mode, string.Join("/", route.Capture.SelectedIndicesZeroBased.Select(i => i + 1)), string.Join("/", route.Render.SelectedIndicesZeroBased.Select(i => i + 1))) : Localization.Get("VmV2RouteInvalid");
+    public string AutomaticScanV2Availability => !AutomaticScanV2ControlsVisible ? Localization.Get("VmV2NotSelected") : _automaticScanWorkflow is null || _worker?.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) != true ? Localization.Get("VmV2CapabilityUnavailable") : !HasCurrentDuplexPair ? Localization.Get("VmV2SelectPair") : BuildV2Route() is null ? Localization.Get("VmV2RouteInvalid") : Localization.Get("VmV2ReadyToQuery");
     public bool AutomaticScanPreparing { get => _automaticScanPreparing; private set { if (Set(ref _automaticScanPreparing, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
     public bool AutomaticScanConsentPending { get => _automaticScanConsentPending; private set { if (Set(ref _automaticScanConsentPending, value)) { Changed(nameof(AutomaticScanConsentText)); ConfirmAutomaticScanCommand.Refresh(); CancelAutomaticScanConsentCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
     public bool AutomaticScanConsentChecked { get => _automaticScanConsentChecked; set { if (Set(ref _automaticScanConsentChecked, value)) ConfirmAutomaticScanCommand.Refresh(); } }
@@ -470,11 +508,11 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<ChoiceOption> AutomaticSustainedModes { get; } = [new("Standard (300 s)", Localization.Get("VmAutomaticSustainedStandard")), new("Extended (600 s)", Localization.Get("VmAutomaticSustainedExtended"))];
     public string AutomaticSustainedMode { get => _automaticSustainedMode; set { if (AutomaticScanBusy || !AutomaticSustainedModes.Any(option => option.Value == value)) return; if (Set(ref _automaticSustainedMode, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); } } }
     public bool CanNavigateAwayFromAutomaticScan => !AutomaticScanBusy;
-    public bool HasAutomaticScanResult => _automaticScanResult is not null || _automaticScanOutcomeUnknown && _automaticScanAttempted && _automaticScanTerminal;
+    public bool HasAutomaticScanResult => _automaticScanV2Result is not null || _automaticScanResult is not null || _automaticScanOutcomeUnknown && _automaticScanAttempted && _automaticScanTerminal;
     public bool AutomaticScanAttempted => _automaticScanAttempted;
     public ScanRunResult? AutomaticScanResult => _automaticScanResult;
     public IReadOnlyList<AutomaticScanProgressRow> AutomaticScanProgressRows => _automaticScanProgressRows;
-    public string AutomaticScanStagePlanText => (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{AutomaticScanStageLabel(s.Stage)}: {AutomaticScanStageStateLabel(s.State)} · {AutomaticScanStageMessageLabel(s.Message)}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
+    public string AutomaticScanStagePlanText => _automaticScanV2Result is { } v2 ? string.Join("\n", v2.Stages.Select(s => $"{s.Stage}: {s.State} · {s.Message}")) : (_automaticScanResult?.StageResults ?? _automaticScanPreparation?.StagedPlan?.Stages ?? []).Select(s => $"{AutomaticScanStageLabel(s.Stage)}: {AutomaticScanStageStateLabel(s.State)} · {AutomaticScanStageMessageLabel(s.Message)}").ToArray() is { Length: > 0 } rows ? string.Join("\n", rows) : Localization.Get("VmAutomaticScanPlanNotPrepared");
     public string AutomaticScanCandidateSummary => _automaticScanResult is { } result
         ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanCandidatesSummary"), result.CandidateInventory.Count, result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.SUPPORTED_FOR_TEST), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.INITIALIZE_ACCEPTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.NOT_TESTED), result.CandidateInventory.Count(c => c.State == AutomaticCandidateState.UNKNOWN))
         : Localization.Get("VmAutomaticScanCandidatesAwaitQuery");
@@ -484,13 +522,14 @@ public sealed class MainViewModel : ViewModel
         get
         {
             if (_automaticScanWorkflow is null) return Localization.Get("VmAutomaticScanUnavailable");
+            if (AutomaticScanEngine == "V2_ADAPTIVE") return AutomaticScanV2Availability;
             if (_automaticScanOutcomeUnknown) return Localization.Get("VmAutomaticScanPreviousOutcomeUnknown");
             if (AutomaticScanBusy) return Localization.Get("VmAutomaticScanInProgress");
             if (DeviceScanConsentPending || RealInitializeConsentPending || DuplexConsentPending) return Localization.Get("VmAutomaticScanCancelOtherConsent");
             if (AutomaticScanPairEnabled)
                 return SelectedDuplexCaptureEndpoint is null || SelectedDuplexRenderEndpoint is null ? AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanChooseUnconfirmedPair") : Localization.Get("VmAutomaticScanChoosePairEndpoints") : AllowUnconfirmedPhysicalPair ? Localization.Get("VmAutomaticScanCheckUnconfirmedPair") : Localization.Get("VmAutomaticScanCheckExactPair");
             if (SelectedWindowsEndpoint is not { EndpointId.Length: > 0, DeviceState: "ACTIVE" })
-                return SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? Localization.Get("VmAutomaticScanChooseCaptureOrPair") : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? Localization.Get("VmAutomaticScanChooseRenderOrPair") : Localization.Get("VmAutomaticScanChooseActiveEndpoint");
+                return PhysicalDeviceGroups.Count == 0 ? Localization.Get("VmNoActiveAudioDevices") : SelectedPhysicalDeviceGroup is { RequiresExplicitCapture: true } ? Localization.Get("VmAutomaticScanChooseCaptureOrPair") : SelectedPhysicalDeviceGroup is { RequiresExplicitRender: true } ? Localization.Get("VmAutomaticScanChooseRenderOrPair") : Localization.Get("VmAutomaticScanChooseActiveEndpoint");
             if (WorkerState.State != WorkerConnectionState.ConnectedFake && _workerAttempted) return WorkerRestartExplanation;
             return Localization.Get("VmAutomaticScanPlanBoundToEndpoint");
         }
@@ -499,6 +538,14 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
+            if (AutomaticScanEngine == "V2_ADAPTIVE" && _automaticScanV2Route is { } v2 && SelectedDuplexCaptureEndpoint?.EndpointId is { } v2Capture && SelectedDuplexRenderEndpoint?.EndpointId is { } v2Render)
+            {
+                var fingerprint = WorkerScanPlanV2Fingerprint.Route(v2Capture, v2Render, v2);
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmV2ScanConsentSummary"), SelectedDuplexCaptureEndpoint.FriendlyNameDisplay, v2Capture,
+                    SelectedDuplexRenderEndpoint.FriendlyNameDisplay, v2Render, v2.Mode, string.Join("/", v2.Capture.SelectedIndicesZeroBased.Select(i => i + 1)),
+                    v2.Capture.Channels, v2.Capture.SampleRateHz, v2.Capture.Encoding, string.Join("/", v2.Render.SelectedIndicesZeroBased.Select(i => i + 1)),
+                    v2.Render.Channels, v2.Render.SampleRateHz, v2.Render.Encoding, AutomaticScanV2Period, fingerprint, 12, 1030, 1800);
+            }
             if (_automaticScanPreparation is not { } prepared) return Localization.Get("VmAutomaticScanPlanMissing");
             var target = prepared.Plan.Target;
             var endpoints = new List<string>();
@@ -513,10 +560,12 @@ public sealed class MainViewModel : ViewModel
         }
     }
     public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
+        _automaticScanV2Result is { Lifecycle: "UNKNOWN" } unknownV2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2UnknownOperatorSummary"), V2StageLabel(unknownV2.WorkerError?.Stage ?? unknownV2.Operations.LastOrDefault(o => o.State == "UNKNOWN")?.Stage ?? "SHORT_DUPLEX"), unknownV2.WorkerError?.ErrorCode ?? Localization.Get("VmV2WorkerErrorCodeUnavailable"), Localization.Get("VmV2OperationCleanupUnconfirmed"), unknownV2.WorkerError?.WorkerState ?? Localization.Get("VmV2WorkerStateUnknown"), Localization.Get("VmV2OpenReportForDetails")) :
         _automaticScanOutcomeUnknown && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) :
+        _automaticScanV2Result is { } v2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2ResultSummary"), V2LifecycleLabel(v2.Lifecycle), v2.Route.Mode, v2.Period, v2.Operations.Count(o => o.State == "COMPLETED"), v2.Error ?? Localization.Get("VmValueUnknown")) :
         _automaticScanResult is { } result ? AutomaticScanSummaryDisplay(result) :
         _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) : Localization.Get("VmAutomaticScanResultMissing");
-    public string AutomaticScanResultHeadline => _automaticScanResult?.Lifecycle switch
+    public string AutomaticScanResultHeadline => _automaticScanV2Result is { Lifecycle: "UNKNOWN" } ? Localization.Get("VmV2CheckStopped") : _automaticScanV2Result is { } v2Headline ? V2LifecycleLabel(v2Headline.Lifecycle) : _automaticScanResult?.Lifecycle switch
     {
         ScanRunLifecycle.Completed => Localization.Get("VmAutomaticScanCompleted"),
         ScanRunLifecycle.Incomplete => Localization.Get("VmAutomaticScanPartiallyCompleted"),
@@ -525,9 +574,9 @@ public sealed class MainViewModel : ViewModel
         ScanRunLifecycle.Unknown => Localization.Get("VmAutomaticScanOutcomeUnknown"),
         _ => Localization.Get("VmAutomaticScanResultMissing")
     } ?? (_automaticScanOutcomeUnknown && _automaticScanAttempted ? Localization.Get("VmAutomaticScanOutcomeUnknown") : Localization.Get("VmAutomaticScanResultMissing"));
-    public string AutomaticScanResultDevice => SelectedPhysicalDeviceGroup?.DisplayName ?? (_automaticScanResult is not { } result ? OperatorSelectedDevice :
+    public string AutomaticScanResultDevice => _automaticScanV2Result is { } v2Result ? $"{v2Result.CaptureFriendlyName} + {v2Result.RenderFriendlyName}" : SelectedPhysicalDeviceGroup?.DisplayName ?? (_automaticScanResult is not { } result ? OperatorSelectedDevice :
         string.Join(" + ", new[] { result.Target.Capture?.FriendlyNameDisplay, result.Target.Render?.FriendlyNameDisplay }.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal)));
-    public string AutomaticScanRecommendationText => _automaticScanResult is not { } result ? Localization.Get("VmAutomaticScanRecommendationMissing") : result.Recommendation.Preferred is { } preferred
+    public string AutomaticScanRecommendationText => _automaticScanV2Result is { } v2Result ? V2RecommendationText(v2Result) : _automaticScanResult is not { } result ? Localization.Get("VmAutomaticScanRecommendationMissing") : result.Recommendation.Preferred is { } preferred
         ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)))
         : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)));
     public string AutomaticScanPhysicalLatencyText => Localization.Get("VmAutomaticScanLatencyNotMeasured");
@@ -535,6 +584,11 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
+            if (_automaticScanV2Result is { } v2)
+            {
+                var sources = v2.Operations.Select(o => o.Provenance).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.Ordinal).ToArray();
+                return sources.Length > 0 && sources.All(p => p!.StartsWith("REAL_WASAPI_", StringComparison.Ordinal)) ? Localization.Get("VmAutomaticScanProvenanceReal") : Localization.Get("VmAutomaticScanProvenanceUnknown");
+            }
             if (_automaticScanResult is not { } result) return _automaticScanAttempted ? Localization.Get("VmAutomaticScanWorkerOutcomeUnconfirmed") : Localization.Get("VmAutomaticScanDataMissing");
             var provenances = result.Evidence.SelectMany(e => new[]
             {
@@ -547,7 +601,7 @@ public sealed class MainViewModel : ViewModel
                 Localization.Get("VmAutomaticScanProvenanceMixed");
         }
     }
-    public string AutomaticScanPersistenceText => _automaticScanResult is null
+    public string AutomaticScanPersistenceText => _automaticScanV2Result is { } v2Result ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2EvidencePath"), v2Result.EvidencePath ?? Localization.Get("VmNotSaved")) : _automaticScanResult is null
         ? _automaticScanOutcomeUnknown ? Localization.Get("VmAutomaticScanSaveUnknown") : _automaticScanAttempted ? Localization.Get("VmAutomaticScanSaveUnconfirmed") : Localization.Get("VmAutomaticScanReportNotSaved")
         : _automaticScanResult.Persistence is not { } saved ? Localization.Get("VmAutomaticScanReportNotSaved") : saved.Status == "SAVE_FAILED"
             ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanPersistenceFailed"), saved.Error ?? Localization.Get("VmAutomaticScanErrorUnavailable"))
@@ -560,6 +614,8 @@ public sealed class MainViewModel : ViewModel
     {
         get
         {
+            if (_automaticScanV2Result is { } v2)
+                return string.Join("\n", v2.Operations.Select(o => $"{o.Stage} · {o.State} · {o.Period} · {o.DurationSeconds} · {Localization.Get("CleanupLabel")}={o.Cleanup} · {o.Provenance}")) + $"\nroute={v2.RouteFingerprint}\n{v2.Error}" + (v2.WorkerError is { } d ? $"\nworkerCode={d.ErrorCode ?? "UNKNOWN"}\nworkerMessage={d.ErrorMessage ?? "UNKNOWN"}\nexceptionType={d.ExceptionType}\nstage={d.Stage}\nsessionId={d.SessionId}\noperationId={d.OperationId}\nipcState={d.IpcState}\nworkerState={d.WorkerState}\ncancellation={d.CancellationOutcome}\nsessionCleanup={d.SessionCleanupOutcome}" : string.Empty);
             if (_automaticScanResult is not { } result)
                 return _automaticScanAttempted ? _automaticScanStatus : Localization.Get("VmAutomaticScanTechnicalDetailsMissing");
             var lines = result.Operations.Select(o => $"{o.Operation.Stage} · {o.Lifecycle} · {o.Operation.OperationId} · {o.Operation.EndpointId ?? "PAIR"} · {Localization.Get("CleanupLabel")}={o.CleanupStatus} · {o.Message}").ToList();
@@ -572,7 +628,9 @@ public sealed class MainViewModel : ViewModel
         }
     }
     public bool AutomaticScanExportRunning => _automaticScanExportRunning;
-    public bool CanExportAutomaticScan => !_automaticScanExportRunning && _automaticScanResult is { Lifecycle: ScanRunLifecycle.Completed, Persistence: { Status: "SAVED_AND_RELOADED", SummaryPath: not null } } && _bundleExportInteraction is not null;
+    public bool CanExportAutomaticScan => !_automaticScanExportRunning && _bundleExportInteraction is not null &&
+        (_automaticScanV2Result?.EvidencePath is { Length: > 0 } v2Path && File.Exists(v2Path) ||
+         _automaticScanResult is { Lifecycle: ScanRunLifecycle.Completed, Persistence: { Status: "SAVED_AND_RELOADED", SummaryPath: not null } });
     public string AutomaticScanExportStatus => _automaticScanExportStatus;
     public string AutomaticScanExportTechnicalDetails => _automaticScanExportTechnicalDetails;
     public DeviceScanResult? DeviceScanResult => _deviceScanResult;
@@ -620,7 +678,7 @@ public sealed class MainViewModel : ViewModel
     public bool HasCurrentOperatorQueryResult => RealFormatMatrix is { Provenance: "REAL_WASAPI_QUERY", ReportLevel: "PASSIVE_QUERY" } matrix && _realFormatError is null && !RealFormatMatrixIsStale && SelectedWindowsEndpoint is { } selected && selected.EndpointId == matrix.EndpointId && selected.Direction == matrix.Direction;
     public bool HasCurrentDuplexPair => _windowsDiscoveryCurrent && WorkerState.State == WorkerConnectionState.ConnectedFake && SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexCaptureEndpoint.EndpointId != SelectedDuplexRenderEndpoint.EndpointId && DuplexCaptureEndpoints.Contains(SelectedDuplexCaptureEndpoint) && DuplexRenderEndpoints.Contains(SelectedDuplexRenderEndpoint);
     public bool HasDuplexPairProfileEvidence => !_duplexValidationRunning && _duplexValidations.Count > 0 && SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } capture && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } render && _duplexValidations.Values.All(v => v.CaptureEndpointId == capture.EndpointId && v.RenderEndpointId == render.EndpointId && v.Report.GetProperty("provenance").GetString() == "REAL_WASAPI_DUPLEX");
-    public string WorkerStateDisplayMessage => WorkerState.State == WorkerConnectionState.Disconnected && WorkerState.Message == "Worker отключён." ? Localization.Get("VmWorkerDisconnectedMessage") : WorkerState.Message;
+    public string WorkerStateDisplayMessage => WorkerState.State == WorkerConnectionState.Disconnected && WorkerState.Message == Localization.Get("VmWorkerDisconnectedDefaultSource", CultureInfo.GetCultureInfo("ru-RU")) ? Localization.Get("VmWorkerDisconnectedMessage") : WorkerState.Message;
     public string DuplexWorkerAvailability => WorkerState.State == WorkerConnectionState.ConnectedFake ? Localization.Get("VmWorkerConnected") : $"{Localization.Get("VmWorkerLabel")}: {WorkerState.State switch { WorkerConnectionState.Disconnected => Localization.Get("VmWorkerDisconnected"), WorkerConnectionState.Starting => Localization.Get("VmWorkerStarting"), WorkerConnectionState.Connecting => Localization.Get("VmWorkerConnecting"), WorkerConnectionState.Handshaking => Localization.Get("VmWorkerHandshaking"), WorkerConnectionState.Stopping => Localization.Get("VmWorkerStopping"), WorkerConnectionState.Incompatible => Localization.Get("VmWorkerIncompatible"), _ => Localization.Get("VmWorkerError") }} · {WorkerStateDisplayMessage}";
     public string DuplexDiscoveryFreshness => _windowsDiscoveryCurrent ? Localization.Get("VmWindowsDiscoveryCurrent") : _windowsDiscoveryLoading ? Localization.Get("VmWindowsDiscoveryRefreshing") : _windowsDiscoveryError is { Length: > 0 } error ? string.Format(Localization.CurrentCulture, Localization.Get("VmWindowsDiscoveryError"), error) : Localization.Get("VmWindowsDiscoveryStale");
     public string DuplexEvidenceFreshness => $"{DuplexWorkerAvailability} · {DuplexDiscoveryFreshness}";
@@ -703,13 +761,27 @@ public sealed class MainViewModel : ViewModel
     public IReadOnlyList<WorkerEndpointDto> LastWorkerEndpointSnapshot { get => _lastWorkerEndpointSnapshot; private set { if (Set(ref _lastWorkerEndpointSnapshot, value)) { Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); } } }
     public bool HasHistoricalWorkerEndpoints => WorkerState.State == WorkerConnectionState.Disconnected && LastWorkerEndpointSnapshot.Count > 0;
     public IReadOnlyList<WindowsEndpointDto> WindowsEndpoints => _windowsDiscoveryCurrent ? _windowsEndpointSnapshot?.Endpoints ?? [] : [];
-    public IReadOnlyList<PhysicalDeviceGroupDto> PhysicalDeviceGroups => _physicalDeviceGroups;
+    public IReadOnlyList<PhysicalDeviceGroupDto> PhysicalDeviceGroups
+    {
+        get
+        {
+            var active = _physicalDeviceGroups.Where(group => group.CaptureEndpoints.Concat(group.RenderEndpoints).Any(PhysicalDeviceGrouping.IsActiveEndpoint)).ToArray();
+            if (active.Length == _physicalDeviceGroups.Count && active.Select(group => group.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count() == active.Length) return _physicalDeviceGroups;
+            return active.GroupBy(group => group.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(groups => groups.Count() == 1 ? groups : groups.OrderBy(group => group.GroupId, StringComparer.OrdinalIgnoreCase)
+                    .Select((group, index) => group with { DisplayName = string.Format(Localization.CurrentCulture, Localization.Get("VmPhysicalGroupDuplicateName"), group.DisplayName, index + 1) }))
+                .OrderBy(group => group.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(group => group.GroupId, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+    }
+    public string PhysicalDeviceGroupStatusText => PhysicalDeviceGroups.Count == 0 ? Localization.Get("VmNoActiveAudioDevices") : Localization.Get("VmPhysicalGroupEndpointNote");
     public PhysicalDeviceGroupDto? SelectedPhysicalDeviceGroup
     {
         get => _selectedPhysicalDeviceGroup;
         set
         {
-            if (AutomaticScanBusy) return;
+            if (AutomaticScanBusy || value is not null && !PhysicalDeviceGroups.Any(group => group.GroupId == value.GroupId)) return;
             if (!Set(ref _selectedPhysicalDeviceGroup, value)) return;
             CancelAutomaticScanConsent();
             CancelDuplexRepeatabilityAuthorization();
@@ -747,7 +819,7 @@ public sealed class MainViewModel : ViewModel
                 Set(ref _selectedDuplexCapture, null, nameof(SelectedDuplexCaptureEndpoint));
                 Set(ref _selectedDuplexRender, null, nameof(SelectedDuplexRenderEndpoint));
             }
-            Changed(nameof(AutomaticScanPairEnabled)); Changed(nameof(PhysicalGroupRequiresExplicitPair)); Changed(nameof(ShowNormalPairSelection)); Changed(nameof(AllowUnconfirmedPhysicalPair)); Changed(nameof(DuplexCaptureEndpoints)); Changed(nameof(DuplexRenderEndpoints)); Changed(nameof(AutomaticScanAvailabilityReason)); PrepareAutomaticScanCommand.Refresh(); RefreshContext(); RefreshCanExecute();
+            Changed(nameof(AutomaticScanPairEnabled)); Changed(nameof(PhysicalGroupRequiresExplicitPair)); Changed(nameof(ShowNormalPairSelection)); Changed(nameof(AllowUnconfirmedPhysicalPair)); Changed(nameof(DuplexCaptureEndpoints)); Changed(nameof(DuplexRenderEndpoints)); RefreshV2EndpointBindings(); Changed(nameof(AutomaticScanAvailabilityReason)); PrepareAutomaticScanCommand.Refresh(); RefreshContext(); RefreshCanExecute();
         }
     }
     public bool PhysicalGroupRequiresExplicitPair => SelectedPhysicalDeviceGroup?.RequiresExplicitPair == true;
@@ -762,6 +834,7 @@ public sealed class MainViewModel : ViewModel
         WindowsEndpoints.Any(e => e.Direction == "RENDER" && PhysicalDeviceGrouping.IsActiveEndpoint(e)) &&
         (group.ActiveCaptureSelectableCount == 0 || group.ActiveRenderCount == 0 || group.RequiresExplicitCapture || group.RequiresExplicitRender);
     public bool ShowNormalPairSelection => PhysicalGroupRequiresExplicitPair || PhysicalGroupRequiresExplicitDirection || CanOfferUnconfirmedPhysicalPair;
+    public bool ShowNormalPairSelectionForCurrentEngine => AutomaticScanV1ControlsVisible && ShowNormalPairSelection;
     public bool AllowUnconfirmedPhysicalPair
     {
         get => _allowUnconfirmedPhysicalPair;
@@ -1547,23 +1620,118 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(SelectedWorkerEndpoint)); Changed(nameof(WorkerFormatOptions)); Changed(nameof(WorkerChannelSummary)); Changed(nameof(HasHistoricalWorkerEndpoints)); Changed(nameof(HistoricalWorkerEndpointNames)); RefreshWorkerCommands(); RefreshContext();
     }
 
-    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !_bindingCheckRunning && !AutomaticScanBusy && !AutomaticScanConsentPending && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
+    private bool CanDiscoverWindowsEndpoints() => _worker is not null && !_windowsDiscoveryLoading && !_bindingCheckRunning && !AutomaticScanBusy && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending &&
         (WorkerState.State == WorkerConnectionState.ConnectedFake && _worker.Capabilities.Contains("ListWindowsEndpoints", StringComparer.Ordinal) ||
          WorkerState.State == WorkerConnectionState.Disconnected && !_workerAttempted);
 
+    private static IReadOnlyList<SelectionOption> V2ChannelCounts(WindowsEndpointDto? endpoint)
+    {
+        var counts = new[] { 1, 2, 8, 16, 32, endpoint?.SharedModeFormat.ReportedChannelCount ?? 0 }.Where(c => c is >= 1 and <= 32).Distinct().Order().ToArray();
+        return counts.Select(c => new SelectionOption(c, string.Format(Localization.CurrentCulture, Localization.Get("VmV2StreamChannelCountOption"), c))).ToArray();
+    }
+
+    private void ResetAutomaticScanV2Consent()
+    {
+        if (AutomaticScanConsentPending) CancelAutomaticScanConsent();
+        _automaticScanV2Route = null;
+        _automaticScanV2DiscoveryGeneration = null;
+        _automaticScanV2CaptureEndpointId = _automaticScanV2RenderEndpointId = null;
+        Changed(nameof(AutomaticScanConsentText));
+    }
+
+    private bool CanConfirmAutomaticScan()
+    {
+        if (!AutomaticScanConsentPending || !AutomaticScanConsentChecked || AutomaticScanBusy || WorkerOperationActive ||
+            WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent) return false;
+        if (AutomaticScanEngine == "V2_ADAPTIVE")
+        {
+            var captureId = SelectedDuplexCaptureEndpoint?.EndpointId;
+            var renderId = SelectedDuplexRenderEndpoint?.EndpointId;
+            var route = BuildV2Route();
+            return _automaticScanV2Route is { } approvedRoute && route is not null &&
+                _worker?.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) == true &&
+                _automaticScanV2DiscoveryGeneration == _windowsDiscoveryGeneration &&
+                captureId == _automaticScanV2CaptureEndpointId && renderId == _automaticScanV2RenderEndpointId &&
+                captureId is { Length: > 0 } && renderId is { Length: > 0 } &&
+                WorkerScanPlanV2Fingerprint.Route(captureId, renderId, route) == WorkerScanPlanV2Fingerprint.Route(captureId, renderId, approvedRoute);
+        }
+
+        if (_automaticScanPreparation is not { } preparation || _worker?.Capabilities.Contains("ScanSessionAuthorizationV1", StringComparer.Ordinal) != true) return false;
+        var target = preparation.Plan.Target;
+        if (AutomaticScanPairEnabled)
+            return target.Capture?.EndpointId == SelectedDuplexCaptureEndpoint?.EndpointId &&
+                target.Render?.EndpointId == SelectedDuplexRenderEndpoint?.EndpointId &&
+                target.Capture?.EndpointId is { Length: > 0 } && target.Render?.EndpointId is { Length: > 0 };
+        var selectedId = SelectedWindowsEndpoint?.EndpointId;
+        var plannedId = target.Capture?.EndpointId ?? target.Render?.EndpointId;
+        return selectedId is { Length: > 0 } && selectedId == plannedId && (target.Capture is null ^ target.Render is null);
+    }
+
+    private void SetV2Channels(ref int field, int value, bool capture)
+    {
+        var endpoint = capture ? SelectedDuplexCaptureEndpoint : SelectedDuplexRenderEndpoint;
+        if (AutomaticScanBusy || !V2ChannelCounts(endpoint).Any(o => o.Value == value) || !Set(ref field, value, capture ? nameof(AutomaticScanV2CaptureChannels) : nameof(AutomaticScanV2RenderChannels))) return;
+        if (capture) { _automaticScanV2CaptureChannel1 = 1; _automaticScanV2CaptureChannel2 = Math.Min(2, value); Changed(nameof(AutomaticScanV2CaptureChannelOptions)); Changed(nameof(AutomaticScanV2CaptureChannel1)); Changed(nameof(AutomaticScanV2CaptureChannel2)); }
+        else { _automaticScanV2RenderChannel1 = 1; _automaticScanV2RenderChannel2 = Math.Min(2, value); Changed(nameof(AutomaticScanV2RenderChannelOptions)); Changed(nameof(AutomaticScanV2RenderChannel1)); Changed(nameof(AutomaticScanV2RenderChannel2)); }
+        ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanV2ChannelControlsText)); PrepareAutomaticScanCommand.Refresh();
+    }
+
+    private void SetV2Channel(ref int field, int value, string propertyName)
+    {
+        if (AutomaticScanBusy || value < 1 || value > (propertyName.Contains("Capture", StringComparison.Ordinal) ? _automaticScanV2CaptureChannels : _automaticScanV2RenderChannels) || !Set(ref field, value, propertyName)) return;
+        ResetAutomaticScanV2Consent(); Changed(nameof(AutomaticScanV2RouteSummary)); PrepareAutomaticScanCommand.Refresh();
+    }
+
+    private void ApplyV2RouteSelection(WorkerScanV2Route route)
+    {
+        _automaticScanV2Mode = route.Mode;
+        _automaticScanV2CaptureChannels = route.Capture.Channels;
+        _automaticScanV2RenderChannels = route.Render.Channels;
+        _automaticScanV2CaptureFormat = $"{route.Capture.SampleRateHz}|{route.Capture.Encoding}";
+        _automaticScanV2RenderFormat = $"{route.Render.SampleRateHz}|{route.Render.Encoding}";
+        _automaticScanV2CaptureChannel1 = route.Capture.SelectedIndicesZeroBased[0] + 1;
+        _automaticScanV2CaptureChannel2 = route.Capture.SelectedIndicesZeroBased.LastOrDefault() + 1;
+        _automaticScanV2RenderChannel1 = route.Render.SelectedIndicesZeroBased[0] + 1;
+        _automaticScanV2RenderChannel2 = route.Render.SelectedIndicesZeroBased.LastOrDefault() + 1;
+        Changed(nameof(AutomaticScanV2Mode)); Changed(nameof(AutomaticScanV2CaptureChannels)); Changed(nameof(AutomaticScanV2RenderChannels));
+        Changed(nameof(AutomaticScanV2CaptureFormat)); Changed(nameof(AutomaticScanV2RenderFormat));
+        Changed(nameof(AutomaticScanV2CaptureChannel1)); Changed(nameof(AutomaticScanV2CaptureChannel2));
+        Changed(nameof(AutomaticScanV2RenderChannel1)); Changed(nameof(AutomaticScanV2RenderChannel2));
+        Changed(nameof(AutomaticScanV2SecondCaptureVisible)); Changed(nameof(AutomaticScanV2SecondRenderVisible));
+        Changed(nameof(AutomaticScanV2CaptureChannelOptions)); Changed(nameof(AutomaticScanV2RenderChannelOptions));
+        Changed(nameof(AutomaticScanV2ChannelControlsText)); Changed(nameof(AutomaticScanV2RouteSummary));
+    }
+
+    private WorkerScanV2Route? BuildV2Route()
+    {
+        if (!int.TryParse(_automaticScanV2CaptureFormat.Split('|')[0], out var captureRate) || !int.TryParse(_automaticScanV2RenderFormat.Split('|')[0], out var renderRate)) return null;
+        var captureEncoding = _automaticScanV2CaptureFormat.Split('|').Last(); var renderEncoding = _automaticScanV2RenderFormat.Split('|').Last();
+        var captureIndices = _automaticScanV2Mode == "STEREO_TO_STEREO" ? new[] { _automaticScanV2CaptureChannel1 - 1, _automaticScanV2CaptureChannel2 - 1 } : new[] { _automaticScanV2CaptureChannel1 - 1 };
+        var renderIndices = _automaticScanV2Mode == "MONO_TO_MONO" ? new[] { _automaticScanV2RenderChannel1 - 1 } : new[] { _automaticScanV2RenderChannel1 - 1, _automaticScanV2RenderChannel2 - 1 };
+        if (captureIndices.Any(i => i < 0 || i >= _automaticScanV2CaptureChannels) || renderIndices.Any(i => i < 0 || i >= _automaticScanV2RenderChannels) || captureIndices.Distinct().Count() != captureIndices.Length || renderIndices.Distinct().Count() != renderIndices.Length) return null;
+        try { return new WorkerScanV2Route(_automaticScanV2Mode,
+            new(captureRate, _automaticScanV2CaptureChannels, captureEncoding, 0, captureIndices),
+            new(renderRate, _automaticScanV2RenderChannels, renderEncoding, 0, renderIndices)); }
+        catch (ArgumentException) { return null; }
+    }
+
     private bool CanPrepareAutomaticScan() => _automaticScanWorkflow is not null && !AutomaticScanBusy && !AutomaticScanConsentPending && !_automaticScanOutcomeUnknown && !_windowsDiscoveryLoading && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !WorkerOperationActive &&
-        WorkerState.State == WorkerConnectionState.ConnectedFake && _worker?.Capabilities.Contains("ScanSessionAuthorizationV1", StringComparer.Ordinal) == true &&
-        (AutomaticScanPairEnabled
-            ? SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 }
-            : SelectedWindowsEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 });
+        WorkerState.State == WorkerConnectionState.ConnectedFake && (_automaticScanEngine == "V2_ADAPTIVE"
+            ? _worker?.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) == true && HasCurrentDuplexPair && BuildV2Route() is not null
+            : _worker?.Capabilities.Contains("ScanSessionAuthorizationV1", StringComparer.Ordinal) == true && (AutomaticScanPairEnabled
+                ? SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 }
+                : SelectedWindowsEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 }));
 
     private async Task PrepareAutomaticScanAsync()
     {
         if (_automaticScanWorkflow is null || !CanPrepareAutomaticScan()) return;
+        var v2Route = _automaticScanEngine == "V2_ADAPTIVE" ? BuildV2Route() : null;
+        if (_automaticScanEngine == "V2_ADAPTIVE" && v2Route is null) return;
         var selection = new AutomaticScanSelection(SelectedWindowsEndpoint?.EndpointId, AutomaticScanPairEnabled,
             AutomaticScanPairEnabled ? SelectedDuplexCaptureEndpoint?.EndpointId : null,
             AutomaticScanPairEnabled ? SelectedDuplexRenderEndpoint?.EndpointId : null,
             SelectedPhysicalDeviceGroup?.GroupId, SelectedPhysicalDeviceGroup?.CanAutoSelectPair == true, AllowUnconfirmedPhysicalPair, AutomaticSustainedMode.StartsWith("Extended", StringComparison.Ordinal));
+        CancelAutomaticScanConsent();
         AutomaticScanPreparing = true;
         _automaticScanPreparation = null;
         AutomaticScanConsentPending = false;
@@ -1574,6 +1742,22 @@ public sealed class MainViewModel : ViewModel
         {
             var discovery = await _automaticScanWorkflow.RefreshEndpointsAsync(refresh.Token);
             ApplyAutomaticDiscovery(discovery, selection);
+            if (v2Route is not null)
+            {
+                if (SelectedDuplexCaptureEndpoint?.EndpointId is not { } captureId || SelectedDuplexRenderEndpoint?.EndpointId is not { } renderId || _worker is null || _worker.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) != true)
+                    throw new InvalidOperationException(Localization.Get("VmV2SelectPair"));
+                ApplyV2RouteSelection(v2Route);
+                _automaticScanV2Route = v2Route;
+                _automaticScanV2DiscoveryGeneration = _windowsDiscoveryGeneration;
+                _automaticScanV2CaptureEndpointId = captureId;
+                _automaticScanV2RenderEndpointId = renderId;
+                _automaticScanPreparation = null;
+                _automaticScanProgressRows.Clear(); Changed(nameof(AutomaticScanProgressRows));
+                AutomaticScanConsentChecked = false; AutomaticScanConsentPending = true;
+                SetAutomaticScanStatus(Localization.Get("VmAutomaticScanPlanPreparedConsentRequired"));
+                Changed(nameof(AutomaticScanConsentText));
+                return;
+            }
             var preparation = _automaticScanWorkflow.Prepare(discovery, selection);
             _automaticScanPreparation = preparation;
             _automaticScanProgressRows.Clear();
@@ -1594,6 +1778,7 @@ public sealed class MainViewModel : ViewModel
     private void ApplyAutomaticDiscovery(WindowsEndpointDiscoveryDto discovery, AutomaticScanSelection selection)
     {
         WindowsEndpointDiscoveryValidation.Validate(discovery, _worker?.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal) == true);
+        CancelAutomaticScanConsent();
         InvalidateSavedProfileBinding(DeviceProfileBindingInvalidationReason.EndpointRediscovered);
         _windowsDiscoveryGeneration = Guid.NewGuid().ToString("D");
         var previousId = selection.EndpointId;
@@ -1606,8 +1791,8 @@ public sealed class MainViewModel : ViewModel
         var refreshedGroups = PhysicalDeviceGrouping.Group(discovery.Endpoints);
         _physicalDeviceGroups = refreshedGroups;
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryRefreshed"));
-        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
-        var refreshedGroup = refreshedGroups.FirstOrDefault(g => g.GroupId == selection.PhysicalGroupId);
+        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails)); Changed(nameof(PhysicalDeviceGroupStatusText));
+        var refreshedGroup = PhysicalDeviceGroups.FirstOrDefault(g => g.GroupId == selection.PhysicalGroupId);
         if (selection.PhysicalGroupId is not null && refreshedGroup is null)
         {
             InvalidateAutomaticDeviceSelection();
@@ -1622,11 +1807,12 @@ public sealed class MainViewModel : ViewModel
         Set(ref _selectedDuplexCapture, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == captureId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE"), nameof(SelectedDuplexCaptureEndpoint));
         Set(ref _selectedDuplexRender, discovery.Endpoints.FirstOrDefault(e => e.EndpointId == renderId && e.Direction == "RENDER" && e.DeviceState == "ACTIVE"), nameof(SelectedDuplexRenderEndpoint));
         var group = refreshedGroup ?? (captureId is not null && renderId is not null
-            ? refreshedGroups.FirstOrDefault(g => g.CaptureEndpointId == captureId && g.RenderEndpointId == renderId)
+            ? PhysicalDeviceGroups.FirstOrDefault(g => g.CaptureEndpointId == captureId && g.RenderEndpointId == renderId)
             : previousId is not null
-                ? refreshedGroups.FirstOrDefault(g => g.CaptureEndpointId == previousId || g.RenderEndpointId == previousId)
+                ? PhysicalDeviceGroups.FirstOrDefault(g => g.CaptureEndpointId == previousId || g.RenderEndpointId == previousId)
                 : null);
         Set(ref _selectedPhysicalDeviceGroup, group, nameof(SelectedPhysicalDeviceGroup));
+        RefreshV2EndpointBindings();
         _automaticScanPairEnabled = selection.ExplicitPair;
         _allowUnconfirmedPhysicalPair = selection.AllowUnconfirmedPair;
         Changed(nameof(HasSelectedWindowsEndpoint)); Changed(nameof(WindowsEndpoints)); Changed(nameof(PhysicalGroupRequiresExplicitPair)); Changed(nameof(ShowNormalPairSelection)); Changed(nameof(AllowUnconfirmedPhysicalPair)); Changed(nameof(WindowsEndpointRows));
@@ -1635,13 +1821,17 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(WindowsEndpointInspectorFields)); Changed(nameof(DeviceScanAvailabilityReason)); Changed(nameof(DuplexDiscoveryFreshness));
         Changed(nameof(AutomaticScanAvailabilityReason)); Changed(nameof(AutomaticScanConsentText));
         if (previousId is not null && SelectedWindowsEndpoint is null || captureId is not null && SelectedDuplexCaptureEndpoint is null || renderId is not null && SelectedDuplexRenderEndpoint is null)
+        {
+            InvalidateAutomaticDeviceSelection();
             throw new InvalidOperationException(Localization.Get("VmAutomaticScanEndpointUnavailable"));
+        }
         RefreshWindowsEndpointBrowser();
         DiscoverWindowsEndpointsCommand.Refresh();
     }
 
     private void InvalidateAutomaticDeviceSelection()
     {
+        CancelAutomaticScanConsent();
         Set(ref _selectedPhysicalDeviceGroup, null, nameof(SelectedPhysicalDeviceGroup));
         Set(ref _selectedWindowsEndpoint, null, nameof(SelectedWindowsEndpoint));
         Set(ref _selectedDuplexCapture, null, nameof(SelectedDuplexCaptureEndpoint));
@@ -1653,12 +1843,18 @@ public sealed class MainViewModel : ViewModel
 
     private async Task ConfirmAutomaticScanAsync()
     {
-        if (_automaticScanWorkflow is null || !AutomaticScanConsentPending || !AutomaticScanConsentChecked || _automaticScanPreparation is not { } preparation || _automaticScanRunning) return;
-        var preparedCapture = preparation.Plan.Target.Capture?.EndpointId;
-        var preparedRender = preparation.Plan.Target.Render?.EndpointId;
-        if (WorkerState.State != WorkerConnectionState.ConnectedFake || !_windowsDiscoveryCurrent ||
-            preparedCapture != (preparation.Plan.Target.PairIdentity == ScanPairIdentity.OperatorSelectedPair ? SelectedDuplexCaptureEndpoint?.EndpointId : SelectedWindowsEndpoint?.Direction == "CAPTURE" ? SelectedWindowsEndpoint.EndpointId : null) ||
-            preparedRender != (preparation.Plan.Target.PairIdentity == ScanPairIdentity.OperatorSelectedPair ? SelectedDuplexRenderEndpoint?.EndpointId : SelectedWindowsEndpoint?.Direction == "RENDER" ? SelectedWindowsEndpoint.EndpointId : null))
+        if (_automaticScanWorkflow is null || !CanConfirmAutomaticScan()) return;
+        var isV2 = AutomaticScanEngine == "V2_ADAPTIVE";
+        var preparation = _automaticScanPreparation;
+        var route = isV2 ? BuildV2Route() : null;
+        var preparedCapture = isV2 ? SelectedDuplexCaptureEndpoint?.EndpointId : preparation?.Plan.Target.Capture?.EndpointId;
+        var preparedRender = isV2 ? SelectedDuplexRenderEndpoint?.EndpointId : preparation?.Plan.Target.Render?.EndpointId;
+        var target = preparation?.Plan.Target;
+        var invalidV1Endpoints = !isV2 && (target is null || target.Capture is null && string.IsNullOrWhiteSpace(preparedRender) ||
+            target.Render is null && string.IsNullOrWhiteSpace(preparedCapture) || target.Capture is not null && target.Render is not null &&
+            (string.IsNullOrWhiteSpace(preparedCapture) || string.IsNullOrWhiteSpace(preparedRender)));
+        if (isV2 && (_automaticScanV2Route is null || route is null || string.IsNullOrWhiteSpace(preparedCapture) || string.IsNullOrWhiteSpace(preparedRender) ||
+            WorkerScanPlanV2Fingerprint.Route(preparedCapture, preparedRender, route) != WorkerScanPlanV2Fingerprint.Route(preparedCapture, preparedRender, _automaticScanV2Route) || _automaticScanV2DiscoveryGeneration != _windowsDiscoveryGeneration) || invalidV1Endpoints)
         {
             CancelAutomaticScanConsent();
             SetAutomaticScanStatus(Localization.Get("VmScanAuthorizationInvalidated"));
@@ -1672,11 +1868,16 @@ public sealed class MainViewModel : ViewModel
         WorkflowStep = OperatorStep.Test;
         _automaticScanAttempted = true;
         _automaticScanTerminal = false;
+        _automaticScanResult = null;
+        _automaticScanV2Result = null;
         Changed(nameof(AutomaticScanAttempted)); Changed(nameof(AutomaticScanResultSummary)); Changed(nameof(AutomaticScanPersistenceText));
+        OpenAutomaticScanLocationCommand.Refresh();
         _automaticScanCancellation = new CancellationTokenSource();
         var confirmationId = Guid.NewGuid(); // Created only after the operator accepts the displayed immutable plan.
         SetAutomaticScanStatus(Localization.Get("VmScanConsentAccepted"));
-        _automaticScanTask = RunAutomaticScanAsync(preparation, confirmationId, _automaticScanCancellation.Token);
+        _automaticScanTask = isV2
+            ? RunAutomaticScanV2Async(preparedCapture!, preparedRender!, route!, _automaticScanV2Period, confirmationId, _automaticScanCancellation.Token)
+            : RunAutomaticScanAsync(preparation!, confirmationId, _automaticScanCancellation.Token);
         try { await _automaticScanTask; }
         finally
         {
@@ -1710,6 +1911,68 @@ public sealed class MainViewModel : ViewModel
             NavigateOperatorStep(OperatorStep.Result);
         }
     }
+
+    private async Task RunAutomaticScanV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route, string period, Guid confirmationId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _automaticScanWorkflow!.RunV2Async(captureEndpointId, renderEndpointId, route, period, confirmationId, OnAutomaticScanV2Progress, cancellationToken);
+            _automaticScanV2Result = result;
+            _automaticScanOutcomeUnknown = result.Lifecycle == "UNKNOWN";
+            _automaticScanTerminal = true;
+            NotifyAutomaticScanResultBindings();
+            SetAutomaticScanStatus(AutomaticScanResultSummary);
+            NavigateOperatorStep(OperatorStep.Result);
+        }
+        catch (Exception ex)
+        {
+            _automaticScanOutcomeUnknown = true;
+            SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmScanOutcomeUnknown"), ex.GetType().Name, ex.Message));
+            _automaticScanTerminal = true;
+            Changed(nameof(AutomaticScanAvailabilityReason));
+            NotifyAutomaticScanResultBindings();
+            NavigateOperatorStep(OperatorStep.Result);
+        }
+    }
+
+    private void OnAutomaticScanV2Progress(V2AutomaticScanProgress progress)
+    {
+        void Apply()
+        {
+            if (_automaticScanTerminal) return;
+            var stage = V2StageLabel(progress.Stage);
+            var state = Enum.TryParse<AutomaticScanStageState>(progress.State, true, out var parsedState) ? AutomaticScanStageStateLabel(parsedState) : progress.State;
+            var operationId = progress.OperationId ?? $"v2-{progress.Stage}";
+            var action = V2ProgressMessageLabel(progress.Message);
+            var row = new AutomaticScanProgressRow(operationId, stage, state, progress.DurationSeconds is int duration
+                ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2OperationProgress"), action, duration)
+                : action);
+            var index = _automaticScanProgressRows.ToList().FindIndex(x => x.OperationId == row.OperationId);
+            if (index >= 0) _automaticScanProgressRows[index] = row; else _automaticScanProgressRows.Add(row);
+            Changed(nameof(AutomaticScanProgressRows));
+            SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanProgressDetail"), row.Stage, row.State, row.Action));
+        }
+        if (_uiContext is null) Apply(); else _uiContext.Post(_ => { try { Apply(); } catch { } }, null);
+    }
+
+    private static string V2ProgressMessageLabel(string code) => Localization.Get(code switch
+    {
+        "V2_DISCOVERY_VERIFIED" => "VmV2ProgressDiscoveryVerified", "V2_FORMAT_QUERY_COMPLETED" => "VmV2ProgressFormatQuery", "V2_FORMAT_NOT_CONFIRMED" => "VmV2ProgressFormatNotConfirmed",
+        "V2_ROUTE_PERIOD_CONFIRMED" => "VmV2ProgressRouteConfirmed", "V2_INITIALIZE_CLEAN" => "VmV2ProgressInitializeClean",
+        "V2_SHORT_DUPLEX_CLEAN" => "VmV2ProgressShortClean", "V2_SHORT_DUPLEX_NOT_QUALIFIED" => "VmV2ProgressShortUnknown",
+        "V2_REPEATABILITY_CLEAN" => "VmV2ProgressRepeatabilityClean", "V2_REPEATABILITY_FAILED" => "VmV2ProgressRepeatabilityFailed",
+        "V2_SUSTAINED_CLEAN" => "VmV2ProgressSustainedClean", "V2_SUSTAINED_NOT_QUALIFIED" => "VmV2ProgressSustainedStopped",
+        "V2_FINAL_SELECTION_COMPLETE" => "VmV2ProgressFinalSelection", "V2_EVIDENCE_SAVED_READBACK" => "VmV2ProgressEvidenceSaved", "V2_EVIDENCE_SAVE_FAILED" => "VmV2ProgressEvidenceSaveFailed", "V2_INITIALIZE_FAILED" => "VmV2ProgressInitializeFailed",
+        _ => code
+    });
+
+    private static string V2StageLabel(string stage) => Localization.Get(stage switch
+    {
+        "DISCOVERY" => "VmScanStageDiscovery", "FORMAT_QUERY" => "VmScanStageQuery", "INITIALIZE" => "VmScanStageInitialize",
+        "SHORT_DUPLEX" => "VmV2StageShortDuplex", "REPEATABILITY" => "VmScanStageRepeatability",
+        "SUSTAINED_VALIDATION" => "VmAutomaticScanStageSustained", "FINAL_SELECTION" => "VmAutomaticScanStageFinalSelection",
+        "SAVE" => "VmScanStageSave", _ => stage
+    });
 
     private void OnAutomaticScanProgress(ScanProgressEvent progress)
     {
@@ -1757,14 +2020,41 @@ public sealed class MainViewModel : ViewModel
 
     private void OpenAutomaticScanLocation()
     {
-        var path = _automaticScanResult?.Persistence?.SummaryPath;
+        var path = _automaticScanV2Result?.EvidencePath ?? _automaticScanResult?.Persistence?.SummaryPath;
         var directory = string.IsNullOrWhiteSpace(path) ? null : Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory)) return;
         Process.Start(new ProcessStartInfo { FileName = directory, UseShellExecute = true });
     }
 
+    private bool CanOpenAutomaticScanLocation()
+    {
+        var path = _automaticScanV2Result?.EvidencePath ?? _automaticScanResult?.Persistence?.SummaryPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+        var directory = Path.GetDirectoryName(path);
+        return !string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory);
+    }
+
     private async Task ExportAutomaticScanAsync()
     {
+        if (_automaticScanV2Result is { EvidencePath: { Length: > 0 } v2Source } v2Result && CanExportAutomaticScan && _bundleExportInteraction is not null)
+        {
+            _automaticScanExportRunning = true;
+            Changed(nameof(AutomaticScanExportRunning)); Changed(nameof(CanExportAutomaticScan)); ExportAutomaticScanCommand.Refresh();
+            try
+            {
+                var destination = await _bundleExportInteraction.PickDestinationAsync($"klidan-audio-probe-{v2Result.SessionId}.json");
+                if (string.IsNullOrWhiteSpace(destination)) { SetAutomaticScanExport(Localization.Get("VmExportCancelledUnchanged"), "CANCELLED"); return; }
+                if (_automaticScanV2Result?.SessionId != v2Result.SessionId || !string.Equals(_automaticScanV2Result.EvidencePath, v2Source, StringComparison.Ordinal)) { SetAutomaticScanExport(Localization.Get("VmExportScanChanged"), "SESSION_CHANGED"); return; }
+                if (!await _bundleExportInteraction.ConfirmAsync(Localization.Get("VmExportPrivacyConfirmation"))) { SetAutomaticScanExport(Localization.Get("VmExportCancelledUnchanged"), "CANCELLED"); return; }
+                await Task.Run(() => File.Copy(v2Source, destination, overwrite: false));
+                var hashes = await Task.Run(() => (Source: SHA256.HashData(File.ReadAllBytes(v2Source)), Copy: SHA256.HashData(File.ReadAllBytes(destination))));
+                if (!CryptographicOperations.FixedTimeEquals(hashes.Source, hashes.Copy)) throw new InvalidDataException("Exported V2 report does not match its source evidence.");
+                SetAutomaticScanExport(string.Format(Localization.CurrentCulture, Localization.Get("VmExportVerified"), destination), "VERIFIED_V2_REPORT");
+            }
+            catch (Exception ex) { SetAutomaticScanExport(Localization.Get("VmExportFailedUnchanged"), $"{ex.GetType().Name}: {ex.Message}"); }
+            finally { _automaticScanExportRunning = false; Changed(nameof(AutomaticScanExportRunning)); Changed(nameof(CanExportAutomaticScan)); ExportAutomaticScanCommand.Refresh(); }
+            return;
+        }
         if (!CanExportAutomaticScan || _bundleExportInteraction is null || _automaticScanResult?.Persistence?.SummaryPath is not { } summaryPath || _automaticScanResult.SessionId is not { } sessionId) return;
         _automaticScanExportRunning = true;
         Changed(nameof(AutomaticScanExportRunning)); Changed(nameof(CanExportAutomaticScan)); ExportAutomaticScanCommand.Refresh();
@@ -1896,15 +2186,32 @@ public sealed class MainViewModel : ViewModel
         var completed = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Completed);
         var skipped = result.Operations.Count(o => o.Lifecycle == ScanOperationLifecycle.Skipped);
         var errors = result.Operations.Count(o => o.Lifecycle is ScanOperationLifecycle.Failed or ScanOperationLifecycle.Unknown);
-        var sourceSummary = $"{result.Lifecycle} · завершено {completed} · пропущено {skipped} · ошибки {errors}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.";
+        var sourceSummary = string.Format(CultureInfo.GetCultureInfo("ru-RU"), Localization.Get("VmAutomaticScanSummarySource", CultureInfo.GetCultureInfo("ru-RU")), result.Lifecycle, completed, skipped, errors);
         return result.Summary != sourceSummary ? result.Summary : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanSummaryDisplay"), ScanLifecycleLabel(result.Lifecycle), completed, skipped, errors);
+    }
+
+    private static string V2LifecycleLabel(string lifecycle) => Localization.Get(lifecycle switch
+    {
+        "COMPLETED" => "VmAutomaticScanCompleted", "UNKNOWN" => "VmAutomaticScanOutcomeUnknown",
+        "FAILED" => "VmAutomaticScanFailed", _ => "VmAutomaticScanPartiallyCompleted"
+    });
+
+    private static string V2RecommendationText(V2AutomaticScanResult result)
+    {
+        var report = result.Operations.FirstOrDefault(o => o.Stage == "SHORT_DUPLEX" && o.Evidence is not null)?.Evidence;
+        var captureFrames = report is { } c && c.TryGetProperty("capture", out var capture) && capture.TryGetProperty("actualBufferFrames", out var cf) ? cf.ToString() : Localization.Get("VmValueUnknown");
+        var renderFrames = report is { } r && r.TryGetProperty("render", out var render) && render.TryGetProperty("actualBufferFrames", out var rf) ? rf.ToString() : Localization.Get("VmValueUnknown");
+        return string.Format(Localization.CurrentCulture, Localization.Get("VmV2ResultConfiguration"), result.Period,
+            result.Route.Mode, result.Route.Capture.SampleRateHz, result.Route.Capture.Encoding, string.Join("/", result.Route.Capture.SelectedIndicesZeroBased.Select(i => i + 1)),
+            result.Route.Render.SampleRateHz, result.Route.Render.Encoding, string.Join("/", result.Route.Render.SelectedIndicesZeroBased.Select(i => i + 1)),
+            captureFrames, renderFrames, result.Lifecycle);
     }
 
     private static string RepeatabilitySummaryDisplay(DuplexRepeatabilityResult result)
     {
         var counts = result.Counts ?? new(result.Runs.Count, result.Runs.Count(r => !string.IsNullOrWhiteSpace(r.OperationId)), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Completed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Failed), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Unknown), result.Runs.Count(r => r.Lifecycle == ScanOperationLifecycle.Skipped));
         var periods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {p.Classification}"));
-        var sourceSummary = $"План: {counts.Planned}; attempted: {counts.Attempted}; completed: {counts.Completed}; failed: {counts.Failed}; unknown: {counts.Unknown}; skipped: {counts.Skipped}. {periods}";
+        var sourceSummary = string.Format(CultureInfo.GetCultureInfo("ru-RU"), Localization.Get("VmRepeatabilitySummarySource", CultureInfo.GetCultureInfo("ru-RU")), counts.Planned, counts.Attempted, counts.Completed, counts.Failed, counts.Unknown, counts.Skipped, periods);
         if (result.Summary != sourceSummary) return result.Summary;
         var displayPeriods = string.Join("; ", result.Periods.Select(p => $"{p.Period}: {Localization.Get(p.Classification switch
         {
@@ -1920,14 +2227,14 @@ public sealed class MainViewModel : ViewModel
     {
         var key = reason switch
         {
-            "Для одного периода получено несколько кандидатов; автоматический выбор из неоднозначных записей заблокирован." => "VmRecommendationReasonAmbiguousPeriod",
-            "Кандидаты относятся к разным точным парам или несовместимым настройкам; они не ранжируются совместно." => "VmRecommendationReasonDifferentPairs",
-            "Кандидат MINIMUM выбран по чистому короткому Duplex evidence для этой точной пары." => "VmRecommendationReasonMinimumSelected",
-            "Рекомендация не разрешает активацию AudioHost; требуется длительная и production QA." => "VmRecommendationReasonNoAudioHostActivation",
-            "DEFAULT выбран: MINIMUM не имеет независимого чистого Duplex подтверждения." => "VmRecommendationReasonDefaultSelected",
-            "Проверка ограничена коротким запуском; AudioHost не сертифицирован." => "VmRecommendationReasonShortRunOnly",
-            "Нет кандидата с полным чистым Duplex evidence для этой точной пары." => "VmRecommendationReasonNoCleanCandidate",
-            "Формат support и отдельные Capture/Render результаты не заменяют совместную Duplex проверку." => "VmRecommendationReasonNoSeparateProof",
+            var source when source == Localization.Get("VmRecommendationReasonAmbiguousPeriod", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonAmbiguousPeriod",
+            var source when source == Localization.Get("VmRecommendationReasonDifferentPairs", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonDifferentPairs",
+            var source when source == Localization.Get("VmRecommendationReasonMinimumSelected", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonMinimumSelected",
+            var source when source == Localization.Get("VmRecommendationReasonNoAudioHostActivation", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoAudioHostActivation",
+            var source when source == Localization.Get("VmRecommendationReasonDefaultSelected", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonDefaultSelected",
+            var source when source == Localization.Get("VmRecommendationReasonShortRunOnly", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonShortRunOnly",
+            var source when source == Localization.Get("VmRecommendationReasonNoCleanCandidate", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoCleanCandidate",
+            var source when source == Localization.Get("VmRecommendationReasonNoSeparateProof", CultureInfo.GetCultureInfo("ru-RU")) => "VmRecommendationReasonNoSeparateProof",
             _ => null
         };
         return key is null ? reason : Localization.Get(key);
@@ -1989,6 +2296,7 @@ public sealed class MainViewModel : ViewModel
         CancelDuplexRepeatabilityAuthorization();
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedPairChanged"));
         field = value;
+        RefreshV2EndpointBindings();
         if (DuplexConsentPending) CancelDuplexConsent();
         if (_duplexValidationRunning && _activeDuplexOperationId is not null) _ = CancelDuplexValidationAsync();
         _duplexValidations.Clear();
@@ -1999,6 +2307,23 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(HasCurrentDuplexPair)); Changed(nameof(DuplexConsentText)); Changed(nameof(DuplexAssessments)); Changed(nameof(DuplexResultCards)); Changed(nameof(DuplexRecommendation)); Changed(nameof(DuplexRecommendationSummary)); Changed(nameof(HasDuplexResults)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(DuplexStatus)); Changed(nameof(CanSaveDeviceProfile));
         RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh(); RefreshCanExecute();
         Changed(nameof(AutomaticScanAvailabilityReason)); PrepareAutomaticScanCommand.Refresh(); RefreshCanExecute();
+    }
+
+    private void RefreshV2EndpointBindings()
+    {
+        static int DefaultChannels(WindowsEndpointDto? endpoint) => endpoint?.SharedModeFormat.ReportedChannelCount is int n and >= 1 and <= 32 ? n : 2;
+        _automaticScanV2CaptureChannels = DefaultChannels(SelectedDuplexCaptureEndpoint);
+        _automaticScanV2RenderChannels = DefaultChannels(SelectedDuplexRenderEndpoint);
+        _automaticScanV2CaptureChannel1 = _automaticScanV2RenderChannel1 = 1;
+        _automaticScanV2CaptureChannel2 = Math.Min(2, _automaticScanV2CaptureChannels);
+        _automaticScanV2RenderChannel2 = Math.Min(2, _automaticScanV2RenderChannels);
+        Changed(nameof(AutomaticScanV2ChannelCounts)); Changed(nameof(AutomaticScanV2RenderChannelCounts));
+        Changed(nameof(AutomaticScanV2CaptureChannels)); Changed(nameof(AutomaticScanV2RenderChannels));
+        Changed(nameof(AutomaticScanV2CaptureChannelOptions)); Changed(nameof(AutomaticScanV2RenderChannelOptions));
+        Changed(nameof(AutomaticScanV2CaptureChannel1)); Changed(nameof(AutomaticScanV2CaptureChannel2));
+        Changed(nameof(AutomaticScanV2RenderChannel1)); Changed(nameof(AutomaticScanV2RenderChannel2));
+        Changed(nameof(AutomaticScanV2ChannelControlsText)); Changed(nameof(AutomaticScanV2RouteSummary));
+        ResetAutomaticScanV2Consent();
     }
 
     private async Task PrepareDuplexRepeatabilityAsync()
@@ -2806,7 +3131,7 @@ public sealed class MainViewModel : ViewModel
         EndpointDiscoveryQaTrace.Write("loading-enter", state: WorkerState.State.ToString(), loading: true);
         Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh();
         _physicalDeviceGroups = [];
-        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails));
+        Changed(nameof(PhysicalDeviceGroups)); Changed(nameof(PhysicalDeviceGroupDetails)); Changed(nameof(PhysicalDeviceGroupStatusText));
         Changed(nameof(DuplexWorkerAvailability)); Changed(nameof(DuplexDiscoveryFreshness)); Changed(nameof(DuplexEvidenceFreshness));
         Changed(nameof(WindowsDiscoveryLoading));Changed(nameof(WindowsDiscoveryStatusText));Changed(nameof(WindowsEndpoints));Changed(nameof(DuplexCaptureEndpoints));Changed(nameof(DuplexRenderEndpoints));Changed(nameof(HasCurrentWindowsEndpoints));Changed(nameof(HasHistoricalWindowsEndpoints));Changed(nameof(DeviceScanAvailabilityReason));Changed(nameof(RealFormatMatrixIsStale));Changed(nameof(RealFormatMatrixStatus));Changed(nameof(HasCurrentOperatorQueryResult));Changed(nameof(NeedsInitializeFormatQuery));Changed(nameof(CanSaveDeviceProfile));RequestRealInitializeCommand.Refresh();RequestDeviceScanCommand.Refresh();
         RefreshWindowsEndpointBrowser();
