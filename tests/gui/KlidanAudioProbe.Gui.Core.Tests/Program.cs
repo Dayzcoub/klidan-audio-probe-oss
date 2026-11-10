@@ -554,7 +554,8 @@ Check(appXaml.Contains("<ContentPresenter x:Name=\"SelectionPresenter\" Grid.Col
 Check(appXaml.Contains("HorizontalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) && appXaml.Contains("MaxHeight=\"320\"", StringComparison.Ordinal), "long dropdown choices remain reachable in a bounded-height popup");
 Check(mainWindowXaml.Contains("x:Name=\"WorkerFakeSettingsGrid\"", StringComparison.Ordinal) && mainWindowXaml.Contains("WorkerFakeSettingsGrid_SizeChanged", StringComparison.Ordinal) && !mainWindowXaml.Contains("StackPanel Orientation=\"Horizontal\" Margin=\"0,8,0,0\"", StringComparison.Ordinal), "Worker Fake controls use the responsive labeled grid, not content-sized horizontal rows");
 Check(new[] { "WorkerDurationSetting", "WorkerPeriodSetting", "WorkerMmcssSetting", "WorkerScenarioSetting" }.All(name => mainWindowXaml.Contains($"x:Name=\"{name}\"", StringComparison.Ordinal)) && mainWindowXaml.Contains("MinWidth=\"160\"", StringComparison.Ordinal), "all four Worker Fake selectors have labeled, minimum-width grid cells");
-Check(mainWindowXaml.Split("<ComboBox ", StringSplitOptions.None).Length - 1 == 23 && !mainWindowXaml.Contains("<ComboBox Style=", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal), "all dropdowns, including language and saved profile selection, use the shared ComboBox presentation");
+Check(mainWindowXaml.Split("<ComboBox ", StringSplitOptions.None).Length - 1 >= 23 && !mainWindowXaml.Contains("<ComboBox Style=", StringComparison.Ordinal) && mainWindowXaml.Contains("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal), "all dropdowns, including language, V2 routing and saved profile selection, use the shared ComboBox presentation");
+Check(mainWindowXaml.IndexOf("{loc:Loc ScannerSectionHeading}", StringComparison.Ordinal) < mainWindowXaml.IndexOf("x:Name=\"V2RouteSelectionCard\"", StringComparison.Ordinal) && mainWindowXaml.IndexOf("{loc:Loc ProgressSectionHeading}", StringComparison.Ordinal) < mainWindowXaml.IndexOf("{loc:Loc ProfilesSectionHeading}", StringComparison.Ordinal) && mainWindowXaml.IndexOf("{loc:Loc ProfilesSectionHeading}", StringComparison.Ordinal) < mainWindowXaml.IndexOf("x:Name=\"SavedDeviceProfileSelector\"", StringComparison.Ordinal) && mainWindowXaml.IndexOf("{loc:Loc ReportsSectionHeading}", StringComparison.Ordinal) < mainWindowXaml.IndexOf("{loc:Loc LatestAutomaticResult}", StringComparison.Ordinal), "operator screen orders scan, progress, profiles and one report section vertically");
 Check(mainWindowXaml.Contains("{loc:Loc HistoricalRecoveryTitle}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc CheckOldMeasurements}", StringComparison.Ordinal) && mainWindowXaml.Contains("{loc:Loc SaveRecoveredProfile}", StringComparison.Ordinal) && mainWindowXaml.Contains("HistoricalRecoveryConfirmation", StringComparison.Ordinal), "historical recovery UI exposes selection, preview and explicit confirmation without audio controls");
 Check(mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding DefaultPeriod.DisplayAccessibleText}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomationProperties.HelpText=\"{Binding MinimumPeriod.DisplayAccessibleText}\"", StringComparison.Ordinal), "both period cells bind localized accessibility evidence");
 Check(mainWindowXaml.Contains("ItemsSource=\"{Binding CaptureChannelBanks}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding RenderChannelBanks}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding VisibleMeterChannels}\"", StringComparison.Ordinal), "Capture and Render expose dynamic keyboard-accessible channel banks");
@@ -599,6 +600,7 @@ var physicalPairFixture = windowsPairFixture with
 var physicalWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var physicalWorkflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
 var physicalVm = new MainViewModel(worker: physicalWorker, automaticScanWorkflow: physicalWorkflow);
+physicalVm.AutomaticScanEngine = "V1_COMPATIBLE";
 physicalWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for physical selector fixture."));
 var physicalWindow = new MainWindow(physicalVm) { Width = 1280, Height = 800, ShowActivated = false };
 physicalWindow.Show(); physicalWindow.UpdateLayout();
@@ -616,6 +618,33 @@ Check(ReferenceEquals(stableGroups, physicalVm.PhysicalDeviceGroups) && Referenc
 physicalVm.DeveloperToolsOpen = true; physicalVm.DeveloperToolsOpen = false; physicalWindow.UpdateLayout();
 Check(ReferenceEquals(physicalSelector.SelectedItem, physicalVm.SelectedPhysicalDeviceGroup) && physicalScanButton.IsEnabled, "harmless ViewModel notifications preserve selection and enable one-click Scan");
 Check(physicalVm.WorkflowStep == OperatorStep.Device && !((Button)physicalWindow.FindName("OperatorTestStepButton")).IsVisible && !((Button)physicalWindow.FindName("OperatorResultStepButton")).IsVisible, "normal mode hides legacy Test/Result navigation");
+var v2RouteWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true };
+var v2RouteVm = new MainViewModel(worker: v2RouteWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(physicalPairFixture));
+v2RouteWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V2 route selection fixture."));
+v2RouteVm.DiscoverWindowsEndpointsCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "V2 route discovery completes from deterministic endpoint fixtures");
+v2RouteVm.SelectedPhysicalDeviceGroup = v2RouteVm.PhysicalDeviceGroups.Single();
+v2RouteVm.AutomaticScanV2CaptureChannels = 8;
+v2RouteVm.AutomaticScanV2CaptureChannel1 = 8;
+v2RouteVm.AutomaticScanV2RenderChannels = 2;
+Check(v2RouteVm.AutomaticScanEngine == "V2_ADAPTIVE" && v2RouteVm.AutomaticScanV2Period == "MINIMUM" && v2RouteVm.AutomaticScanV2RouteSummary.Contains("8", StringComparison.Ordinal), "V2 starts MINIMUM-first and permits choosing the last one-based channel in a multichannel stream");
+foreach (var mode in new[] { "MONO_TO_STEREO", "STEREO_TO_STEREO", "MONO_TO_MONO" }) { v2RouteVm.AutomaticScanV2Mode = mode; Check(v2RouteVm.AutomaticScanV2Modes.Any(m => m.Value == v2RouteVm.AutomaticScanV2Mode), $"V2 route mode {mode} is selectable"); }
+v2RouteVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
+var v2LayoutWindow = new MainWindow(v2RouteVm) { Width = 1280, Height = 800, ShowActivated = false };
+v2LayoutWindow.Show(); v2LayoutWindow.UpdateLayout();
+var v2RouteCard = (Border)v2LayoutWindow.FindName("V2RouteSelectionCard");
+var v2ScanButton = (Button)v2LayoutWindow.FindName("DeviceScanButton");
+foreach (var size in new[] { (1920d, 1080d), (1536d, 864d), (1280d, 720d), (1366d, 768d) })
+{
+    v2LayoutWindow.Width = size.Item1; v2LayoutWindow.Height = size.Item2; v2LayoutWindow.UpdateLayout();
+    Check(v2RouteCard.Visibility == Visibility.Visible && v2RouteCard.ActualWidth <= v2LayoutWindow.ActualWidth && v2ScanButton.ActualWidth > 0 && v2ScanButton.ActualWidth <= v2LayoutWindow.ActualWidth, $"V2 scanner route and launch controls fit at {size.Item1:0}×{size.Item2:0} DIP");
+}
+v2LayoutWindow.Close();
+v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)) && v2RouteVm.AutomaticScanConsentText.Contains("MINIMUM", StringComparison.Ordinal) && v2RouteVm.AutomaticScanConsentText.Contains("8", StringComparison.Ordinal), "V2 consent binds the exact route and selected period");
+v2RouteVm.AutomaticScanV2Period = "DEFAULT";
+Check(!v2RouteVm.AutomaticScanConsentPending && v2RouteVm.AutomaticScanV2Period == "DEFAULT", "changing V2 period invalidates the earlier consent");
+v2RouteVm.AutomaticScanEngine = "V1_COMPATIBLE";
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Device page is the only primary page visible in normal mode");
 physicalVm.OpenDeveloperToolsCommand.Execute(null); physicalWindow.UpdateLayout();
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Developer Tools device navigation keeps the Device page alone visible");
@@ -682,6 +711,7 @@ var ambiguousDiscovery = physicalPairFixture with
 };
 var ambiguousWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = ambiguousDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var ambiguousVm = new MainViewModel(worker: ambiguousWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(ambiguousDiscovery));
+ambiguousVm.AutomaticScanEngine = "V1_COMPATIBLE";
 ambiguousWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for ambiguous selector fixture."));
 var ambiguousWindow = new MainWindow(ambiguousVm) { Width = 1280, Height = 800, ShowActivated = false };
 ambiguousWindow.Show(); ambiguousWindow.UpdateLayout(); ambiguousVm.DiscoverWindowsEndpointsCommand.Execute(null);
@@ -702,6 +732,7 @@ var audientLikeDiscovery = physicalPairFixture with
 };
 var audientWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = audientLikeDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var audientVm = new MainViewModel(worker: audientWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(audientLikeDiscovery));
+audientVm.AutomaticScanEngine = "V1_COMPATIBLE";
 audientWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for WPF endpoint selector fixture."));
 var audientWindow = new MainWindow(audientVm) { Width = 1280, Height = 800, ShowActivated = false };
 audientWindow.Show(); audientWindow.UpdateLayout(); audientVm.DiscoverWindowsEndpointsCommand.Execute(null);
@@ -728,6 +759,7 @@ var crossDiscovery = physicalPairFixture with
 var crossWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = crossDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var crossWorkflow = new GuiAutomaticScanWorkflow(crossDiscovery);
 var crossVm = new MainViewModel(worker: crossWorker, automaticScanWorkflow: crossWorkflow);
+crossVm.AutomaticScanEngine = "V1_COMPATIBLE";
 crossWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for cross-container pairing fixture."));
 var crossWindow = new MainWindow(crossVm) { Width = 1280, Height = 800, ShowActivated = false };
 crossWindow.Show(); crossWindow.UpdateLayout(); crossVm.DiscoverWindowsEndpointsCommand.Execute(null);
@@ -890,6 +922,7 @@ var automaticUiWorkflow = new GuiAutomaticScanWorkflow(windowsFixture) { HoldRun
 var originalUiContext = SynchronizationContext.Current;
 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
 var buttonVm = new MainViewModel(worker: buttonWorker, automaticScanWorkflow: automaticUiWorkflow);
+buttonVm.AutomaticScanEngine = "V1_COMPATIBLE";
 var automaticResultNotifications = new HashSet<string>(StringComparer.Ordinal);
 buttonVm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(buttonVm.AutomaticScanResultHeadline) or nameof(buttonVm.AutomaticScanResultDevice) or nameof(buttonVm.AutomaticScanResultSummary) or nameof(buttonVm.AutomaticScanRecommendationText) or nameof(buttonVm.AutomaticScanPersistenceText)) automaticResultNotifications.Add(e.PropertyName); };
 var buttonWindow = new MainWindow(buttonVm) { Width = 1280, Height = 800, ShowActivated = false };
@@ -909,7 +942,7 @@ Check(!buttonVm.AutomaticScanConsentPending && automaticUiWorkflow.RunCalls == 0
 actualScanButton.Command!.Execute(actualScanButton.CommandParameter);
 buttonVm.AutomaticScanConsentChecked = true; buttonVm.ConfirmAutomaticScanCommand.Execute(null);
 PumpUntil(() => automaticUiWorkflow.RunStarted.Task.IsCompleted, TimeSpan.FromSeconds(2)); buttonWindow.UpdateLayout();
-Check(buttonVm.AutomaticScanRunning && !actualScanButton.IsEnabled && !buttonVm.PrepareAutomaticScanCommand.CanExecute(null) && buttonVm.WorkflowStep == OperatorStep.Test, "accepted scan enters the actual running screen, disables duplicate scans and keeps cancellation visible");
+Check(buttonVm.AutomaticScanRunning && !actualScanButton.IsEnabled && !buttonVm.PrepareAutomaticScanCommand.CanExecute(null) && buttonVm.WorkflowStep == OperatorStep.Test, $"accepted scan enters the actual running screen, disables duplicate scans and keeps cancellation visible [running={buttonVm.AutomaticScanRunning}; button={actualScanButton.IsEnabled}; prepare={buttonVm.PrepareAutomaticScanCommand.CanExecute(null)}; step={buttonVm.WorkflowStep}; status={buttonVm.AutomaticScanStatus}]");
 buttonVm.OperatorStepCommand.Execute(OperatorStep.Device); buttonWindow.UpdateLayout();
 Check(buttonVm.WorkflowStep == OperatorStep.Test, "navigation cannot hide an active scan and its Stop control");
 buttonVm.CancelAutomaticScanCommand.Execute(null);
@@ -1612,6 +1645,7 @@ var pendingRefreshGate = new TaskCompletionSource<WindowsEndpointDiscoveryDto>(T
 var pendingRefreshWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true };
 var pendingRefreshWorkflow = new GuiAutomaticScanWorkflow(windowsFixture) { RefreshGate = pendingRefreshGate };
 var pendingRefreshVm = new MainViewModel(worker: pendingRefreshWorker, automaticScanWorkflow: pendingRefreshWorkflow);
+pendingRefreshVm.AutomaticScanEngine = "V1_COMPATIBLE";
 pendingRefreshWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected (fake)."));
 pendingRefreshVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(pendingRefreshVm.WindowsDiscoveryLoading && !pendingRefreshVm.DiscoverWindowsEndpointsCommand.CanExecute(null) && pendingRefreshWorkflow.RefreshCalls == 1, "a pending discovery disables concurrent refresh requests");
@@ -2708,6 +2742,7 @@ try
     var sequenceGate = new TaskCompletionSource<WindowsEndpointDiscoveryDto>(TaskCreationOptions.RunContinuationsAsynchronously);
     var sequenceWorkflow = new GuiAutomaticScanWorkflow(bindingDiscovery) { RefreshGate = sequenceGate };
     var sequenceVm = new MainViewModel(worker: sequenceWorker, automaticScanWorkflow: sequenceWorkflow, profileDirectory: savedProfilesRoot);
+    sequenceVm.AutomaticScanEngine = "V1_COMPATIBLE";
     SynchronizationContext.SetSynchronizationContext(previousBindingContext);
     var sequenceWindow = new MainWindow(sequenceVm, savedProfilesRoot);
     sequenceWindow.UpdateLayout();
@@ -2734,6 +2769,7 @@ try
     var bindingWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true, WindowsDiscovery = bindingDiscovery };
     bindingWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for saved profile binding."));
     var bindingVm = new MainViewModel(worker: bindingWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(bindingDiscovery), profileDirectory: savedProfilesRoot);
+    bindingVm.AutomaticScanEngine = "V1_COMPATIBLE";
     Check(bindingVm.SavedDeviceProfiles.Count == 4 && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 starts with one operator connection action and no JSON selection requirement");
     bindingVm.SelectedSavedDeviceProfile = bindingVm.SavedDeviceProfiles.Single(e => e.Profile?.SchemaVersion == 4 && e.IsSustained && e.Profile.Privacy == "LOCAL_MACHINE");
     Check(bindingVm.SavedProfileHistoricalSummary.Contains("Primary:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("Fallback:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("NOT_CERTIFIED", StringComparison.Ordinal) && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 displays v4 historical Primary/Fallback and enables only the read-only binding check");
@@ -2758,6 +2794,7 @@ try
     var lateGate = new TaskCompletionSource<WindowsEndpointDiscoveryDto>(TaskCreationOptions.RunContinuationsAsynchronously);
     var lateWorkflow = new GuiAutomaticScanWorkflow(bindingDiscovery) { RefreshGate = lateGate };
     var lateVm = new MainViewModel(worker: lateWorker, automaticScanWorkflow: lateWorkflow, profileDirectory: savedProfilesRoot);
+    lateVm.AutomaticScanEngine = "V1_COMPATIBLE";
     lateVm.CheckSavedProfileBindingCommand.Execute(null);
     Check(SpinWait.SpinUntil(() => lateWorkflow.RefreshCalls == 1, TimeSpan.FromSeconds(2)), "S5-B2.2 starts the asynchronous discovery race fixture");
     lateWorker.SetState(new(WorkerConnectionState.Disconnected, "Worker replaced during discovery."));
@@ -2852,6 +2889,17 @@ try
     var mutationPath = Path.Combine(bundleUiRoot, "mutation.zip"); interaction.MutateOnPick = () => File.AppendAllText(bundleSummaryPath, " "); interaction.NextDestination = mutationPath; interaction.ConfirmResult = true; bundleVm.ExportAutomaticScanCommand.Execute(null);
     Check(SpinWait.SpinUntil(() => !bundleVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && !File.Exists(mutationPath) && bundleVm.AutomaticScanExportStatus.Length > 0, "L2-B.1 source mutation after Prepare rejects export before publication");
     interaction.MutateOnPick = null; bundleWindow.Close();
+    var v2EvidencePath = Path.Combine(bundleUiRoot, "v2-evidence.json");
+    var v2EvidenceBytes = System.Text.Encoding.UTF8.GetBytes("{\"schemaVersion\":2,\"lifecycle\":\"COMPLETED\"}");
+    File.WriteAllBytes(v2EvidencePath, v2EvidenceBytes);
+    var v2Route = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 1, "PCM16", 0, [0]), new(48000, 2, "PCM16", 0, [0, 1]));
+    var v2ExportDestination = Path.Combine(bundleUiRoot, "v2-export.json"); interaction.NextDestination = v2ExportDestination; interaction.ConfirmResult = true;
+    var v2ExportVm = new MainViewModel(bundleExportInteraction: interaction);
+    var v2ExportResult = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "UNKNOWN", "capture-id", "render-id", "route-fingerprint", v2Route, "MINIMUM", [], [], v2EvidencePath, "fixture");
+    typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2ExportVm, v2ExportResult);
+    typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2ExportVm, null);
+    v2ExportVm.ExportAutomaticScanCommand.Execute(null);
+    Check(SpinWait.SpinUntil(() => !v2ExportVm.AutomaticScanExportRunning, TimeSpan.FromSeconds(3)) && File.Exists(v2ExportDestination) && File.ReadAllBytes(v2ExportDestination).SequenceEqual(v2EvidenceBytes), "V2 evidence export preserves the report bytes and permits diagnostic export of non-CLEAN results");
 
     var incompleteVm = new MainViewModel(bundleExportInteraction: new FakeBundleExportInteraction(), bundleDirectoriesFactory: _ => bundleDirectories);
     typeof(MainViewModel).GetField("_automaticScanResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(incompleteVm, bundleResult with { Lifecycle = ScanRunLifecycle.Unknown });
@@ -2897,6 +2945,7 @@ sealed class GuiStateWorkerClient(IReadOnlyList<WorkerEndpointDto> endpoints) : 
 {
     public bool AdvertiseWindowsDiscovery { get; set; }
     public bool AdvertiseRealFormatProbe { get; set; }
+    public bool AdvertiseV2 { get; set; }
     public bool AdvertiseCustomPeriod { get; set; }
     public WindowsEndpointDiscoveryDto? WindowsDiscovery { get; set; }
     public int WindowsDiscoveryCalls { get; private set; }
@@ -2918,7 +2967,7 @@ sealed class GuiStateWorkerClient(IReadOnlyList<WorkerEndpointDto> endpoints) : 
     public string? LastRealEndpointId { get; private set; }
     public string? LastRealDirection { get; private set; }
     public RealFormatConsentDto? LastRealConsent { get; private set; }
-    public IReadOnlyList<string> Capabilities => (AdvertiseWindowsDiscovery ? new[] { "ListWindowsEndpoints" } : []).Concat(AdvertiseRealFormatProbe ? ["RealExclusiveFormatQuery", "RealExclusiveFormatInitialize", "RealExclusiveStreamValidation", "RealExclusiveDuplexValidation", "ScanSessionAuthorizationV1"] : []).Concat(AdvertiseCustomPeriod ? ["RealExclusiveCustomPeriodInitialize"] : []).ToArray();
+    public IReadOnlyList<string> Capabilities => (AdvertiseWindowsDiscovery ? new[] { "ListWindowsEndpoints" } : []).Concat(AdvertiseRealFormatProbe ? ["RealExclusiveFormatQuery", "RealExclusiveFormatInitialize", "RealExclusiveStreamValidation", "RealExclusiveDuplexValidation", "ScanSessionAuthorizationV1"] : []).Concat(AdvertiseV2 ? ["RealExclusiveDuplexValidationV2"] : []).Concat(AdvertiseCustomPeriod ? ["RealExclusiveCustomPeriodInitialize"] : []).ToArray();
     public WorkerStateDto State { get; private set; } = new(WorkerConnectionState.Disconnected, "Not started.");
     public WorkerSessionSettingsDto? LastStartSettings { get; private set; }
     public ConsentReceiptDto? LastConsent { get; private set; }

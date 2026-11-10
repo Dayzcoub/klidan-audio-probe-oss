@@ -1252,4 +1252,26 @@ Fallback: {1}
   <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Состояние: {0}\n{1}\nСохранение: {2}\nОтчёт: {3}</value></data>
   <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Состояние: {0}\nСохранение: {1}\nОтчёт: {2}{3}</value></data>
   <data name="VmErrorDetail" xml:space="preserve"><value>Ошибка: {0}</value></data>
+  <data name="UiExportJsonFilter" xml:space="preserve"><value>Отчёт JSON (*.json)|*.json</value></data>
+  <data name="VmPeriodDefault" xml:space="preserve"><value>DEFAULT</value></data>
+  <data name="VmPeriodMinimum" xml:space="preserve"><value>MINIMUM</value></data>
+  <data name="VmRouteMonoMono" xml:space="preserve"><value>Моно → моно</value></data>
+  <data name="VmRouteMonoStereo" xml:space="preserve"><value>Моно → стерео</value></data>
+  <data name="VmRouteStereoStereo" xml:space="preserve"><value>Стерео → стерео</value></data>
+  <data name="VmScanEngineAdaptiveV2" xml:space="preserve"><value>Адаптивное сканирование (V2)</value></data>
+  <data name="VmScanEngineCompatibleV1" xml:space="preserve"><value>Совместимое сканирование (V1)</value></data>
+  <data name="VmV2CapabilityUnavailable" xml:space="preserve"><value>Возможность V2 Worker недоступна.</value></data>
+  <data name="VmV2EvidencePath" xml:space="preserve"><value>Сохранённое свидетельство V2: {0}</value></data>
+  <data name="VmV2NotSelected" xml:space="preserve"><value>Выберите endpoint и допустимый маршрут.</value></data>
+  <data name="VmV2OperationProgress" xml:space="preserve"><value>{0} · {1} с</value></data>
+  <data name="VmV2PhysicalMappingUnknown" xml:space="preserve"><value>Номер логического канала не указывает на физическое гнездо. Физическое соответствие: UNKNOWN.</value></data>
+  <data name="VmV2ReadyToQuery" xml:space="preserve"><value>Маршрут допустим; поддержку формата устройства проверит сканирование.</value></data>
+  <data name="VmV2ResultConfiguration" xml:space="preserve"><value>{0} · {1}: Capture {2} Гц, каналы {3}, индексы {4}; Render {5} Гц, каналы {6}, индексы {7}. Буферы Capture/Render: {8}/{9} кадров. Состояние: {10}. RTL=NOT_MEASURED; AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · {1} · {2} · завершено операций: {3}. {4}</value></data>
+  <data name="VmV2RouteInvalid" xml:space="preserve"><value>Недопустимый маршрут: каналы должны входить в геометрию потока и не повторяться.</value></data>
+  <data name="VmV2RouteSummary" xml:space="preserve"><value>{0} · Capture {1} → Render {2}</value></data>
+  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); режим {4}; каналы Capture {5}/{6}, {7} Гц {8}; каналы Render {9}/{10}, {11} Гц {12}; период {13}; маршрут {14}. Не более 12 операций, 1030 секунд аудио, 1800 секунд всего.</value></data>
+  <data name="VmV2SelectPair" xml:space="preserve"><value>Выберите Capture и Render endpoint.</value></data>
+  <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} каналов</value></data>
+  <data name="VmV2StreamGeometry" xml:space="preserve"><value>Поток Capture: {0} каналов; Render: {1} каналов</value></data>
 </root>

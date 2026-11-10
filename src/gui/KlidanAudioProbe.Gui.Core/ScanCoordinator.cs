@@ -130,12 +130,26 @@ public sealed record AutomaticScanPreparation(WindowsEndpointDiscoveryDto Discov
 }
 public sealed record AutomaticScanProgressRow(string OperationId, string Stage, string State, string Action);
 
+public sealed record V2AutomaticScanOperation(string Stage, string OperationId, string? EndpointId, string? Direction,
+    string State, string? Period, int? DurationSeconds, string Cleanup, string? Provenance, System.Text.Json.JsonElement? Evidence);
+public sealed record V2AutomaticScanProgress(string Stage, string State, string Message, string? OperationId = null, int? DurationSeconds = null);
+public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, string CaptureEndpointId, string RenderEndpointId,
+    string RouteFingerprint, WorkerScanV2Route Route, string Period, IReadOnlyList<V2AutomaticScanOperation> Operations,
+    IReadOnlyList<AutomaticScanStageResult> Stages, string? EvidencePath, string? Error)
+{
+    public string CaptureFriendlyName { get; init; } = string.Empty;
+    public string RenderFriendlyName { get; init; } = string.Empty;
+}
+
 public interface IAutomaticScanWorkflow
 {
     Task<WindowsEndpointDiscoveryDto> RefreshEndpointsAsync(CancellationToken cancellationToken);
     AutomaticScanPreparation Prepare(WindowsEndpointDiscoveryDto discovery, AutomaticScanSelection selection);
     Task<ScanRunResult> RunApprovedAsync(AutomaticScanPreparation preparation, Guid confirmationId,
         Action<ScanProgressEvent>? progress, CancellationToken cancellationToken);
+    Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
+        string period, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken) =>
+        Task.FromException<V2AutomaticScanResult>(new NotSupportedException("V2 Automatic Scan is unavailable in this workflow."));
 }
 
 public sealed class ScanCoordinator(IScanExecutionAdapter adapter)

@@ -4,12 +4,6 @@ using KlidanAudioProbe.Gui.Core;
 
 namespace KlidanAudioProbe.Gui.Worker;
 
-public sealed record V2AutomaticScanOperation(string Stage, string OperationId, string? EndpointId, string? Direction,
-    string State, string? Period, int? DurationSeconds, string Cleanup, string? Provenance, JsonElement? Evidence);
-public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, string CaptureEndpointId, string RenderEndpointId,
-    string RouteFingerprint, WorkerScanV2Route Route, string Period, IReadOnlyList<V2AutomaticScanOperation> Operations,
-    IReadOnlyList<AutomaticScanStageResult> Stages, string? EvidencePath, string? Error);
-
 /// <summary>Executes one caller-selected immutable V2 route. Format query is passive; Initialize and audio operations use the same V2 authorization.</summary>
 public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 {
@@ -19,10 +13,12 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 
     public async Task<V2AutomaticScanResult> RunAsync(string captureEndpointId, string renderEndpointId,
         WorkerScanV2Route route, bool operatorAccepted, Guid confirmationId, string? evidenceRoot = null,
-        CancellationToken cancellationToken = default, Func<string, int, string?>? testScenarioForOperation = null)
+        CancellationToken cancellationToken = default, Func<string, int, string?>? testScenarioForOperation = null,
+        string period = "MINIMUM", Action<V2AutomaticScanProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(route);
         if (!operatorAccepted || confirmationId == Guid.Empty) throw new ArgumentException("Explicit scan acceptance is required.");
+        if (period is not ("MINIMUM" or "DEFAULT")) throw new ArgumentOutOfRangeException(nameof(period));
         using var operationLease = worker.AcquireSharedOperation("V2 Automatic Scan");
         var discovery = await worker.ListWindowsEndpointsAsync(cancellationToken).ConfigureAwait(false);
         var capture = discovery.Endpoints.SingleOrDefault(e => e.EndpointId == captureEndpointId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE")
@@ -32,7 +28,11 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
         var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route);
         var operations = new List<V2AutomaticScanOperation>();
         var stages = Enum.GetValues<AutomaticScanStage>().Select(s => new AutomaticScanStageResult(s, AutomaticScanStageState.NOT_RUN, "Not reached.")).ToArray();
-        void Stage(AutomaticScanStage stage, AutomaticScanStageState state, string message) => stages = stages.Select(s => s.Stage == stage ? s with { State = state, Message = message } : s).ToArray();
+        void Stage(AutomaticScanStage stage, AutomaticScanStageState state, string message)
+        {
+            stages = stages.Select(s => s.Stage == stage ? s with { State = state, Message = message } : s).ToArray();
+            progress?.Invoke(new(stage.ToString(), state.ToString(), message));
+        }
 
         var captureCounts = QueryChannelCounts(capture.SharedModeFormat.ReportedChannelCount);
         var renderCounts = QueryChannelCounts(render.SharedModeFormat.ReportedChannelCount);
@@ -43,16 +43,15 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
 
         bool QuerySupports(string endpointId, WorkerScanV2Side side, string period, RealFormatMatrixDto matrix) =>
             matrix.EndpointId == endpointId && matrix.Candidates.Any(c => c.SampleRate == side.SampleRateHz && c.Channels == side.Channels && c.Encoding == side.Encoding && c.Period == period.ToLowerInvariant() && c.Status == "SUPPORTED_REPORTED" && c.SupportStatus == "SUPPORTED_REPORTED");
-        var period = QuerySupports(captureEndpointId, route.Capture, "DEFAULT", captureQuery) && QuerySupports(renderEndpointId, route.Render, "DEFAULT", renderQuery)
-            ? "DEFAULT"
-            : QuerySupports(captureEndpointId, route.Capture, "MINIMUM", captureQuery) && QuerySupports(renderEndpointId, route.Render, "MINIMUM", renderQuery) ? "MINIMUM" : null;
-        if (period is null)
+        var periodConfirmed = QuerySupports(captureEndpointId, route.Capture, period, captureQuery) && QuerySupports(renderEndpointId, route.Render, period, renderQuery);
+        if (!periodConfirmed)
         {
             var captureState = QueryState(route.Capture, captureQuery);
             var renderState = QueryState(route.Render, renderQuery);
-            var reason = $"ROUTE_NOT_CONFIRMED_BY_QUERY; CAPTURE={captureState}; RENDER={renderState}";
+            var reason = $"ROUTE_NOT_CONFIRMED_BY_QUERY; PERIOD={period}_NOT_SUPPORTED_ON_BOTH_SIDES; CAPTURE={captureState}; RENDER={renderState}";
             Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.SKIPPED, reason);
-            var skipped = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "INCOMPLETE", captureEndpointId, renderEndpointId, routeFingerprint, route, "", operations, stages, null, reason);
+            var skipped = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "INCOMPLETE", captureEndpointId, renderEndpointId, routeFingerprint, route, "", operations, stages, null, reason)
+                { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay };
             try
             {
                 Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "Query evidence and skip reason saved and read back.");
@@ -62,7 +61,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             }
             catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, ex.Message); return skipped with { Stages = stages, Error = $"{reason}; SAVE_FAILED: {ex.Message}" }; }
         }
-        Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.COMPLETED, $"Exact route confirmed for {period}; physical mapping remains UNKNOWN.");
+        Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.COMPLETED, $"Exact route and operator-selected {period} confirmed; physical mapping remains UNKNOWN.");
 
         var plan = new WorkerScanPlanV2(route, [period], ["OFF"], 1800, 600, 12, 1030);
         WorkerScanSessionToken? session = null;
@@ -81,6 +80,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             async Task<RealFormatMatrixDto> Initialize(string endpointId, string direction, WorkerScanV2Side side)
             {
                 var id = Guid.NewGuid(); activeOperation = id.ToString("D");
+                progress?.Invoke(new("INITIALIZE", "RUNNING", direction, activeOperation));
                 try
                 {
                     var result = await worker.ValidateFormatMatrixInScanAsync(session, id, endpointId, direction, side.SampleRateHz, side.Channels, side.Encoding, period, cancellationToken).ConfigureAwait(false);
@@ -106,6 +106,7 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             async Task<DuplexValidationDto> Duplex(int duration, bool sustained, string stage)
             {
                 var id = Guid.NewGuid(); activeOperation = id.ToString("D");
+                progress?.Invoke(new(stage, "RUNNING", duration.ToString(System.Globalization.CultureInfo.InvariantCulture), activeOperation, duration));
                 try
                 {
                     var scenario = testScenarioForOperation?.Invoke(stage, ++duplexSequence);
@@ -180,7 +181,8 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             else if (registrationAttempted && lifecycle == "UNKNOWN") operationLease.Keep();
         }
 
-        var resultValue = new V2AutomaticScanResult(sessionId, lifecycle, captureEndpointId, renderEndpointId, routeFingerprint, route, period, operations, stages, null, error);
+        var resultValue = new V2AutomaticScanResult(sessionId, lifecycle, captureEndpointId, renderEndpointId, routeFingerprint, route, period, operations, stages, null, error)
+            { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay };
         if (operations.Any(o => o.Stage == "INITIALIZE" && o.State == "FAILED")) Stage(AutomaticScanStage.INITIALIZE, AutomaticScanStageState.FAILED, "Initialize failed; later audio operations were stopped.");
         if (operations.Any(o => o.State == "UNKNOWN") || lifecycle == "UNKNOWN")
         {
