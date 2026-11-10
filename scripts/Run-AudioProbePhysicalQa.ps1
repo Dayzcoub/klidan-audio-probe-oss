@@ -48,6 +48,8 @@ function Get-BinaryIdentity([string]$GuiPath, [string]$WorkerPath, [string]$CliP
         if ((Get-Item -LiteralPath $path).Length -lt 4096) { throw "Executable is implausibly small: $path" }
     }
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($GuiPath)
+    $binaryCommit = [regex]::Match([string]$version.ProductVersion, '[0-9a-fA-F]{40}')
+    if ($SourceCommit -and $binaryCommit.Success -and $binaryCommit.Value -ne $SourceCommit) { throw "GUI binary identifies source commit $($binaryCommit.Value), expected ${SourceCommit}: $GuiPath" }
     [pscustomobject]@{
         gui = [pscustomobject]@{ path = [IO.Path]::GetFullPath($GuiPath); sha256 = (Get-FileHash -LiteralPath $GuiPath -Algorithm SHA256).Hash; fileVersion = $version.FileVersion; productVersion = $version.ProductVersion }
         nativeWorker = [pscustomobject]@{ path = [IO.Path]::GetFullPath($WorkerPath); sha256 = (Get-FileHash -LiteralPath $WorkerPath -Algorithm SHA256).Hash }
@@ -83,6 +85,7 @@ function Select-VerifiedBuild {
             if (-not [IO.Path]::GetFullPath($binary.path).StartsWith([IO.Path]::GetFullPath((Join-Path $source.Context.Root 'builds')) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "Manifest binary must be inside registered project builds: $($file.FullName)" }
             if (-not (Test-Path -LiteralPath $binary.path -PathType Leaf) -or (Get-FileHash -LiteralPath $binary.path -Algorithm SHA256).Hash -ne $binary.sha256) { throw "Build binary missing or SHA-256 mismatch: $($binary.path)" }
         }
+        $null = Get-BinaryIdentity $bins.gui.path $bins.nativeWorker.path $bins.nativeCli.path $source.Commit
         $candidates += [pscustomobject]@{ ManifestPath = $file.FullName; SourceCommit = $source.Commit; Binaries = $bins }
     }
     if ($candidates.Count -eq 0) { throw "No verified build for $($source.Branch)@$($source.Commit). Build Release outputs, then run -RegisterBuild." }
