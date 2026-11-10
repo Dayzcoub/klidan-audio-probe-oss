@@ -716,6 +716,28 @@ try
     var shortSustained=Guid.NewGuid();var shortSustainedRejected=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(shortSustained.ToString("D"),shortSession,shortSustained,route,v2Capture,v2Render,"MINIMUM",60,"OFF",true),"Short QA cannot start Sustained");
     Check(shortReplay.ErrorCode=="SCAN_OPERATION_REJECTED"&&shortSustainedRejected.ErrorCode=="SCAN_OPERATION_REJECTED","Native Worker enforces the one-Duplex Short budget and rejects repeatability/Sustained beyond authorization");
     await v2SessionClient.CloseScanSessionAsync(shortSession);
+    var v4Candidates=WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
+    var v4Budget=WorkerScanV2ContractV4Fingerprint.Budget(v4Candidates.Count,5);
+    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["OFF"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8);
+    var v4Confirmation=Guid.NewGuid();var v4Consent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,v4Plan,1,true,v4Confirmation);
+    await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { PlanFingerprint = new string('0',64) }),"V4 consent bound to a different plan is rejected before IPC");
+    await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { DiscoveryGeneration = 2 }),"V4 consent from an older discovery generation is rejected before IPC");
+    var v4Session=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent);
+    Check(v4Session.ContractVersion==4&&v4Session.RouteFingerprint==routeFingerprint,"Worker accepts exact v4 plan and returns an explicitly versioned non-executable token");
+    await ThrowsAsync<ArgumentException>(()=>v2SessionClient.ValidateFormatMatrixInScanAsync(v4Session,Guid.NewGuid(),v2Capture,"CAPTURE",48000,2,"PCM16","MINIMUM"),"V4 token cannot enter legacy Initialize transport");
+    await ThrowsAsync<ArgumentException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(Guid.NewGuid().ToString("D"),v4Session,Guid.NewGuid(),route,v2Capture,v2Render,"MINIMUM",5,"OFF"),"V4 token cannot enter v3 Duplex transport");
+    await v2SessionClient.CancelScanSessionAsync(v4Session);
+    var v4Replay=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent),"V4 consent receipt cannot be replayed after cancellation");
+    Check(v4Replay.ErrorCode=="SCAN_CONSENT_REPLAY","Worker consumes v4 confirmation once and cancellation leaves no audio transport available");
+    await v2SessionClient.CloseScanSessionAsync(v4Session);
+    var mixedRateRoute=route with { Capture=route.Capture with { SampleRateHz=44100 } };
+    var mixedRateCandidates=WorkerScanV2CandidatePlanning.Generate(mixedRateRoute,132,441,144,480);
+    var mixedRateBudget=WorkerScanV2ContractV4Fingerprint.Budget(mixedRateCandidates.Count,0);
+    var mixedRatePlan=new WorkerScanV2ContractV4(mixedRateRoute,mixedRateCandidates,["OFF"],0,mixedRateBudget.MaximumOperations,mixedRateBudget.MaximumActiveDuplexSeconds,30,mixedRateBudget.SessionLifetimeSeconds,8);
+    var mixedRateConsent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,mixedRatePlan,1,true,Guid.NewGuid());
+    var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
+    Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
+    await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);

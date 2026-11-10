@@ -46,6 +46,26 @@ V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, 
 var autoCaptureId = "auto-capture"; var autoRenderId = "auto-render";
 var autoRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
 var autoRouteFingerprint = WorkerScanPlanV2Fingerprint.Route(autoCaptureId, autoRenderId, autoRoute);
+var v4Grid = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(autoRoute);
+var v4Budget = WorkerScanV2ContractV4Fingerprint.Budget(8, 5);
+Check(v4Grid.Select(c => c.CaptureFrames).SequenceEqual(new[] { 144, 192, 240, 288, 336, 384, 432, 480 }) && v4Grid.All(c => c.RenderFrames > 0 && c.RequestedDuration100ns == c.CapturePeriod100ns && c.RequestedDuration100ns == c.RenderPeriod100ns), "V4 48 kHz grid has exact frame and period geometry");
+var asymmetricRoute = autoRoute with { Capture = autoRoute.Capture with { SampleRateHz = 44100, Channels = 1, ChannelMask = 0 }, Render = autoRoute.Render with { SampleRateHz = 48000 } };
+var asymmetricCandidates = WorkerScanV2CandidatePlanning.Generate(asymmetricRoute, 132, 441, 144, 480);
+Check(asymmetricCandidates.Count is > 0 and <= 8 && asymmetricCandidates.All(c => c.CaptureFrames == (int)(((decimal)c.RequestedDuration100ns * 44100 + 5_000_000m) / 10_000_000m) && c.RenderFrames == (int)(((decimal)c.RequestedDuration100ns * 48000 + 5_000_000m) / 10_000_000m)) && asymmetricCandidates.Zip(asymmetricCandidates.Skip(1)).All(p => p.First.CapturePeriod100ns < p.Second.CapturePeriod100ns), "V4 computes independently rounded asymmetric 44.1/48 kHz geometry in ascending unique actual periods");
+Check(v4Budget == new WorkerScanV2Budget(29, 65, 1171) && WorkerScanV2ContractV4Fingerprint.Budget(1, 0) == new WorkerScanV2Budget(3, 5, 139), "V4 budget is checked at maximum and minimum operation scopes");
+var v4Plan = new WorkerScanV2ContractV4(autoRoute, v4Grid, ["OFF"], 5, 29, 65, 30, 1171, 8);
+var v4Canonical = WorkerScanV2ContractV4Fingerprint.Canonicalize("capture-кириллица", "render-音声", v4Plan, 7);
+var v4ExpectedCanonical = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|29|65|30|1171|8|\n" + string.Join("\n", v4Grid.Select(c => $"C|{c.Index}|{c.RequestedDuration100ns}|{c.CaptureFrames}|{c.RenderFrames}|{c.CapturePeriod100ns}|{c.RenderPeriod100ns}|{c.CaptureAlignmentFrames}|{c.RenderAlignmentFrames}|{c.CaptureMinimumFrames}|{c.CaptureMaximumFrames}|{c.RenderMinimumFrames}|{c.RenderMaximumFrames}|{c.RejectionReason}")) + "\nM|OFF\n";
+Check(v4Canonical == v4ExpectedCanonical && WorkerScanV2ContractV4Fingerprint.Compute("capture-кириллица", "render-音声", v4Plan, 7).Length == 64, "C# and C++ v4 Unicode canonical serialization matches the shared full 8-candidate byte vector and discriminator");
+var v4Consent = WorkerScanV2ContractV4Fingerprint.ConsentSummary("capture-кириллица", "render-音声", v4Plan, 7);
+Check(v4Consent.Contains("Capture capture-кириллица", StringComparison.Ordinal) && v4Consent.Contains("Render render-音声", StringComparison.Ordinal) && v4Consent.Contains("48000 Hz", StringComparison.Ordinal) && v4Consent.Contains("8 candidates", StringComparison.Ordinal) && v4Consent.Contains("repeatability=5", StringComparison.Ordinal) && v4Consent.Contains("max audio operations=29", StringComparison.Ordinal) && v4Consent.Contains("active Duplex=65s", StringComparison.Ordinal) && v4Consent.Contains("session=1171s", StringComparison.Ordinal) && v4Consent.Contains("transport is not enabled", StringComparison.Ordinal), "V4 consent summary displays exact endpoints, route, candidate list and all ceilings while keeping runtime unavailable");
+Throws<ArgumentException>(() => WorkerScanV2ContractV4Fingerprint.Canonicalize("capture", "render", v4Plan with { MaximumOperations = 28 }, 7), "V4 rejects mutated operation budget");
+Throws<ArgumentException>(() => WorkerScanV2ContractV4Fingerprint.Canonicalize("capture", "render", v4Plan with { Candidates = v4Grid.Reverse().ToArray() }, 7), "V4 rejects reordered candidates");
+V2CandidateMatrixEntry MatrixRow(WorkerScanV2Candidate c) => new(c, "NOT_TESTED", "NOT_TESTED", "NOT_TESTED", "NOT_ATTEMPTED", "NOT_ATTEMPTED", ["B1_PLAN_ONLY"], true, "V4_AUDIO_EXECUTION_NOT_ENABLED", "INCOMPLETE", "NOT_RUN", "PLAN_ONLY");
+var matrixRows = v4Grid.Select(MatrixRow).ToArray();
+var matrixEvidence = new V2CandidateMatrixEvidence(1, WorkerScanV2ContractV4Fingerprint.Compute("capture-кириллица", "render-音声", v4Plan, 7), WorkerScanPlanV2Fingerprint.Route("capture-кириллица", "render-音声", autoRoute), "PLANNED", v4Grid, matrixRows, "MINIMUM_NOT_PROVEN", "PLAN_ONLY");
+Check(V2CandidateMatrixEvidenceJson.SerializeRoundTrip(matrixEvidence).Contains("V4_AUDIO_EXECUTION_NOT_ENABLED", StringComparison.Ordinal), "V4 candidate matrix schema model validates and round-trips plan-only NOT_TESTED evidence");
+Throws<InvalidDataException>(() => V2CandidateMatrixEvidenceJson.Validate(matrixEvidence with { Candidates = [matrixRows[0] with { DuplexNotRun = false }, .. matrixRows.Skip(1)] }), "V4 evidence rejects contradictory NOT_TESTED duplex state");
 JsonElement AutoShortReport(string period, string status = "DUPLEX_CLEAN", int captureWaits = 0, int renderWaits = 0, int serviceFaults = 0, bool watchdog = false, string cleanup = "RELEASE_ATTEMPTED")
 {
     var operationId = Guid.NewGuid().ToString("D");

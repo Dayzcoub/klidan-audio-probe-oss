@@ -10,6 +10,7 @@
 
 #include "matrix_timestamp.h"
 #include "channel_routing.h"
+#include "scan_plan_v2_v4.h"
 
 #include <algorithm>
 #include <array>
@@ -734,7 +735,7 @@ struct ScanAuthorization {
     std::vector<ScanAllowedFormat> formats;std::unordered_set<std::string> usedOperations;
     std::uint64_t expires{},discoveryGeneration{};int maxDuration{},maxOperations{},used{};
     std::atomic<bool> invalid{},active{};std::atomic<ScanInvalidationReason> invalidationReason{ScanInvalidationReason::None};
-    bool version2{};std::string v2QaMode;std::optional<ChannelRouting::Configuration> route;std::string routeFingerprint;
+    bool version2{},version4{};std::string v2QaMode;std::optional<ChannelRouting::Configuration> route;std::string routeFingerprint;
     std::set<std::string> v2Periods,v2Mmcss;std::set<unsigned> sustainedDurations;
     std::uint64_t maxTotalDuration{},usedTotalDuration{};bool shortQualified{},qualificationFailed{};
     unsigned repeatabilityClean{},nextSustainedDuration{60},pendingDuration{};std::string pendingStage,pendingPeriod,pendingMmcss;
@@ -784,6 +785,32 @@ std::shared_ptr<ScanAuthorization> ParseScanAuthorizationV2(const rapidjson::Val
     if(const auto* scenario=std::getenv("KLIDAN_TEST_SCAN_SCENARIO")){if(std::string_view(scenario)=="EXPIRE_ON_REGISTER")session->expires=GetTickCount64();else if(std::string_view(scenario)=="GENERATION_MISMATCH")++session->discoveryGeneration;}
 #endif
     return session;
+}
+std::shared_ptr<ScanAuthorization> ParseScanAuthorizationV2V4(const rapidjson::Value& payload,const std::unordered_map<std::string,std::string>& discovered,std::uint64_t generation,std::unordered_set<std::string>& consumedConfirmations) {
+    int version{}, repeatability{}, maxOperations{}, maxActive{}, initTimeout{}, lifetime{}, cleanup{};
+    std::string captureId, renderId, routeFingerprint, planFingerprint, confirmation; bool accepted=false;
+    if(!HasOnlyMembers(payload,{"contractVersion","captureEndpointId","renderEndpointId","route","routeFingerprint","candidates","mmcssModes","repeatabilityRuns","maximumOperationCount","maximumActiveDuplexSeconds","initializeTimeoutSeconds","sessionLifetimeSeconds","cleanupDeadlineSeconds","planFingerprint","authorization"})||
+       !ReadInt(payload,"contractVersion",version)||version!=4||!ReadString(payload,"captureEndpointId",captureId)||!ReadString(payload,"renderEndpointId",renderId)||captureId.empty()||renderId.empty()||captureId==renderId||
+       !ReadString(payload,"routeFingerprint",routeFingerprint)||!ReadString(payload,"planFingerprint",planFingerprint)||!ReadInt(payload,"repeatabilityRuns",repeatability)||!ReadInt(payload,"maximumOperationCount",maxOperations)||!ReadInt(payload,"maximumActiveDuplexSeconds",maxActive)||!ReadInt(payload,"initializeTimeoutSeconds",initTimeout)||!ReadInt(payload,"sessionLifetimeSeconds",lifetime)||!ReadInt(payload,"cleanupDeadlineSeconds",cleanup)||
+       !payload.HasMember("candidates")||!payload["candidates"].IsArray()||payload["candidates"].Empty()||payload["candidates"].Size()>8||!payload.HasMember("mmcssModes")||!payload["mmcssModes"].IsArray()||payload["mmcssModes"].Size()!=1||!payload["mmcssModes"][0].IsString()||std::string_view(payload["mmcssModes"][0].GetString(),payload["mmcssModes"][0].GetStringLength())!="OFF"||!payload.HasMember("authorization")||!HasOnlyMembers(payload["authorization"],{"accepted","confirmationId"}))
+        throw Rejection("INVALID_SCAN_PLAN","V4 scan contract is malformed or outside its fixed bounds.");
+    auto route=ReadV2Route(payload["route"],captureId,renderId);
+    if(ChannelRouting::Fingerprint(route)!=routeFingerprint||discovered.find(captureId)==discovered.end()||discovered.at(captureId)!="CAPTURE"||discovered.find(renderId)==discovered.end()||discovered.at(renderId)!="RENDER")throw Rejection("SCAN_FINGERPRINT_MISMATCH","V4 route or exact discovered endpoint identity mismatch.");
+    std::vector<ScanPlanV2V4::Candidate> candidates;
+    for(const auto& item:payload["candidates"].GetArray()) {
+        if(!HasOnlyMembers(item,{"index","requestedDuration100ns","captureFrames","renderFrames","capturePeriod100ns","renderPeriod100ns","captureAlignmentFrames","renderAlignmentFrames","captureMinimumFrames","captureMaximumFrames","renderMinimumFrames","renderMaximumFrames","rejectionReason"}))throw Rejection("INVALID_SCAN_PLAN","V4 candidate contains unexpected fields.");
+        ScanPlanV2V4::Candidate c;std::uint64_t duration{};std::string reason;
+        if(!item.HasMember("index")||!item["index"].IsUint()||!item["requestedDuration100ns"].IsUint64()||!item["captureFrames"].IsUint()||!item["renderFrames"].IsUint()||!item["capturePeriod100ns"].IsUint64()||!item["renderPeriod100ns"].IsUint64()||!item["captureAlignmentFrames"].IsUint()||!item["renderAlignmentFrames"].IsUint()||!item["captureMinimumFrames"].IsUint()||!item["captureMaximumFrames"].IsUint()||!item["renderMinimumFrames"].IsUint()||!item["renderMaximumFrames"].IsUint()||!ReadString(item,"rejectionReason",reason))throw Rejection("INVALID_SCAN_PLAN","V4 candidate geometry fields are invalid.");
+        duration=item["requestedDuration100ns"].GetUint64();if(duration>static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))throw Rejection("INVALID_SCAN_PLAN","V4 period exceeds signed 100 ns range.");
+        c.index=item["index"].GetUint();c.duration100ns=static_cast<std::int64_t>(duration);c.captureFrames=item["captureFrames"].GetUint();c.renderFrames=item["renderFrames"].GetUint();c.capturePeriod100ns=static_cast<std::int64_t>(item["capturePeriod100ns"].GetUint64());c.renderPeriod100ns=static_cast<std::int64_t>(item["renderPeriod100ns"].GetUint64());c.captureAlignmentFrames=item["captureAlignmentFrames"].GetUint();c.renderAlignmentFrames=item["renderAlignmentFrames"].GetUint();c.captureMin=item["captureMinimumFrames"].GetUint();c.captureMax=item["captureMaximumFrames"].GetUint();c.renderMin=item["renderMinimumFrames"].GetUint();c.renderMax=item["renderMaximumFrames"].GetUint();c.rejectionReason=std::move(reason);candidates.push_back(std::move(c));
+    }
+    const auto budget=ScanPlanV2V4::ComputeBudget(static_cast<unsigned>(candidates.size()),repeatability);
+    if(maxOperations!=static_cast<int>(budget.operations)||maxActive!=static_cast<int>(budget.activeSeconds)||lifetime!=static_cast<int>(budget.sessionSeconds)||initTimeout!=30||cleanup!=8)throw Rejection("INVALID_SCAN_PLAN","V4 operation or time budget does not match the derived contract.");
+    auto canonical=ScanPlanV2V4::Canonical(captureId,renderId,route,candidates,repeatability,budget.operations,budget.activeSeconds,initTimeout,lifetime,cleanup,generation,routeFingerprint);
+    if(Sha256(canonical)!=planFingerprint)throw Rejection("SCAN_FINGERPRINT_MISMATCH","Worker-computed immutable v4 plan fingerprint does not match.");
+    const auto& auth=payload["authorization"];if(auth.HasMember("accepted")&&auth["accepted"].IsBool())accepted=auth["accepted"].GetBool();if(!accepted||!ReadString(auth,"confirmationId",confirmation))throw Rejection("SCAN_CONSENT_REQUIRED","Explicit fresh v4 operator acceptance is required.");
+    confirmation=GuidString(confirmation);if(consumedConfirmations.size()>=128)throw Rejection("SCAN_CONSENT_CAPACITY","Worker authorization history is full; restart before another session.");if(consumedConfirmations.contains(confirmation))throw Rejection("SCAN_CONSENT_REPLAY","This authorization was already consumed.");consumedConfirmations.insert(confirmation);
+    auto session=std::make_shared<ScanAuthorization>();session->version4=true;session->route=std::move(route);session->routeFingerprint=routeFingerprint;session->endpoints.emplace(captureId,"CAPTURE");session->endpoints.emplace(renderId,"RENDER");session->maxOperations=budget.operations;session->maxDuration=5;session->maxTotalDuration=budget.activeSeconds;session->discoveryGeneration=generation;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;return session;
 }
 std::string ScanPlanFingerprint(const rapidjson::Value& payload) {
     const auto& endpoints=payload["endpoints"];const auto& operations=payload["allowedOperations"];const auto& formats=payload["formats"];
@@ -946,7 +973,7 @@ bool HandleClient(HANDLE pipe) {
         auto hello=ParseObject(bytes);std::string helloId;
         const auto failure=ValidateHandshake(hello,helloId);
         if(!failure.empty())return writer.Error("HANDSHAKE","INCOMPATIBLE_PROTOCOL",failure,helloId);
-        if(!writer.Raw("{\"bootstrapVersion\":1,\"kind\":\"response\",\"correlationId\":\""+helloId+"\",\"product\":\"KLIDAN_AUDIO_PROBE_WORKER\",\"protocol\":{\"major\":1,\"minor\":0},\"schemas\":{\"command\":1,\"event\":1,\"report\":1},\"workerVersion\":\"0.3.2\",\"capabilities\":[\"Handshake\",\"ListEndpoints\",\"ListWindowsEndpoints\",\"RealExclusiveFormatQuery\",\"RealExclusiveFormatInitialize\",\"RealExclusiveCustomPeriodInitialize\",\"RealExclusiveStreamValidation\",\"RealExclusiveDuplexValidation\",\"RealExclusiveSustainedDuplexValidation\",\"ScanSessionAuthorizationV1\",\"ScanSessionAuthorizationV2\",\"RealExclusiveDuplexValidationV2\",\"RealExclusiveSustainedDuplexValidationV2\",\"StartCaptureMeter\",\"StartRenderChannelTest\",\"StopSession\",\"CancelStreamValidation\",\"CancelDuplexValidation\",\"Shutdown\""
+        if(!writer.Raw("{\"bootstrapVersion\":1,\"kind\":\"response\",\"correlationId\":\""+helloId+"\",\"product\":\"KLIDAN_AUDIO_PROBE_WORKER\",\"protocol\":{\"major\":1,\"minor\":0},\"schemas\":{\"command\":1,\"event\":1,\"report\":1},\"workerVersion\":\"0.3.2\",\"capabilities\":[\"Handshake\",\"ListEndpoints\",\"ListWindowsEndpoints\",\"RealExclusiveFormatQuery\",\"RealExclusiveFormatInitialize\",\"RealExclusiveCustomPeriodInitialize\",\"RealExclusiveStreamValidation\",\"RealExclusiveDuplexValidation\",\"RealExclusiveSustainedDuplexValidation\",\"ScanSessionAuthorizationV1\",\"ScanSessionAuthorizationV2\",\"ScanSessionAuthorizationV2ContractV4\",\"RealExclusiveDuplexValidationV2\",\"RealExclusiveSustainedDuplexValidationV2\",\"StartCaptureMeter\",\"StartRenderChannelTest\",\"StopSession\",\"CancelStreamValidation\",\"CancelDuplexValidation\",\"Shutdown\""
 #if defined(PROBE_TEST_WASAPI_BACKEND)
             ",\"TestInjectedFormatBackend\",\"TestInjectedStreamBackend\",\"TestInjectedDuplexBackend\""
 #endif
@@ -1007,7 +1034,7 @@ bool HandleClient(HANDLE pipe) {
             if(command=="RegisterScanSession"||command=="RegisterScanSessionV2") {
                 if(realOperationBusy.load()||service.Busy()){writer.Response(correlation,command,"ERROR","BUSY","A scan session can only be registered while the Worker is idle.");continue;}
                 if(scanAuthorization&&!scanAuthorization->invalid){writer.Response(correlation,command,"ERROR","SCAN_SESSION_EXISTS","Only one scan authorization may exist per Worker connection.");continue;}
-                try {scanAuthorization=command=="RegisterScanSessionV2"?ParseScanAuthorizationV2(payload,discoveredActive,discoveryGeneration,consumedScanConfirmations):ParseScanAuthorization(payload,discoveredActive,discoveryGeneration,consumedScanConfirmations);scanAuthorization->id=NewGuid();writer.Response(correlation,command,"OK","","","{\"scanSessionId\":\""+scanAuthorization->id+"\",\"contractVersion\":"+std::to_string(scanAuthorization->version2?3:1)+",\"qaMode\":\""+scanAuthorization->v2QaMode+"\",\"state\":\"AUTHORIZED\",\"expiresInSeconds\":"+std::to_string((scanAuthorization->expires-GetTickCount64())/1000)+"}");}
+                try {if(command=="RegisterScanSessionV2"){int contract{};if(!ReadInt(payload,"contractVersion",contract))throw Rejection("INVALID_SCAN_PLAN","Contract version is required.");scanAuthorization=contract==4?ParseScanAuthorizationV2V4(payload,discoveredActive,discoveryGeneration,consumedScanConfirmations):contract==3?ParseScanAuthorizationV2(payload,discoveredActive,discoveryGeneration,consumedScanConfirmations):throw Rejection("INVALID_SCAN_PLAN","Unsupported V2 contract version.");}else scanAuthorization=ParseScanAuthorization(payload,discoveredActive,discoveryGeneration,consumedScanConfirmations);scanAuthorization->id=NewGuid();writer.Response(correlation,command,"OK","","","{\"scanSessionId\":\""+scanAuthorization->id+"\",\"contractVersion\":"+std::to_string(scanAuthorization->version4?4:scanAuthorization->version2?3:1)+",\"qaMode\":\""+scanAuthorization->v2QaMode+"\",\"state\":\"AUTHORIZED\",\"expiresInSeconds\":"+std::to_string((scanAuthorization->expires-GetTickCount64())/1000)+"}");}
                 catch(const Rejection& ex){writer.Response(correlation,command,"ERROR",ex.code,ex.what());}
                 continue;
             }

@@ -224,6 +224,26 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         return new(sessionId, 3, routeFingerprint);
     }
 
+    public async Task<WorkerScanSessionToken> RegisterScanSessionV2V4Async(string captureEndpointId, string renderEndpointId,
+        WorkerScanV2ContractV4 plan, WorkerScanV2V4Consent consent, CancellationToken cancellationToken = default)
+    {
+        if (!_capabilities.Contains("ScanSessionAuthorizationV2ContractV4", StringComparer.Ordinal)) throw new WorkerCommandException("RegisterScanSessionV2", "NOT_SUPPORTED", "Worker does not implement V2 contract v4.");
+        if (!consent.Accepted || consent.ConfirmationId == Guid.Empty || _discoveryGeneration == 0 || consent.DiscoveryGeneration != _discoveryGeneration) throw new ArgumentException("Fresh discovery and explicit operator acceptance are required for V2 contract v4.", nameof(consent));
+        var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, plan.Route);
+        var planFingerprint = WorkerScanV2ContractV4Fingerprint.Compute(captureEndpointId, renderEndpointId, plan, _discoveryGeneration);
+        if (!string.Equals(consent.PlanFingerprint, planFingerprint, StringComparison.Ordinal)) throw new ArgumentException("V4 consent does not bind the exact prepared plan.", nameof(consent));
+        var route = new { mode = plan.Route.Mode, capture = new { sampleRateHz = plan.Route.Capture.SampleRateHz, channels = plan.Route.Capture.Channels, encoding = plan.Route.Capture.Encoding, channelMask = plan.Route.Capture.ChannelMask, selectedIndicesZeroBased = plan.Route.Capture.SelectedIndicesZeroBased }, render = new { sampleRateHz = plan.Route.Render.SampleRateHz, channels = plan.Route.Render.Channels, encoding = plan.Route.Render.Encoding, channelMask = plan.Route.Render.ChannelMask, selectedIndicesZeroBased = plan.Route.Render.SelectedIndicesZeroBased } };
+        var candidates = plan.Candidates.Select(c => new { index = c.Index, requestedDuration100ns = c.RequestedDuration100ns, captureFrames = c.CaptureFrames, renderFrames = c.RenderFrames, capturePeriod100ns = c.CapturePeriod100ns, renderPeriod100ns = c.RenderPeriod100ns, captureAlignmentFrames = c.CaptureAlignmentFrames, renderAlignmentFrames = c.RenderAlignmentFrames, captureMinimumFrames = c.CaptureMinimumFrames, captureMaximumFrames = c.CaptureMaximumFrames, renderMinimumFrames = c.RenderMinimumFrames, renderMaximumFrames = c.RenderMaximumFrames, rejectionReason = c.RejectionReason }).ToArray();
+        using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 4, captureEndpointId, renderEndpointId, route, routeFingerprint,
+            candidates, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns,
+            maximumOperationCount = plan.MaximumOperations, maximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
+            initializeTimeoutSeconds = plan.InitializeTimeoutSeconds, sessionLifetimeSeconds = plan.SessionLifetimeSeconds,
+            cleanupDeadlineSeconds = plan.CleanupDeadlineSeconds, planFingerprint, authorization = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } }, cancellationToken).ConfigureAwait(false);
+        var payload = response.RootElement.GetProperty("payload");
+        if (!payload.TryGetProperty("scanSessionId", out var id) || !id.TryGetGuid(out var sessionId) || sessionId == Guid.Empty || payload.GetProperty("contractVersion").GetInt32() != 4 || payload.GetProperty("state").GetString() != "AUTHORIZED") throw new InvalidDataException("Worker did not return a valid v4 scan-session token.");
+        return new(sessionId, 4, routeFingerprint);
+    }
+
     public async Task CancelScanSessionAsync(WorkerScanSessionToken session, CancellationToken cancellationToken = default) => await EndScanSessionAsync("CancelScanSession", session, cancellationToken).ConfigureAwait(false);
     public async Task CloseScanSessionAsync(WorkerScanSessionToken session, CancellationToken cancellationToken = default) => await EndScanSessionAsync("CloseScanSession", session, cancellationToken).ConfigureAwait(false);
     private async Task EndScanSessionAsync(string command, WorkerScanSessionToken session, CancellationToken cancellationToken)
@@ -270,7 +290,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
 
     public async Task<ExclusivePeriodDiscoveryReportDto> InitializeExclusiveCustomPeriodAsync(WorkerScanSessionToken session, Guid operationId, string endpointId, string direction, int period100ns, int frames, CancellationToken cancellationToken = default)
     {
-        if (session.ScanSessionId == Guid.Empty || operationId == Guid.Empty || string.IsNullOrWhiteSpace(endpointId) || direction is not ("CAPTURE" or "RENDER") || period100ns <= 0 || frames is <= 0 or > 48_000) throw new ArgumentException("Custom period discovery requires an exact authorized endpoint and bounded 48 kHz frame request.");
+        if (session.ContractVersion != 1 || session.ScanSessionId == Guid.Empty || operationId == Guid.Empty || string.IsNullOrWhiteSpace(endpointId) || direction is not ("CAPTURE" or "RENDER") || period100ns <= 0 || frames is <= 0 or > 48_000) throw new ArgumentException("Custom period discovery requires a v1 authorized endpoint and bounded 48 kHz frame request.");
         var equivalent = ((long)frames * 10_000_000 + 24_000) / 48_000;
         if (Math.Abs(equivalent - period100ns) > 1) throw new ArgumentException("Custom period duration must match the requested 48 kHz frame count.");
         if (!_capabilities.Contains("RealExclusiveCustomPeriodInitialize", StringComparer.Ordinal)) throw new WorkerCommandException("InitializeExclusiveCustomPeriod", "NOT_SUPPORTED", "Worker does not advertise custom Exclusive period discovery.");
