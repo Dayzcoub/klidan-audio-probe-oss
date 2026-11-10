@@ -1377,4 +1377,34 @@ Fallback: {1}
   <data name="VmAutoCandidateDetailsSupport" xml:space="preserve"><value>Capture / Render support</value></data>
   <data name="VmAutoCandidateDetailsPeriods" xml:space="preserve"><value>Endpoint periods (Capture / Render)</value></data>
   <data name="VmAutoCandidateDetailsReason" xml:space="preserve"><value>Reason code</value></data>
+  <data name="V4PlanHeading" xml:space="preserve"><value>V2 CUSTOM plan preview (audio gate closed)</value></data>
+  <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Planned repeatability runs:</value></data>
+  <data name="V4PreparePlan" xml:space="preserve"><value>Prepare passive plan</value></data>
+  <data name="V4ConsentHeading" xml:space="preserve"><value>Review this exact plan</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>I reviewed and accept this plan</value></data>
+  <data name="V4AcceptPlan" xml:space="preserve"><value>Accept plan</value></data>
+  <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>No v4 plan prepared.</value></data>
+  <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Prepared plan and consent invalidated because the inputs or discovery changed.</value></data>
+  <data name="VmV4PlanPreparationStarted" xml:space="preserve"><value>Preparing a passive plan…</value></data>
+  <data name="VmV4PlanQueryingBounds" xml:space="preserve"><value>Reading Capture and Render format bounds.</value></data>
+  <data name="VmV4PlanAwaitingConsent" xml:space="preserve"><value>Plan prepared. Review it and accept to create a consent receipt.</value></data>
+  <data name="VmV4PlanCancelled" xml:space="preserve"><value>Plan preparation or consent cancelled.</value></data>
+  <data name="VmV4PlanBlocked" xml:space="preserve"><value>Plan blocked: {0}</value></data>
+  <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Consent receipt created for this plan. v4 audio scanning is not available yet.</value></data>
+  <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Preview and consent only. v4 Initialize, CUSTOM Duplex, scanning, and stable profile creation remain unavailable until later implementation stages.</value></data>
+  <data name="VmV4NoFingerprint" xml:space="preserve"><value>No plan fingerprint</value></data>
+  <data name="VmV4BoundsSummary" xml:space="preserve"><value>Reported bounds (Default is search upper bound, not hardware maximum): Capture {0}–{1} ms; Render {2}–{3} ms; overlap {4}–{5} ms.</value></data>
+  <data name="VmV4CandidateSummary" xml:space="preserve"><value>Requested {0} ms · Capture {1} frames ({2} ms) / Render {3} frames ({4} ms){5}</value></data>
+  <data name="VmV4EndpointSummary" xml:space="preserve"><value>{0} ({1}) · {2} Hz {3}, {4} channels, channel indices {5}</value></data>
+  <data name="VmV4ConsentSummary" xml:space="preserve"><value>Capture: {0}
+Render: {1}
+Routing: {2}
+Search bounds: {3}
+Candidates ({4}): {5}
+Alignment constraints: Capture {6}; Render {7} (unknown means not reported)
+Repeatability runs: {8}; maximum audio operations: {9}; maximum active Duplex: {10} s
+Session lifetime: {11} s; Initialize timeout: {12} s; cleanup deadline: {13} s
+Plan fingerprint: {14}
+Any future results are preliminary and do not certify a stable profile.</value></data>
+  <data name="VmV4ReceiptSummary" xml:space="preserve"><value>Consent receipt: {0:D}; discovery generation: {1}</value></data>
 </root>

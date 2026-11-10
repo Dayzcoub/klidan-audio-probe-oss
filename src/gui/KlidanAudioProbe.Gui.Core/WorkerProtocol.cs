@@ -182,6 +182,181 @@ public sealed record WorkerScanV2Side(int SampleRateHz, int Channels, string Enc
 public sealed record WorkerScanV2Route(string Mode, WorkerScanV2Side Capture, WorkerScanV2Side Render);
 public sealed record WorkerScanPlanV2(WorkerScanV2Route Route, IReadOnlyList<string> Periods, IReadOnlyList<string> MmcssModes,
     int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds, string QaMode = "DISCOVERY");
+
+public sealed record WorkerScanV2Candidate(int Index, long RequestedDuration100ns, int CaptureFrames, int RenderFrames,
+    long CapturePeriod100ns, long RenderPeriod100ns, int CaptureAlignmentFrames, int RenderAlignmentFrames,
+    bool CaptureAlignmentKnown, bool RenderAlignmentKnown,
+    int CaptureMinimumFrames, int CaptureMaximumFrames, int RenderMinimumFrames, int RenderMaximumFrames, string RejectionReason = "");
+public sealed record WorkerScanV2PeriodBounds(long MinimumPeriod100ns, long DefaultPeriod100ns, int? AlignmentFrames = null);
+public sealed record WorkerScanV2ContractV4(WorkerScanV2Route Route, IReadOnlyList<WorkerScanV2Candidate> Candidates,
+    IReadOnlyList<string> MmcssModes, int RepeatabilityRuns, int MaximumOperations, int MaximumActiveDuplexSeconds,
+    int InitializeTimeoutSeconds, int SessionLifetimeSeconds, int CleanupDeadlineSeconds,
+    WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds);
+public sealed record WorkerScanV2Budget(int MaximumOperations, int MaximumActiveDuplexSeconds, int SessionLifetimeSeconds);
+public sealed record WorkerScanV2V4Consent(bool Accepted, Guid ConfirmationId, string PlanFingerprint, ulong DiscoveryGeneration);
+public static class WorkerScanV2CandidatePlanning
+{
+    public static IReadOnlyList<WorkerScanV2Candidate> Generate(WorkerScanV2Route route, int captureMinFrames, int captureMaxFrames,
+        int renderMinFrames, int renderMaxFrames, int captureAlignmentFrames = 0, int renderAlignmentFrames = 0)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        if (captureMinFrames <= 0 || renderMinFrames <= 0 || captureMaxFrames < captureMinFrames || renderMaxFrames < renderMinFrames ||
+            captureAlignmentFrames < 0 || renderAlignmentFrames < 0) throw new ArgumentOutOfRangeException(nameof(captureMinFrames));
+        static long Duration(int frames, int rate) => checked((long)(((decimal)frames * 10_000_000m + rate / 2m) / rate));
+        var lower = Math.Max(Duration(captureMinFrames, route.Capture.SampleRateHz), Duration(renderMinFrames, route.Render.SampleRateHz));
+        var upper = Math.Min(Duration(captureMaxFrames, route.Capture.SampleRateHz), Duration(renderMaxFrames, route.Render.SampleRateHz));
+        if (upper < lower) return [];
+        var periods = new SortedSet<long>();
+        for (var i = 0; i < 8; i++) periods.Add(checked(lower + (long)(((decimal)(upper - lower) * i) / 7m)));
+        return periods.Select((duration, index) => Make(index, duration, route, captureMinFrames, captureMaxFrames,
+                renderMinFrames, renderMaxFrames, captureAlignmentFrames, renderAlignmentFrames, captureAlignmentFrames > 0, renderAlignmentFrames > 0))
+            .GroupBy(c => (c.CaptureFrames, c.RenderFrames)).Select(g => g.First()).Take(8)
+            .Select((candidate, index) => candidate with { Index = index }).ToArray();
+    }
+
+    public static IReadOnlyList<WorkerScanV2Candidate> GenerateFromBounds(WorkerScanV2Route route,
+        WorkerScanV2PeriodBounds captureBounds, WorkerScanV2PeriodBounds renderBounds)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        ValidateBounds(captureBounds); ValidateBounds(renderBounds);
+        var lower = Math.Max(captureBounds.MinimumPeriod100ns, renderBounds.MinimumPeriod100ns);
+        var upper = Math.Min(captureBounds.DefaultPeriod100ns, renderBounds.DefaultPeriod100ns);
+        if (upper < lower) return [];
+        static int Frames(long period, int rate) => checked((int)(((decimal)period * rate + 5_000_000m) / 10_000_000m));
+        var captureMin = Frames(captureBounds.MinimumPeriod100ns, route.Capture.SampleRateHz);
+        var captureMax = Frames(captureBounds.DefaultPeriod100ns, route.Capture.SampleRateHz);
+        var renderMin = Frames(renderBounds.MinimumPeriod100ns, route.Render.SampleRateHz);
+        var renderMax = Frames(renderBounds.DefaultPeriod100ns, route.Render.SampleRateHz);
+        if (captureMin <= 0 || renderMin <= 0 || captureMax < captureMin || renderMax < renderMin) return [];
+        var periods = new SortedSet<long>();
+        for (var i = 0; i < 8; i++) periods.Add(checked(lower + (long)(((decimal)(upper - lower) * i) / 7m)));
+        return periods.Select((duration, index) => Make(index, duration, route, captureMin, captureMax, renderMin, renderMax,
+                captureBounds.AlignmentFrames ?? 0, renderBounds.AlignmentFrames ?? 0, captureBounds.AlignmentFrames.HasValue, renderBounds.AlignmentFrames.HasValue))
+            .GroupBy(c => (c.CapturePeriod100ns, c.RenderPeriod100ns)).Select(g => g.First()).Take(8)
+            .Select((candidate, index) => candidate with { Index = index }).ToArray();
+    }
+
+    public static IReadOnlyList<WorkerScanV2Candidate> For48KhzThreeToTenMs(WorkerScanV2Route route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        if (route.Capture.SampleRateHz != 48_000 || route.Render.SampleRateHz != 48_000) throw new ArgumentException("This explicit grid applies only to the reviewed 48 kHz domain.", nameof(route));
+        return Enumerable.Range(3, 8).Select((ms, index) => Make(index, ms * 10_000L, route, 144, 480, 144, 480, 0, 0, false, false)).ToArray();
+    }
+
+    public static WorkerScanV2Candidate Make(int index, long duration100ns, WorkerScanV2Route route,
+        int captureMinFrames, int captureMaxFrames, int renderMinFrames, int renderMaxFrames,
+        int captureAlignmentFrames = 0, int renderAlignmentFrames = 0, bool captureAlignmentKnown = false, bool renderAlignmentKnown = false)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        if (duration100ns <= 0 || duration100ns > long.MaxValue / Math.Max(route.Capture.SampleRateHz, route.Render.SampleRateHz)) throw new ArgumentOutOfRangeException(nameof(duration100ns));
+        static int Frames(long duration, int rate) => checked((int)(((decimal)duration * rate + 5_000_000m) / 10_000_000m));
+        var cf = Frames(duration100ns, route.Capture.SampleRateHz); var rf = Frames(duration100ns, route.Render.SampleRateHz);
+        var cp = checked((long)(((decimal)cf * 10_000_000m + route.Capture.SampleRateHz / 2m) / route.Capture.SampleRateHz));
+        var rp = checked((long)(((decimal)rf * 10_000_000m + route.Render.SampleRateHz / 2m) / route.Render.SampleRateHz));
+        if (captureAlignmentKnown != (captureAlignmentFrames > 0) || renderAlignmentKnown != (renderAlignmentFrames > 0)) throw new ArgumentException("Alignment must be explicitly known with a positive frame multiple or unknown with no value.");
+        var rejected = cf < captureMinFrames || cf > captureMaxFrames || rf < renderMinFrames || rf > renderMaxFrames || captureAlignmentKnown && cf % captureAlignmentFrames != 0 || renderAlignmentKnown && rf % renderAlignmentFrames != 0;
+        var candidate = new WorkerScanV2Candidate(index, duration100ns, cf, rf, cp, rp, captureAlignmentFrames, renderAlignmentFrames, captureAlignmentKnown, renderAlignmentKnown,
+            captureMinFrames, captureMaxFrames, renderMinFrames, renderMaxFrames,
+            rejected ? $"GEOMETRY_CONSTRAINT:CAPTURE={cf}/{captureMinFrames}-{captureMaxFrames}/align={captureAlignmentFrames}/period={cp};RENDER={rf}/{renderMinFrames}-{renderMaxFrames}/align={renderAlignmentFrames}/period={rp}" : "");
+        return candidate;
+    }
+
+    private static void ValidateBounds(WorkerScanV2PeriodBounds bounds)
+    {
+        ArgumentNullException.ThrowIfNull(bounds);
+        if (bounds.MinimumPeriod100ns <= 0 || bounds.DefaultPeriod100ns < bounds.MinimumPeriod100ns || bounds.AlignmentFrames is <= 0)
+            throw new ArgumentException("Reported device periods must be positive and ordered; alignment is either positive and reported or explicitly unknown.", nameof(bounds));
+    }
+}
+
+public static class WorkerScanV2ContractV4Fingerprint
+{
+    public static WorkerScanV2V4Consent CreateConsent(string captureId, string renderId, WorkerScanV2ContractV4 plan, ulong generation, bool accepted, Guid confirmationId) =>
+        new(accepted, confirmationId, Compute(captureId, renderId, plan, generation), generation);
+
+    public static string ConsentSummary(string captureId, string renderId, WorkerScanV2ContractV4 plan, ulong generation)
+    {
+        var fingerprint = Compute(captureId, renderId, plan, generation);
+        var periods = string.Join(", ", plan.Candidates.Select(c => $"{c.RequestedDuration100ns / 10_000m:0.###} ms C{c.CaptureFrames}/R{c.RenderFrames} frames"));
+        return $"Capture {captureId}: {plan.Route.Capture.SampleRateHz} Hz {plan.Route.Capture.Encoding} {plan.Route.Capture.Channels}ch [{string.Join(',', plan.Route.Capture.SelectedIndicesZeroBased)}], bounds {plan.CaptureBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.CaptureBounds.DefaultPeriod100ns / 10_000m:0.###} ms; Render {renderId}: {plan.Route.Render.SampleRateHz} Hz {plan.Route.Render.Encoding} {plan.Route.Render.Channels}ch [{string.Join(',', plan.Route.Render.SelectedIndicesZeroBased)}], bounds {plan.RenderBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.RenderBounds.DefaultPeriod100ns / 10_000m:0.###} ms; route={plan.Route.Mode}; {plan.Candidates.Count} candidates [{periods}]; alignment Capture={Alignment(plan.CaptureBounds)}, Render={Alignment(plan.RenderBounds)}; repeatability={plan.RepeatabilityRuns}; max audio operations={plan.MaximumOperations}; max active Duplex={plan.MaximumActiveDuplexSeconds}s; Initialize timeout={plan.InitializeTimeoutSeconds}s; session={plan.SessionLifetimeSeconds}s; cleanup={plan.CleanupDeadlineSeconds}s; plan fingerprint={fingerprint}. Results remain preliminary; v4 audio scan is unavailable in this build and transport is not enabled.";
+        static string Alignment(WorkerScanV2PeriodBounds bounds) => bounds.AlignmentFrames is { } frames ? $"{frames} frames (reported)" : "ALIGNMENT_UNKNOWN";
+    }
+
+    public static WorkerScanV2Budget Budget(int candidateCount, int repeatabilityRuns)
+    {
+        if (candidateCount is < 1 or > 8 || repeatabilityRuns is < 0 or > 5) throw new ArgumentOutOfRangeException(nameof(candidateCount));
+        checked
+        {
+            var operations = 3 * candidateCount + repeatabilityRuns;
+            var active = 5 * (candidateCount + repeatabilityRuns);
+            var lifetime = 111 * candidateCount + 51 * repeatabilityRuns + 28;
+            if (operations > 29 || active > 65 || lifetime > 1171) throw new ArgumentOutOfRangeException(nameof(candidateCount));
+            return new(operations, active, lifetime);
+        }
+    }
+
+    public static string Canonicalize(string captureId, string renderId, WorkerScanV2ContractV4 plan, ulong generation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId); ArgumentException.ThrowIfNullOrWhiteSpace(renderId);
+        ArgumentNullException.ThrowIfNull(plan);
+        var budget = Budget(plan.Candidates.Count, plan.RepeatabilityRuns);
+        if (captureId == renderId || plan.MaximumOperations != budget.MaximumOperations || plan.MaximumActiveDuplexSeconds != budget.MaximumActiveDuplexSeconds ||
+            plan.SessionLifetimeSeconds != budget.SessionLifetimeSeconds || plan.InitializeTimeoutSeconds != 30 || plan.CleanupDeadlineSeconds != 8 ||
+            plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF") throw new ArgumentException("V4 authorization budget or endpoint scope is invalid.");
+        ValidatePeriodBounds(plan.CaptureBounds); ValidatePeriodBounds(plan.RenderBounds);
+        var route = WorkerScanPlanV2Fingerprint.Route(captureId, renderId, plan.Route);
+        var lower = Math.Max(plan.CaptureBounds.MinimumPeriod100ns, plan.RenderBounds.MinimumPeriod100ns);
+        var upper = Math.Min(plan.CaptureBounds.DefaultPeriod100ns, plan.RenderBounds.DefaultPeriod100ns);
+        if (upper < lower) throw new ArgumentException("V4 device period bounds do not overlap.");
+        var canonical = $"SCAN_PLAN_V2|4|{generation}|{captureId}|{renderId}|{route}|{plan.RepeatabilityRuns}|{budget.MaximumOperations}|{budget.MaximumActiveDuplexSeconds}|{plan.InitializeTimeoutSeconds}|{plan.SessionLifetimeSeconds}|{plan.CleanupDeadlineSeconds}|\n" +
+            $"B|{plan.CaptureBounds.MinimumPeriod100ns}|{plan.CaptureBounds.DefaultPeriod100ns}|{Alignment(plan.CaptureBounds)}|{plan.RenderBounds.MinimumPeriod100ns}|{plan.RenderBounds.DefaultPeriod100ns}|{Alignment(plan.RenderBounds)}\n";
+        static string Alignment(WorkerScanV2PeriodBounds bounds) => bounds.AlignmentFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "ALIGNMENT_UNKNOWN";
+        static void ValidatePeriodBounds(WorkerScanV2PeriodBounds bounds)
+        {
+            ArgumentNullException.ThrowIfNull(bounds);
+            if (bounds.MinimumPeriod100ns <= 0 || bounds.DefaultPeriod100ns < bounds.MinimumPeriod100ns || bounds.AlignmentFrames is <= 0)
+                throw new ArgumentException("V4 reported period bounds or alignment are invalid.", nameof(bounds));
+        }
+        long previousDuration = 0;
+        var seenGeometry = new HashSet<(long, long)>();
+        for (var i = 0; i < plan.Candidates.Count; i++)
+        {
+            var candidate = plan.Candidates[i];
+            ValidateCandidate(candidate, plan);
+            if (candidate.Index != i || candidate.RequestedDuration100ns <= previousDuration || !seenGeometry.Add((candidate.CapturePeriod100ns, candidate.RenderPeriod100ns))) throw new ArgumentException("V4 candidates must be unique, contiguous, and ordered by duration.");
+            previousDuration = candidate.RequestedDuration100ns;
+            canonical += $"C|{candidate.Index}|{candidate.RequestedDuration100ns}|{candidate.CaptureFrames}|{candidate.RenderFrames}|{candidate.CapturePeriod100ns}|{candidate.RenderPeriod100ns}|{candidate.CaptureAlignmentFrames}|{candidate.CaptureAlignmentKnown.ToString().ToLowerInvariant()}|{candidate.RenderAlignmentFrames}|{candidate.RenderAlignmentKnown.ToString().ToLowerInvariant()}|{candidate.CaptureMinimumFrames}|{candidate.CaptureMaximumFrames}|{candidate.RenderMinimumFrames}|{candidate.RenderMaximumFrames}|{candidate.RejectionReason}\n";
+        }
+        foreach (var mode in plan.MmcssModes) canonical += $"M|{mode}\n";
+        return canonical;
+    }
+
+    public static string Compute(string captureId, string renderId, WorkerScanV2ContractV4 plan, ulong generation) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(Canonicalize(captureId, renderId, plan, generation)))).ToLowerInvariant();
+
+    private static void ValidateCandidate(WorkerScanV2Candidate c, WorkerScanV2ContractV4 plan)
+    {
+        var route = plan.Route;
+        static int BoundFrames(long period, int rate) => checked((int)(((decimal)period * rate + 5_000_000m) / 10_000_000m));
+        var geometryRejected = c.CaptureFrames < c.CaptureMinimumFrames || c.CaptureFrames > c.CaptureMaximumFrames || c.RenderFrames < c.RenderMinimumFrames || c.RenderFrames > c.RenderMaximumFrames ||
+            c.CaptureAlignmentKnown && c.CaptureFrames % c.CaptureAlignmentFrames != 0 || c.RenderAlignmentKnown && c.RenderFrames % c.RenderAlignmentFrames != 0;
+        if (c.Index < 0 || c.RequestedDuration100ns <= 0 || c.CaptureFrames <= 0 || c.RenderFrames <= 0 || c.CapturePeriod100ns <= 0 || c.RenderPeriod100ns <= 0 ||
+            c.CaptureMinimumFrames <= 0 || c.RenderMinimumFrames <= 0 || c.CaptureMaximumFrames < c.CaptureMinimumFrames || c.RenderMaximumFrames < c.RenderMinimumFrames ||
+            c.CaptureAlignmentKnown != (c.CaptureAlignmentFrames > 0) || c.RenderAlignmentKnown != (c.RenderAlignmentFrames > 0) ||
+            c.CaptureMinimumFrames != BoundFrames(plan.CaptureBounds.MinimumPeriod100ns, route.Capture.SampleRateHz) || c.CaptureMaximumFrames != BoundFrames(plan.CaptureBounds.DefaultPeriod100ns, route.Capture.SampleRateHz) ||
+            c.RenderMinimumFrames != BoundFrames(plan.RenderBounds.MinimumPeriod100ns, route.Render.SampleRateHz) || c.RenderMaximumFrames != BoundFrames(plan.RenderBounds.DefaultPeriod100ns, route.Render.SampleRateHz) ||
+            c.CaptureAlignmentFrames != (plan.CaptureBounds.AlignmentFrames ?? 0) || c.RenderAlignmentFrames != (plan.RenderBounds.AlignmentFrames ?? 0) ||
+            c.CaptureAlignmentKnown != plan.CaptureBounds.AlignmentFrames.HasValue || c.RenderAlignmentKnown != plan.RenderBounds.AlignmentFrames.HasValue ||
+            c.RequestedDuration100ns < Math.Max(plan.CaptureBounds.MinimumPeriod100ns, plan.RenderBounds.MinimumPeriod100ns) || c.RequestedDuration100ns > Math.Min(plan.CaptureBounds.DefaultPeriod100ns, plan.RenderBounds.DefaultPeriod100ns) ||
+            (string.IsNullOrEmpty(c.RejectionReason) == geometryRejected) || c.RejectionReason.Length > 512 || c.RejectionReason.Contains('|') || c.RejectionReason.Contains('\n') || c.RejectionReason.Contains('\r') ||
+            c.CaptureFrames != (int)(((decimal)c.RequestedDuration100ns * route.Capture.SampleRateHz + 5_000_000m) / 10_000_000m) ||
+            c.RenderFrames != (int)(((decimal)c.RequestedDuration100ns * route.Render.SampleRateHz + 5_000_000m) / 10_000_000m) ||
+            c.CapturePeriod100ns != (long)(((decimal)c.CaptureFrames * 10_000_000m + route.Capture.SampleRateHz / 2m) / route.Capture.SampleRateHz) ||
+            c.RenderPeriod100ns != (long)(((decimal)c.RenderFrames * 10_000_000m + route.Render.SampleRateHz / 2m) / route.Render.SampleRateHz) ||
+            c.Index >= 8) throw new ArgumentException("V4 candidate geometry is invalid.", nameof(c));
+    }
+}
+
 public static class WorkerScanPlanV2Fingerprint
 {
     public static string Route(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route)
@@ -384,6 +559,7 @@ public static class IpcFrameCodec
 public interface IWorkerClient : IAsyncDisposable
 {
     WorkerStateDto State { get; }
+    ulong DiscoveryGeneration => 0;
     IReadOnlyList<string> Capabilities => Array.Empty<string>();
     event Action<WorkerStateDto>? StateChanged;
     event Action<WorkerSessionAcceptedDto>? SessionAccepted;

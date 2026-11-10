@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://klidan-audio-probe.local/schemas/v2-auto-short-candidate-matrix-v1.schema.json",
+  "title": "V2 Custom Candidate Matrix v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "planFingerprint", "routeFingerprint", "lifecycle", "captureBounds", "renderBounds", "candidateDomain", "candidates", "selectionState", "provenance"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "planFingerprint": {"$ref": "#/$defs/hash"},
+    "routeFingerprint": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "lifecycle": {"enum": ["PLANNED", "COMPLETED", "UNKNOWN", "CANCELLED"]},
+    "captureBounds": {"$ref": "#/$defs/bounds"}, "renderBounds": {"$ref": "#/$defs/bounds"},
+    "candidateDomain": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/candidate"}},
+    "candidates": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/result"}},
+    "selectionState": {"enum": ["MINIMUM_SHORT_CLEAN_FOUND", "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED", "MINIMUM_NOT_PROVEN", "UNKNOWN"]},
+    "provenance": {"type": "string", "minLength": 1, "maxLength": 64}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "bounds": {"type": "object", "additionalProperties": false, "required": ["minimumPeriod100ns", "defaultPeriod100ns", "alignmentFrames"], "properties": {"minimumPeriod100ns": {"type": "integer", "minimum": 1}, "defaultPeriod100ns": {"type": "integer", "minimum": 1}, "alignmentFrames": {"type": ["integer", "null"], "minimum": 1}}},
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["index", "requestedDuration100ns", "captureFrames", "renderFrames", "capturePeriod100ns", "renderPeriod100ns", "captureAlignmentFrames", "captureAlignmentKnown", "renderAlignmentFrames", "renderAlignmentKnown", "captureMinimumFrames", "captureMaximumFrames", "renderMinimumFrames", "renderMaximumFrames", "rejectionReason"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 7},
+        "requestedDuration100ns": {"type": "integer", "minimum": 1},
+        "captureFrames": {"type": "integer", "minimum": 1}, "renderFrames": {"type": "integer", "minimum": 1},
+        "capturePeriod100ns": {"type": "integer", "minimum": 1}, "renderPeriod100ns": {"type": "integer", "minimum": 1},
+        "captureAlignmentFrames": {"type": "integer", "minimum": 0}, "captureAlignmentKnown": {"type": "boolean"}, "renderAlignmentFrames": {"type": "integer", "minimum": 0}, "renderAlignmentKnown": {"type": "boolean"},
+        "captureMinimumFrames": {"type": "integer", "minimum": 1}, "captureMaximumFrames": {"type": "integer", "minimum": 1},
+        "renderMinimumFrames": {"type": "integer", "minimum": 1}, "renderMaximumFrames": {"type": "integer", "minimum": 1},
+        "rejectionReason": {"type": "string", "maxLength": 512}
+      }
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate", "actualCaptureFrames", "actualCapturePeriod100ns", "actualRenderFrames", "actualRenderPeriod100ns", "captureInitializeDisposition", "renderInitializeDisposition", "duplexDisposition", "captureCleanup", "renderCleanup", "reasonCodes", "duplexNotRun", "skipReason", "lowerPeriodCoverage", "repeatabilityStatus", "provenance"],
+      "properties": {
+        "candidate": {"$ref": "#/$defs/candidate"},
+        "actualCaptureFrames": {"type": ["integer", "null"], "minimum": 1}, "actualCapturePeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "actualRenderFrames": {"type": ["integer", "null"], "minimum": 1}, "actualRenderPeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "captureInitializeDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "INITIALIZED", "UNKNOWN"]},
+        "renderInitializeDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "INITIALIZED", "UNKNOWN"]},
+        "duplexDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "UNKNOWN", "CLEAN"]},
+        "captureCleanup": {"enum": ["NOT_ATTEMPTED", "RELEASE_ATTEMPTED", "UNKNOWN", "FAILED"]},
+        "renderCleanup": {"enum": ["NOT_ATTEMPTED", "RELEASE_ATTEMPTED", "UNKNOWN", "FAILED"]},
+        "reasonCodes": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 128}},
+        "duplexNotRun": {"type": "boolean"}, "skipReason": {"type": ["string", "null"], "maxLength": 256},
+        "lowerPeriodCoverage": {"enum": ["COMPLETE", "INCOMPLETE", "UNKNOWN"]},
+        "repeatabilityStatus": {"enum": ["NOT_RUN", "CONFIRMED", "FAILED", "UNKNOWN"]},
+        "provenance": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    }
+  }
+}
