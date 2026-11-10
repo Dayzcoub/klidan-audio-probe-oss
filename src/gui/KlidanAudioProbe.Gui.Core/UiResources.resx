@@ -1362,4 +1362,19 @@ Fallback: {1}
   <data name="VmV2ProgressNotRequested" xml:space="preserve"><value>Not requested for this QA depth.</value></data>
   <data name="VmV2ProgressOperationUnknown" xml:space="preserve"><value>The operation result or cleanup is unconfirmed; all later audio operations were stopped.</value></data>
   <data name="VmV2ProgressOperationFailed" xml:space="preserve"><value>The selected operation failed; later stages were stopped. See technical details for the original diagnostic.</value></data>
+  <data name="VmAutoShortCompleted" xml:space="preserve"><value>Automatic profile selection complete</value></data>
+  <data name="VmV2AutoShortResultSummary" xml:space="preserve"><value>AUTO_SHORT complete · qualification {0} · NOT_CERTIFIED</value></data>
+  <data name="VmAutoPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} ms</value></data>
+  <data name="VmAutoCandidateClean" xml:space="preserve"><value>SHORT clean</value></data>
+  <data name="VmAutoCandidateFailed" xml:space="preserve"><value>SHORT failed</value></data>
+  <data name="VmAutoCandidateUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="VmAutoCandidateUnsupported" xml:space="preserve"><value>Unsupported</value></data>
+  <data name="VmAutoCandidateReasonClean" xml:space="preserve"><value>Clean 5-second run</value></data>
+  <data name="VmAutoCandidateReasonFailed" xml:space="preserve"><value>Candidate reported warnings or failure</value></data>
+  <data name="VmAutoCandidateReasonUnknown" xml:space="preserve"><value>Outcome or cleanup not confirmed</value></data>
+  <data name="VmAutoCandidateReasonUnsupported" xml:space="preserve"><value>Format not confirmed on both endpoints</value></data>
+  <data name="VmAutoCandidateDetails" xml:space="preserve"><value>Candidate technical details</value></data>
+  <data name="VmAutoCandidateDetailsSupport" xml:space="preserve"><value>Capture / Render support</value></data>
+  <data name="VmAutoCandidateDetailsPeriods" xml:space="preserve"><value>Endpoint periods (Capture / Render)</value></data>
+  <data name="VmAutoCandidateDetailsReason" xml:space="preserve"><value>Reason code</value></data>
 </root>
