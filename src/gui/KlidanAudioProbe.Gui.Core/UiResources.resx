@@ -1267,10 +1267,10 @@ Fallback: {1}
   <data name="VmV2PhysicalMappingUnknown" xml:space="preserve"><value>Logical channel numbers do not identify physical jacks. Physical mapping is UNKNOWN.</value></data>
   <data name="VmV2ReadyToQuery" xml:space="preserve"><value>Route is valid; device format support will be queried during scanning.</value></data>
   <data name="VmV2ResultConfiguration" xml:space="preserve"><value>{0} · {1}: Capture {2} Hz {3} channels {4}; Render {5} Hz {6} channels {7}. Buffer frames Capture/Render: {8}/{9}. Lifecycle: {10}. RTL=NOT_MEASURED; AudioHost=NOT_CERTIFIED.</value></data>
-  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} operations completed. {4}</value></data>
+  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · QA: {1} · period {2} · {3} operations completed. {4}</value></data>
   <data name="VmV2RouteInvalid" xml:space="preserve"><value>Invalid route: selected channels must be within stream bounds and unique.</value></data>
   <data name="VmV2RouteSummary" xml:space="preserve"><value>{0} · Capture {1} → Render {2}</value></data>
-  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); mode {4}; Capture channels {5}/{6}, {7} Hz {8}; Render channels {9}/{10}, {11} Hz {12}; period {13}; route {14}. Maximum 12 operations, 1030 seconds audio, 1800 seconds total.</value></data>
+  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); route {4}; Capture channels {5}, {6}ch {7} Hz {8}; Render channels {9}, {10}ch {11} Hz {12}; period {13}; route fingerprint {14}. QA: {15}; up to {16} operations, {17} seconds audio, {18} seconds session.</value></data>
   <data name="VmV2SelectPair" xml:space="preserve"><value>Select a Capture and Render endpoint.</value></data>
   <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} channels</value></data>
   <data name="VmV2StreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
@@ -1338,4 +1338,17 @@ Fallback: {1}
   <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>The selected route and period were not confirmed; audio was not started.</value></data>
   <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Evidence could not be saved.</value></data>
   <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize failed; later audio operations were stopped.</value></data>
+  <data name="V2QaModeLabel" xml:space="preserve"><value>V2 QA depth</value></data>
+  <data name="VmV2QaDiscovery" xml:space="preserve"><value>Discovery</value></data>
+  <data name="VmV2QaShort" xml:space="preserve"><value>Short check</value></data>
+  <data name="VmV2QaFull" xml:space="preserve"><value>Full qualification</value></data>
+  <data name="VmV2QaDiscoverySummary" xml:space="preserve"><value>Discovery only; no audio streams opened</value></data>
+  <data name="VmV2QaShortSummary" xml:space="preserve"><value>Short check; full stability not certified</value></data>
+  <data name="VmV2QaFullSummary" xml:space="preserve"><value>Full qualification</value></data>
+  <data name="V2FullBudgetConfirmation" xml:space="preserve"><value>I separately approve the full qualification budget (up to 995 seconds of audio and 12 operations).</value></data>
+  <data name="VmV2ProgressDiscoveryComplete" xml:space="preserve"><value>Discovery and passive format queries completed; audio was not opened.</value></data>
+  <data name="VmV2ProgressShortQaComplete" xml:space="preserve"><value>One five-second Duplex completed; Repeatability and Sustained were not requested. This is not a full stability qualification.</value></data>
+  <data name="VmV2ProgressNotRequested" xml:space="preserve"><value>Not requested for this QA depth.</value></data>
+  <data name="VmV2ProgressOperationUnknown" xml:space="preserve"><value>The operation result or cleanup is unconfirmed; all later audio operations were stopped.</value></data>
+  <data name="VmV2ProgressOperationFailed" xml:space="preserve"><value>The selected operation failed; later stages were stopped. See technical details for the original diagnostic.</value></data>
 </root>

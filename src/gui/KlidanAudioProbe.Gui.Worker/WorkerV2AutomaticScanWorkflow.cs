@@ -14,11 +14,12 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
     public async Task<V2AutomaticScanResult> RunAsync(string captureEndpointId, string renderEndpointId,
         WorkerScanV2Route route, bool operatorAccepted, Guid confirmationId, string? evidenceRoot = null,
         CancellationToken cancellationToken = default, Func<string, int, string?>? testScenarioForOperation = null,
-        string period = "MINIMUM", Action<V2AutomaticScanProgress>? progress = null)
+        string period = "MINIMUM", Action<V2AutomaticScanProgress>? progress = null, string qaMode = "DISCOVERY")
     {
         ArgumentNullException.ThrowIfNull(route);
         if (!operatorAccepted || confirmationId == Guid.Empty) throw new ArgumentException("Explicit scan acceptance is required.");
         if (period is not ("MINIMUM" or "DEFAULT")) throw new ArgumentOutOfRangeException(nameof(period));
+        if (qaMode is not ("DISCOVERY" or "SHORT" or "FULL")) throw new ArgumentOutOfRangeException(nameof(qaMode));
         using var operationLease = worker.AcquireSharedOperation("V2 Automatic Scan");
         var discovery = await worker.ListWindowsEndpointsAsync(cancellationToken).ConfigureAwait(false);
         var capture = discovery.Endpoints.SingleOrDefault(e => e.EndpointId == captureEndpointId && e.Direction == "CAPTURE" && e.DeviceState == "ACTIVE")
@@ -27,12 +28,17 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             ?? throw new InvalidOperationException("The exact active Render endpoint is missing from current discovery.");
         var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route);
         var operations = new List<V2AutomaticScanOperation>();
-        var stages = Enum.GetValues<AutomaticScanStage>().Select(s => new AutomaticScanStageResult(s, AutomaticScanStageState.NOT_RUN, "Not reached.")).ToArray();
+        var stages = Enum.GetValues<AutomaticScanStage>().Select(s => new AutomaticScanStageResult(s, AutomaticScanStageState.NOT_RUN, "NOT_REQUESTED")).ToArray();
         void Stage(AutomaticScanStage stage, AutomaticScanStageState state, string message)
         {
             stages = stages.Select(s => s.Stage == stage ? s with { State = state, Message = message } : s).ToArray();
             progress?.Invoke(new(stage.ToString(), state.ToString(), message));
         }
+        IReadOnlyDictionary<string, string> StageStatuses() => stages.ToDictionary(s => s.Stage.ToString(), s => s.Message == "V2_QUALIFICATION_NOT_REQUESTED" ? "NOT_REQUESTED" : s.State switch
+        {
+            AutomaticScanStageState.COMPLETED => "COMPLETED", AutomaticScanStageState.FAILED => "FAILED",
+            AutomaticScanStageState.UNKNOWN => "UNKNOWN", AutomaticScanStageState.NOT_RUN => "NOT_RUN", _ => "NOT_RUN"
+        }, StringComparer.Ordinal);
 
         var captureCounts = QueryChannelCounts(capture.SharedModeFormat.ReportedChannelCount);
         var renderCounts = QueryChannelCounts(render.SharedModeFormat.ReportedChannelCount);
@@ -51,19 +57,34 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             var reason = $"ROUTE_NOT_CONFIRMED_BY_QUERY; PERIOD={period}_NOT_SUPPORTED_ON_BOTH_SIDES; CAPTURE={captureState}; RENDER={renderState}";
             Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.SKIPPED, "V2_FORMAT_NOT_CONFIRMED");
             var skipped = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "INCOMPLETE", captureEndpointId, renderEndpointId, routeFingerprint, route, "", operations, stages, null, reason)
-                { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay };
+                { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, QaMode = qaMode, QaStageStatuses = StageStatuses(), RepeatabilityStatus = "NOT_REQUESTED", SustainedStatus = "NOT_REQUESTED" };
             try
             {
                 Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "V2_EVIDENCE_SAVED_READBACK");
                 skipped = skipped with { Stages = stages };
                 var path = V2AutomaticScanEvidenceStorage.Save(skipped, captureQuery, renderQuery, null, null, evidenceRoot);
-                return skipped with { EvidencePath = path, Stages = stages };
+                return skipped with { EvidencePath = path, Stages = stages, QaStageStatuses = StageStatuses() };
             }
-            catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, "V2_EVIDENCE_SAVE_FAILED"); return skipped with { Stages = stages, Error = $"{reason}; SAVE_FAILED: {ex.Message}" }; }
+            catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, "V2_EVIDENCE_SAVE_FAILED"); return skipped with { Stages = stages, QaStageStatuses = StageStatuses(), Error = $"{reason}; SAVE_FAILED: {ex.Message}" }; }
         }
-        Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.COMPLETED, "V2_ROUTE_PERIOD_CONFIRMED");
+        Stage(AutomaticScanStage.FORMAT_QUERY, AutomaticScanStageState.COMPLETED, qaMode == "DISCOVERY" ? "V2_DISCOVERY_COMPLETE" : "V2_ROUTE_PERIOD_CONFIRMED");
 
-        var plan = new WorkerScanPlanV2(route, [period], ["OFF"], 1800, 600, 12, 1030);
+        if (qaMode == "DISCOVERY")
+        {
+            Stage(AutomaticScanStage.INITIALIZE, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.SHORT_DUPLEX, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.SUSTAINED_VALIDATION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            Stage(AutomaticScanStage.FINAL_SELECTION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+            var discoveryResult = new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "COMPLETED", captureEndpointId, renderEndpointId, routeFingerprint, route, period, operations, stages, null, null)
+            { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, QaMode = "DISCOVERY", QaStageStatuses = StageStatuses(), RepeatabilityStatus = "NOT_REQUESTED", SustainedStatus = "NOT_REQUESTED" };
+            Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "V2_EVIDENCE_SAVED_READBACK");
+            discoveryResult = discoveryResult with { Stages = stages };
+            try { var path = V2AutomaticScanEvidenceStorage.Save(discoveryResult, captureQuery, renderQuery, null, null, evidenceRoot); return discoveryResult with { EvidencePath = path, Stages = stages, QaStageStatuses = StageStatuses() }; }
+            catch (Exception ex) { Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.FAILED, "V2_EVIDENCE_SAVE_FAILED"); return discoveryResult with { Lifecycle = "INCOMPLETE", Stages = stages, QaStageStatuses = StageStatuses(), Error = ex.Message }; }
+        }
+
+        var plan = qaMode == "SHORT" ? new WorkerScanPlanV2(route, [period], ["OFF"], 120, 5, 3, 5, "SHORT") : new WorkerScanPlanV2(route, [period], ["OFF"], 1200, 600, 12, 995, "FULL");
         WorkerScanSessionToken? session = null;
         var registrationAttempted = false;
         string? activeOperation = null;
@@ -150,26 +171,37 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
             var shortClean = IsClean(shortResult.Report);
             Stage(AutomaticScanStage.SHORT_DUPLEX, shortClean ? AutomaticScanStageState.COMPLETED : AutomaticScanStageState.FAILED, shortClean ? "V2_SHORT_DUPLEX_CLEAN" : "V2_SHORT_DUPLEX_NOT_QUALIFIED");
             if (!shortClean) throw new InvalidDataException("SHORT_DUPLEX_NOT_CLEAN");
+            if (qaMode == "SHORT") Stage(AutomaticScanStage.SHORT_DUPLEX, AutomaticScanStageState.COMPLETED, "V2_SHORT_QA_COMPLETE");
 
             var repeatClean = true;
-            for (var i = 0; i < 6; i++)
+            if (qaMode == "SHORT")
             {
-                var repeat = await Duplex(5, false, "REPEATABILITY").ConfigureAwait(false);
-                if (!IsClean(repeat.Report)) { repeatClean = false; break; }
+                Stage(AutomaticScanStage.REPEATABILITY, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+                Stage(AutomaticScanStage.SUSTAINED_VALIDATION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+                Stage(AutomaticScanStage.FINAL_SELECTION, AutomaticScanStageState.SKIPPED, "V2_QUALIFICATION_NOT_REQUESTED");
+                lifecycle = "SHORT_COMPLETED";
             }
-            Stage(AutomaticScanStage.REPEATABILITY, repeatClean ? AutomaticScanStageState.COMPLETED : AutomaticScanStageState.FAILED, repeatClean ? "V2_REPEATABILITY_CLEAN" : "V2_REPEATABILITY_FAILED");
-            if (!repeatClean) throw new InvalidDataException("REPEATABILITY_NOT_CLEAN");
+            else
+            {
+                for (var i = 0; i < 6; i++)
+                {
+                    var repeat = await Duplex(5, false, "REPEATABILITY").ConfigureAwait(false);
+                    if (!IsClean(repeat.Report)) { repeatClean = false; break; }
+                }
+                Stage(AutomaticScanStage.REPEATABILITY, repeatClean ? AutomaticScanStageState.COMPLETED : AutomaticScanStageState.FAILED, repeatClean ? "V2_REPEATABILITY_CLEAN" : "V2_REPEATABILITY_FAILED");
+                if (!repeatClean) throw new InvalidDataException("REPEATABILITY_NOT_CLEAN");
 
-            var sustainedClean = true;
-            foreach (var duration in new[] { 60, 300, 600 })
-            {
-                var sustained = await Duplex(duration, true, "SUSTAINED_VALIDATION").ConfigureAwait(false);
-                if (!IsClean(sustained.Report)) { sustainedClean = false; break; }
+                var sustainedClean = true;
+                foreach (var duration in new[] { 60, 300, 600 })
+                {
+                    var sustained = await Duplex(duration, true, "SUSTAINED_VALIDATION").ConfigureAwait(false);
+                    if (!IsClean(sustained.Report)) { sustainedClean = false; break; }
+                }
+                Stage(AutomaticScanStage.SUSTAINED_VALIDATION, sustainedClean ? AutomaticScanStageState.COMPLETED : AutomaticScanStageState.FAILED, sustainedClean ? "V2_SUSTAINED_CLEAN" : "V2_SUSTAINED_NOT_QUALIFIED");
+                if (!sustainedClean) throw new InvalidDataException("SUSTAINED_NOT_CLEAN");
+                Stage(AutomaticScanStage.FINAL_SELECTION, AutomaticScanStageState.COMPLETED, "V2_FINAL_SELECTION_COMPLETE");
+                lifecycle = "COMPLETED";
             }
-            Stage(AutomaticScanStage.SUSTAINED_VALIDATION, sustainedClean ? AutomaticScanStageState.COMPLETED : AutomaticScanStageState.FAILED, sustainedClean ? "V2_SUSTAINED_CLEAN" : "V2_SUSTAINED_NOT_QUALIFIED");
-            if (!sustainedClean) throw new InvalidDataException("SUSTAINED_NOT_CLEAN");
-            Stage(AutomaticScanStage.FINAL_SELECTION, AutomaticScanStageState.COMPLETED, "V2_FINAL_SELECTION_COMPLETE");
-            lifecycle = "COMPLETED";
         }
         catch (OperationCanceledException) { lifecycle = "UNKNOWN"; error = "CANCELLED_OUTCOME_REQUIRES_WORKER_CLEANUP"; }
         catch (Exception ex)
@@ -196,16 +228,19 @@ public sealed class WorkerV2AutomaticScanWorkflow(NativeWorkerClient worker)
         }
 
         var resultValue = new V2AutomaticScanResult(sessionId, lifecycle, captureEndpointId, renderEndpointId, routeFingerprint, route, period, operations, stages, null, error)
-            { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, WorkerError = workerError };
+            { CaptureFriendlyName = capture.FriendlyNameDisplay, RenderFriendlyName = render.FriendlyNameDisplay, WorkerError = workerError, QaMode = qaMode, QaStageStatuses = StageStatuses(),
+                RepeatabilityStatus = qaMode == "SHORT" ? "NOT_REQUESTED" : lifecycle == "COMPLETED" ? "COMPLETED" : operations.Any(o => o.Stage == "REPEATABILITY" && o.State == "UNKNOWN") ? "UNKNOWN" : operations.Any(o => o.Stage == "REPEATABILITY" && o.State == "FAILED") ? "FAILED" : "NOT_RUN",
+                SustainedStatus = qaMode == "SHORT" ? "NOT_REQUESTED" : lifecycle == "COMPLETED" ? "COMPLETED" : operations.Any(o => o.Stage == "SUSTAINED_VALIDATION" && o.State == "UNKNOWN") ? "UNKNOWN" : operations.Any(o => o.Stage == "SUSTAINED_VALIDATION" && o.State == "FAILED") ? "FAILED" : "NOT_RUN" };
         if (operations.Any(o => o.Stage == "INITIALIZE" && o.State == "FAILED")) Stage(AutomaticScanStage.INITIALIZE, AutomaticScanStageState.FAILED, "V2_INITIALIZE_FAILED");
         if (operations.Any(o => o.State == "UNKNOWN") || lifecycle == "UNKNOWN")
         {
             var failedStage = operations.LastOrDefault(o => o.State == "UNKNOWN")?.Stage;
             var stage = failedStage switch { "INITIALIZE" => AutomaticScanStage.INITIALIZE, "SHORT_DUPLEX" => AutomaticScanStage.SHORT_DUPLEX, "REPEATABILITY" => AutomaticScanStage.REPEATABILITY, "SUSTAINED_VALIDATION" => AutomaticScanStage.SUSTAINED_VALIDATION, _ => AutomaticScanStage.SAVE };
-            if (stage != AutomaticScanStage.SAVE) Stage(stage, AutomaticScanStageState.UNKNOWN, "Operation result or cleanup is unresolved; all subsequent audio operations were stopped.");
+            if (stage != AutomaticScanStage.SAVE) Stage(stage, AutomaticScanStageState.UNKNOWN, "V2_OPERATION_UNKNOWN");
         }
         Stage(AutomaticScanStage.SAVE, AutomaticScanStageState.COMPLETED, "V2_EVIDENCE_SAVED_READBACK");
         resultValue = resultValue with { Stages = stages };
+        resultValue = resultValue with { QaStageStatuses = StageStatuses() };
         if (session is not null || registrationAttempted)
         {
             try

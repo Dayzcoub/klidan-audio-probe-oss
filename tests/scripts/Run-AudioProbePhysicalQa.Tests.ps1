@@ -1,64 +1,31 @@
 $ErrorActionPreference = 'Stop'
 $launcher = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'scripts\Run-AudioProbePhysicalQa.ps1'
-$testRoot = Join-Path ([IO.Path]::GetTempPath()) ('audio-probe-qa-launcher-' + [Guid]::NewGuid().ToString('N'))
-$repo = Join-Path $testRoot 'repos\audio-probe-oss'
-$buildA = Join-Path $testRoot 'builds\candidate-a'
-$buildB = Join-Path $testRoot 'builds\candidate-b'
-$registryPath = Join-Path $testRoot 'workspace-projects.json'
-
-function Assert([bool]$Condition, [string]$Message) { if (-not $Condition) { throw "FAIL: $Message" } }
-function Invoke-Validate([string]$Path = '') {
-    if ($Path) { $json = & $launcher -ValidateOnly -InstallPath $Path -WorkspaceRegistryPath $registryPath }
-    else { $json = & $launcher -ValidateOnly -WorkspaceRegistryPath $registryPath }
-    $json | ConvertFrom-Json
+$root = Join-Path ([IO.Path]::GetTempPath()) ('audio-probe-qa-launcher-' + [Guid]::NewGuid().ToString('N'))
+$repo = Join-Path $root 'repos\audio-probe-oss'; $trees = Join-Path $root 'worktrees'; $registryPath = Join-Path $root 'workspace-projects.json'
+function Assert([bool]$condition,[string]$message) { if (-not $condition) { throw "FAIL: $message" } }
+function Invoke-Select([string]$branch,[string]$sha,[string]$install='') { if ($install) { & $launcher -ValidateOnly -SourceBranch $branch -ExpectedSha $sha -InstallPath $install -WorkspaceRegistryPath $registryPath } else { & $launcher -ValidateOnly -SourceBranch $branch -ExpectedSha $sha -WorkspaceRegistryPath $registryPath } }
+function Add-Build([string]$dir,[string]$branch,[string]$sha) {
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $bins=@{}; foreach ($spec in @(@('gui','KlidanAudioProbe.Gui.App.exe'),@('nativeWorker','KlidanProbeWorker.exe'),@('nativeCli','KlidanAudioProbe.exe'))) { $p=Join-Path $dir $spec[1]; [IO.File]::WriteAllBytes($p,[byte[]]::new(8192)); $bins[$spec[0]]=@{path=$p;sha256=(Get-FileHash $p -Algorithm SHA256).Hash} }
+    @{schemaVersion=2;sourceBranch=$branch;sourceCommit=$sha;binaries=$bins}|ConvertTo-Json -Depth 5|Set-Content (Join-Path $dir 'audio-probe-qa-build.json') -Encoding utf8
+    $bins
 }
-function Write-FakeBuild([string]$Directory, [string]$Commit) {
-    New-Item -ItemType Directory -Path $Directory -Force | Out-Null
-    $paths = @{
-        gui = Join-Path $Directory 'KlidanAudioProbe.Gui.App.exe'
-        nativeWorker = Join-Path $Directory 'KlidanProbeWorker.exe'
-        nativeCli = Join-Path $Directory 'KlidanAudioProbe.exe'
-    }
-    foreach ($item in $paths.GetEnumerator()) {
-        $bytes = [byte[]]::new(8192)
-        for ($index = 0; $index -lt $bytes.Length; $index++) { $bytes[$index] = [byte]$item.Key.Length }
-        [IO.File]::WriteAllBytes($item.Value, $bytes)
-    }
-    $bins = @{}
-    foreach ($key in $paths.Keys) { $bins[$key] = @{ path = $paths[$key]; sha256 = (Get-FileHash -LiteralPath $paths[$key] -Algorithm SHA256).Hash } }
-    $manifest = @{ schemaVersion = 1; sourceBranch = 'feat/audio-probe-as-n3c-gui-integration'; sourceCommit = $Commit; binaries = $bins }
-    $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Directory 'audio-probe-qa-build.json') -Encoding utf8
-    $paths
-}
-
 try {
-    New-Item -ItemType Directory -Path $repo -Force | Out-Null
-    & git init -b feat/audio-probe-as-n3c-gui-integration $repo | Out-Null
-    & git -C $repo config user.email qa-test@example.invalid
-    & git -C $repo config user.name 'Launcher Test'
-    Set-Content -LiteralPath (Join-Path $repo 'fixture.txt') -Value 'test source'
-    & git -C $repo add fixture.txt
-    & git -C $repo commit -m 'test fixture' | Out-Null
-    $commit = (& git -C $repo rev-parse HEAD).Trim()
-    @{ schemaVersion = 1; projects = @(@{ projectId = 'AUDIO-PROBE-OSS'; root = $testRoot }); repositories = @(@{ repoId = 'audio-probe-oss'; currentPath = $repo }) } |
-        ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $registryPath -Encoding utf8
-
-    $pathsA = Write-FakeBuild $buildA $commit
-    $selected = Invoke-Validate
-    Assert ($selected.sourceCommit -eq $commit -and $selected.GuiPath -eq $pathsA.gui) 'automatically selects the build manifest tied to the registered branch and current source commit'
-    $explicit = Invoke-Validate $pathsA.gui
-    Assert ($explicit.GuiPath -eq $pathsA.gui -and -not $explicit.SourceCommit) 'explicit InstallPath is used directly and does not substitute installed/build paths'
-
-    $pathsB = Write-FakeBuild $buildB $commit
-    $ambiguous = $false
-    try { $null = Invoke-Validate } catch { $ambiguous = $_.Exception.Message -match 'Ambiguous AS-N3C builds' }
-    Assert $ambiguous 'multiple matching build manifests fail with an ambiguity error'
-
-    Remove-Item -LiteralPath $pathsB.nativeWorker
-    $missingWorker = $false
-    try { $null = Invoke-Validate $pathsB.gui } catch { $missingWorker = $_.Exception.Message -match 'NativeWorker|KlidanProbeWorker|executable is missing' }
-    Assert $missingWorker 'missing Native Worker blocks explicit executable launch validation'
-    Write-Host 'PASS: launcher build selection, explicit path, ambiguity and missing Worker checks'
-} finally {
-    if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
-}
+    New-Item -ItemType Directory -Path $repo,$trees -Force|Out-Null
+    & git init -b feat/audio-probe-as-n3c-gui-integration $repo|Out-Null; & git -C $repo config user.email qa@example.invalid; & git -C $repo config user.name 'QA Test'
+    Set-Content (Join-Path $repo 'source.txt') 'test'; & git -C $repo add source.txt; & git -C $repo commit -m base|Out-Null; $shaN3c=(& git -C $repo rev-parse HEAD).Trim()
+    $treeN4b=Join-Path $trees 'n4b'; & git -C $repo worktree add -b feat/audio-probe-as-n4b-bounded-physical-qa $treeN4b|Out-Null; $shaN4b=(& git -C $treeN4b rev-parse HEAD).Trim()
+    @{schemaVersion=1;projects=@(@{projectId='AUDIO-PROBE-OSS';root=$root});repositories=@(@{repoId='audio-probe-oss';currentPath=$repo})}|ConvertTo-Json -Depth 5|Set-Content $registryPath -Encoding utf8
+    $n3c=Add-Build (Join-Path $root 'builds\n3c') 'feat/audio-probe-as-n3c-gui-integration' $shaN3c
+    $n4b=Add-Build (Join-Path $root 'builds\n4b') 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b
+    $selectedN3c=Invoke-Select 'feat/audio-probe-as-n3c-gui-integration' $shaN3c
+    $selectedN4b=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b
+    Assert (($selectedN3c|ConvertFrom-Json).SourceCommit -eq $shaN3c) 'selects registered AS-N3C exact SHA'
+    Assert (($selectedN4b|ConvertFrom-Json).SourceCommit -eq $shaN4b) 'selects registered AS-N4B exact SHA'
+    $badSha=$false; try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' ('0'*40)}catch{$badSha=$_.Exception.Message -match 'Expected exactly one registered worktree'}; Assert $badSha 'rejects wrong/unregistered source SHA'
+    $missingManifest=$false; Remove-Item (Join-Path $root 'builds\n4b\audio-probe-qa-build.json'); try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b}catch{$missingManifest=$_.Exception.Message -match 'No verified build'}; Assert $missingManifest 'rejects missing matching manifest'
+    Add-Build (Join-Path $root 'builds\n4b') 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b|Out-Null
+    $badInstall=$false; try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b (Join-Path $root 'unverified.exe')}catch{$badInstall=$_.Exception.Message -match 'must exactly match'}; Assert $badInstall 'InstallPath cannot bypass verified build identity'
+    $badBytes=[byte[]]::new(8192); $badBytes[0]=1; $badBinary=$false; [IO.File]::WriteAllBytes($n4b.nativeWorker.path,$badBytes); try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b}catch{$badBinary=$_.Exception.Message -match 'SHA-256 mismatch'}; Assert $badBinary 'rejects damaged binary via stored hash'
+    Write-Host 'PASS: AS-N3C/AS-N4B source selection, SHA, manifest, binary integrity and InstallPath gate'
+} finally { if(Test-Path $root){Remove-Item $root -Recurse -Force} }
