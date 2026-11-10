@@ -1267,10 +1267,10 @@ Fallback: {1}
   <data name="VmV2PhysicalMappingUnknown" xml:space="preserve"><value>Номер логического канала не указывает на физическое гнездо. Физическое соответствие: UNKNOWN.</value></data>
   <data name="VmV2ReadyToQuery" xml:space="preserve"><value>Маршрут допустим; поддержку формата устройства проверит сканирование.</value></data>
   <data name="VmV2ResultConfiguration" xml:space="preserve"><value>{0} · {1}: Capture {2} Гц, каналы {3}, индексы {4}; Render {5} Гц, каналы {6}, индексы {7}. Буферы Capture/Render: {8}/{9} кадров. Состояние: {10}. RTL=NOT_MEASURED; AudioHost=NOT_CERTIFIED.</value></data>
-  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · {1} · {2} · завершено операций: {3}. {4}</value></data>
+  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · глубина QA: {1} · период {2} · завершено операций: {3}. {4}</value></data>
   <data name="VmV2RouteInvalid" xml:space="preserve"><value>Недопустимый маршрут: каналы должны входить в геометрию потока и не повторяться.</value></data>
   <data name="VmV2RouteSummary" xml:space="preserve"><value>{0} · Capture {1} → Render {2}</value></data>
-  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); режим {4}; каналы Capture {5}/{6}, {7} Гц {8}; каналы Render {9}/{10}, {11} Гц {12}; период {13}; маршрут {14}. Не более 12 операций, 1030 секунд аудио, 1800 секунд всего.</value></data>
+  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); маршрут {4}; каналы Capture {5}, поток {6}ch {7} Гц {8}; каналы Render {9}, поток {10}ch {11} Гц {12}; период {13}; fingerprint {14}. Глубина QA: {15}; до {16} операций, {17} секунд аудио, {18} секунд сессии.</value></data>
   <data name="VmV2SelectPair" xml:space="preserve"><value>Выберите Capture и Render endpoint.</value></data>
   <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} каналов</value></data>
   <data name="VmV2StreamGeometry" xml:space="preserve"><value>Поток Capture: {0} каналов; Render: {1} каналов</value></data>
@@ -1338,4 +1338,17 @@ Fallback: {1}
   <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>Выбранный маршрут и период не подтверждены; аудиопроверка не запускалась.</value></data>
   <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Не удалось сохранить результаты.</value></data>
   <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize не пройден; последующие аудиооперации остановлены.</value></data>
+  <data name="V2QaModeLabel" xml:space="preserve"><value>Глубина V2 QA</value></data>
+  <data name="VmV2QaDiscovery" xml:space="preserve"><value>Обнаружение</value></data>
+  <data name="VmV2QaShort" xml:space="preserve"><value>Короткая проверка</value></data>
+  <data name="VmV2QaFull" xml:space="preserve"><value>Полная проверка</value></data>
+  <data name="VmV2QaDiscoverySummary" xml:space="preserve"><value>Только обнаружение; аудиопотоки не открывались</value></data>
+  <data name="VmV2QaShortSummary" xml:space="preserve"><value>Короткая проверка; полная устойчивость не сертифицирована</value></data>
+  <data name="VmV2QaFullSummary" xml:space="preserve"><value>Полная проверка</value></data>
+  <data name="V2FullBudgetConfirmation" xml:space="preserve"><value>Отдельно подтверждаю полный бюджет квалификации (до 995 секунд аудио и 12 операций).</value></data>
+  <data name="VmV2ProgressDiscoveryComplete" xml:space="preserve"><value>Обнаружение и пассивный запрос форматов завершены; аудиопотоки не открывались.</value></data>
+  <data name="VmV2ProgressShortQaComplete" xml:space="preserve"><value>Одна проверка Duplex длительностью 5 секунд завершена; повторяемость и Sustained не запрашивались. Это не полная проверка устойчивости.</value></data>
+  <data name="VmV2ProgressNotRequested" xml:space="preserve"><value>Не запрашивалось для выбранной глубины QA.</value></data>
+  <data name="VmV2ProgressOperationUnknown" xml:space="preserve"><value>Результат операции или очистки не подтверждён; все последующие аудиооперации остановлены.</value></data>
+  <data name="VmV2ProgressOperationFailed" xml:space="preserve"><value>Выбранная операция не пройдена; последующие этапы остановлены. Исходная диагностика доступна в технических подробностях.</value></data>
 </root>

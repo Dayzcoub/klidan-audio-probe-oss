@@ -683,9 +683,9 @@ try
     var v2Render=v2Discovery.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
     var routeFingerprint=RouteFingerprint(v2Capture,v2Render,"MONO_TO_STEREO",48000,2,"PCM16",0,48000,2,"PCM16",3,0,0,1);
     var route=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
-    var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1800,600,12,1030);
+    var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1200,600,12,995,"FULL");
     var confirmationId=Guid.NewGuid();var session=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId);
-    Check(session.ContractVersion==2&&session.RouteFingerprint==routeFingerprint,"typed V2 session registration binds route and worker discovery generation");
+    Check(session.ContractVersion==3&&session.RouteFingerprint==routeFingerprint,"typed V2 session token binds QA contract, route, and worker discovery generation");
     var v2CaptureInit=await v2SessionClient.ValidateFormatMatrixInScanAsync(session,Guid.NewGuid(),v2Capture,"CAPTURE",route.Capture.SampleRateHz,route.Capture.Channels,route.Capture.Encoding,"MINIMUM");
     var v2RenderInit=await v2SessionClient.ValidateFormatMatrixInScanAsync(session,Guid.NewGuid(),v2Render,"RENDER",route.Render.SampleRateHz,route.Render.Channels,route.Render.Encoding,"MINIMUM");
     Check(v2CaptureInit.Candidates.Single().InitializeAttempted&&v2RenderInit.Candidates.Single().InitializeAttempted,"V2 route-bound Initialize runs for both stream formats inside the same V2 session");
@@ -706,6 +706,15 @@ try
     var cancelled=await ThrowsAsync<WorkerCommandException>(()=>V2Operation(1),"cancelled V2 session cannot authorize another operation");Check(cancelled.ErrorCode=="SCAN_SESSION_STALE","V2 cancellation invalidates the active authorization");
     await v2SessionClient.CloseScanSessionAsync(session);
     var replayConsent=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId),"V2 confirmation cannot register another session after close");Check(replayConsent.ErrorCode=="SCAN_CONSENT_REPLAY","V2 consent replay is rejected");
+    var shortPlan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],120,5,3,5,"SHORT");var shortSession=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,shortPlan,true,Guid.NewGuid());
+    Check(WorkerScanPlanV2Fingerprint.Compute(v2Capture,v2Render,shortPlan,1)!=WorkerScanPlanV2Fingerprint.Compute(v2Capture,v2Render,plan,1),"V2 QA depth is part of the immutable consent fingerprint");
+    await v2SessionClient.ValidateFormatMatrixInScanAsync(shortSession,Guid.NewGuid(),v2Capture,"CAPTURE",route.Capture.SampleRateHz,route.Capture.Channels,route.Capture.Encoding,"MINIMUM");
+    await v2SessionClient.ValidateFormatMatrixInScanAsync(shortSession,Guid.NewGuid(),v2Render,"RENDER",route.Render.SampleRateHz,route.Render.Channels,route.Render.Encoding,"MINIMUM");
+    var authorizedShortId=Guid.NewGuid();await v2SessionClient.ValidateDuplexV2InScanAsync(authorizedShortId.ToString("D"),shortSession,authorizedShortId,route,v2Capture,v2Render,"MINIMUM",5,"OFF");
+    var secondShort=Guid.NewGuid();var shortReplay=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(secondShort.ToString("D"),shortSession,secondShort,route,v2Capture,v2Render,"MINIMUM",5,"OFF"),"Short QA does not authorize a second Duplex");
+    var shortSustained=Guid.NewGuid();var shortSustainedRejected=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(shortSustained.ToString("D"),shortSession,shortSustained,route,v2Capture,v2Render,"MINIMUM",60,"OFF",true),"Short QA cannot start Sustained");
+    Check(shortReplay.ErrorCode=="SCAN_OPERATION_REJECTED"&&shortSustainedRejected.ErrorCode=="SCAN_OPERATION_REJECTED","Native Worker enforces the one-Duplex Short budget and rejects repeatability/Sustained beyond authorization");
+    await v2SessionClient.CloseScanSessionAsync(shortSession);
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);
@@ -749,7 +758,7 @@ try
 }
 finally{await automaticV2Client.DisposeAsync();}
 Check(WorkerV2AutomaticScanWorkflow.QueryChannelCounts(10).SequenceEqual(new[]{1,2,8,16,32,10})&&WorkerV2AutomaticScanWorkflow.QueryChannelCounts(64).SequenceEqual(new[]{1,2,8,16,32}),"adaptive query uses a bounded common-channel shortlist and includes only representable endpoint-reported geometry");
-async Task<V2AutomaticScanResult> RunV2Fixture(WorkerScanV2Route selectedRoute,string label,Func<string,int,string?>? scenario=null,CancellationToken token=default,Action<NativeWorkerClient>? configure=null)
+async Task<V2AutomaticScanResult> RunV2Fixture(WorkerScanV2Route selectedRoute,string label,Func<string,int,string?>? scenario=null,CancellationToken token=default,Action<NativeWorkerClient>? configure=null,string qaMode="FULL")
 {
     var client=new NativeWorkerClient(formatFixtureWorker);
     try
@@ -757,11 +766,16 @@ async Task<V2AutomaticScanResult> RunV2Fixture(WorkerScanV2Route selectedRoute,s
         await client.ConnectAsync();var endpoints=(await client.ListWindowsEndpointsAsync()).Endpoints;
         var cap=endpoints.Single(e=>e.Direction=="CAPTURE").EndpointId!;var ren=endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
         configure?.Invoke(client);
-        return await new WorkerV2AutomaticScanWorkflow(client).RunAsync(cap,ren,selectedRoute,true,Guid.NewGuid(),Path.Combine(buildRoot,"as-n3b-v2-evidence",label),token,scenario);
+        return await new WorkerV2AutomaticScanWorkflow(client).RunAsync(cap,ren,selectedRoute,true,Guid.NewGuid(),Path.Combine(buildRoot,"as-n3b-v2-evidence",label),token,scenario,qaMode:qaMode);
     }
     finally{await client.DisposeAsync();}
 }
 var monoToMono=await RunV2Fixture(new("MONO_TO_MONO",new(48000,2,"PCM16",3,[1]),new(48000,2,"PCM16",3,[0])),"mono-mono");
+var discoveryOnly=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1])),"discovery-only",qaMode:"DISCOVERY");
+var shortOnly=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1])),"short-only",qaMode:"SHORT");
+Check(discoveryOnly.QaMode=="DISCOVERY"&&discoveryOnly.Operations.Count==0&&discoveryOnly.Stages.Single(s=>s.Stage==AutomaticScanStage.INITIALIZE).State==AutomaticScanStageState.SKIPPED&&discoveryOnly.QaStageStatuses[nameof(AutomaticScanStage.INITIALIZE)]=="NOT_REQUESTED"&&discoveryOnly.RepeatabilityStatus=="NOT_REQUESTED"&&discoveryOnly.SustainedStatus=="NOT_REQUESTED","Discovery QA saves passive results and marks audio qualification stages NOT_REQUESTED");
+Check(shortOnly.QaMode=="SHORT"&&shortOnly.Lifecycle=="SHORT_COMPLETED"&&shortOnly.Operations.Count(o=>o.Stage=="INITIALIZE")==2&&shortOnly.Operations.Count(o=>o.Stage=="SHORT_DUPLEX"&&o.DurationSeconds==5)==1&&shortOnly.Operations.All(o=>o.Stage!="REPEATABILITY"&&o.Stage!="SUSTAINED_VALIDATION")&&shortOnly.QaStageStatuses[nameof(AutomaticScanStage.REPEATABILITY)]=="NOT_REQUESTED"&&shortOnly.RepeatabilityStatus=="NOT_REQUESTED"&&shortOnly.SustainedStatus=="NOT_REQUESTED","Short QA performs two Initialize operations and exactly one five-second Duplex without full qualification");
+using(var discoveryEvidence=JsonDocument.Parse(File.ReadAllBytes(discoveryOnly.EvidencePath!)))using(var shortEvidence=JsonDocument.Parse(File.ReadAllBytes(shortOnly.EvidencePath!)))Check(discoveryEvidence.RootElement.GetProperty("result").GetProperty("qaMode").GetString()=="DISCOVERY"&&discoveryEvidence.RootElement.GetProperty("result").GetProperty("qaStageStatuses").GetProperty("INITIALIZE").GetString()=="NOT_REQUESTED"&&shortEvidence.RootElement.GetProperty("result").GetProperty("qaMode").GetString()=="SHORT"&&shortEvidence.RootElement.GetProperty("result").GetProperty("sustainedStatus").GetString()=="NOT_REQUESTED","Saved V2 evidence preserves selected QA mode and explicit unrequested-stage statuses");
 var stereoToStereo=await RunV2Fixture(new("STEREO_TO_STEREO",new(48000,2,"PCM16",3,[0,1]),new(48000,2,"PCM16",3,[0,1])),"stereo-stereo");
 var independentFormats=await RunV2Fixture(new("STEREO_TO_STEREO",new(44100,2,"PCM24_IN_32",3,[0,1]),new(48000,2,"FLOAT32",3,[0,1])),"independent-formats");
 Check(new[]{monoToMono,stereoToStereo,independentFormats}.All(r=>r.Lifecycle=="COMPLETED"&&r.Operations.Count(o=>o.Stage=="REPEATABILITY")==6),"Mono-to-Mono, Stereo-to-Stereo and independent Capture/Render format routes complete through bounded qualification");
