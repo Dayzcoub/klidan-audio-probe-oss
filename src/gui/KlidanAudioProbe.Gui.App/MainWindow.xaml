@@ -200,7 +200,7 @@
               <TextBlock Text="{loc:Loc ScanLabel}" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"/><TextBlock x:Name="AutomaticScanResultHeadlineText" Text="{Binding AutomaticScanResultHeadline}" FontSize="18" FontWeight="SemiBold"/>
               <TextBlock x:Name="AutomaticScanRecommendationText" Text="{Binding AutomaticScanRecommendationText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
               <TextBlock x:Name="AutomaticScanPersistenceText" Text="{Binding AutomaticScanPersistenceText}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryBrush}" Margin="0,8,0,0"/>
-              <Button Content="{loc:Loc OpenReportFolder}" Command="{Binding OpenAutomaticScanLocationCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+              <Button x:Name="OpenAutomaticScanLocationButton" Content="{loc:Loc OpenReportFolder}" Command="{Binding OpenAutomaticScanLocationCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
               <Button x:Name="ExportAutomaticScanButton" Content="{loc:Loc ExportResults}" Command="{Binding ExportAutomaticScanCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
               <TextBlock x:Name="AutomaticScanExportStatusText" Text="{Binding AutomaticScanExportStatus}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryBrush}" Margin="0,6,0,0" AutomationProperties.LiveSetting="Polite"/>
               <Expander Header="{loc:Loc ExportTechnicalDetails}" IsExpanded="False" Margin="0,6,0,0"><TextBlock Text="{Binding AutomaticScanExportTechnicalDetails}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/></Expander>

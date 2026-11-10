@@ -290,7 +290,7 @@ public sealed class MainViewModel : ViewModel
         ConfirmAutomaticScanCommand = new(ConfirmAutomaticScanAsync, CanConfirmAutomaticScan);
         CancelAutomaticScanConsentCommand = new(CancelAutomaticScanConsent, () => AutomaticScanConsentPending);
         CancelAutomaticScanCommand = new(CancelAutomaticScan, () => _automaticScanPreparing || _automaticScanRunning);
-        OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, () => _automaticScanResult?.Persistence?.SummaryPath is { Length: > 0 });
+        OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, CanOpenAutomaticScanLocation);
         ExportAutomaticScanCommand = new(ExportAutomaticScanAsync, () => CanExportAutomaticScan);
         QueryRealFormatsCommand = new(QueryRealFormatsAsync, CanQueryRealFormats);
         RequestRealInitializeCommand = new(RequestRealInitialize, CanRequestRealInitialize);
@@ -1826,8 +1826,12 @@ public sealed class MainViewModel : ViewModel
         var route = isV2 ? BuildV2Route() : null;
         var preparedCapture = isV2 ? SelectedDuplexCaptureEndpoint?.EndpointId : preparation?.Plan.Target.Capture?.EndpointId;
         var preparedRender = isV2 ? SelectedDuplexRenderEndpoint?.EndpointId : preparation?.Plan.Target.Render?.EndpointId;
-        if (isV2 && (_automaticScanV2Route is null || route is null || WorkerScanPlanV2Fingerprint.Route(preparedCapture ?? "", preparedRender ?? "", route) != WorkerScanPlanV2Fingerprint.Route(preparedCapture ?? "", preparedRender ?? "", _automaticScanV2Route) || _automaticScanV2DiscoveryGeneration != _windowsDiscoveryGeneration) ||
-            !isV2 && preparation is null || string.IsNullOrWhiteSpace(preparedCapture) || isV2 && string.IsNullOrWhiteSpace(preparedRender))
+        var target = preparation?.Plan.Target;
+        var invalidV1Endpoints = !isV2 && (target is null || target.Capture is null && string.IsNullOrWhiteSpace(preparedRender) ||
+            target.Render is null && string.IsNullOrWhiteSpace(preparedCapture) || target.Capture is not null && target.Render is not null &&
+            (string.IsNullOrWhiteSpace(preparedCapture) || string.IsNullOrWhiteSpace(preparedRender)));
+        if (isV2 && (_automaticScanV2Route is null || route is null || string.IsNullOrWhiteSpace(preparedCapture) || string.IsNullOrWhiteSpace(preparedRender) ||
+            WorkerScanPlanV2Fingerprint.Route(preparedCapture, preparedRender, route) != WorkerScanPlanV2Fingerprint.Route(preparedCapture, preparedRender, _automaticScanV2Route) || _automaticScanV2DiscoveryGeneration != _windowsDiscoveryGeneration) || invalidV1Endpoints)
         {
             CancelAutomaticScanConsent();
             SetAutomaticScanStatus(Localization.Get("VmScanAuthorizationInvalidated"));
@@ -1844,6 +1848,7 @@ public sealed class MainViewModel : ViewModel
         _automaticScanResult = null;
         _automaticScanV2Result = null;
         Changed(nameof(AutomaticScanAttempted)); Changed(nameof(AutomaticScanResultSummary)); Changed(nameof(AutomaticScanPersistenceText));
+        OpenAutomaticScanLocationCommand.Refresh();
         _automaticScanCancellation = new CancellationTokenSource();
         var confirmationId = Guid.NewGuid(); // Created only after the operator accepts the displayed immutable plan.
         SetAutomaticScanStatus(Localization.Get("VmScanConsentAccepted"));
@@ -1976,6 +1981,14 @@ public sealed class MainViewModel : ViewModel
         var directory = string.IsNullOrWhiteSpace(path) ? null : Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory)) return;
         Process.Start(new ProcessStartInfo { FileName = directory, UseShellExecute = true });
+    }
+
+    private bool CanOpenAutomaticScanLocation()
+    {
+        var path = _automaticScanV2Result?.EvidencePath ?? _automaticScanResult?.Persistence?.SummaryPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+        var directory = Path.GetDirectoryName(path);
+        return !string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory);
     }
 
     private async Task ExportAutomaticScanAsync()

@@ -636,6 +636,41 @@ v1PairVm.SelectedDuplexRenderEndpoint = v1PairVm.DuplexRenderEndpoints.Single(e 
 typeof(MainViewModel).GetField("_automaticScanConsentPending", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v1PairVm, true);
 typeof(MainViewModel).GetField("_automaticScanConsentChecked", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v1PairVm, true);
 Check(!v1PairVm.ConfirmAutomaticScanCommand.CanExecute(null), "V1 confirmation refuses a Render endpoint changed after the authorized plan");
+v1PairVm.ConfirmAutomaticScanCommand.Execute(null);
+Check(v1PairWorkflow.RunCalls == 0, "V1 endpoint changed after preparation cannot reach the workflow handler");
+bool RunV1Confirmation(string endpointId, bool pair)
+{
+    var discovery = v1PairDiscovery;
+    var worker = new GuiStateWorkerClient([]) { WindowsDiscovery = discovery, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
+    var workflow = new GuiAutomaticScanWorkflow(discovery);
+    var viewModel = new MainViewModel(worker: worker, automaticScanWorkflow: workflow) { AutomaticScanEngine = "V1_COMPATIBLE", AutomaticScanPairEnabled = pair };
+    worker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V1 command-chain fixture."));
+    viewModel.DiscoverWindowsEndpointsCommand.Execute(null);
+    if (!PumpUntil(() => viewModel.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2))) return false;
+    if (pair)
+    {
+        viewModel.SelectedDuplexCaptureEndpoint = viewModel.DuplexCaptureEndpoints.Single(e => e.EndpointId == "local-windows-id");
+        viewModel.SelectedDuplexRenderEndpoint = viewModel.DuplexRenderEndpoints.Single(e => e.EndpointId == endpointId);
+    }
+    else viewModel.SelectedWindowsEndpoint = viewModel.WindowsEndpoints.Single(e => e.EndpointId == endpointId);
+    var window = new MainWindow(viewModel) { Width = 1280, Height = 800, ShowActivated = false };
+    window.Show(); window.UpdateLayout();
+    viewModel.PrepareAutomaticScanCommand.Execute(null);
+    if (!PumpUntil(() => viewModel.AutomaticScanConsentPending, TimeSpan.FromSeconds(2))) { window.Close(); return false; }
+    ((CheckBox)window.FindName("AutomaticScanConsentCheckBox")).IsChecked = true;
+    window.UpdateLayout();
+    var confirm = (Button)window.FindName("ConfirmAutomaticScanButton");
+    var enabled = confirm.IsEnabled;
+    if (enabled) confirm.Command!.Execute(confirm.CommandParameter);
+    var ran = PumpUntil(() => workflow.RunCalls == 1, TimeSpan.FromSeconds(2));
+    window.Close();
+    var expectedCapture = pair || endpointId == "local-windows-id" ? "local-windows-id" : null;
+    var expectedRender = pair || endpointId == "local-render-id" || endpointId == "alternate-render-id" ? endpointId : null;
+    return enabled && ran && workflow.PreparedPlan?.Target.Capture?.EndpointId == expectedCapture && workflow.PreparedPlan?.Target.Render?.EndpointId == expectedRender;
+}
+Check(RunV1Confirmation("local-windows-id", false), "V1 single Capture WPF confirmation invokes the workflow command with the planned endpoint");
+Check(RunV1Confirmation("local-render-id", false), "V1 single Render WPF confirmation invokes the workflow command with the planned endpoint");
+Check(RunV1Confirmation("local-render-id", true), "V1 paired Duplex WPF confirmation invokes the workflow command with the planned endpoint pair");
 var v2RouteWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true };
 var v2Workflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
 var v2RouteVm = new MainViewModel(worker: v2RouteWorker, automaticScanWorkflow: v2Workflow);
@@ -668,6 +703,22 @@ v2ConsentCheckBox.IsChecked = true; v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null) && confirmV2Button.IsEnabled, "WPF confirmation button becomes enabled for a current authorized V2 route");
 confirmV2Button.Command!.Execute(confirmV2Button.CommandParameter);
 Check(PumpUntil(() => v2RouteVm.HasAutomaticScanResult && v2RouteVm.AutomaticScanResultHeadline == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCompleted"), TimeSpan.FromSeconds(2)) && v2Workflow.RunV2Calls == 1 && v2Workflow.LastV2CaptureId == "local-windows-id" && v2Workflow.LastV2RenderId == "local-render-id" && v2Workflow.LastV2Period == "MINIMUM" && v2Workflow.LastV2Route?.Capture.SelectedIndicesZeroBased.SequenceEqual([7]) == true, "WPF V2 selection, prepare, checked consent and confirmation invoke the V2 workflow with exact endpoint, route and period and show result");
+var openV2ReportButton = (Button)v2LayoutWindow.FindName("OpenAutomaticScanLocationButton");
+Check(!openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "V2 result without an evidence file keeps the WPF report-folder command disabled");
+var v2OpenFolder = Path.Combine(Path.GetTempPath(), $"klidan-v2-open-folder-{Guid.NewGuid():N}"); Directory.CreateDirectory(v2OpenFolder);
+var v2OpenEvidence = Path.Combine(v2OpenFolder, "evidence.json"); File.WriteAllText(v2OpenEvidence, "{}");
+var currentV2Result = (V2AutomaticScanResult)typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm)!;
+typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result with { EvidencePath = v2OpenEvidence });
+typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
+v2LayoutWindow.UpdateLayout();
+Check(openV2ReportButton.IsEnabled && v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "completed V2 evidence enables the actual WPF report-folder button");
+v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "a new V2 scan can prepare after the prior run completed");
+v2ConsentCheckBox.IsChecked = true; v2LayoutWindow.UpdateLayout(); confirmV2Button.Command!.Execute(confirmV2Button.CommandParameter);
+Check(PumpUntil(() => v2Workflow.RunV2Calls == 2 && v2RouteVm.HasAutomaticScanResult, TimeSpan.FromSeconds(2)) && !openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "starting and completing a new V2 scan clears the prior report-folder target");
+File.Delete(v2OpenEvidence); v2RouteVm.OpenAutomaticScanLocationCommand.Refresh(); v2LayoutWindow.UpdateLayout();
+Check(!openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "V2 report-folder command disables when its evidence file is removed");
+Directory.Delete(v2OpenFolder);
 v2LayoutWindow.UpdateLayout();
 double Top(FrameworkElement element) => element.TransformToAncestor(v2LayoutWindow).Transform(new System.Windows.Point(0, 0)).Y;
 var scanTop = Top((FrameworkElement)v2LayoutWindow.FindName("V2RouteSelectionCard"));
@@ -2913,6 +2964,8 @@ try
     typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(bundleVm, null);
     var bundleWindow = new MainWindow(bundleVm, bundleUiProfiles); bundleWindow.UpdateLayout();
     var exportButton = (System.Windows.Controls.Button)bundleWindow.FindName("ExportAutomaticScanButton");
+    var openV1ReportButton = (Button)bundleWindow.FindName("OpenAutomaticScanLocationButton");
+    Check(openV1ReportButton.IsEnabled && bundleVm.OpenAutomaticScanLocationCommand.CanExecute(null), "V1 persisted summary enables the actual WPF report-folder button");
     Check(bundleVm.CanExportAutomaticScan && exportButton.IsEnabled == bundleVm.ExportAutomaticScanCommand.CanExecute(null), "L2-B.1 completed v4 scan enables the real WPF export button from Command.CanExecute");
 
     var primaryReportPath = Path.Combine(bundleUiSustained, $"sustained-duplex-{sustainedPrimaryEvidence.OperationId:D}.json");
