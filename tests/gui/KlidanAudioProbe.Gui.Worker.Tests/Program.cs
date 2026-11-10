@@ -7,6 +7,7 @@ using System.Security.Principal;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using KlidanAudioProbe.Gui.Core;
 using KlidanAudioProbe.Gui.Worker;
 using Microsoft.Win32.SafeHandles;
@@ -15,6 +16,15 @@ if (args.Length == 2 && args[0] == "--pipe") return await TestNativePipeWorker.R
 
 var count = 0;
 void Check(bool condition, string message) { count++; if (!condition) throw new InvalidOperationException($"FAIL: {message}"); Console.WriteLine($"PASS: {message}"); }
+string RouteFingerprint(string captureId,string renderId,string mode,uint cr,uint cc,string ce,uint cm,uint rr,uint rc,string re,uint rm,params uint[] indices)
+{
+    var captureCount=mode=="STEREO_TO_STEREO"?2:1;var renderCount=mode=="MONO_TO_MONO"?1:2;
+    var canonical=$"2|{captureId}|{renderId}|{mode}|{cr},{cc},{ce},{cm}|{rr},{rc},{re},{rm}|";
+    for(var i=0;i<captureCount;i++)canonical+=$"C{indices[i]}|";
+    for(var i=0;i<renderCount;i++)canonical+=$"R{indices[captureCount+i]}|";
+    ulong hash=14695981039346656037UL;foreach(var b in Encoding.UTF8.GetBytes(canonical)){hash^=b;hash*=1099511628211UL;}return hash.ToString("x16");
+}
+string RouteConsentFingerprint(string captureId,string renderId,string mode,string routeFingerprint)=>Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{captureId}|{renderId}|MINIMUM|1|OFF|REAL_WASAPI_DUPLEX_V2|{routeFingerprint}")));
 async Task<JsonElement[]> RawWorkerExchangeAsync(string workerPath, string handshake, params string[] requests)
 {
     var pipeName = $"KlidanAudioProbe.RawTest.{Guid.NewGuid():N}";
@@ -640,6 +650,45 @@ var sixDuplexReports = new List<DuplexValidationDto>();
 for (var i = 0; i < 6; i++) { var operationId = Guid.NewGuid(); sixDuplexReports.Add(await injectedFormatClient.ValidateDuplexInScanAsync(operationId.ToString("D"), periodCapture.EndpointId!, periodRender.EndpointId!, "MINIMUM", 1, "OFF", sixDuplexSession, operationId)); }
 await injectedFormatClient.CloseScanSessionAsync(sixDuplexSession);
 Check(sixDuplexReports.Count == 6 && sixDuplexReports.All(r => r.Report.GetProperty("provenance").GetString() == "TEST_FAKE_WASAPI_DUPLEX") && injectedFormatClient.State.State == WorkerConnectionState.ConnectedFake, "six sequential authorized Duplex operations complete and leave the Worker reusable");
+foreach(var spec in new[]{
+    (Mode:"MONO_TO_STEREO",Cc:8u,Ce:"PCM24_IN_32",Cm:0u,Rc:2u,Re:"FLOAT32",Rm:3u,Idx:new uint[]{7,0,1}),
+    (Mode:"STEREO_TO_STEREO",Cc:32u,Ce:"FLOAT32",Cm:0u,Rc:32u,Re:"PCM24_IN_32",Rm:0u,Idx:new uint[]{30,31,16,17}),
+    (Mode:"MONO_TO_MONO",Cc:8u,Ce:"PCM16",Cm:0u,Rc:2u,Re:"PCM16",Rm:3u,Idx:new uint[]{5,1})})
+{
+    var op=Guid.NewGuid();var fingerprint=RouteFingerprint("injected-endpoint-capture","injected-endpoint-render",spec.Mode,48000,spec.Cc,spec.Ce,spec.Cm,44100,spec.Rc,spec.Re,spec.Rm,spec.Idx);
+    var receipt=new {accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=RouteConsentFingerprint("injected-endpoint-capture","injected-endpoint-render",spec.Mode,fingerprint)};
+    using var v2=await injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new {contractVersion=2,operationId=op,captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode=spec.Mode,capture=new {sampleRateHz=48000,channels=spec.Cc,encoding=spec.Ce,channelMask=spec.Cm,selectedIndicesZeroBased=spec.Idx.Take(spec.Mode=="STEREO_TO_STEREO"?2:1).ToArray()},render=new {sampleRateHz=44100,channels=spec.Rc,encoding=spec.Re,channelMask=spec.Rm,selectedIndicesZeroBased=spec.Idx.Skip(spec.Mode=="STEREO_TO_STEREO"?2:1).ToArray()},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=receipt,testScenario="CLEAN"});
+    var payload=v2.RootElement.GetProperty("payload");var report=payload.GetProperty("report");var route=report.GetProperty("route");
+    Check(payload.GetProperty("renderEndpointId").GetString()=="injected-endpoint-render"&&route.GetProperty("render").GetProperty("endpointId").GetString()=="injected-endpoint-render"&&report.GetProperty("schemaVersion").GetInt32()==3&&report.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_DUPLEX_V2"&&route.GetProperty("fingerprint").GetString()==fingerprint&&route.GetProperty("mode").GetString()==spec.Mode&&route.GetProperty("physicalMapping").GetString()=="UNKNOWN"&&route.GetProperty("renderPolicy").GetString()=="SILENCE_ONLY"&&route.GetProperty("capture").GetProperty("channels").GetUInt32()==spec.Cc&&route.GetProperty("render").GetProperty("sampleRateHz").GetUInt32()==44100&&report.GetProperty("capture").GetProperty("format").GetProperty("encoding").GetString()==spec.Ce&&report.GetProperty("render").GetProperty("format").GetProperty("channels").GetUInt32()==spec.Rc,"V2 IPC preserves exact endpoints, independent open-stream formats, selected route and silence-only evidence");
+}
+var v2Fingerprint=RouteFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_STEREO",48000,2,"PCM16",0,48000,2,"PCM16",3,0,0,1);
+object V2Request(Guid id,object? consent)=>new{contractVersion=2,operationId=id,captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="MONO_TO_STEREO",capture=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=0u,selectedIndicesZeroBased=new[]{0}},render=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0,1}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=consent,testScenario="CLEAN"};
+var activeV1Plan=new WorkerScanPlan([new(periodCapture.EndpointId!,"CAPTURE"),new(periodRender.EndpointId!,"RENDER")],["ValidateDuplex"],[new(48000,"PCM16",2,["MINIMUM"],["OFF"])],60,5,2);
+var activeV1=await injectedFormatClient.RegisterScanSessionAsync(activeV1Plan,true,Guid.NewGuid());
+var conflictingV2=await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=RouteConsentFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_STEREO",v2Fingerprint)})),"V2 cannot bypass an active V1 scan session even with standalone consent");
+Check(conflictingV2.ErrorCode=="SCAN_SESSION_CONFLICT","active V1 scan scope is preserved at the Worker boundary");
+await injectedFormatClient.CloseScanSessionAsync(activeV1);
+var noV2Consent=await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),new{accepted=false,confirmationId=Guid.NewGuid(),requestFingerprint=RouteConsentFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_STEREO",v2Fingerprint)})),"standalone V2 requires fresh explicit consent after the V1 session closes");
+Check(noV2Consent.ErrorCode=="DUPLEX_CONSENT_MISMATCH","missing V2 consent is rejected");
+var v2Consent=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=RouteConsentFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_STEREO",v2Fingerprint)};
+using(var standaloneV2=await injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),v2Consent)))Check(standaloneV2.RootElement.GetProperty("status").GetString()=="OK","V2 is allowed with new consent after confirmed V1 closure");
+var replayedV2=await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),v2Consent)),"standalone V2 consent can be consumed only once");
+Check(replayedV2.ErrorCode=="CONSENT_REPLAY","V2 consent replay is rejected");
+async Task<WorkerCommandException> RejectNumeric(object rate,object channels,object mask,object indices)=>await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=Guid.NewGuid(),captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="MONO_TO_MONO",capture=new{sampleRateHz=rate,channels,encoding="PCM16",channelMask=mask,selectedIndicesZeroBased=indices},render=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=new string('0',64)}}),"invalid V2 numeric value is rejected before type narrowing");
+Check((await RejectNumeric(-1,2,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 sample rate rejected");
+Check((await RejectNumeric(48000,-1,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 channel count rejected");
+Check((await RejectNumeric(48000,2,-1,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 channel mask rejected");
+Check((await RejectNumeric(48000,2,0u,new[]{-1})).ErrorCode=="ROUTE_INVALID","negative V2 selected index rejected");
+Check((await RejectNumeric(48000,65537,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","channel count that would wrap when narrowed is rejected");
+Check((await RejectNumeric(4294967296UL,2,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","sample-rate integer overflow is rejected");
+Check((await RejectNumeric(48000,2,4294967296UL,new[]{0})).ErrorCode=="ROUTE_INVALID","channel-mask integer overflow is rejected");
+Check((await RejectNumeric(48000,2,0u,new[]{65536})).ErrorCode=="ROUTE_INVALID","selected-index integer overflow is rejected");
+Check((await RejectNumeric(48000,2,0u,new[]{2})).ErrorCode=="ROUTE_INVALID","selected index at channel-count boundary is rejected");
+var boundaryFingerprint=RouteFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_MONO",48000,32,"PCM16",0,48000,32,"PCM16",0,31,31);
+var boundaryReceipt=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=RouteConsentFingerprint("injected-endpoint-capture","injected-endpoint-render","MONO_TO_MONO",boundaryFingerprint)};
+using(var boundary=await injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=Guid.NewGuid(),captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="MONO_TO_MONO",capture=new{sampleRateHz=48000,channels=32,encoding="PCM16",channelMask=0u,selectedIndicesZeroBased=new[]{31}},render=new{sampleRateHz=48000,channels=32,encoding="PCM16",channelMask=0u,selectedIndicesZeroBased=new[]{31}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=boundaryReceipt,testScenario="CLEAN"}))Check(boundary.RootElement.GetProperty("status").GetString()=="OK","channel count 32 and selected zero-based channel 31 remain valid boundary values");
+var invalidRoute=await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new {contractVersion=2,operationId=Guid.NewGuid(),captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="STEREO_TO_STEREO",capture=new {sampleRateHz=48000,channels=8,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{2,2}},render=new {sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0,1}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=new {accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=new string('0',64)}}),"route V2 rejects duplicate/out-of-range channels and masks before consent or native operation");
+Check(invalidRoute.ErrorCode=="ROUTE_INVALID","invalid route geometry receives a typed rejection");
 Environment.SetEnvironmentVariable("KLIDAN_TEST_PERIOD_SCENARIO", "REJECT_FIRST_FOUR");
 var rejectedScenarioClient = new NativeWorkerClient(formatFixtureWorker);
 try

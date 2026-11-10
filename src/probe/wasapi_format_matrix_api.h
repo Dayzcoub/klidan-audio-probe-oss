@@ -9,6 +9,7 @@
 namespace ExclusiveFormatMatrix {
 
 std::optional<WAVEFORMATEXTENSIBLE> BuildWasapiFormat(const Format& format) noexcept;
+std::optional<WAVEFORMATEXTENSIBLE> BuildWasapiFormat(const Format& format, std::uint32_t channelMask) noexcept;
 
 class WasapiApi final : public Api {
 public:

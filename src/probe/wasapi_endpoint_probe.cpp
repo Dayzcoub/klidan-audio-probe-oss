@@ -24,6 +24,7 @@
 #include "probe_math.h"
 #include "signal_levels.h"
 #include "exclusive_format_matrix.h"
+#include "channel_routing.h"
 #include "matrix_timestamp.h"
 #include "wasapi_format_matrix_api.h"
 #include "channel_meter.h"
@@ -310,6 +311,8 @@ struct StreamExecution {
     UINT64 events = 0;
     UINT64 packets = 0;
     UINT64 frames = 0;
+    UINT64 selectedCaptureSamples = 0;
+    UINT64 invalidSelectedCaptureSamples = 0;
     UINT64 prefillFrames = 0;
     UINT64 discontinuities = 0;
     UINT64 startupDiscontinuities = 0;
@@ -380,6 +383,8 @@ struct DuplexSideSummary {
     std::chrono::steady_clock::time_point startedAt{};
     std::chrono::steady_clock::time_point endedAt{};
     UINT64 frames = 0;
+    UINT64 selectedCaptureSamples = 0;
+    UINT64 invalidSelectedCaptureSamples = 0;
     UINT32 bufferFrames = 0;
     REFERENCE_TIME requestedPeriod = 0;
     ProbeMath::StreamStatus status = ProbeMath::StreamStatus::InitializeFailed;
@@ -560,6 +565,8 @@ public:
         summary.events = execution.events;
         summary.packets = execution.packets;
         summary.frames = execution.frames;
+        summary.selectedCaptureSamples = execution.selectedCaptureSamples;
+        summary.invalidSelectedCaptureSamples = execution.invalidSelectedCaptureSamples;
         summary.discontinuities = execution.discontinuities;
         summary.timestampErrors = execution.timestampErrors;
         summary.elapsedMilliseconds = elapsedMilliseconds;
@@ -806,7 +813,8 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                           CaptureRuntimeEvidence::Lifecycle* captureLifecycle = nullptr,
                           ChannelMeter::Meter* channelMeter = nullptr,
                           RenderSignal::Generator* renderChannelSignal = nullptr,
-                          HANDLE externalCancelEvent = nullptr) {
+                          HANDLE externalCancelEvent = nullptr,
+                          const ChannelRouting::Configuration* route = nullptr) {
     using Clock = std::chrono::steady_clock;
     StreamExecution result;
     RenderChannelTest::EventProtocol renderChannelProtocol;
@@ -1359,6 +1367,14 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                     if (positionAnomaly && !dataDiscontinuity) {
                         ++result.positionAnomaliesWithoutDiscontinuity;
                     }
+                    if (route != nullptr && flow == eCapture) {
+                        const auto selectedCount=ChannelRouting::CaptureCount(route->mode);
+                        for(UINT32 frame=0;frame<frames;++frame)for(std::uint16_t channel=0;channel<selectedCount;++channel){
+                            const double sample=(flags&AUDCLNT_BUFFERFLAGS_SILENT)!=0?0.0:ChannelRouting::ReadSample(data,frame,route->captureChannels[channel],route->capture);
+                            ++result.selectedCaptureSamples;
+                            if(!std::isfinite(sample))++result.invalidSelectedCaptureSamples;
+                        }
+                    }
                     if (signalLevels != nullptr) {
                         signalLevels->CapturePacket(reinterpret_cast<const std::int16_t*>(data), frames,
                             (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
@@ -1465,6 +1481,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                         fail("capture PCM16 channel meter", data == nullptr ? E_POINTER : E_INVALIDARG);
                         break;
                     }
+                    if(result.invalidSelectedCaptureSamples!=0){fail("selected Capture channel sample decoding",E_INVALIDARG);break;}
                     if (monitorLatencyData != nullptr &&
                         (!timestampValid || dataDiscontinuity || positionAnomaly || !positionValueValid)) {
                         if (duplex != nullptr) duplex->RequestStop(false);
@@ -1724,7 +1741,9 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
                           RenderChannelReport::Report* renderChannelReport = nullptr,
                           StreamValidationReport::Report* streamReport = nullptr,
                           HANDLE externalCancelEvent = nullptr,
-                          std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod = std::nullopt) {
+                          std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod = std::nullopt,
+                          const WAVEFORMATEXTENSIBLE* explicitFormat = nullptr,
+                          const ChannelRouting::Configuration* route = nullptr) {
     if (streamReport != nullptr) {
         streamReport->direction = flow == eCapture ? "CAPTURE" : "RENDER";
         streamReport->period = customPeriod ? "CUSTOM:" + std::to_string(*customPeriod->requestedPeriod100ns) + ":" + std::to_string(*customPeriod->requestedFrames) : useMinimumPeriod ? "MINIMUM" : "DEFAULT";
@@ -1733,7 +1752,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
     }
     const unsigned containerBits = formatName == L"pcm16" ? 16U : 32U;
     const unsigned validBits = formatName == L"pcm24-in-32" ? 24U : containerBits;
-    const auto format = MakeInitFormat(rate, channels, formatName);
+    const auto format = explicitFormat != nullptr ? *explicitFormat : MakeInitFormat(rate, channels, formatName);
     if (renderChannelReport != nullptr) {
         renderChannelReport->renderChannel = renderChannelSignal->SelectedChannel() + 1;
         renderChannelReport->durationSeconds = streamDuration;
@@ -2322,7 +2341,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
                                    loopbackCapture != nullptr || loopbackRender != nullptr || monitorLatencyData != nullptr,
                                    monitorLatencyData, monitorLatencySignal, rtlPreflight,
                                    rtlPreflight != nullptr ? captureLifecycle : nullptr, channelMeter,
-                                   renderChannelSignal, externalCancelEvent);
+                                   renderChannelSignal, externalCancelEvent, route);
         if (streamReport != nullptr) {
             streamReport->startSucceeded = execution.started;
             streamReport->startHresult = execution.startAttempted ? Hresult(execution.startResult) : "NOT_ATTEMPTED";
@@ -2920,7 +2939,9 @@ int ProbeInitById(IMMDeviceEnumerator* enumerator, EDataFlow flow, const std::ws
                   RenderChannelReport::Report* renderChannelReport = nullptr,
                   StreamValidationReport::Report* streamReport = nullptr,
                   HANDLE externalCancelEvent = nullptr,
-                  std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod = std::nullopt) {
+                  std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod = std::nullopt,
+                  const WAVEFORMATEXTENSIBLE* explicitFormat = nullptr,
+                  const ChannelRouting::Configuration* route = nullptr) {
     if (streamReport != nullptr) {
         streamReport->direction = flow == eCapture ? "CAPTURE" : "RENDER";
         streamReport->period = customPeriod ? "CUSTOM:" + std::to_string(*customPeriod->requestedPeriod100ns) + ":" + std::to_string(*customPeriod->requestedFrames) : useMinimumPeriod ? "MINIMUM" : "DEFAULT";
@@ -3025,7 +3046,7 @@ int ProbeInitById(IMMDeviceEnumerator* enumerator, EDataFlow flow, const std::ws
                                       rtlPreflight != nullptr ? &captureLifecycle : nullptr,
                                       channelMeter, channelMeterReport,
                                       renderChannelSignal, renderChannelReport,
-                                      streamReport, externalCancelEvent, customPeriod);
+                                      streamReport, externalCancelEvent, customPeriod, explicitFormat, route);
     Release(device);
     if (streamReport != nullptr) streamReport->cleanup += ";ENDPOINT_RELEASE_ATTEMPTED";
     if (renderChannelReport != nullptr && renderChannelReport->cleanupStatus != "FAILED")
@@ -3095,6 +3116,7 @@ struct DuplexWorkerArgs {
     MonitorLatency::RunData* monitorLatencyData;
     AnalogLoopback::RenderSignal* monitorLatencySignal;
     std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod;
+    std::optional<ChannelRouting::Configuration> route;
 };
 
 void DuplexWorker(DuplexWorkerArgs args) {
@@ -3116,12 +3138,22 @@ void DuplexWorker(DuplexWorkerArgs args) {
         args.coordinator->RecordClassification(args.side, ProbeMath::StreamStatus::InitializeFailed,
                                                 ProbeMath::StreamQuality::SevereAnomalies);
     } else {
-        const int result = ProbeInitById(enumerator, args.flow, *args.endpointId, args.rate, args.channels,
-            *args.format, args.useMinimumPeriod, args.duration, args.useProAudioMmcss,
+        std::optional<WAVEFORMATEXTENSIBLE> selectedFormat;
+        auto rate=args.rate;
+        auto channels=args.channels;
+        auto formatName=*args.format;
+        if(args.route){
+            const auto& endpoint=args.flow==eCapture?args.route->capture:args.route->render;
+            rate=endpoint.format.sampleRate;channels=endpoint.format.channels;
+            formatName=endpoint.format.encoding==ExclusiveFormatMatrix::Encoding::Pcm16?L"pcm16":endpoint.format.encoding==ExclusiveFormatMatrix::Encoding::Pcm24In32?L"pcm24-in-32":L"float32";
+            selectedFormat=ExclusiveFormatMatrix::BuildWasapiFormat(endpoint.format,endpoint.channelMask);
+        }
+        const int result = ProbeInitById(enumerator, args.flow, *args.endpointId, rate, channels,
+            formatName, args.useMinimumPeriod, args.duration, args.useProAudioMmcss,
             args.coordinator, args.side, args.clockSeries, args.liveRing, args.measureSignalLevels,
             args.loopbackCapture, args.loopbackRender, args.monitorLatencyData,
             args.monitorLatencySignal, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-            args.customPeriod);
+            args.customPeriod,selectedFormat?&*selectedFormat:nullptr,args.route?&*args.route:nullptr);
         if (!args.coordinator->PreparationReported(args.side)) args.coordinator->MarkPrepared(args.side, false);
         if (!args.coordinator->Side(args.side).classified) {
             const auto status = result == 6 ? ProbeMath::StreamStatus::StartFailed
@@ -3689,7 +3721,8 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
               const std::wstring& outputJson = {}, HANDLE externalCancelEvent = nullptr,
               std::string operationId = {},
               std::optional<ExclusiveFormatMatrix::PeriodRequest> customPeriod = std::nullopt,
-              bool sustainedValidation = false) {
+              bool sustainedValidation = false,
+              std::optional<ChannelRouting::Configuration> route = std::nullopt) {
     HANDLE stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     const DWORD eventError = stopEvent == nullptr ? GetLastError() : ERROR_SUCCESS;
     if (stopEvent == nullptr) {
@@ -3786,6 +3819,8 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
         nullptr, analogLoopback ? &loopbackRender : nullptr,
         monitorLatency ? &monitorLatencyData : nullptr,
         monitorLatency ? &monitorLatencySignal : nullptr, customPeriod };
+    captureArgs.route=route;
+    renderArgs.route=route;
     std::thread captureThread;
     std::thread renderThread;
     bool threadCreationSucceeded = true;
@@ -3877,14 +3912,16 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
         }
         DuplexValidationReport::Report report;
         report.reportId = *reportId;
-        report.schemaVersion = sustainedValidation ? 1 : 2;
-        report.reportType = sustainedValidation ? "wasapi-sustained-duplex-validation" : "wasapi-duplex-validation";
+        report.schemaVersion = route ? 3 : sustainedValidation ? 1 : 2;
+        report.reportType = route ? "wasapi-duplex-validation-v2" : sustainedValidation ? "wasapi-sustained-duplex-validation" : "wasapi-duplex-validation";
         report.operationId = operationId.empty() ? *reportId : operationId;
         report.timestampUtc = MatrixTimestampUtc();
         report.probeVersion = PROBE_VERSION;
-        report.provenance = sustainedValidation ? "REAL_WASAPI_SUSTAINED_DUPLEX" : "REAL_WASAPI_DUPLEX";
+        report.provenance = route ? "REAL_WASAPI_DUPLEX_V2" : sustainedValidation ? "REAL_WASAPI_SUSTAINED_DUPLEX" : "REAL_WASAPI_DUPLEX";
         report.captureEndpointId = Utf8(captureId.c_str());
         report.renderEndpointId = Utf8(renderId.c_str());
+        report.route = route;
+        if (route) report.routeFingerprint = ChannelRouting::Fingerprint(*route);
         report.period = customPeriod ? "CUSTOM:" + std::to_string(*customPeriod->requestedPeriod100ns) + ":" + std::to_string(*customPeriod->requestedFrames) : useMinimumPeriod ? "MINIMUM" : "DEFAULT";
         report.mmcss = useProAudioMmcss ? "PRO_AUDIO" : "OFF";
         report.durationSeconds = duration;
@@ -3897,6 +3934,7 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             DuplexValidationReport::Side side;
             side.endpointId = endpoint;
             side.direction = direction;
+            if(route)side.routeFormat=direction=="CAPTURE"?route->capture:route->render;
             const auto hrText = [](HRESULT value) -> std::string {
                 return value == E_PENDING ? std::string{} : Hresult(value);
             };
@@ -3910,7 +3948,10 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.eventHresult = hrText(source.eventResult);
             side.bufferFrames = source.bufferFrames;
             side.framesProcessed = source.frames;
-            side.expectedFrames = static_cast<std::uint64_t>(rate) * duration;
+            side.selectedCaptureSamples = source.selectedCaptureSamples;
+            side.invalidSelectedCaptureSamples = source.invalidSelectedCaptureSamples;
+            const auto sideRate = route ? (direction == "CAPTURE" ? route->capture.format.sampleRate : route->render.format.sampleRate) : rate;
+            side.expectedFrames = static_cast<std::uint64_t>(sideRate) * duration;
             side.events = source.events;
             side.packets = source.packets;
             side.discontinuities = source.discontinuities;
@@ -3933,7 +3974,7 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.eventIntervalMedianMilliseconds = source.eventIntervalMedianMilliseconds;
             side.eventIntervalP95Milliseconds = source.eventIntervalP95Milliseconds;
             side.eventIntervalP99Milliseconds = source.eventIntervalP99Milliseconds;
-            const auto expected = static_cast<std::uint64_t>(rate) * duration;
+            const auto expected = static_cast<std::uint64_t>(sideRate) * duration;
             if (expected != 0) side.frameCoveragePercent = 100.0 * static_cast<double>(source.frames) / static_cast<double>(expected);
             side.elapsedMilliseconds = source.elapsedMilliseconds;
             side.ready = source.eventReady && source.initialized;
@@ -3960,13 +4001,14 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
                     captureStartUs, captureEndUs, renderStartUs, renderEndUs)) / 1000.0;
             }
         }
-        const auto enoughFrames = [&](const DuplexSideSummary& side) {
-            const auto expected = static_cast<std::uint64_t>(rate) * duration;
+        const auto enoughFrames = [&](const DuplexSideSummary& side, unsigned sideRate) {
+            const auto expected = static_cast<std::uint64_t>(sideRate) * duration;
             return expected != 0 && side.frames >= expected - std::max<std::uint64_t>(2ULL * side.bufferFrames, expected / 10);
         };
         const bool clean = bothPrepared && report.startAuthorized && capture.startSucceeded && render.startSucceeded &&
             capture.durationReached && render.durationReached && capture.stopSucceeded && render.stopSucceeded &&
-            enoughFrames(capture) && enoughFrames(render) && report.simultaneousRuntimeMilliseconds &&
+            enoughFrames(capture, route ? route->capture.format.sampleRate : rate) &&
+            enoughFrames(render, route ? route->render.format.sampleRate : rate) && report.simultaneousRuntimeMilliseconds &&
             *report.simultaneousRuntimeMilliseconds >= static_cast<double>(duration) * 900.0 &&
             capture.status == ProbeMath::StreamStatus::StreamCompleted && render.status == ProbeMath::StreamStatus::StreamCompleted &&
             overallQuality == ProbeMath::StreamQuality::Clean && capture.serviceFaults == 0 && render.serviceFaults == 0 &&
@@ -4115,6 +4157,7 @@ int wmain(int argc, wchar_t** argv) {
     bool testInit = false;
     bool testStream = false;
     bool testDuplex = false;
+    bool testDuplexV2 = false;
     bool testMonitor = false;
     bool testMonitorLatency = false;
     bool testAnalogLoopback = false;
@@ -4150,6 +4193,8 @@ int wmain(int argc, wchar_t** argv) {
     std::wstring outputJson;
     std::wstring operationIdText;
     std::wstring cancelEventHandleText;
+    std::wstring routeModeText, captureRateText, captureChannelsV2Text, captureFormatText, captureMaskText, captureIndexText;
+    std::wstring renderRateText, renderChannelsV2Text, renderFormatText, renderMaskText, renderIndexText;
     std::wstring mmcssText = L"off";
     bool rateSpecified = false;
     bool channelsSpecified = false;
@@ -4204,6 +4249,7 @@ int wmain(int argc, wchar_t** argv) {
         else if (std::wcscmp(argv[index], L"--test-init") == 0) testInit = true;
         else if (std::wcscmp(argv[index], L"--test-stream") == 0) testStream = true;
         else if (std::wcscmp(argv[index], L"--test-duplex") == 0) testDuplex = true;
+        else if (std::wcscmp(argv[index], L"--test-duplex-v2") == 0) testDuplexV2 = true;
         else if (std::wcscmp(argv[index], L"--test-sustained-duplex") == 0) { testDuplex = true; sustainedDuplex = true; }
         else if (std::wcscmp(argv[index], L"--test-monitor") == 0) testMonitor = true;
         else if (std::wcscmp(argv[index], L"--test-monitor-latency") == 0) testMonitorLatency = true;
@@ -4243,15 +4289,27 @@ int wmain(int argc, wchar_t** argv) {
         else if (std::wcscmp(argv[index], L"--period") == 0 && index + 1 < argc && !periodSpecified) { periodText = argv[++index]; periodSpecified = true; }
         else if (std::wcscmp(argv[index], L"--duration") == 0 && index + 1 < argc && !durationSpecified) { durationText = argv[++index]; durationSpecified = true; }
         else if (std::wcscmp(argv[index], L"--mmcss") == 0 && index + 1 < argc && !mmcssSpecified) { mmcssText = argv[++index]; mmcssSpecified = true; }
+        else if (std::wcscmp(argv[index], L"--route-mode") == 0 && index + 1 < argc && routeModeText.empty()) routeModeText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--capture-rate") == 0 && index + 1 < argc && captureRateText.empty()) captureRateText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--capture-channels") == 0 && index + 1 < argc && captureChannelsV2Text.empty()) captureChannelsV2Text=argv[++index];
+        else if (std::wcscmp(argv[index], L"--capture-format") == 0 && index + 1 < argc && captureFormatText.empty()) captureFormatText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--capture-mask") == 0 && index + 1 < argc && captureMaskText.empty()) captureMaskText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--capture-indices") == 0 && index + 1 < argc && captureIndexText.empty()) captureIndexText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--render-rate") == 0 && index + 1 < argc && renderRateText.empty()) renderRateText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--render-channels") == 0 && index + 1 < argc && renderChannelsV2Text.empty()) renderChannelsV2Text=argv[++index];
+        else if (std::wcscmp(argv[index], L"--render-format") == 0 && index + 1 < argc && renderFormatText.empty()) renderFormatText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--render-mask") == 0 && index + 1 < argc && renderMaskText.empty()) renderMaskText=argv[++index];
+        else if (std::wcscmp(argv[index], L"--render-indices") == 0 && index + 1 < argc && renderIndexText.empty()) renderIndexText=argv[++index];
         else {
             std::fwprintf(stderr, L"Invalid or incomplete argument. Run --help for usage.\n");
             return 2;
         }
     }
     const auto customPeriod = periodSpecified ? ParseCustomPeriod(periodText) : std::nullopt;
+    std::optional<ChannelRouting::Configuration> routeV2;
     const bool formatMatrixMode = scanFormats || validateFormats;
     if (formatMatrixMode) {
-        const bool conflictingOptions = listOnly || testInit || testStream || testDuplex || testMonitor ||
+        const bool conflictingOptions = listOnly || testInit || testStream || testDuplex || testDuplexV2 || testMonitor ||
             testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || clockProbe ||
             confirmLiveOutput || signalLevels || confirmTestSignal || confirmPhysicalLoopback || testOutputChannel ||
             confirmLiveCapture || confirmPhysicalRouting || confirmSafetySetup || captureChannelSpecified ||
@@ -4336,7 +4394,7 @@ int wmain(int argc, wchar_t** argv) {
         !durationSpecified ||
         !ParseStreamDuration(durationText, streamDuration) || streamDuration > 10 ||
         rateSpecified || channelsSpecified || formatSpecified || captureChannelSpecified ||
-        testInit || testStream || testDuplex || testMonitor || testMonitorLatency || testAnalogLoopback ||
+        testInit || testStream || testDuplex || testDuplexV2 || testMonitor || testMonitorLatency || testAnalogLoopback ||
         testMonitorRtlPreflight || meterCapture || scanFormats || validateFormats || clockProbe || signalLevels ||
         confirmPhysicalLoopback || confirmLiveCapture || confirmPhysicalRouting || confirmSafetySetup ||
         !testSignalText.empty() || (periodSpecified && periodText != L"default" && periodText != L"minimum") ||
@@ -4402,22 +4460,32 @@ int wmain(int argc, wchar_t** argv) {
         std::fwprintf(stderr, L"--mmcss requires --test-stream or --test-duplex.\n");
         return 2;
     }
-    if (durationSpecified && !testStream && !testDuplex && !testMonitor && !testMonitorLatency && !testAnalogLoopback && !testMonitorRtlPreflight && !meterCapture && !testOutputChannel) {
+    if (durationSpecified && !testStream && !testDuplex && !testDuplexV2 && !testMonitor && !testMonitorLatency && !testAnalogLoopback && !testMonitorRtlPreflight && !meterCapture && !testOutputChannel) {
         std::fwprintf(stderr, L"--duration requires --test-stream or --test-duplex.\n");
         return 2;
     }
-    if (testInit || testStream || testDuplex || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) {
+    if (testInit || testStream || testDuplex || testDuplexV2 || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) {
         const unsigned activeModeCount = static_cast<unsigned>(testInit) +
-            static_cast<unsigned>(testStream) + static_cast<unsigned>(testDuplex) +
+            static_cast<unsigned>(testStream) + static_cast<unsigned>(testDuplex) + static_cast<unsigned>(testDuplexV2) +
             static_cast<unsigned>(testMonitor) + static_cast<unsigned>(testMonitorLatency) +
             static_cast<unsigned>(testAnalogLoopback) + static_cast<unsigned>(testMonitorRtlPreflight) +
             static_cast<unsigned>(meterCapture) + static_cast<unsigned>(testOutputChannel);
         const bool oneEndpoint = captureId.empty() != renderId.empty();
         const bool endpointsValid = testOutputChannel ? renderSpecified && !renderId.empty() && !captureSpecified
             : meterCapture ? captureSpecified && !captureId.empty() && !renderSpecified
-            : testDuplex || testMonitor || testMonitorLatency || testAnalogLoopback
+            : testDuplex || testDuplexV2 || testMonitor || testMonitorLatency || testAnalogLoopback
             ? captureSpecified && renderSpecified && !captureId.empty() && !renderId.empty()
             : testMonitorRtlPreflight ? captureSpecified && !captureId.empty() && !renderSpecified : oneEndpoint;
+        if (testDuplexV2) {
+            const auto number=[](const std::wstring& text,std::uint32_t maximum,std::uint32_t& out){if(text.empty())return false;wchar_t* end=nullptr;const auto value=std::wcstoul(text.c_str(),&end,0);if(end==text.c_str()||*end!=L'\0'||value>maximum)return false;out=static_cast<std::uint32_t>(value);return true;};
+            const auto indices=[&](const std::wstring& text,std::array<std::uint16_t,2>& out,std::uint16_t count){std::size_t begin=0;for(std::uint16_t i=0;i<count;++i){const auto end=text.find(L',',begin);if((i+1<count)==(end==std::wstring::npos))return false;const auto token=text.substr(begin,end==std::wstring::npos?end:end-begin);std::uint32_t value{};if(!number(token,31,value))return false;out[i]=static_cast<std::uint16_t>(value);begin=end==std::wstring::npos?text.size():end+1;}return begin==text.size();};
+            std::uint32_t cr{},cc{},cm{},rr{},rc{},rm{};ChannelRouting::Configuration route{};
+            route.captureEndpointId=Utf8(captureId.c_str());route.renderEndpointId=Utf8(renderId.c_str());
+            route.mode=routeModeText==L"MONO_TO_STEREO"?ChannelRouting::Mode::MonoToStereo:routeModeText==L"STEREO_TO_STEREO"?ChannelRouting::Mode::StereoToStereo:routeModeText==L"MONO_TO_MONO"?ChannelRouting::Mode::MonoToMono:static_cast<ChannelRouting::Mode>(255);
+            const auto enc=[](const std::wstring& text){return text==L"PCM16"?ExclusiveFormatMatrix::Encoding::Pcm16:text==L"PCM24_IN_32"?ExclusiveFormatMatrix::Encoding::Pcm24In32:text==L"FLOAT32"?ExclusiveFormatMatrix::Encoding::Float32:static_cast<ExclusiveFormatMatrix::Encoding>(255);};
+            const bool valid=number(captureRateText,48000,cr)&&(cr==44100||cr==48000)&&number(captureChannelsV2Text,32,cc)&&cc>0&&number(captureMaskText.empty()?L"0":captureMaskText,UINT32_MAX,cm)&&number(renderRateText,48000,rr)&&(rr==44100||rr==48000)&&number(renderChannelsV2Text,32,rc)&&rc>0&&number(renderMaskText.empty()?L"0":renderMaskText,UINT32_MAX,rm)&&enc(captureFormatText)!=static_cast<ExclusiveFormatMatrix::Encoding>(255)&&enc(renderFormatText)!=static_cast<ExclusiveFormatMatrix::Encoding>(255)&&indices(captureIndexText,route.captureChannels,ChannelRouting::CaptureCount(route.mode))&&indices(renderIndexText,route.renderChannels,ChannelRouting::RenderCount(route.mode));
+            if(valid){route.capture.format={cr,static_cast<std::uint16_t>(cc),enc(captureFormatText)};route.capture.channelMask=cm;route.render.format={rr,static_cast<std::uint16_t>(rc),enc(renderFormatText)};route.render.channelMask=rm;if(ChannelRouting::Validate(route))routeV2=route;}
+        }
         if (activeModeCount != 1) {
             std::fwprintf(stderr, testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel
                 ? L"Choose exactly one active test mode, including --test-monitor-latency.\n"
@@ -4432,18 +4500,19 @@ int wmain(int argc, wchar_t** argv) {
         }
         const bool meterArgsValid = !meterCapture ||
             ((!rateSpecified || rateText == L"48000") && (!formatSpecified || formatText == L"pcm16"));
-        if (listOnly || !endpointsValid || duplicateEndpoint ||
-            (!meterCapture && !testOutputChannel && (!rateSpecified || !channelsSpecified || !formatSpecified)) ||
+        if (listOnly || !endpointsValid || duplicateEndpoint || (testDuplexV2 && (!routeV2 || !durationSpecified || (periodSpecified && periodText!=L"default"&&periodText!=L"minimum"))) ||
+            (!testDuplexV2 && !meterCapture && !testOutputChannel && (!rateSpecified || !channelsSpecified || !formatSpecified)) ||
             (meterCapture && !channelsSpecified) ||
-            (!meterCapture && !testOutputChannel && rateText != L"44100" && rateText != L"48000") || !meterArgsValid ||
-            (!testOutputChannel && channelsText != L"1" && channelsText != L"2") ||
-            (!meterCapture && !testOutputChannel && formatText != L"pcm16" && formatText != L"pcm24-in-32" && formatText != L"float32") ||
+            (!testDuplexV2 && !meterCapture && !testOutputChannel && rateText != L"44100" && rateText != L"48000") || !meterArgsValid ||
+            (!testDuplexV2 && !testOutputChannel && channelsText != L"1" && channelsText != L"2") ||
+            (!testDuplexV2 && !meterCapture && !testOutputChannel && formatText != L"pcm16" && formatText != L"pcm24-in-32" && formatText != L"float32") ||
             (periodSpecified && periodText != L"default" && periodText != L"minimum" && !(testDuplex && customPeriod))) {
             const wchar_t* message = meterCapture
                 ? L"--meter-capture requires one explicit Capture endpoint, --channels 1|2, 48000 Hz PCM16, and optional --period default|minimum.\n"
             : testOutputChannel ? L"--test-output-channel requires both confirmations, --render-channel 1|2 and --duration 1..10; format is fixed at 48000 Hz stereo PCM16.\n"
                 : testInit
                 ? L"--test-init requires one endpoint, --rate 44100|48000, --channels 1|2, --format pcm16|pcm24-in-32|float32, and optional --period default|minimum.\n"
+            : testDuplexV2 ? L"--test-duplex-v2 requires exact endpoints, route mode, per-side rate/channels/format, optional masks, and zero-based selected indices.\n"
             : testDuplex
                     ? L"--test-duplex requires both --capture-id and --render-id, --rate 48000, --channels 2, --format pcm16, and --period default|minimum|custom:<100ns>:<frames>.\n"
                     : testMonitorRtlPreflight
@@ -4463,7 +4532,7 @@ int wmain(int argc, wchar_t** argv) {
             return 2;
         }
         const bool durationValid = sustainedDuplex ? ParseSustainedDuplexDuration(durationText, streamDuration) : ParseStreamDuration(durationText, streamDuration);
-        if ((testStream || testDuplex || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) && (!durationSpecified || !durationValid)) {
+        if ((testStream || testDuplex || testDuplexV2 || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) && (!durationSpecified || !durationValid)) {
             std::fwprintf(stderr, testAnalogLoopback
                 ? L"--test-analog-loopback requires --duration 5.\n"
                 : testMonitorRtlPreflight ? L"--test-monitor-rtl-preflight requires --duration 5.\n"
@@ -4486,7 +4555,7 @@ int wmain(int argc, wchar_t** argv) {
             std::fwprintf(stderr, L"--test-monitor-latency currently requires exactly --duration 5.\n");
             return 2;
         }
-        if ((testStream || testDuplex || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) && mmcssText != L"off" && mmcssText != L"pro-audio") {
+        if ((testStream || testDuplex || testDuplexV2 || testMonitor || testMonitorLatency || testAnalogLoopback || testMonitorRtlPreflight || meterCapture || testOutputChannel) && mmcssText != L"off" && mmcssText != L"pro-audio") {
             std::fwprintf(stderr, L"--mmcss must be off or pro-audio.\n");
             return 2;
         }
@@ -4500,7 +4569,7 @@ int wmain(int argc, wchar_t** argv) {
                               : L"--test-stream currently supports only 48000 Hz stereo pcm16.\n");
             return 2;
         }
-    } else if (rateSpecified || channelsSpecified || formatSpecified || periodSpecified || durationSpecified || mmcssSpecified || confirmLiveOutput || signalLevels || confirmTestSignal || confirmPhysicalLoopback || captureChannelSpecified || renderChannelSpecified || confirmLiveCapture || confirmPhysicalRouting || confirmSafetySetup || !testSignalText.empty()) {
+    } else if (rateSpecified || channelsSpecified || formatSpecified || periodSpecified || durationSpecified || mmcssSpecified || confirmLiveOutput || signalLevels || confirmTestSignal || confirmPhysicalLoopback || captureChannelSpecified || renderChannelSpecified || confirmLiveCapture || confirmPhysicalRouting || confirmSafetySetup || !testSignalText.empty() || !routeModeText.empty() || !captureRateText.empty() || !captureChannelsV2Text.empty() || !captureFormatText.empty() || !captureMaskText.empty() || !captureIndexText.empty() || !renderRateText.empty() || !renderChannelsV2Text.empty() || !renderFormatText.empty() || !renderMaskText.empty() || !renderIndexText.empty()) {
         std::fwprintf(stderr, L"--rate, --channels, --format, and --period require an active test; --duration and --mmcss require --test-stream or --test-duplex.\n");
         return 2;
     }
@@ -4510,6 +4579,12 @@ int wmain(int argc, wchar_t** argv) {
                          periodText == L"minimum", streamDuration, mmcssText == L"pro-audio", clockProbe,
                          false, false, false, 1, 1, false, outputJson, externalCancelEvent,
                          operationIdText.empty() ? std::string{} : Utf8(operationIdText.c_str()), customPeriod, sustainedDuplex);
+    }
+    if (testDuplexV2 && routeV2) {
+        return RunDuplex(captureId, renderId, routeV2->capture.format.sampleRate, routeV2->capture.format.channels, L"pcm16",
+            periodText == L"minimum", streamDuration, mmcssText == L"pro-audio", false,
+            false, false, false, 1, 1, false, outputJson, externalCancelEvent,
+            operationIdText.empty()?std::string{}:Utf8(operationIdText.c_str()), std::nullopt, false, routeV2);
     }
     if (testMonitor) {
         return RunDuplex(captureId, renderId, 48'000, 2, formatText,
