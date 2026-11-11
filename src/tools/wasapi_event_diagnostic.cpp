@@ -100,6 +100,13 @@ int Run(const Options& options) {
         if (pathError != ERROR_FILE_NOT_FOUND && pathError != ERROR_PATH_NOT_FOUND) {
             report.diagnosticDisposition = "FAILED";
             report.errorStage = "OUTPUT_PATH_PREFLIGHT";
+        } else {
+            const auto parent = std::filesystem::path(options.outputPath).parent_path();
+            const DWORD parentAttributes = GetFileAttributesW(parent.c_str());
+            if (parentAttributes == INVALID_FILE_ATTRIBUTES || (parentAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+                report.diagnosticDisposition = "FAILED";
+                report.errorStage = "OUTPUT_DIRECTORY_PREFLIGHT";
+            }
         }
     }
 
@@ -189,15 +196,6 @@ int Run(const Options& options) {
         if (FAILED(hr)) fail("AUDIOCLIENT_INITIALIZE", hr);
     }
     if (report.errorStage == "NONE") {
-        eventHandle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-        if (eventHandle == nullptr) fail("CREATE_AUDIO_EVENT", HRESULT_FROM_WIN32(GetLastError()));
-    }
-    if (report.errorStage == "NONE") {
-        const HRESULT hr = client->SetEventHandle(eventHandle);
-        report.setEventHandleHresult = Hresult(hr);
-        if (FAILED(hr)) fail("SET_EVENT_HANDLE", hr);
-    }
-    if (report.errorStage == "NONE") {
         UINT32 frames = 0;
         const HRESULT hr = client->GetBufferSize(&frames);
         report.getBufferSizeHresult = Hresult(hr);
@@ -207,6 +205,15 @@ int Run(const Options& options) {
         }
         if (FAILED(hr)) fail("GET_BUFFER_SIZE", hr);
         else if (frames != kRequestedFrames) fail("ACTUAL_BUFFER_GEOMETRY_MISMATCH", E_PENDING);
+    }
+    if (report.errorStage == "NONE") {
+        eventHandle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        if (eventHandle == nullptr) fail("CREATE_AUDIO_EVENT", HRESULT_FROM_WIN32(GetLastError()));
+    }
+    if (report.errorStage == "NONE") {
+        const HRESULT hr = client->SetEventHandle(eventHandle);
+        report.setEventHandleHresult = Hresult(hr);
+        if (FAILED(hr)) fail("SET_EVENT_HANDLE", hr);
     }
     if (report.errorStage == "NONE") {
         const HRESULT hr = client->GetService(IID_PPV_ARGS(&render));
