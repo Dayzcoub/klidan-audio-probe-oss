@@ -5,20 +5,29 @@ public static class WorkerScanV2PlanPreparation
     public static WorkerScanV2ContractV4 Prepare(string captureId, string renderId, WorkerScanV2Route route,
         RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns,
         int? diagnosticPeriodMilliseconds = null, string diagnosticMmcssMode = "OFF")
+        => PrepareCore(captureId, renderId, route, captureMatrix, renderMatrix, discoveryGeneration, repeatabilityRuns, diagnosticPeriodMilliseconds, diagnosticMmcssMode, false);
+
+    public static WorkerScanV2ContractV4 PrepareRepeatSelected(string captureId, string renderId, WorkerScanV2Route route,
+        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, bool testOnlyAllowFake = false)
+        => PrepareCore(captureId, renderId, route, captureMatrix, renderMatrix, discoveryGeneration, 5, 10, "PRO_AUDIO", true, testOnlyAllowFake);
+
+    private static WorkerScanV2ContractV4 PrepareCore(string captureId, string renderId, WorkerScanV2Route route,
+        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns,
+        int? diagnosticPeriodMilliseconds, string diagnosticMmcssMode, bool repeatSelected, bool testOnlyAllowFake = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
         ArgumentException.ThrowIfNullOrWhiteSpace(renderId);
         ArgumentNullException.ThrowIfNull(route);
         if (captureId == renderId || discoveryGeneration == 0) throw new InvalidDataException("Fresh distinct endpoints and a current Worker discovery generation are required.");
-        var captureBounds = ReadBounds(captureMatrix, captureId, "CAPTURE", route.Capture);
-        var renderBounds = ReadBounds(renderMatrix, renderId, "RENDER", route.Render);
+        var captureBounds = ReadBounds(captureMatrix, captureId, "CAPTURE", route.Capture, testOnlyAllowFake);
+        var renderBounds = ReadBounds(renderMatrix, renderId, "RENDER", route.Render, testOnlyAllowFake);
         IReadOnlyList<WorkerScanV2Candidate> candidates;
         if (diagnosticPeriodMilliseconds is { } diagnosticMs)
         {
-            if (diagnosticMs is not (5 or 10) || repeatabilityRuns != 0 || diagnosticMmcssMode is not ("OFF" or "PRO_AUDIO") || route.Mode != "MONO_TO_STEREO" ||
+            if (diagnosticMs is not (5 or 10) || (!repeatSelected && repeatabilityRuns != 0) || diagnosticMmcssMode is not ("OFF" or "PRO_AUDIO") || route.Mode != "MONO_TO_STEREO" ||
                 route.Capture.SampleRateHz != 48_000 || route.Render.SampleRateHz != 48_000 ||
                 route.Capture.Encoding != "PCM16" || route.Render.Encoding != "PCM16")
-                throw new InvalidDataException("Point diagnostics require the reviewed 48 kHz PCM16 MONO_TO_STEREO route, 5/10 ms, and R=0.");
+                throw new InvalidDataException(repeatSelected ? "RepeatSelected requires the reviewed 10 ms 48 kHz PCM16 MONO_TO_STEREO route." : "Point diagnostics require the reviewed 48 kHz PCM16 MONO_TO_STEREO route, 5/10 ms, and R=0.");
             static int Frames(long period, int rate) => checked((int)(((decimal)period * rate + 5_000_000m) / 10_000_000m));
             var candidate = WorkerScanV2CandidatePlanning.Make(0, diagnosticMs * 10_000L, route,
                 Frames(captureBounds.MinimumPeriod100ns, route.Capture.SampleRateHz), Frames(captureBounds.DefaultPeriod100ns, route.Capture.SampleRateHz),
@@ -28,14 +37,14 @@ public static class WorkerScanV2PlanPreparation
         }
         else candidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(route, captureBounds, renderBounds);
         if (candidates.Count == 0) throw new InvalidDataException("Capture and Render reported period ranges do not produce any unique candidate periods.");
-        var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeatabilityRuns);
+        var budget = repeatSelected ? new WorkerScanV2Budget(7, 25, 600) : WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeatabilityRuns);
         return new(route, candidates, [diagnosticPeriodMilliseconds is null ? "PRO_AUDIO" : diagnosticMmcssMode], repeatabilityRuns, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds,
-            30, budget.SessionLifetimeSeconds, 8, captureBounds, renderBounds);
+            30, budget.SessionLifetimeSeconds, 8, captureBounds, renderBounds, repeatSelected);
     }
 
-    private static WorkerScanV2PeriodBounds ReadBounds(RealFormatMatrixDto matrix, string endpointId, string direction, WorkerScanV2Side side)
+    private static WorkerScanV2PeriodBounds ReadBounds(RealFormatMatrixDto matrix, string endpointId, string direction, WorkerScanV2Side side, bool testOnlyAllowFake)
     {
-        if (matrix is null || matrix.Provenance != "REAL_WASAPI_QUERY" || matrix.ReportLevel != "PASSIVE_QUERY" || matrix.EndpointId != endpointId || matrix.Direction != direction || matrix.Candidates is null)
+        if (matrix is null || matrix.Provenance != (testOnlyAllowFake ? "TEST_FAKE_FORMAT_BACKEND" : "REAL_WASAPI_QUERY") || matrix.ReportLevel != "PASSIVE_QUERY" || matrix.EndpointId != endpointId || matrix.Direction != direction || matrix.Candidates is null)
             throw new InvalidDataException($"{direction} passive-query identity, provenance, or report level is not current and exact.");
         var format = matrix.Candidates.Where(c => c.SampleRate == side.SampleRateHz && c.Channels == side.Channels && c.Encoding == side.Encoding).ToArray();
         if (format.Length != 2 || format.Count(c => c.Period == "minimum") != 1 || format.Count(c => c.Period == "default") != 1)

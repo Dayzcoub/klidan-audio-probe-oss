@@ -61,7 +61,7 @@ try
     var plan = options.Mode == "SHORT_SEARCH"
         ? WorkerScanV2PlanPreparation.Prepare(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats)
         : options.Mode == "REPEAT_SELECTED"
-            ? WorkerScanV2PlanPreparation.Prepare(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, 5, 10, "PRO_AUDIO")
+            ? WorkerScanV2PlanPreparation.PrepareRepeatSelected(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, worker.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal))
         : PrepareFakePlan(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats);
     if (options.Mode == "REPEAT_SELECTED")
     {

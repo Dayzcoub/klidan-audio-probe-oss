@@ -112,6 +112,7 @@ async Task<(int ExitCode, string Output)> RunHeadlessWithoutTerminalInput(params
     var start = new ProcessStartInfo(headlessRunner) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(headlessRunner)! };
     foreach (var argument in arguments) start.ArgumentList.Add(argument);
     start.Environment["KLIDAN_BUILD_SHA"] = new string('a', 40);
+    start.Environment["KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS"] = Environment.GetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS");
     using var process = Process.Start(start) ?? throw new InvalidOperationException("Headless runner test process did not start.");
     process.StandardInput.Close();
     var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
@@ -131,6 +132,23 @@ var damagedSource = Path.Combine(headlessAuthorizationRoot, "damaged-summary.jso
 var damagedBytes = File.ReadAllBytes(damagedSource); damagedBytes[^3] ^= 1; File.WriteAllBytes(damagedSource, damagedBytes);
 var damagedRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "damaged"), "--authorize-r5", "--source-evidence", damagedSource);
 Check(damagedRepeat.ExitCode == 65 && damagedRepeat.Output.Contains("Original evidence verification failed", StringComparison.Ordinal), "RepeatSelected rejects corrupted source evidence before Worker startup");
+var repeatedRunRoot = Path.Combine(headlessAuthorizationRoot, "full-repeat-selected");
+var originalCaptureId = "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}";
+var originalRenderId = "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}";
+Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", $"{originalCaptureId}|{originalRenderId}");
+var fullRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", repeatedRunRoot, "--authorize-r5", "--source-evidence", originalSummary);
+Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", null);
+Check(fullRepeat.ExitCode == 0 && fullRepeat.Output.Contains("RESULT=REPEATABILITY_CONFIRMED", StringComparison.Ordinal), $"production headless RepeatSelected integration: {fullRepeat.Output}");
+if (fullRepeat.ExitCode == 0)
+{
+    var summaryPath = Directory.GetFiles(repeatedRunRoot, "headless-summary.json", SearchOption.AllDirectories).Single();
+    using var summary = JsonDocument.Parse(File.ReadAllBytes(summaryPath));
+    var runDirectory = Path.GetDirectoryName(summaryPath)!;
+    var repeatFiles = Directory.GetFiles(runDirectory, "repeat-*.json").Order(StringComparer.Ordinal).ToArray();
+    var matrixPath = Path.Combine(runDirectory, summary.RootElement.GetProperty("candidateMatrixPath").GetString()!);
+    using var matrix = JsonDocument.Parse(File.ReadAllBytes(matrixPath));
+    Check(repeatFiles.Length == 5 && repeatFiles.All(p => JsonDocument.Parse(File.ReadAllBytes(p)).RootElement.GetProperty("classification").GetString() == "CLEAN") && summary.RootElement.GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && matrix.RootElement.GetProperty("usedOperations").GetInt32() == 7 && summary.RootElement.GetProperty("sourceEvidenceSha256").GetString() == Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(originalSummary))), "headless integration read-back confirms five clean repeats, seven-operation budget, source SHA and session cleanup");
+}
 
 var handshakeId = Guid.NewGuid();
 var incompatibleHandshakes = new[]
