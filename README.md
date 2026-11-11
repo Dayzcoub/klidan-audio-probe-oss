@@ -1,6 +1,6 @@
 # KLIDAN Audio Probe
 
-Независимая Windows x64-утилита для диагностики аудиоинтерфейсов и проверки совместимости WASAPI Shared / Exclusive.
+Независимая Windows x64-утилита для диагностики аудиоинтерфейсов и квалификации WASAPI Exclusive как целевого транспорта KLIDAN; WASAPI Shared рассматривается отдельно как fallback.
 
 **Статус:** experimental preview. Реализованы пассивное endpoint discovery, WASAPI Exclusive format query и Initialize-only, bounded Capture/Render stream checks, Duplex, Period Discovery, Repeatability, Sustained Validation, Capture meter, Evidence Library, versioned device profiles и consent-gated Automatic Scan. WPF GUI использует отдельный Native Worker и Named Pipe IPC; рабочий путь Device → Test → Result включает реальный scan orchestration и отдельные synthetic Developer Tools.
 

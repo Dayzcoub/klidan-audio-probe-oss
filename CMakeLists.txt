@@ -14,11 +14,26 @@ target_include_directories(KlidanAudioProbe PRIVATE src/probe src/third_party/ra
 target_compile_definitions(KlidanAudioProbe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE PROBE_VERSION="${PROJECT_VERSION}")
 target_link_libraries(KlidanAudioProbe PRIVATE ole32 propsys setupapi uuid avrt bcrypt)
 
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  OUTPUT_VARIABLE WASAPI_DIAGNOSTIC_SOURCE_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+string(LENGTH "${WASAPI_DIAGNOSTIC_SOURCE_COMMIT}" WASAPI_DIAGNOSTIC_SOURCE_COMMIT_LENGTH)
+if(NOT WASAPI_DIAGNOSTIC_SOURCE_COMMIT MATCHES "^[0-9a-fA-F]+$" OR NOT WASAPI_DIAGNOSTIC_SOURCE_COMMIT_LENGTH EQUAL 40)
+  set(WASAPI_DIAGNOSTIC_SOURCE_COMMIT "UNKNOWN")
+endif()
+add_executable(WasapiRenderEventDiagnostic src/tools/wasapi_event_diagnostic.cpp)
+target_compile_features(WasapiRenderEventDiagnostic PRIVATE cxx_std_20)
+target_include_directories(WasapiRenderEventDiagnostic PRIVATE src/tools src/third_party/rapidjson/include)
+target_compile_definitions(WasapiRenderEventDiagnostic PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE
+  WASAPI_DIAGNOSTIC_BUILD_COMMIT=\"${WASAPI_DIAGNOSTIC_SOURCE_COMMIT}\")
+target_link_libraries(WasapiRenderEventDiagnostic PRIVATE ole32 uuid)
+
 
 if(MSVC)
   target_compile_options(KlidanAudioProbe PRIVATE /W4 /permissive-)
+  target_compile_options(WasapiRenderEventDiagnostic PRIVATE /W4 /permissive-)
 else()
   target_compile_options(KlidanAudioProbe PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(WasapiRenderEventDiagnostic PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_executable(KlidanPrbsWavExport src/tools/prbs_wav_export.cpp)
@@ -61,6 +76,15 @@ if(MSVC)
 endif()
 
 enable_testing()
+add_executable(probe_wasapi_event_diagnostic_contract_tests tests/wasapi_event_diagnostic_contract_tests.cpp)
+target_compile_features(probe_wasapi_event_diagnostic_contract_tests PRIVATE cxx_std_20)
+target_include_directories(probe_wasapi_event_diagnostic_contract_tests PRIVATE src/tools src/third_party/rapidjson/include)
+file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/docs/schemas/wasapi-independent-render-event-diagnostic-v1.schema.json" WASAPI_DIAGNOSTIC_SCHEMA_PATH)
+target_compile_definitions(probe_wasapi_event_diagnostic_contract_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE
+  PROBE_WASAPI_EVENT_SCHEMA=\"${WASAPI_DIAGNOSTIC_SCHEMA_PATH}\")
+target_link_libraries(probe_wasapi_event_diagnostic_contract_tests PRIVATE ole32 uuid)
+add_test(NAME probe_wasapi_event_diagnostic_contract COMMAND probe_wasapi_event_diagnostic_contract_tests)
+add_test(NAME probe_wasapi_event_diagnostic_self_test COMMAND WasapiRenderEventDiagnostic --self-test)
 add_executable(probe_scan_plan_v2_v4_tests tests/scan_plan_v2_v4_tests.cpp)
 target_compile_features(probe_scan_plan_v2_v4_tests PRIVATE cxx_std_20)
 target_include_directories(probe_scan_plan_v2_v4_tests PRIVATE src/probe)
