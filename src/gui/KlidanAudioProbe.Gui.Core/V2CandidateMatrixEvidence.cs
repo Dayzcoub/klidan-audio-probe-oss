@@ -43,6 +43,8 @@ public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFin
     public bool ProfileEligible { get; init; }
     public string? ProfilePath { get; init; }
     public string? ProfileSha256 { get; init; }
+    public string? SourceEvidenceSha256 { get; init; }
+    public int? SourceCandidateIndex { get; init; }
 }
 
 public sealed record V4RepeatabilityRunEvidence(Guid OperationId, Guid SessionId, string RouteFingerprint, int CandidateIndex, string Result, string ReasonCode,

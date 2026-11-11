@@ -26,6 +26,22 @@ int Run() {
     assert(ComputeBudget(8, 5).operations == 29);
     assert(ComputeBudget(8, 5).activeSeconds == 65);
     assert(ComputeBudget(8, 5).sessionSeconds == 1171);
+    const auto repeatBudget = ComputeRepeatSelectedBudget();
+    assert(repeatBudget.operations == 7 && repeatBudget.activeSeconds == 25 && repeatBudget.sessionSeconds == 600);
+    const std::vector<Candidate> selected{{0, 100'000, 480, 480, 100'000, 100'000, 0, 0, false, false, 144, 480, 144, 480, ""}};
+    const auto repeatCanonical = Canonical("capture", "render", route, normalBounds, normalBounds, selected, 5, "PRO_AUDIO", 7, 25, 30, 600, 8, 7, Fingerprint(route), true);
+    assert(repeatCanonical.find("|REPEAT_SELECTED|5|7|25|") != std::string::npos);
+    TransportSequence repeatSelectedSequence(selected, 7, 25, 5, true);
+    repeatSelectedSequence.Begin(0, Step::CaptureInitialize, "r-cap"); repeatSelectedSequence.Complete(Disposition::Clean, true);
+    repeatSelectedSequence.Begin(0, Step::RenderInitialize, "r-ren"); repeatSelectedSequence.Complete(Disposition::Clean, true);
+    assert(repeatSelectedSequence.RepeatabilityPending());
+    repeatSelectedSequence.BeginRepeatability();
+    for (unsigned i = 0; i < 5; ++i) {
+        repeatSelectedSequence.Begin(0, Step::Repeatability, "r-" + std::to_string(i), 5);
+        repeatSelectedSequence.Complete(Disposition::Clean, true);
+        if (i < 4) repeatSelectedSequence.BeginRepeatability();
+    }
+    assert(repeatSelectedSequence.Complete() && repeatSelectedSequence.UsedOperations() == 7 && repeatSelectedSequence.UsedActiveSeconds() == 25);
     const auto canonical = Canonical("capture", "render", route, normalBounds, normalBounds, candidates, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(route));
     assert(canonical.starts_with("SCAN_PLAN_V2|4|7|capture|render|"));
     assert(canonical.find("B|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n") != std::string::npos);

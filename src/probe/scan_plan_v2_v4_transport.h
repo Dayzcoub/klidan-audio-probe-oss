@@ -14,9 +14,9 @@ enum class Disposition { Clean, Failed, Unsupported, Unknown };
 class TransportSequence {
 public:
     explicit TransportSequence(std::vector<Candidate> candidates, unsigned maxOperations,
-                               unsigned maxActiveSeconds, unsigned repeatabilityRuns = 0)
+                               unsigned maxActiveSeconds, unsigned repeatabilityRuns = 0, bool repeatSelected = false)
         : candidates_(std::move(candidates)), maxOperations_(maxOperations),
-          maxActiveSeconds_(maxActiveSeconds), repeatabilityRuns_(repeatabilityRuns) {
+          maxActiveSeconds_(maxActiveSeconds), repeatabilityRuns_(repeatabilityRuns), repeatSelected_(repeatSelected) {
         if (candidates_.empty() || candidates_.size() > 8 || maxOperations_ == 0 || maxActiveSeconds_ == 0 || repeatabilityRuns_ > 5)
             throw std::invalid_argument("invalid V4 transport sequence scope");
         AdvancePastRejected();
@@ -63,7 +63,7 @@ public:
             return;
         }
         if (inFlightStep_ == Step::CaptureInitialize) phase_ = Phase::Render;
-        else if (inFlightStep_ == Step::RenderInitialize) phase_ = Phase::Duplex;
+        else if (inFlightStep_ == Step::RenderInitialize) phase_ = repeatSelected_ ? Phase::RepeatabilityPending : Phase::Duplex;
         else { selectedCandidateIndex_ = cursor_; stopped_ = true; phase_ = Phase::RepeatabilityPending; }
     }
 
@@ -99,7 +99,7 @@ private:
     Phase phase_{Phase::Capture};
     Step inFlightStep_{Step::CaptureInitialize};
     unsigned inFlightDuration_{};
-    bool inFlight_{}, stopped_{};
+    bool inFlight_{}, stopped_{}, repeatSelected_{};
 };
 
 } // namespace ScanPlanV2V4

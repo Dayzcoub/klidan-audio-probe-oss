@@ -237,11 +237,15 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var candidates = plan.Candidates.Select(c => new { index = c.Index, requestedDuration100ns = c.RequestedDuration100ns, captureFrames = c.CaptureFrames, renderFrames = c.RenderFrames, capturePeriod100ns = c.CapturePeriod100ns, renderPeriod100ns = c.RenderPeriod100ns, captureAlignmentFrames = c.CaptureAlignmentFrames, captureAlignmentKnown = c.CaptureAlignmentKnown, renderAlignmentFrames = c.RenderAlignmentFrames, renderAlignmentKnown = c.RenderAlignmentKnown, captureMinimumFrames = c.CaptureMinimumFrames, captureMaximumFrames = c.CaptureMaximumFrames, renderMinimumFrames = c.RenderMinimumFrames, renderMaximumFrames = c.RenderMaximumFrames, rejectionReason = c.RejectionReason }).ToArray();
         var captureBounds = new { minimumPeriod100ns = plan.CaptureBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.CaptureBounds.DefaultPeriod100ns, alignmentFrames = plan.CaptureBounds.AlignmentFrames };
         var renderBounds = new { minimumPeriod100ns = plan.RenderBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.RenderBounds.DefaultPeriod100ns, alignmentFrames = plan.RenderBounds.AlignmentFrames };
-        using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 4, captureEndpointId, renderEndpointId, route, routeFingerprint,
-            candidates, captureBounds, renderBounds, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns, authorizeRepeatability,
-            maximumOperationCount = plan.MaximumOperations, maximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
-            initializeTimeoutSeconds = plan.InitializeTimeoutSeconds, sessionLifetimeSeconds = plan.SessionLifetimeSeconds,
-            cleanupDeadlineSeconds = plan.CleanupDeadlineSeconds, planFingerprint, authorization = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } }, cancellationToken).ConfigureAwait(false);
+        var payloadValue = new Dictionary<string, object?> { ["contractVersion"] = 4, ["captureEndpointId"] = captureEndpointId, ["renderEndpointId"] = renderEndpointId,
+            ["route"] = route, ["routeFingerprint"] = routeFingerprint, ["candidates"] = candidates, ["captureBounds"] = captureBounds, ["renderBounds"] = renderBounds,
+            ["mmcssModes"] = plan.MmcssModes, ["repeatabilityRuns"] = plan.RepeatabilityRuns, ["authorizeRepeatability"] = authorizeRepeatability,
+            ["maximumOperationCount"] = plan.MaximumOperations, ["maximumActiveDuplexSeconds"] = plan.MaximumActiveDuplexSeconds,
+            ["initializeTimeoutSeconds"] = plan.InitializeTimeoutSeconds, ["sessionLifetimeSeconds"] = plan.SessionLifetimeSeconds,
+            ["cleanupDeadlineSeconds"] = plan.CleanupDeadlineSeconds, ["planFingerprint"] = planFingerprint,
+            ["authorization"] = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } };
+        if (plan.RepeatSelected) payloadValue["repeatSelected"] = true;
+        using var response = await SendAsync("RegisterScanSessionV2", payloadValue, cancellationToken).ConfigureAwait(false);
         var payload = response.RootElement.GetProperty("payload");
         if (!payload.TryGetProperty("scanSessionId", out var id) || !id.TryGetGuid(out var sessionId) || sessionId == Guid.Empty || payload.GetProperty("contractVersion").GetInt32() != 4 || payload.GetProperty("state").GetString() != "AUTHORIZED") throw new InvalidDataException("Worker did not return a valid v4 scan-session token.");
         return new(sessionId, 4, routeFingerprint);

@@ -9,8 +9,10 @@ var options = Parse(args);
 if (options is null) return 64;
 if (options.Mode == "SHORT_SEARCH" && (!options.AuthorizeShortSearch || options.Scenario is not null))
     return Fail("Physical mode requires --authorize-short-search and does not accept test scenarios.", 64);
-if (options.AuthorizeRepeatability && (options.Mode != "SHORT_SEARCH" || !options.AuthorizeShortSearch))
-    return Fail("R=5 requires a separately authorized physical V4 short search.", 64);
+if (options.Mode == "REPEAT_SELECTED" && (!options.AuthorizeRepeatability || options.AuthorizeShortSearch || options.Scenario is not null || string.IsNullOrWhiteSpace(options.SourceEvidence)))
+    return Fail("RepeatSelected requires a separate --authorize-r5 and --source-evidence; it never authorizes or runs ShortSearch.", 64);
+if (options.AuthorizeRepeatability && options.Mode != "REPEAT_SELECTED")
+    return Fail("--authorize-r5 is valid only for RepeatSelected.", 64);
 if (options.Mode == "DRY_RUN" && options.Scenario is not ("BLOODY" or "FAILED" or "UNKNOWN" or "FIRST_CLEAN"))
     return Fail("Dry-run scenario must be BLOODY, FAILED, UNKNOWN, or FIRST_CLEAN.", 64);
 
@@ -21,8 +23,16 @@ var workerPath = Path.GetFullPath(options.WorkerPath);
 if (!File.Exists(workerPath)) return Fail("The selected Worker executable is missing.", 66);
 if (options.Mode == "DRY_RUN" && Path.GetFileName(workerPath) is not ("KlidanProbeWorker.FakeTest.exe" or "probe_worker_format_fixture.exe"))
     return Fail("Dry-run is restricted to the separately packaged test-only Worker binary.", 64);
-if (options.Mode == "SHORT_SEARCH" && !Path.GetFileName(workerPath).Equals("KlidanProbeWorker.exe", StringComparison.OrdinalIgnoreCase))
-    return Fail("Physical search is restricted to the Release production Worker binary.", 64);
+if (options.Mode is "SHORT_SEARCH" or "REPEAT_SELECTED" && !Path.GetFileName(workerPath).Equals("KlidanProbeWorker.exe", StringComparison.OrdinalIgnoreCase))
+    return Fail("Physical operations are restricted to the Release production Worker binary.", 64);
+
+string? sourceEvidenceSha = null;
+JsonDocument? sourceSummary = null;
+if (options.Mode == "REPEAT_SELECTED")
+{
+    try { sourceEvidenceSha = VerifySourceEvidence(options.SourceEvidence!, out sourceSummary); }
+    catch (Exception ex) { return Fail($"Original evidence verification failed: {ex.Message}", 65); }
+}
 
 var root = Path.GetFullPath(options.EvidenceRoot);
 Directory.CreateDirectory(root);
@@ -38,8 +48,8 @@ try
     await using var worker = new NativeWorkerClient(workerPath);
     await worker.ConnectAsync(cancellation.Token);
     var discovery = await worker.ListWindowsEndpointsAsync(cancellation.Token);
-    var captureId = options.Mode == "SHORT_SEARCH" ? BloodyCaptureId : options.CaptureId;
-    var renderId = options.Mode == "SHORT_SEARCH" ? BloodyRenderId : options.RenderId;
+    var captureId = options.Mode == "SHORT_SEARCH" ? BloodyCaptureId : options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("captureEndpointId").GetString() : options.CaptureId;
+    var renderId = options.Mode == "SHORT_SEARCH" ? BloodyRenderId : options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("renderEndpointId").GetString() : options.RenderId;
     var capture = SelectEndpoint(discovery, captureId, "CAPTURE", options.Mode == "DRY_RUN");
     var render = SelectEndpoint(discovery, renderId, "RENDER", options.Mode == "DRY_RUN");
     if (capture.EndpointId == render.EndpointId) throw new InvalidDataException("Capture and Render must be distinct current endpoints.");
@@ -50,7 +60,17 @@ try
     var repeats = options.AuthorizeRepeatability ? 5 : 0;
     var plan = options.Mode == "SHORT_SEARCH"
         ? WorkerScanV2PlanPreparation.Prepare(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats)
+        : options.Mode == "REPEAT_SELECTED"
+            ? WorkerScanV2PlanPreparation.Prepare(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, 5, 10, "PRO_AUDIO")
         : PrepareFakePlan(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats);
+    if (options.Mode == "REPEAT_SELECTED")
+    {
+        var original = sourceSummary!.RootElement;
+        if (original.GetProperty("provenance").GetString() != "REAL_WASAPI_V4_DUPLEX" || original.GetProperty("selectionState").GetString() != "MINIMUM_SHORT_CLEAN_FOUND" ||
+            original.GetProperty("selectedCandidateIndex").GetInt32() != 7 || original.GetProperty("sessionCleanup").GetString() != "CLOSE_CONFIRMED" ||
+            original.GetProperty("captureEndpointId").GetString() != capture.EndpointId || original.GetProperty("renderEndpointId").GetString() != render.EndpointId)
+            throw new InvalidDataException("Verified source evidence no longer matches its selected real candidate or freshly discovered endpoints.");
+    }
     if (plan.Candidates.Count is < 1 or > 8 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "PRO_AUDIO")
         throw new InvalidDataException("The bounded plan does not satisfy the V4 candidate or PRO_AUDIO authorization contract.");
     var summary = WorkerScanV2ContractV4Fingerprint.ConsentSummary(capture.EndpointId!, render.EndpointId!, plan, worker.DiscoveryGeneration);
@@ -61,8 +81,11 @@ try
     var prepared = new WorkerScanV2V4PreparedPlan(capture.EndpointId!, render.EndpointId!, plan, consent);
     var progress = new ConsoleProgress();
     var scenario = options.Mode == "DRY_RUN" ? DryRunScenario(options.Scenario!) : null;
-    var result = await new WorkerV4AutomaticSearchWorkflow(worker).RunAsync(prepared, runRoot, cancellation.Token,
-        testScenario: scenario, runRepeatability: repeats == 5, captureEndpoint: capture, renderEndpoint: render, progress: progress);
+    var result = options.Mode == "REPEAT_SELECTED"
+        ? await new WorkerV4AutomaticSearchWorkflow(worker).RepeatSelectedAsync(prepared, sourceEvidenceSha!, runRoot, cancellation.Token,
+            testScenario: null, testOnlyAllowFake: false)
+        : await new WorkerV4AutomaticSearchWorkflow(worker).RunAsync(prepared, runRoot, cancellation.Token,
+            testScenario: scenario, runRepeatability: repeats == 5, captureEndpoint: capture, renderEndpoint: render, progress: progress);
 
     var candidateFiles = new List<object>();
     foreach (var entry in result.Evidence.Candidates)
@@ -125,6 +148,8 @@ try
         discoveryGeneration = worker.DiscoveryGeneration,
         candidateCount = result.Evidence.CandidateDomain.Count,
         repeatabilityAuthorized = repeats == 5,
+        sourceEvidenceSha256 = sourceEvidenceSha,
+        sourceCandidateIndex = sourceEvidenceSha is null ? (int?)null : 7,
         repeatabilityRequested = result.Evidence.RepeatabilityRequested,
         repeatabilityCompleted = result.Evidence.RepeatabilityCompleted,
         selectionState = result.Evidence.SelectionState,
@@ -201,6 +226,49 @@ static void WriteNoOverwriteAndVerify(string path, byte[] bytes, string identity
 
 static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 static string HashFile(string path) => Hash(File.ReadAllBytes(path));
+static string VerifySourceEvidence(string summaryPath, out JsonDocument summary)
+{
+    var bytes = File.ReadAllBytes(Path.GetFullPath(summaryPath));
+    summary = JsonDocument.Parse(bytes);
+    var root = summary.RootElement;
+    if (root.GetProperty("schemaVersion").GetInt32() != 1 || root.GetProperty("mode").GetString() != "SHORT_SEARCH" ||
+        root.GetProperty("buildSha").GetString() != "a22939757964da4a89532085a6c21baf9016ef65" || root.GetProperty("route").GetString() != "MONO_TO_STEREO" ||
+        root.GetProperty("sampleRateHz").GetInt32() != 48_000 || root.GetProperty("encoding").GetString() != "PCM16" || root.GetProperty("mmcss").GetString() != "PRO_AUDIO" ||
+        root.GetProperty("selectionState").GetString() != "MINIMUM_SHORT_CLEAN_FOUND" || root.GetProperty("selectedCandidateIndex").GetInt32() != 7 ||
+        root.GetProperty("repeatabilityAuthorized").GetBoolean() || root.GetProperty("repeatabilityCompleted").GetInt32() != 0 ||
+        root.GetProperty("sessionCleanup").GetString() != "CLOSE_CONFIRMED" || root.GetProperty("profileEligible").GetBoolean())
+        throw new InvalidDataException("Source summary has an unexpected result, route or cleanup state.");
+    var directory = Path.GetDirectoryName(Path.GetFullPath(summaryPath))!;
+    foreach (var item in root.GetProperty("candidateFiles").EnumerateArray())
+        if (HashFile(SourcePath(directory, item.GetProperty("path").GetString()!)) != item.GetProperty("sha256").GetString()) throw new InvalidDataException("Candidate evidence SHA-256 mismatch.");
+    var matrixPath = SourcePath(directory, root.GetProperty("candidateMatrixPath").GetString()!);
+    if (HashFile(matrixPath) != root.GetProperty("candidateMatrixSha256").GetString()) throw new InvalidDataException("Candidate matrix SHA-256 mismatch.");
+    using var matrix = JsonDocument.Parse(File.ReadAllBytes(matrixPath));
+    var selected = matrix.RootElement.GetProperty("candidates").EnumerateArray().Single(e => e.GetProperty("candidate").GetProperty("index").GetInt32() == 7);
+    var capInit = selected.GetProperty("captureInitializeEvidence"); var renInit = selected.GetProperty("renderInitializeEvidence"); var duplex = selected.GetProperty("duplexEvidence");
+    var report = duplex.GetProperty("report"); var requested = report.GetProperty("requested"); var route = report.GetProperty("route");
+    if (duplex.GetProperty("routeFingerprint").GetString() != matrix.RootElement.GetProperty("routeFingerprint").GetString() ||
+        selected.GetProperty("candidate").GetProperty("requestedDuration100ns").GetInt64() != 100_000 ||
+        selected.GetProperty("candidate").GetProperty("captureFrames").GetInt32() != 480 || selected.GetProperty("candidate").GetProperty("renderFrames").GetInt32() != 480 ||
+        selected.GetProperty("duplexDisposition").GetString() != "CLEAN" || selected.GetProperty("provenance").GetString() != "REAL_WASAPI_V4_DUPLEX" ||
+        selected.GetProperty("captureCleanup").GetString() != "RELEASE_ATTEMPTED" || selected.GetProperty("renderCleanup").GetString() != "RELEASE_ATTEMPTED" ||
+        duplex.GetProperty("cleanup").GetString() != "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" ||
+        capInit.GetProperty("endpointId").GetString() != root.GetProperty("captureEndpointId").GetString() || renInit.GetProperty("endpointId").GetString() != root.GetProperty("renderEndpointId").GetString() ||
+        duplex.GetProperty("captureEndpointId").GetString() != root.GetProperty("captureEndpointId").GetString() || duplex.GetProperty("renderEndpointId").GetString() != root.GetProperty("renderEndpointId").GetString() ||
+        requested.GetProperty("captureEndpointId").GetString() != root.GetProperty("captureEndpointId").GetString() || requested.GetProperty("renderEndpointId").GetString() != root.GetProperty("renderEndpointId").GetString() ||
+        requested.GetProperty("sampleRateHz").GetInt32() != 48_000 || requested.GetProperty("encoding").GetString() != "PCM16" || requested.GetProperty("mmcss").GetString() != "PRO_AUDIO" || requested.GetProperty("durationSeconds").GetInt32() != 5 ||
+        route.GetProperty("mode").GetString() != "MONO_TO_STEREO" || route.GetProperty("capture").GetProperty("sampleRateHz").GetInt32() != 48_000 || route.GetProperty("render").GetProperty("sampleRateHz").GetInt32() != 48_000 ||
+        route.GetProperty("capture").GetProperty("encoding").GetString() != "PCM16" || route.GetProperty("render").GetProperty("encoding").GetString() != "PCM16")
+        throw new InvalidDataException("Selected candidate evidence or per-endpoint cleanup is not confirmed CLEAN.");
+    return Hash(bytes);
+
+    static string SourcePath(string root, string relative)
+    {
+        var path = Path.GetFullPath(Path.Combine(root, relative));
+        if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Source evidence contains an unsafe relative path.");
+        return path;
+    }
+}
 static int Fail(string message, int code) { Console.Error.WriteLine($"ERROR={message}"); return code; }
 static JsonSerializerOptions Options() => new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
@@ -213,19 +281,19 @@ static RunOptions? Parse(string[] args)
         var key = args[i];
         if (!key.StartsWith("--", StringComparison.Ordinal)) return null;
         if (key is "--authorize-short-search" or "--authorize-r5") flags.Add(key);
-        else if (key is "--mode" or "--worker-path" or "--evidence-root" or "--scenario" or "--capture-id" or "--render-id")
+        else if (key is "--mode" or "--worker-path" or "--evidence-root" or "--scenario" or "--capture-id" or "--render-id" or "--source-evidence")
         {
             if (++i >= args.Length || !values.TryAdd(key, args[i])) return null;
         }
         else return null;
     }
-    if (!values.TryGetValue("--mode", out var mode) || mode is not ("DRY_RUN" or "SHORT_SEARCH") ||
+        if (!values.TryGetValue("--mode", out var mode) || mode is not ("DRY_RUN" or "SHORT_SEARCH" or "REPEAT_SELECTED") ||
         !values.TryGetValue("--worker-path", out var worker) || string.IsNullOrWhiteSpace(worker) ||
         !values.TryGetValue("--evidence-root", out var evidence) || string.IsNullOrWhiteSpace(evidence)) return null;
-    return new(mode, worker!, evidence!, values.GetValueOrDefault("--scenario"), values.GetValueOrDefault("--capture-id"), values.GetValueOrDefault("--render-id"), flags.Contains("--authorize-short-search"), flags.Contains("--authorize-r5"));
+    return new(mode, worker!, evidence!, values.GetValueOrDefault("--scenario"), values.GetValueOrDefault("--capture-id"), values.GetValueOrDefault("--render-id"), values.GetValueOrDefault("--source-evidence"), flags.Contains("--authorize-short-search"), flags.Contains("--authorize-r5"));
 }
 
-sealed record RunOptions(string Mode, string WorkerPath, string EvidenceRoot, string? Scenario, string? CaptureId, string? RenderId,
+sealed record RunOptions(string Mode, string WorkerPath, string EvidenceRoot, string? Scenario, string? CaptureId, string? RenderId, string? SourceEvidence,
     bool AuthorizeShortSearch, bool AuthorizeRepeatability);
 
 sealed class ConsoleProgress : IProgress<V4AutomaticSearchProgress>

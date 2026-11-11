@@ -123,6 +123,14 @@ var noAuthorization = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEA
 Check(noAuthorization.ExitCode == 64 && noAuthorization.Output.Contains("requires --authorize-short-search", StringComparison.Ordinal) && !noAuthorization.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "headless physical search without explicit authorization exits before Worker startup without stdin");
 var authorizedNoTty = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "authorized"), "--authorize-short-search");
 Check(authorizedNoTty.ExitCode == 3 && authorizedNoTty.Output.Contains("Exact CAPTURE endpoint", StringComparison.Ordinal) && !authorizedNoTty.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "authorized headless search advances without TTY/stdin and stops on fake endpoint identity before audio operations");
+var originalSummary = Path.Combine(root.FullName, "..", "..", "..", "artifacts", "AS-N4B.2.2B5B.8A.1-headless-a22939757964-20261111-204406", "evidence", "v4-headless-a1623be774314a62a10043ff057fe237", "headless-summary.json");
+originalSummary = Path.GetFullPath(originalSummary);
+var staleEndpointRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "stale-endpoint"), "--authorize-r5", "--source-evidence", originalSummary);
+Check(staleEndpointRepeat.ExitCode == 3 && staleEndpointRepeat.Output.Contains("Exact CAPTURE endpoint", StringComparison.Ordinal) && !staleEndpointRepeat.Output.Contains("MODE=REPEAT_SELECTED", StringComparison.Ordinal), "RepeatSelected blocks a changed or absent current endpoint before Worker session registration");
+var damagedSource = Path.Combine(headlessAuthorizationRoot, "damaged-summary.json"); File.Copy(originalSummary, damagedSource);
+var damagedBytes = File.ReadAllBytes(damagedSource); damagedBytes[^3] ^= 1; File.WriteAllBytes(damagedSource, damagedBytes);
+var damagedRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "damaged"), "--authorize-r5", "--source-evidence", damagedSource);
+Check(damagedRepeat.ExitCode == 65 && damagedRepeat.Output.Contains("Original evidence verification failed", StringComparison.Ordinal), "RepeatSelected rejects corrupted source evidence before Worker startup");
 
 var handshakeId = Guid.NewGuid();
 var incompatibleHandshakes = new[]
@@ -937,6 +945,35 @@ try
     Check(preliminary.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && preliminary.Result.Evidence.RepeatabilityRequested == 2 && preliminary.Result.Evidence.RepeatabilityCompleted == 2 && !preliminary.Result.Evidence.ProfileEligible, "R less than five stays preliminary and cannot create a stable profile");
     var noRepeats = await RunV4Search("R=0 search-only synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, 0);
     Check(noRepeats.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && noRepeats.Result.Evidence.RepeatabilityCompleted == 0 && noRepeats.Operations.All(x => !x.Contains("REPEAT_", StringComparison.Ordinal)), "R=0 preserves search-only behavior without invoking repeatability");
+    var lastCandidateClean = await RunV4Search("last candidate CLEAN", (index, operation) => operation == "DUPLEX" && index == 7 ? "CLEAN" : operation == "DUPLEX" ? "SERVICE_FAILURE" : null, repeats: 0);
+    Check(lastCandidateClean.Result.Evidence.SelectedCandidateIndex == 7 && lastCandidateClean.Result.Evidence.StopReason == "CANDIDATE_DOMAIN_EXHAUSTED", "the last candidate CLEAN does not claim that a smaller candidate was found");
+    async Task<(V4AutomaticSearchResult Result, string[] Operations, string Root)> RunRepeatSelected(string? stopAt = null)
+    {
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        try
+        {
+            var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
+            var captureId = endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!; var renderId = endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
+            var candidate = WorkerScanV2CandidatePlanning.Make(0, 100_000, route, 144, 480, 144, 480); var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+            var budget = new WorkerScanV2Budget(7, 25, 600);
+            var plan = new WorkerScanV2ContractV4(route, [candidate], ["PRO_AUDIO"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds, true);
+            var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+            var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-repeat-selected-" + Guid.NewGuid().ToString("N"));
+            var result = await new WorkerV4AutomaticSearchWorkflow(client).RepeatSelectedAsync(new(captureId, renderId, plan, consent), new string('b', 64), root,
+                testScenario: i => { operations.Add($"REPEAT_{i + 1}"); return stopAt == $"REPEAT_{i + 1}" ? "SERVICE_FAILURE" : stopAt == "UNKNOWN" && i == 0 ? "CLEANUP_UNKNOWN" : "CLEAN"; }, testOnlyAllowFake: true);
+            return (result, operations.ToArray(), root);
+        }
+        finally { await client.DisposeAsync(); }
+    }
+    var repeatSelectedClean = await RunRepeatSelected();
+    Check(repeatSelectedClean.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatSelectedClean.Result.Evidence.RepeatabilityCompleted == 5 && repeatSelectedClean.Operations.Length == 5 && repeatSelectedClean.Result.Evidence.UsedOperations == 7 && repeatSelectedClean.Result.Evidence.MaximumActiveDuplexSeconds == 25 && Enumerable.Range(1, 5).All(i => File.Exists(Path.Combine(repeatSelectedClean.Root, $"repeat-{i:D2}.json"))), "RepeatSelected writes five sequential single-run evidence files and remains within the 7-op/25-second authorization budget");
+    Directory.Delete(repeatSelectedClean.Root, true);
+    var repeatSelectedFailed = await RunRepeatSelected("REPEAT_3");
+    Check(repeatSelectedFailed.Result.Evidence.SelectionState == "REPEATABILITY_FAILED" && repeatSelectedFailed.Result.Evidence.RepeatabilityCompleted == 3 && repeatSelectedFailed.Operations.Length == 3, "RepeatSelected stops after first FAILED result");
+    Directory.Delete(repeatSelectedFailed.Root, true);
+    var repeatSelectedUnknown = await RunRepeatSelected("UNKNOWN");
+    Check(repeatSelectedUnknown.Result.Evidence.SelectionState == "UNKNOWN" && repeatSelectedUnknown.Result.Evidence.RepeatabilityCompleted == 1 && repeatSelectedUnknown.Operations.Length == 1, "RepeatSelected stops after first UNKNOWN result");
+    Directory.Delete(repeatSelectedUnknown.Root, true);
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);

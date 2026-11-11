@@ -6,6 +6,96 @@ namespace KlidanAudioProbe.Gui.Worker;
 /// <summary>Runs the explicitly consented V4 search through one worker session.</summary>
 public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) : IV4AutomaticSearchWorkflow
 {
+    public async Task<V4AutomaticSearchResult> RepeatSelectedAsync(WorkerScanV2V4PreparedPlan prepared, string sourceEvidenceSha256,
+        string? evidenceRoot, CancellationToken cancellationToken = default, Func<int, string?>? testScenario = null, bool testOnlyAllowFake = false)
+    {
+        ArgumentNullException.ThrowIfNull(prepared);
+        var plan = prepared.Plan;
+        if (plan.Candidates.Count != 1 || plan.Candidates[0] is not { RequestedDuration100ns: 100_000, CaptureFrames: 480, RenderFrames: 480 } candidate ||
+            !plan.RepeatSelected || plan.RepeatabilityRuns != 5 || plan.MaximumOperations != 7 || plan.MaximumActiveDuplexSeconds != 25 ||
+            plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "PRO_AUDIO" || plan.Route.Mode != "MONO_TO_STEREO" ||
+            plan.Route.Capture is not { SampleRateHz: 48_000, Channels: 2, Encoding: "PCM16" } ||
+            plan.Route.Render is not { SampleRateHz: 48_000, Channels: 2, Encoding: "PCM16" } ||
+            sourceEvidenceSha256.Length != 64 || !sourceEvidenceSha256.All(Uri.IsHexDigit))
+            throw new InvalidOperationException("RepeatSelected requires the verified 10 ms C480/R480 candidate, fixed route, fresh R=5 consent and seven-operation/25-second budget.");
+        if (!prepared.Consent.Accepted || prepared.Consent.ConfirmationId == Guid.Empty || prepared.Consent.DiscoveryGeneration != worker.DiscoveryGeneration ||
+            WorkerScanV2ContractV4Fingerprint.Compute(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, prepared.Consent.DiscoveryGeneration) != prepared.Consent.PlanFingerprint)
+            throw new InvalidOperationException("RepeatSelected requires a new consent receipt bound to current discovery and the one-candidate plan.");
+
+        var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan.Route);
+        if (testScenario is not null && !testOnlyAllowFake) throw new InvalidOperationException("Injected scenarios are restricted to test-only Worker runs.");
+        if (testScenario is not null && !worker.Capabilities.Contains("TestInjectedDuplexBackend", StringComparer.Ordinal)) throw new InvalidOperationException("Fake repeat scenarios require a test-only Worker.");
+        var session = await worker.RegisterScanSessionV2V4Async(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, prepared.Consent, cancellationToken, true).ConfigureAwait(false);
+        var runs = new List<V4RepeatabilityRunEvidence>(5); var used = 0; var state = "UNKNOWN"; var cleanup = "UNKNOWN"; var stop = "REPEATABILITY_NOT_COMPLETED";
+        JsonElement captureInit = default, renderInit = default;
+        try
+        {
+            captureInit = await Initialize("CAPTURE");
+            renderInit = captureInit.GetProperty("initializeDisposition").GetString() == "INITIALIZED_EXACT" ? await Initialize("RENDER") : default;
+            var initialized = captureInit.GetProperty("initializeDisposition").GetString() == "INITIALIZED_EXACT" && renderInit.ValueKind == JsonValueKind.Object &&
+                renderInit.GetProperty("initializeDisposition").GetString() == "INITIALIZED_EXACT" && Exact(captureInit, candidate, true) && Exact(renderInit, candidate, false);
+            if (!initialized) stop = "INITIALIZE_FAILED_OR_UNKNOWN";
+            else
+            {
+                state = "REPEATABILITY_CONFIRMED";
+                for (var i = 0; i < 5; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var operationId = Guid.NewGuid();
+                    JsonElement duplex;
+                    try { duplex = await worker.ValidateCustomDuplexV2InScanAsync(session, operationId, plan.Route, prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, candidate.Index, cancellationToken, testScenario?.Invoke(i)); }
+                    catch { runs.Add(UnknownRepeat(operationId, session, candidate, "WORKER_OPERATION_UNKNOWN")); used++; state = "UNKNOWN"; stop = "REPEATABILITY_WORKER_FAILURE"; break; }
+                    used++;
+                    var classification = V4ShortCleanEvaluator.Classify(prepared, session, candidate.Index, operationId, duplex);
+                    runs.Add(ToRepeatabilityEvidence(duplex, session, candidate, classification));
+                    if (evidenceRoot is not null)
+                    {
+                        Directory.CreateDirectory(evidenceRoot);
+                        var repeatPath = Path.Combine(evidenceRoot, $"repeat-{i + 1:D2}.json");
+                        var repeatJson = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
+                        {
+                            schemaVersion = 1, runNumber = i + 1, sourceEvidenceSha256, sourceCandidateIndex = 7, candidateIndex = candidate.Index,
+                            operationId, sessionId = session.ScanSessionId, classification, evidence = duplex
+                        }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true });
+                        using (var stream = new FileStream(repeatPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                        { stream.Write(repeatJson); stream.Flush(true); }
+                        using var readBack = System.Text.Json.JsonDocument.Parse(File.ReadAllBytes(repeatPath));
+                        if (readBack.RootElement.GetProperty("operationId").GetGuid() != operationId || readBack.RootElement.GetProperty("runNumber").GetInt32() != i + 1)
+                            throw new InvalidDataException("Repeat evidence read-back identity mismatch.");
+                    }
+                    if (classification == "UNKNOWN") { state = "UNKNOWN"; stop = "REPEATABILITY_UNKNOWN"; break; }
+                    if (classification == "FAILED") { state = "REPEATABILITY_FAILED"; stop = "REPEATABILITY_FAILED"; break; }
+                }
+                if (runs.Count == 5 && runs.All(r => r.Result == "CLEAN")) stop = "REPEATABILITY_5_OF_5_CLEAN";
+            }
+        }
+        catch (OperationCanceledException) { state = "UNKNOWN"; stop = "OPERATOR_CANCELLED"; }
+        catch { state = "UNKNOWN"; stop = "WORKER_OR_EVIDENCE_FAILURE"; }
+
+        try { await worker.CloseScanSessionAsync(session, CancellationToken.None).ConfigureAwait(false); cleanup = "CLOSE_CONFIRMED"; }
+        catch { state = "UNKNOWN"; cleanup = "UNKNOWN"; stop = "SESSION_CLEANUP_UNKNOWN"; }
+        var entry = new V2CandidateMatrixEntry(candidate, captureInit.ValueKind == JsonValueKind.Object ? MatrixInitialize(captureInit) : "UNKNOWN", renderInit.ValueKind == JsonValueKind.Object ? MatrixInitialize(renderInit) : "NOT_TESTED", "NOT_TESTED", captureInit.ValueKind == JsonValueKind.Object ? "RELEASE_ATTEMPTED" : "UNKNOWN", renderInit.ValueKind == JsonValueKind.Object ? "RELEASE_ATTEMPTED" : "NOT_ATTEMPTED", [], true,
+            stop, "COMPLETE", state == "REPEATABILITY_CONFIRMED" ? "CONFIRMED" : state == "REPEATABILITY_FAILED" ? "FAILED" : "UNKNOWN", testOnlyAllowFake ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX") { CaptureCleanup = captureInit.ValueKind == JsonValueKind.Object ? "RELEASE_ATTEMPTED" : "UNKNOWN", RenderCleanup = renderInit.ValueKind == JsonValueKind.Object ? "RELEASE_ATTEMPTED" : "NOT_ATTEMPTED", CaptureInitializeEvidence = captureInit.ValueKind == JsonValueKind.Object ? captureInit.Clone() : null, RenderInitializeEvidence = renderInit.ValueKind == JsonValueKind.Object ? renderInit.Clone() : null,
+            RepeatabilityStatus = state == "REPEATABILITY_CONFIRMED" ? "CONFIRMED" : state == "REPEATABILITY_FAILED" ? "FAILED" : "UNKNOWN" };
+        var evidence = new V2CandidateMatrixEvidence(1, prepared.Consent.PlanFingerprint, routeFingerprint, cleanup == "UNKNOWN" ? "UNKNOWN" : "COMPLETED",
+            plan.CaptureBounds, plan.RenderBounds, plan.Candidates, [entry], state, testOnlyAllowFake ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX")
+        {
+            EvidenceVersion = 3, DiscoveryGeneration = prepared.Consent.DiscoveryGeneration, SelectedCandidateIndex = candidate.Index, BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA") ?? "UNKNOWN",
+            GlobalMinimumProven = false, UsedOperations = used, MaximumOperations = 7, UsedActiveDuplexSeconds = 5 * runs.Count, MaximumActiveDuplexSeconds = 25,
+            StopReason = stop, RepeatabilityRequested = 5, RepeatabilityCompleted = runs.Count, RepeatabilityRuns = runs, SessionCleanup = cleanup,
+            SourceEvidenceSha256 = sourceEvidenceSha256, SourceCandidateIndex = 7
+        };
+        string? path = null;
+        if (evidenceRoot is not null) path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(evidence, Path.Combine(evidenceRoot, $"v4-repeat-selected-{Guid.NewGuid():D}.json"));
+        return new(evidence, path);
+
+        async Task<JsonElement> Initialize(string direction)
+        {
+            used++;
+            return await worker.InitializeCustomPeriodV2InScanAsync(session, Guid.NewGuid(), prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, candidate.Index, direction, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     async Task<V4AutomaticSearchResult> IV4AutomaticSearchWorkflow.RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
         WindowsEndpointDto render, string evidenceRoot, string profileDirectory, bool runRepeatability,
         IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
@@ -99,7 +189,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                 if (classification == "CLEAN")
                 {
                     progress?.Report(new("SHORT_CLEAN", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
-                    selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = diagnosticOnly ? "DIAGNOSTIC_CANDIDATE_COMPLETED" : "SMALLER_SHORT_CLEAN_FOUND";
+                    selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = diagnosticOnly ? "DIAGNOSTIC_CANDIDATE_COMPLETED" : candidate.Index == plan.Candidates.Max(c => c.Index) ? "CANDIDATE_DOMAIN_EXHAUSTED" : "SMALLER_SHORT_CLEAN_FOUND";
                     foreach (var larger in plan.Candidates.Where(c => c.Index > candidate.Index)) Update(larger.Index, e => e with { CaptureInitializeDisposition = "SKIPPED", RenderInitializeDisposition = "SKIPPED", DuplexDisposition = "SKIPPED", DuplexNotRun = true, SkipReason = "SMALLER_SHORT_CLEAN_FOUND", ReasonCodes = ["SMALLER_SHORT_CLEAN_FOUND"] });
                     if (runRepeatability && plan.RepeatabilityRuns > 0)
                     {
@@ -157,7 +247,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             diagnosticOnly ? "DIAGNOSTIC_ONLY" : state, evidenceProvenance)
         {
             EvidenceVersion = diagnosticOnly ? 4 : 3, DiagnosticOnly = diagnosticOnly, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
-            BuildSha = diagnosticOnly ? diagnosticBuildSha : "UNKNOWN", DiagnosticTimestampUtc = diagnosticTimestamp,
+            BuildSha = diagnosticBuildSha, DiagnosticTimestampUtc = diagnosticTimestamp,
             GlobalMinimumProven = false, UsedOperations = operations,
             MaximumOperations = plan.MaximumOperations, UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
             StopReason = stopReason, RepeatabilityPending = !diagnosticOnly && state == "MINIMUM_SHORT_CLEAN_FOUND",
