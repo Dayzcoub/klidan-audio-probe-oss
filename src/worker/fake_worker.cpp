@@ -1190,6 +1190,7 @@ bool HandleClient(HANDLE pipe) {
                 std::string scenario;
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                 scenario=std::getenv("KLIDAN_TEST_V4_SCENARIO")?std::getenv("KLIDAN_TEST_V4_SCENARIO"):"";
+                if(payload.HasMember("testScenario")&&payload["testScenario"].IsString())scenario.assign(payload["testScenario"].GetString(),payload["testScenario"].GetStringLength());
 #endif
                 realOperation=std::thread([&,operationId,endpointId,direction,format,frames,period,correlation,v4Session,step,scenario]() mutable {
                     V4OperationFinish finish{v4Session};

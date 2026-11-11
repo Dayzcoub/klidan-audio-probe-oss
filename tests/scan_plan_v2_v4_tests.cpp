@@ -80,6 +80,27 @@ int Run() {
     TransportSequence mismatch(candidates, 24, 40);
     mismatch.Begin(0, Step::CaptureInitialize, "cap-mismatch"); mismatch.Complete(Disposition::Clean, true, false);
     assert(mismatch.CandidateIndex() == 1); // A successful Initialize with different actual geometry cannot authorize Duplex.
+
+    TransportSequence bloody(candidates, 24, 40);
+    for (unsigned i = 0; i < 3; ++i) {
+        bloody.Begin(i, Step::CaptureInitialize, "bc" + std::to_string(i)); bloody.Complete(Disposition::Clean, true);
+        bloody.Begin(i, Step::RenderInitialize, "br" + std::to_string(i)); bloody.Complete(Disposition::Clean, true);
+        bloody.Begin(i, Step::Duplex, "bd" + std::to_string(i), 5);
+        bloody.Complete(i == 2 ? Disposition::Clean : Disposition::Failed, true);
+    }
+    assert(bloody.Stopped() && bloody.RepeatabilityPending() && bloody.CandidateIndex() == 2);
+
+    TransportSequence flow8(candidates, 24, 40);
+    flow8.Begin(0, Step::CaptureInitialize, "fc0"); flow8.Complete(Disposition::Clean, true);
+    flow8.Begin(0, Step::RenderInitialize, "fr0"); flow8.Complete(Disposition::Clean, true);
+    flow8.Begin(0, Step::Duplex, "fd0", 5); flow8.Complete(Disposition::Clean, true);
+    assert(flow8.Stopped() && flow8.RepeatabilityPending());
+
+    TransportSequence unknown(candidates, 24, 40);
+    unknown.Begin(0, Step::CaptureInitialize, "uc0"); unknown.Complete(Disposition::Clean, true);
+    unknown.Begin(0, Step::RenderInitialize, "ur0"); unknown.Complete(Disposition::Clean, true);
+    unknown.Begin(0, Step::Duplex, "ud0", 5); unknown.Complete(Disposition::Unknown, true);
+    assert(unknown.Stopped() && !unknown.RepeatabilityPending() && unknown.CandidateIndex() == 0);
     return 0;
 }
 

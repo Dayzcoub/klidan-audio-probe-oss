@@ -14,7 +14,19 @@ public sealed record V2CandidateMatrixEntry(WorkerScanV2Candidate Candidate, str
 }
 public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFingerprint, string RouteFingerprint,
     string Lifecycle, WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
-    IReadOnlyList<V2CandidateMatrixEntry> Candidates, string SelectionState, string Provenance);
+    IReadOnlyList<V2CandidateMatrixEntry> Candidates, string SelectionState, string Provenance)
+{
+    public int EvidenceVersion { get; init; } = 1;
+    public ulong DiscoveryGeneration { get; init; }
+    public int? SelectedCandidateIndex { get; init; }
+    public bool GlobalMinimumProven { get; init; }
+    public int UsedOperations { get; init; }
+    public int MaximumOperations { get; init; }
+    public int UsedActiveDuplexSeconds { get; init; }
+    public int MaximumActiveDuplexSeconds { get; init; }
+    public string StopReason { get; init; } = "PLAN_ONLY";
+    public bool RepeatabilityPending { get; init; }
+}
 
 public static class V2CandidateMatrixEvidenceJson
 {
@@ -34,9 +46,11 @@ public static class V2CandidateMatrixEvidenceJson
     {
         static bool Hash(string? s, int length) => s is { } value && value.Length == length && value.All(Uri.IsHexDigit);
         static bool State(string s) => s is "NOT_TESTED" or "SKIPPED" or "REJECTED" or "FAILED" or "UNSUPPORTED" or "UNKNOWN" or "CLEAN";
-        if (value.SchemaVersion != 1 || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
+        if (value.SchemaVersion != 1 || value.EvidenceVersion is not (1 or 2) || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
             throw new InvalidDataException("Candidate matrix envelope is invalid.");
-        if (value.CaptureBounds.MinimumPeriod100ns <= 0 || value.CaptureBounds.DefaultPeriod100ns < value.CaptureBounds.MinimumPeriod100ns || value.CaptureBounds.AlignmentFrames is <= 0 || value.RenderBounds.MinimumPeriod100ns <= 0 || value.RenderBounds.DefaultPeriod100ns < value.RenderBounds.MinimumPeriod100ns || value.RenderBounds.AlignmentFrames is <= 0)
+        if (value.CaptureBounds.MinimumPeriod100ns <= 0 || value.CaptureBounds.DefaultPeriod100ns < value.CaptureBounds.MinimumPeriod100ns || value.RenderBounds.MinimumPeriod100ns <= 0 || value.RenderBounds.DefaultPeriod100ns < value.RenderBounds.MinimumPeriod100ns ||
+            value.EvidenceVersion == 1 && (value.CaptureBounds.AlignmentFrames is <= 0 || value.RenderBounds.AlignmentFrames is <= 0) ||
+            value.EvidenceVersion == 2 && (value.CaptureBounds.AlignmentFrames is < 0 || value.RenderBounds.AlignmentFrames is < 0))
             throw new InvalidDataException("Candidate matrix device bounds or alignment state is invalid.");
         for (var i = 0; i < value.Candidates.Count; i++)
         {
@@ -45,7 +59,28 @@ public static class V2CandidateMatrixEvidenceJson
                 throw new InvalidDataException($"Candidate matrix row {i} is invalid.");
         }
         if (value.SelectionState is not ("MINIMUM_SHORT_CLEAN_FOUND" or "REPEATABILITY_CONFIRMED" or "REPEATABILITY_FAILED" or "MINIMUM_NOT_PROVEN" or "UNKNOWN")) throw new InvalidDataException("Candidate matrix selection state is invalid.");
+        if (value.EvidenceVersion == 2 && (value.Lifecycle == "PLANNED" || value.DiscoveryGeneration == 0 || value.MaximumOperations is < 1 or > 29 || value.UsedOperations < 0 || value.UsedOperations > value.MaximumOperations || value.MaximumActiveDuplexSeconds is < 0 or > 65 || value.UsedActiveDuplexSeconds < 0 || value.UsedActiveDuplexSeconds > value.MaximumActiveDuplexSeconds || string.IsNullOrWhiteSpace(value.StopReason) || value.SelectedCandidateIndex is { } selected && (selected < 0 || selected >= value.CandidateDomain.Count) || value.RepeatabilityPending != (value.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND")))
+            throw new InvalidDataException("V4 completed candidate matrix budget, generation, or selection evidence is invalid.");
     }
 
     private static bool CleanupOutcomeInvalid(this V2CandidateMatrixEntry e) => e.CaptureCleanup is not ("NOT_ATTEMPTED" or "RELEASE_ATTEMPTED" or "UNKNOWN" or "FAILED") || e.RenderCleanup is not ("NOT_ATTEMPTED" or "RELEASE_ATTEMPTED" or "UNKNOWN" or "FAILED");
+
+    public static string SaveNoOverwriteAndVerify(V2CandidateMatrixEvidence evidence, string path)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(SerializeRoundTrip(evidence));
+        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        Directory.CreateDirectory(directory);
+        var temporary = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { file.Write(bytes); file.Flush(true); }
+            File.Move(temporary, path);
+            var readback = File.ReadAllBytes(path);
+            var parsed = JsonSerializer.Deserialize<V2CandidateMatrixEvidence>(readback, Options) ?? throw new InvalidDataException("Saved candidate matrix is unreadable.");
+            Validate(parsed);
+            if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(System.Security.Cryptography.SHA256.HashData(bytes), System.Security.Cryptography.SHA256.HashData(readback))) throw new InvalidDataException("Candidate matrix read-back differs from the atomic write.");
+            return path;
+        }
+        catch { if (File.Exists(temporary)) File.Delete(temporary); throw; }
+    }
 }

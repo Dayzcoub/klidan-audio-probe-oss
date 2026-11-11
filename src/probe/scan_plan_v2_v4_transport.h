@@ -56,10 +56,11 @@ public:
         }
         if (inFlightStep_ == Step::CaptureInitialize) phase_ = Phase::Render;
         else if (inFlightStep_ == Step::RenderInitialize) phase_ = Phase::Duplex;
-        else AdvanceCandidate();
+        else { stopped_ = true; phase_ = Phase::RepeatabilityPending; }
     }
 
     bool Stopped() const noexcept { return stopped_; }
+    bool RepeatabilityPending() const noexcept { return phase_ == Phase::RepeatabilityPending; }
     bool Complete() const noexcept { return phase_ == Phase::Done; }
     unsigned UsedOperations() const noexcept { return usedOperations_; }
     unsigned UsedActiveSeconds() const noexcept { return usedActiveSeconds_; }
@@ -69,7 +70,7 @@ public:
     }
 
 private:
-    enum class Phase { Capture, Render, Duplex, Done, Stopped };
+    enum class Phase { Capture, Render, Duplex, Done, Stopped, RepeatabilityPending };
     void AdvancePastRejected() {
         while (cursor_ < candidates_.size() && !candidates_[cursor_].rejectionReason.empty()) ++cursor_;
         phase_ = cursor_ < candidates_.size() ? Phase::Capture : Phase::Done;

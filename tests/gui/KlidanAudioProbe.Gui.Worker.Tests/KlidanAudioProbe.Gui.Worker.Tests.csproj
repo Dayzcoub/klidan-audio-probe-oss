@@ -9,5 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="../../../src/gui/KlidanAudioProbe.Gui.Core/KlidanAudioProbe.Gui.Core.csproj" />
     <ProjectReference Include="../../../src/gui/KlidanAudioProbe.Gui.Worker/KlidanAudioProbe.Gui.Worker.csproj" />
+    <ProjectReference Include="../../../src/gui/KlidanAudioProbe.Gui.App/KlidanAudioProbe.Gui.App.csproj" />
   </ItemGroup>
 </Project>

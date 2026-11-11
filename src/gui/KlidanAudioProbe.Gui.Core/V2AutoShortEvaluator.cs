@@ -95,3 +95,56 @@ public static class V2AutoShortEvaluator
         { return new(period, period100ns, frames, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", "UNKNOWN", "REPORT_INCOMPLETE", report.Clone()); }
     }
 }
+
+public static class V4ShortCleanEvaluator
+{
+    public static string Classify(WorkerScanV2V4PreparedPlan prepared, WorkerScanSessionToken session,
+        int candidateIndex, Guid operationId, JsonElement evidence)
+    {
+        try
+        {
+            if (session.ContractVersion != 4 || session.ScanSessionId == Guid.Empty || operationId == Guid.Empty ||
+                prepared.Consent.DiscoveryGeneration == 0 || !prepared.Consent.Accepted ||
+                WorkerScanV2ContractV4Fingerprint.Compute(prepared.CaptureEndpointId, prepared.RenderEndpointId,
+                    prepared.Plan, prepared.Consent.DiscoveryGeneration) != prepared.Consent.PlanFingerprint ||
+                session.RouteFingerprint != WorkerScanPlanV2Fingerprint.Route(prepared.CaptureEndpointId, prepared.RenderEndpointId, prepared.Plan.Route))
+                return "UNKNOWN";
+            var candidate = prepared.Plan.Candidates.Single(c => c.Index == candidateIndex);
+            if (evidence.GetProperty("contractVersion").GetInt32() != 4 || evidence.GetProperty("operationId").GetGuid() != operationId ||
+                evidence.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || evidence.GetProperty("candidateIndex").GetInt32() != candidateIndex ||
+                evidence.GetProperty("captureEndpointId").GetString() != prepared.CaptureEndpointId || evidence.GetProperty("renderEndpointId").GetString() != prepared.RenderEndpointId ||
+                evidence.GetProperty("routeFingerprint").GetString() != session.RouteFingerprint ||
+                evidence.GetProperty("requestedCaptureFrames").GetInt32() != candidate.CaptureFrames || evidence.GetProperty("requestedCapturePeriod100ns").GetInt64() != candidate.CapturePeriod100ns ||
+                evidence.GetProperty("requestedRenderFrames").GetInt32() != candidate.RenderFrames || evidence.GetProperty("requestedRenderPeriod100ns").GetInt64() != candidate.RenderPeriod100ns ||
+                evidence.GetProperty("provenance").GetString() is not ("REAL_WASAPI_V4_DUPLEX" or "TEST_FAKE_WASAPI_V4_DUPLEX")) return "UNKNOWN";
+            var report = evidence.GetProperty("report");
+            if (report.ValueKind != JsonValueKind.Object || report.GetProperty("requested").GetProperty("durationSeconds").GetInt32() != 5 ||
+                report.GetProperty("requested").GetProperty("mmcss").GetString() != "OFF") return "UNKNOWN";
+            var cap = report.GetProperty("capture"); var ren = report.GetProperty("render"); var duplex = report.GetProperty("duplex");
+            var clean = evidence.GetProperty("duplexDisposition").GetString() == "CLEAN" && duplex.GetProperty("status").GetString() == "DUPLEX_CLEAN" &&
+                SideClean(cap, prepared.Plan.Route.Capture, candidate.CaptureFrames) && SideClean(ren, prepared.Plan.Route.Render, candidate.RenderFrames) &&
+                evidence.GetProperty("actualCaptureFrames").GetInt32() == candidate.CaptureFrames && evidence.GetProperty("actualCapturePeriod100ns").GetInt64() == candidate.CapturePeriod100ns &&
+                evidence.GetProperty("actualRenderFrames").GetInt32() == candidate.RenderFrames && evidence.GetProperty("actualRenderPeriod100ns").GetInt64() == candidate.RenderPeriod100ns &&
+                evidence.GetProperty("cleanup").GetString() == "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED";
+            if (clean) return "CLEAN";
+            var cleanup = evidence.GetProperty("cleanup").GetString();
+            var status = duplex.GetProperty("status").GetString();
+            return cleanup == "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" && status is "FAILED" or "DUPLEX_WARNINGS" ? "FAILED" : "UNKNOWN";
+        }
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or FormatException or ArgumentException or OverflowException)
+        { return "UNKNOWN"; }
+
+        static bool SideClean(JsonElement side, WorkerScanV2Side route, int frames) =>
+            side.GetProperty("endpointId").GetString() is { Length: > 0 } &&
+            side.GetProperty("format").GetProperty("sampleRateHz").GetInt32() == route.SampleRateHz &&
+            side.GetProperty("format").GetProperty("channels").GetInt32() == route.Channels &&
+            side.GetProperty("format").GetProperty("encoding").GetString() == route.Encoding &&
+            side.GetProperty("startSucceeded").GetBoolean() && side.GetProperty("stopSucceeded").GetBoolean() &&
+            side.GetProperty("durationReached").GetBoolean() && side.GetProperty("framesProcessed").GetInt64() >= side.GetProperty("expectedFrames").GetInt64() &&
+            side.GetProperty("expectedFrames").GetInt64() >= (long)Math.Ceiling(route.SampleRateHz * 5.0 * 0.99) &&
+            side.GetProperty("actualBufferFrames").GetInt32() == frames && side.GetProperty("frameCoveragePercent").GetDouble() >= 99.0 &&
+            side.GetProperty("quality").GetString() == "CLEAN" && side.GetProperty("cleanup").GetString() == "RELEASE_ATTEMPTED" &&
+            new[] { "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "longEventIntervals" }.All(n => side.GetProperty(n).GetInt64() == 0) &&
+            new[] { "deviceInvalidated", "watchdogTimedOut", "cancelled" }.All(n => !side.GetProperty(n).GetBoolean());
+    }
+}
