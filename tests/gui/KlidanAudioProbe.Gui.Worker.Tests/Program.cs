@@ -720,7 +720,7 @@ try
     var v4Candidates=WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
     var v4Budget=WorkerScanV2ContractV4Fingerprint.Budget(v4Candidates.Count,5);
     var v4Bounds=new WorkerScanV2PeriodBounds(30000,100000);
-    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["OFF"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8,v4Bounds,v4Bounds);
+    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["PRO_AUDIO"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8,v4Bounds,v4Bounds);
     var v4Confirmation=Guid.NewGuid();var v4Consent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,v4Plan,1,true,v4Confirmation);
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { PlanFingerprint = new string('0',64) }),"V4 consent bound to a different plan is rejected before IPC");
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { DiscoveryGeneration = 2 }),"V4 consent from an older discovery generation is rejected before IPC");
@@ -735,7 +735,7 @@ try
     var v4RenderInitId=Guid.NewGuid();var v4RenderInit=await v2SessionClient.InitializeCustomPeriodV2InScanAsync(v4Session,v4RenderInitId,v2Capture,v2Render,v4Plan,0,"RENDER");
     Check(v4RenderInit.GetProperty("initializeDisposition").GetString()=="INITIALIZED_EXACT"&&v4RenderInit.GetProperty("actualFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4RenderInit.GetProperty("actualPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns,"V4 Render Initialize independently preserves exact candidate geometry");
     var v4DuplexId=Guid.NewGuid();var v4Duplex=await v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,v4DuplexId,route,v2Capture,v2Render,v4Plan,0);
-    Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport returns exact endpoint identity, per-side geometry and explicit test provenance");
+    Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("report").GetProperty("requested").GetProperty("mmcss").GetString()=="PRO_AUDIO"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport authorizes exact PRO_AUDIO endpoint geometry and preserves explicit test provenance");
     var preparedV4Evaluation=new WorkerScanV2V4PreparedPlan(v2Capture,v2Render,v4Plan,v4Consent);
     Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,v4Duplex)=="CLEAN","strict v4 evaluator accepts the complete exact synthetic CLEAN report");
     var capSideRoute=route.Capture;var renSideRoute=route.Render;
@@ -829,7 +829,7 @@ try
         var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeats);
-        var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["OFF"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["PRO_AUDIO"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
         var accepted = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, searchPlan, client.DiscoveryGeneration, true, Guid.NewGuid());
         var seen = new List<string>();
         var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-search-" + Guid.NewGuid().ToString("N"));
@@ -841,30 +841,12 @@ try
                 profileDirectory: createV4Profile ? Path.Combine(evidenceRoot, "profiles") : null);
             var serializedEvidence = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
             Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && serializedEvidence.Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal) && result.Evidence.Provenance=="TEST_FAKE_WASAPI_V4_DUPLEX", $"{name} full candidate matrix persists and reads back source-consistent synthetic provenance without falsely marking Initialize plus Duplex as mixed [path={result.EvidencePath ?? "null"}; exists={result.EvidencePath is not null && File.Exists(result.EvidencePath)}; lifecycle={result.Evidence.Lifecycle}; state={result.Evidence.SelectionState}; stop={result.Evidence.StopReason}; matrix={result.Evidence.Candidates.FirstOrDefault()?.DuplexDisposition}; repeats={result.Evidence.RepeatabilityCompleted}; ops={string.Join(',', seen)}; provenance={result.Evidence.Provenance}]");
-            if (createV4Profile && result.Evidence.ProfilePath is { } profilePath)
-            {
-                var profile = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(profilePath));
-                Check(profile.SchemaVersion == 5 && profile.Evidence.Count == 0 && profile.StableShortSelection?.ProfileKind == "TEST_ONLY" && profile.StableShortSelection.SourceEvidenceSha256 == Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(evidenceRoot, profile.StableShortSelection.SourceEvidenceId)))).ToLowerInvariant(), $"{name} V4 evidence creates a schema v5 TEST_ONLY profile directly without a V3 Duplex base");
-                var sourceMatrix = V2CandidateMatrixEvidenceJson.Read(Path.Combine(evidenceRoot, profile.StableShortSelection!.SourceEvidenceId));
-                Check(sourceMatrix.EvidenceVersion == 3 && sourceMatrix.Candidates[profile.StableShortSelection.SelectedCandidateIndex].CaptureInitializeEvidence is { ValueKind: JsonValueKind.Object } && sourceMatrix.Candidates[profile.StableShortSelection.SelectedCandidateIndex].DuplexEvidence is { ValueKind: JsonValueKind.Object } && sourceMatrix.RepeatabilityRuns.All(r => r.Evidence is { ValueKind: JsonValueKind.Object }), $"{name} Profile v5 source retains every native Initialize, first SHORT_CLEAN and repeat report");
-                if (profile.StableShortSelection.CaptureFormat.Encoding == "PCM16")
-                    Check(profile.StableShortSelection.CaptureFormat.ContainerBits == 16 && profile.StableShortSelection.CaptureFormat.ValidBits == 16 && profile.StableShortSelection.RenderFormat.ContainerBits == 16 && profile.StableShortSelection.RenderFormat.ValidBits == 16, $"{name} PCM16 profile stores 16 container/valid bits");
-                if (profile.StableShortSelection.CaptureFormat.Encoding is "PCM24_IN_32" or "FLOAT32")
-                    Check(profile.StableShortSelection.CaptureFormat.ContainerBits == 32 && profile.StableShortSelection.CaptureFormat.ValidBits == (profile.StableShortSelection.CaptureFormat.Encoding == "PCM24_IN_32" ? 24 : 32) && profile.StableShortSelection.RenderFormat.ContainerBits == 32 && profile.StableShortSelection.RenderFormat.ValidBits == (profile.StableShortSelection.RenderFormat.Encoding == "PCM24_IN_32" ? 24 : 32), $"{name} profile stores correct 32-bit container and encoding-specific valid bits");
-                var cannotPromoteFake = false;
-                try
-                {
-                    var fakeSelection = profile.StableShortSelection! with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" };
-                    _ = DeviceConfigurationProfileFactory.CreateStableShortFromV4(new(captureId, renderId, searchPlan, accepted), Path.Combine(evidenceRoot, fakeSelection.SourceEvidenceId), fakeSelection, captureEndpoint, renderEndpoint);
-                }
-                catch (InvalidDataException) { cannotPromoteFake = true; }
-                Check(cannotPromoteFake, $"{name} TEST_FAKE V4 evidence cannot be relabeled as a physical DEVICE profile");
-            }
+            if (createV4Profile) Check(result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && !result.Evidence.ProfileEligible && result.Evidence.ProfilePath is null && !Directory.Exists(Path.Combine(evidenceRoot, "profiles")), $"{name} 5/5 short qualification remains profile-ineligible until KLIDAN AudioHost load qualification");
             return (result, seen.ToArray());
         }
         finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
-    async Task<V4AutomaticSearchResult> RunV4PointDiagnostic(int milliseconds)
+    async Task<V4AutomaticSearchResult> RunV4PointDiagnostic(int milliseconds, string mmcss = "OFF")
     {
         var oldBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
         Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('e', 40));
@@ -876,7 +858,7 @@ try
         var candidate = WorkerScanV2CandidatePlanning.Make(0, milliseconds * 10_000L, route, 144, 480, 144, 480);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(1, 0);
-        var plan = new WorkerScanV2ContractV4(route, [candidate], ["OFF"], 0, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var plan = new WorkerScanV2ContractV4(route, [candidate], [mmcss], 0, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
         var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
         var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-point-" + Guid.NewGuid().ToString("N"));
         try
@@ -890,12 +872,14 @@ try
             var duplexOperation = row.DuplexEvidence!.Value.GetProperty("operationId").GetString();
             Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && result.Evidence.DiagnosticOnly && result.Evidence.SelectionState == "DIAGNOSTIC_ONLY" && !result.Evidence.GlobalMinimumProven && result.Evidence.ProfilePath is null && !result.Evidence.ProfileEligible && result.Evidence.SessionCleanup == "CLOSE_CONFIRMED" && result.Evidence.CandidateDomain.Count == 1 && result.Evidence.UsedOperations == 3 && result.Evidence.MaximumOperations == 3 && result.Evidence.UsedActiveDuplexSeconds <= 5 && result.Evidence.RepeatabilityCompleted == 0 && result.Evidence.BuildSha == new string('e', 40) && json.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal), $"{milliseconds} ms V4 point diagnostic persists only one candidate, exact build SHA and closed no-profile evidence");
             Check(candidate.CaptureFrames == (milliseconds == 5 ? 240 : 480) && candidate.RenderFrames == candidate.CaptureFrames && row.DuplexDisposition == "CLEAN" && new[] { captureOperation, renderOperation, duplexOperation }.All(id => Guid.TryParse(id, out _)) && new[] { captureOperation, renderOperation, duplexOperation }.Distinct().Count() == 3, $"{milliseconds} ms point diagnostic executes exact frames through two Initializes and one distinct Duplex operation ID");
+            Check(row.DuplexEvidence!.Value.GetProperty("report").GetProperty("requested").GetProperty("mmcss").GetString() == mmcss && result.Evidence.ProfilePath is null && !result.Evidence.ProfileEligible, $"{milliseconds} ms point diagnostic preserves its consented {mmcss} mode and never creates a profile");
             return result;
         }
         finally { Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", oldBuildSha); await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
     _ = await RunV4PointDiagnostic(5);
     _ = await RunV4PointDiagnostic(10);
+    _ = await RunV4PointDiagnostic(10, "PRO_AUDIO");
     var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true, createV4Profile: true);
     Check(bloodySearch.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.RepeatabilityCompleted == 5 && bloodySearch.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody confirms 5 ms only after five additional CLEAN repeats; larger candidates remain skipped");
     Check(bloodySearch.Operations.Where(x => x.Contains("REPEAT", StringComparison.Ordinal)).SequenceEqual(Enumerable.Range(1, 5).Select(i => $"5:REPEAT_{i}")) && bloodySearch.Operations.All(x => !x.StartsWith("6:", StringComparison.Ordinal)), "Bloody repeats only the selected 5 ms candidate and never falls back");

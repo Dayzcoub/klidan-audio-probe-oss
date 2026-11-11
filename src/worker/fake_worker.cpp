@@ -747,7 +747,7 @@ struct ScanAuthorization {
     unsigned repeatabilityClean{},nextSustainedDuration{60},pendingDuration{};std::string pendingStage,pendingPeriod,pendingMmcss;
     std::vector<ScanPlanV2V4::Candidate> v4Candidates;
     std::unique_ptr<ScanPlanV2V4::TransportSequence> v4Sequence;
-    unsigned v4RepeatabilityRuns{},v4InitializeTimeoutSeconds{},v4CleanupDeadlineSeconds{};
+    unsigned v4RepeatabilityRuns{},v4InitializeTimeoutSeconds{},v4CleanupDeadlineSeconds{};std::string v4Mmcss;
 };
 bool HasOnlyMembers(const rapidjson::Value& value,std::initializer_list<std::string_view> names) {if(!value.IsObject())return false;for(auto it=value.MemberBegin();it!=value.MemberEnd();++it){const std::string_view name(it->name.GetString(),it->name.GetStringLength());if(std::find(names.begin(),names.end(),name)==names.end())return false;}return true;}
 ChannelRouting::Configuration ReadV2Route(const rapidjson::Value& value,std::string captureId,std::string renderId,bool strictMembers=true) {
@@ -802,7 +802,8 @@ std::shared_ptr<ScanAuthorization> ParseScanAuthorizationV2V4(const rapidjson::V
     if(payload.HasMember("authorizeRepeatability")){if(!payload["authorizeRepeatability"].IsBool())throw Rejection("INVALID_SCAN_PLAN","V4 repeatability authorization must be boolean.");authorizeRepeatability=payload["authorizeRepeatability"].GetBool();}
     if(!ReadInt(payload,"contractVersion",version)||version!=4||!ReadString(payload,"captureEndpointId",captureId)||!ReadString(payload,"renderEndpointId",renderId)||captureId.empty()||renderId.empty()||captureId==renderId||!ReadString(payload,"routeFingerprint",routeFingerprint)||!ReadString(payload,"planFingerprint",planFingerprint)||!ReadInt(payload,"repeatabilityRuns",repeatability)||!ReadInt(payload,"maximumOperationCount",maxOperations)||!ReadInt(payload,"maximumActiveDuplexSeconds",maxActive)||!ReadInt(payload,"initializeTimeoutSeconds",initTimeout)||!ReadInt(payload,"sessionLifetimeSeconds",lifetime)||!ReadInt(payload,"cleanupDeadlineSeconds",cleanup)) throw Rejection("INVALID_SCAN_PLAN","V4 identity, fingerprint, or budget fields are malformed.");
     if(!payload.HasMember("candidates")||!payload["candidates"].IsArray()||payload["candidates"].Empty()||payload["candidates"].Size()>8) throw Rejection("INVALID_SCAN_PLAN","V4 candidate list is missing or outside its fixed bounds.");
-    if(!payload.HasMember("mmcssModes")||!payload["mmcssModes"].IsArray()||payload["mmcssModes"].Size()!=1||!payload["mmcssModes"][0].IsString()||std::string_view(payload["mmcssModes"][0].GetString(),payload["mmcssModes"][0].GetStringLength())!="OFF") throw Rejection("INVALID_SCAN_PLAN","V4 MMCSS scope must be OFF.");
+    if(!payload.HasMember("mmcssModes")||!payload["mmcssModes"].IsArray()||payload["mmcssModes"].Size()!=1||!payload["mmcssModes"][0].IsString()||(std::string_view(payload["mmcssModes"][0].GetString(),payload["mmcssModes"][0].GetStringLength())!="OFF"&&std::string_view(payload["mmcssModes"][0].GetString(),payload["mmcssModes"][0].GetStringLength())!="PRO_AUDIO")) throw Rejection("INVALID_SCAN_PLAN","V4 MMCSS scope must select exactly OFF or PRO_AUDIO.");
+    const std::string v4Mmcss(payload["mmcssModes"][0].GetString(),payload["mmcssModes"][0].GetStringLength());
     if(!payload.HasMember("authorization")||!HasOnlyMembers(payload["authorization"],{"accepted","confirmationId"})||!payload["authorization"].HasMember("accepted")||!payload["authorization"].HasMember("confirmationId")) throw Rejection("INVALID_SCAN_PLAN","V4 authorization receipt is malformed.");
     auto route=ReadV2Route(payload["route"],captureId,renderId);
     if(ChannelRouting::Fingerprint(route)!=routeFingerprint||discovered.find(captureId)==discovered.end()||discovered.at(captureId)!="CAPTURE"||discovered.find(renderId)==discovered.end()||discovered.at(renderId)!="RENDER")throw Rejection("SCAN_FINGERPRINT_MISMATCH","V4 route or exact discovered endpoint identity mismatch.");
@@ -827,12 +828,12 @@ std::shared_ptr<ScanAuthorization> ParseScanAuthorizationV2V4(const rapidjson::V
     }
     const auto budget=ScanPlanV2V4::ComputeBudget(static_cast<unsigned>(candidates.size()),repeatability);
     if(maxOperations!=static_cast<int>(budget.operations)||maxActive!=static_cast<int>(budget.activeSeconds)||lifetime!=static_cast<int>(budget.sessionSeconds)||initTimeout!=30||cleanup!=8)throw Rejection("INVALID_SCAN_PLAN","V4 operation or time budget does not match the derived contract.");
-    auto canonical=ScanPlanV2V4::Canonical(captureId,renderId,route,captureBounds,renderBounds,candidates,repeatability,budget.operations,budget.activeSeconds,initTimeout,lifetime,cleanup,generation,routeFingerprint);
+    auto canonical=ScanPlanV2V4::Canonical(captureId,renderId,route,captureBounds,renderBounds,candidates,repeatability,v4Mmcss,budget.operations,budget.activeSeconds,initTimeout,lifetime,cleanup,generation,routeFingerprint);
     if(Sha256(canonical)!=planFingerprint)throw Rejection("SCAN_FINGERPRINT_MISMATCH","Worker-computed immutable v4 plan fingerprint does not match.");
     const auto& auth=payload["authorization"];if(auth.HasMember("accepted")&&auth["accepted"].IsBool())accepted=auth["accepted"].GetBool();if(!accepted||!ReadString(auth,"confirmationId",confirmation))throw Rejection("SCAN_CONSENT_REQUIRED","Explicit fresh v4 operator acceptance is required.");
     confirmation=GuidString(confirmation);if(consumedConfirmations.size()>=128)throw Rejection("SCAN_CONSENT_CAPACITY","Worker authorization history is full; restart before another session.");if(consumedConfirmations.contains(confirmation))throw Rejection("SCAN_CONSENT_REPLAY","This authorization was already consumed.");consumedConfirmations.insert(confirmation);
     const auto authorizedRepeats=authorizeRepeatability?static_cast<unsigned>(repeatability):0U;
-    auto session=std::make_shared<ScanAuthorization>();session->version4=true;session->route=std::move(route);session->routeFingerprint=routeFingerprint;session->endpoints.emplace(captureId,"CAPTURE");session->endpoints.emplace(renderId,"RENDER");session->maxOperations=budget.operations;session->maxDuration=5;session->maxTotalDuration=budget.activeSeconds;session->discoveryGeneration=generation;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;session->v4Candidates=candidates;session->v4RepeatabilityRuns=authorizedRepeats;session->v4InitializeTimeoutSeconds=static_cast<unsigned>(initTimeout);session->v4CleanupDeadlineSeconds=static_cast<unsigned>(cleanup);session->v4Sequence=std::make_unique<ScanPlanV2V4::TransportSequence>(std::move(candidates),budget.operations,budget.activeSeconds,authorizedRepeats);return session;
+    auto session=std::make_shared<ScanAuthorization>();session->version4=true;session->route=std::move(route);session->routeFingerprint=routeFingerprint;session->endpoints.emplace(captureId,"CAPTURE");session->endpoints.emplace(renderId,"RENDER");session->maxOperations=budget.operations;session->maxDuration=5;session->maxTotalDuration=budget.activeSeconds;session->discoveryGeneration=generation;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;session->v4Candidates=candidates;session->v4Mmcss=v4Mmcss;session->v4RepeatabilityRuns=authorizedRepeats;session->v4InitializeTimeoutSeconds=static_cast<unsigned>(initTimeout);session->v4CleanupDeadlineSeconds=static_cast<unsigned>(cleanup);session->v4Sequence=std::make_unique<ScanPlanV2V4::TransportSequence>(std::move(candidates),budget.operations,budget.activeSeconds,authorizedRepeats);return session;
 }
 std::string ScanPlanFingerprint(const rapidjson::Value& payload) {
     const auto& endpoints=payload["endpoints"];const auto& operations=payload["allowedOperations"];const auto& formats=payload["formats"];
@@ -1044,10 +1045,10 @@ const ScanPlanV2V4::Candidate& AuthorizeV4Duplex(const rapidjson::Value& payload
     const auto& expected=*session->route;
     if (captureId!=expected.captureEndpointId || renderId!=expected.renderEndpointId ||
         routeFingerprint!=ChannelRouting::Fingerprint(route) || ChannelRouting::Fingerprint(route)!=session->routeFingerprint ||
-        duration!=5 || mmcss!="OFF" || route.mode!=expected.mode ||
+        duration!=5 || mmcss!=session->v4Mmcss || route.mode!=expected.mode ||
         route.capture.format.sampleRate!=expected.capture.format.sampleRate || route.capture.format.channels!=expected.capture.format.channels || route.capture.format.encoding!=expected.capture.format.encoding ||
         route.render.format.sampleRate!=expected.render.format.sampleRate || route.render.format.channels!=expected.render.format.channels || route.render.format.encoding!=expected.render.format.encoding)
-        throw Rejection("V4_ROUTE_OR_BUDGET_MISMATCH", "V4 Duplex route or fixed five-second MMCSS-OFF scope differs from consent.");
+        throw Rejection("V4_ROUTE_OR_BUDGET_MISMATCH", "V4 Duplex route, consented MMCSS mode, or fixed five-second scope differs from authorization.");
     if (discovered.find(std::string(captureId))==discovered.end() || discovered.at(std::string(captureId))!="CAPTURE" ||
         discovered.find(std::string(renderId))==discovered.end() || discovered.at(std::string(renderId))!="RENDER")
         throw Rejection("SCAN_ENDPOINT_OUT_OF_SCOPE", "V4 Duplex endpoints are not current discovered Capture/Render endpoints.");

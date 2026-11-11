@@ -4,7 +4,7 @@ public static class WorkerScanV2PlanPreparation
 {
     public static WorkerScanV2ContractV4 Prepare(string captureId, string renderId, WorkerScanV2Route route,
         RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns,
-        int? diagnosticPeriodMilliseconds = null)
+        int? diagnosticPeriodMilliseconds = null, string diagnosticMmcssMode = "OFF")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
         ArgumentException.ThrowIfNullOrWhiteSpace(renderId);
@@ -15,7 +15,7 @@ public static class WorkerScanV2PlanPreparation
         IReadOnlyList<WorkerScanV2Candidate> candidates;
         if (diagnosticPeriodMilliseconds is { } diagnosticMs)
         {
-            if (diagnosticMs is not (5 or 10) || repeatabilityRuns != 0 || route.Mode != "MONO_TO_STEREO" ||
+            if (diagnosticMs is not (5 or 10) || repeatabilityRuns != 0 || diagnosticMmcssMode is not ("OFF" or "PRO_AUDIO") || route.Mode != "MONO_TO_STEREO" ||
                 route.Capture.SampleRateHz != 48_000 || route.Render.SampleRateHz != 48_000 ||
                 route.Capture.Encoding != "PCM16" || route.Render.Encoding != "PCM16")
                 throw new InvalidDataException("Point diagnostics require the reviewed 48 kHz PCM16 MONO_TO_STEREO route, 5/10 ms, and R=0.");
@@ -29,7 +29,7 @@ public static class WorkerScanV2PlanPreparation
         else candidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(route, captureBounds, renderBounds);
         if (candidates.Count == 0) throw new InvalidDataException("Capture and Render reported period ranges do not produce any unique candidate periods.");
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeatabilityRuns);
-        return new(route, candidates, ["OFF"], repeatabilityRuns, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds,
+        return new(route, candidates, [diagnosticPeriodMilliseconds is null ? "PRO_AUDIO" : diagnosticMmcssMode], repeatabilityRuns, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds,
             30, budget.SessionLifetimeSeconds, 8, captureBounds, renderBounds);
     }
 

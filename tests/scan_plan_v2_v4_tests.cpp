@@ -26,13 +26,13 @@ int Run() {
     assert(ComputeBudget(8, 5).operations == 29);
     assert(ComputeBudget(8, 5).activeSeconds == 65);
     assert(ComputeBudget(8, 5).sessionSeconds == 1171);
-    const auto canonical = Canonical("capture", "render", route, normalBounds, normalBounds, candidates, 5, 29, 65, 30, 1171, 8, 7, Fingerprint(route));
+    const auto canonical = Canonical("capture", "render", route, normalBounds, normalBounds, candidates, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(route));
     assert(canonical.starts_with("SCAN_PLAN_V2|4|7|capture|render|"));
     assert(canonical.find("B|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n") != std::string::npos);
     assert(canonical.find("C|0|30000|144|144|30000|30000|0|false|0|false|144|480|144|480|\n") != std::string::npos);
     auto changed = candidates; changed[0].captureFrames++;
     bool rejected = false;
-    try { (void)Canonical("capture", "render", route, normalBounds, normalBounds, changed, 5, 29, 65, 30, 1171, 8, 7, Fingerprint(route)); } catch (const std::invalid_argument&) { rejected = true; }
+    try { (void)Canonical("capture", "render", route, normalBounds, normalBounds, changed, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(route)); } catch (const std::invalid_argument&) { rejected = true; }
     assert(rejected);
     rejected = false;
     try { (void)ComputeBudget(9, 5); } catch (const std::invalid_argument&) { rejected = true; }
@@ -43,19 +43,21 @@ int Run() {
     const auto renderFrames = Frames(requested, 48'000);
     const PeriodBounds mixedCaptureBounds{30'000, 100'000, 0, false};
     const std::vector<Candidate> asymmetric{{0, requested, captureFrames, renderFrames, Duration(captureFrames, 44'100), Duration(renderFrames, 48'000), 0, 0, false, false, 132, 441, 144, 480, ""}};
-    const auto asymmetricCanonical = Canonical("capture", "render", route, mixedCaptureBounds, normalBounds, asymmetric, 0, 3, 5, 30, 139, 8, 7, Fingerprint(route));
+    const auto asymmetricCanonical = Canonical("capture", "render", route, mixedCaptureBounds, normalBounds, asymmetric, 0, "OFF", 3, 5, 30, 139, 8, 7, Fingerprint(route));
     assert(asymmetricCanonical.find("C|0|30000|132|144|29932|30000|") != std::string::npos);
     auto unicodeRoute = route;
     unicodeRoute.capture.format.sampleRate = 48'000;
     unicodeRoute.captureEndpointId = "capture-кириллица";
     unicodeRoute.renderEndpointId = "render-音声";
-    auto unicodeCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, 29, 65, 30, 1171, 8, 7, Fingerprint(unicodeRoute));
+    auto unicodeCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(unicodeRoute));
     const std::string expected = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|29|65|30|1171|8|\nB|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n"
         "C|0|30000|144|144|30000|30000|0|false|0|false|144|480|144|480|\nC|1|40000|192|192|40000|40000|0|false|0|false|144|480|144|480|\n"
         "C|2|50000|240|240|50000|50000|0|false|0|false|144|480|144|480|\nC|3|60000|288|288|60000|60000|0|false|0|false|144|480|144|480|\n"
         "C|4|70000|336|336|70000|70000|0|false|0|false|144|480|144|480|\nC|5|80000|384|384|80000|80000|0|false|0|false|144|480|144|480|\n"
         "C|6|90000|432|432|90000|90000|0|false|0|false|144|480|144|480|\nC|7|100000|480|480|100000|100000|0|false|0|false|144|480|144|480|\nM|OFF\n";
     assert(unicodeCanonical == expected);
+    const auto proAudioCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "PRO_AUDIO", 29, 65, 30, 1171, 8, 7, Fingerprint(unicodeRoute));
+    assert(proAudioCanonical.ends_with("M|PRO_AUDIO\n") && proAudioCanonical != canonical);
 
     TransportSequence sequence(candidates, 24, 40);
     bool orderRejected = false;

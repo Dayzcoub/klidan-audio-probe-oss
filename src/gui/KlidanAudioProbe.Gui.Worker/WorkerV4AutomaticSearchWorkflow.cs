@@ -188,41 +188,6 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-{(diagnosticOnly ? "diagnostic" : "search")}-closed-session-{Guid.NewGuid():D}.json")); }
             catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "FINAL_EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
         }
-        if (!diagnosticOnly && (profileBase is not null || captureEndpoint is not null && renderEndpoint is not null) && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
-        {
-            var evidenceDirectory = evidenceRoot!;
-            var candidate = plan.Candidates[profileCandidate];
-            var sourceHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
-            var repeatProvenance = repeatRuns.Select(r => r.Provenance).Distinct(StringComparer.Ordinal).Single();
-            var testOnly = repeatProvenance == "TEST_FAKE_WASAPI_V4_DUPLEX";
-            static int ContainerBits(string encoding) => encoding == "PCM16" ? 16 : 32;
-            static int ValidBits(string encoding) => encoding switch { "PCM16" => 16, "PCM24_IN_32" => 24, "FLOAT32" => 32, _ => throw new InvalidDataException("Unsupported V4 profile encoding.") };
-            var selection = new ProfileStableShortSelection(testOnly ? "TEST_ONLY" : "DEVICE", prepared.CaptureEndpointId, prepared.RenderEndpointId, plan.Route.Mode,
-                new(plan.Route.Capture.Encoding, plan.Route.Capture.SampleRateHz, plan.Route.Capture.Channels, ContainerBits(plan.Route.Capture.Encoding), ValidBits(plan.Route.Capture.Encoding), $"CUSTOM:{candidate.CaptureFrames}:{candidate.CapturePeriod100ns}"),
-                new(plan.Route.Render.Encoding, plan.Route.Render.SampleRateHz, plan.Route.Render.Channels, ContainerBits(plan.Route.Render.Encoding), ValidBits(plan.Route.Render.Encoding), $"CUSTOM:{candidate.RenderFrames}:{candidate.RenderPeriod100ns}"),
-                plan.Route.Capture.SelectedIndicesZeroBased, plan.Route.Render.SelectedIndicesZeroBased, candidate.CaptureFrames, candidate.CapturePeriod100ns, candidate.CaptureFrames, candidate.CapturePeriod100ns,
-                candidate.RenderFrames, candidate.RenderPeriod100ns, candidate.RenderFrames, candidate.RenderPeriod100ns, "OFF", candidate.Index, consent.PlanFingerprint, consent.DiscoveryGeneration,
-                "MINIMUM_SHORT_CLEAN_FOUND", 5, 5, repeatRuns.Select(r => r.OperationId).ToArray(), repeatProvenance,
-                Path.GetFileName(path), sourceHash, DateTimeOffset.UtcNow,
-                captureEndpoint?.ContainerId is { Length: > 0 } containerId && containerId == renderEndpoint?.ContainerId ? containerId : null);
-            try
-            {
-                var profile = profileBase is not null
-                    ? DeviceConfigurationProfileFactory.CreateStableShort(profileBase, selection)
-                    : DeviceConfigurationProfileFactory.CreateStableShortFromV4(prepared, path, selection, captureEndpoint!, renderEndpoint!);
-                var profilePath = DeviceConfigurationProfileStorage.SaveLocal(profile, profileDirectory ?? evidenceDirectory);
-                var profileReadBack = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(profilePath));
-                if (profileReadBack.ProfileId != profile.ProfileId || profileReadBack.StableShortSelection?.SourceEvidenceSha256 != sourceHash || profileReadBack.StableShortSelection!.RepeatOperationIds.Count != 5 || profileReadBack.StableShortSelection.CaptureEndpointId != prepared.CaptureEndpointId || profileReadBack.StableShortSelection.RenderEndpointId != prepared.RenderEndpointId) throw new InvalidDataException("Stable profile exact read-back verification failed.");
-                var profileHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(profilePath))).ToLowerInvariant();
-                result = result with { ProfileEligible = true, ProfilePath = profilePath, ProfileSha256 = profileHash };
-                path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profiled-{Guid.NewGuid():D}.json"));
-            }
-            catch (Exception ex)
-            {
-                stopReason = "PROFILE_SAVE_OR_READBACK_FAILED:" + ex.GetType().Name; result = CreateEvidence();
-                try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profile-failure-{Guid.NewGuid():D}.json")); } catch { }
-            }
-        }
         return new(result, path);
 
         async Task<JsonElement> Initialize(WorkerScanV2Candidate candidate, string direction)

@@ -53,11 +53,12 @@ inline std::string Canonical(std::string_view captureId, std::string_view render
                              const ChannelRouting::Configuration& route,
                              const PeriodBounds& captureBounds, const PeriodBounds& renderBounds,
                              const std::vector<Candidate>& candidates, unsigned repeatability,
+                             std::string_view mmcssMode,
                              unsigned maximumOperations, unsigned maximumActiveSeconds,
                              unsigned initializeTimeoutSeconds, unsigned sessionLifetimeSeconds,
                              unsigned cleanupDeadlineSeconds, std::uint64_t generation,
                              std::string_view routeFingerprint) {
-    if (captureId.empty() || renderId.empty() || captureId == renderId || captureId != route.captureEndpointId || renderId != route.renderEndpointId || candidates.empty() || candidates.size() > 8 || repeatability > 5)
+    if (captureId.empty() || renderId.empty() || captureId == renderId || captureId != route.captureEndpointId || renderId != route.renderEndpointId || candidates.empty() || candidates.size() > 8 || repeatability > 5 || (mmcssMode != "OFF" && mmcssMode != "PRO_AUDIO"))
         throw std::invalid_argument("invalid V4 identity or scope");
     const auto budget = ComputeBudget(static_cast<unsigned>(candidates.size()), repeatability);
     ValidateBounds(captureBounds); ValidateBounds(renderBounds);
@@ -87,7 +88,7 @@ inline std::string Canonical(std::string_view captureId, std::string_view render
         previous = c.duration100ns;
         result += "C|" + std::to_string(c.index) + "|" + std::to_string(c.duration100ns) + "|" + std::to_string(c.captureFrames) + "|" + std::to_string(c.renderFrames) + "|" + std::to_string(c.capturePeriod100ns) + "|" + std::to_string(c.renderPeriod100ns) + "|" + std::to_string(c.captureAlignmentFrames) + "|" + (c.captureAlignmentKnown ? "true" : "false") + "|" + std::to_string(c.renderAlignmentFrames) + "|" + (c.renderAlignmentKnown ? "true" : "false") + "|" + std::to_string(c.captureMin) + "|" + std::to_string(c.captureMax) + "|" + std::to_string(c.renderMin) + "|" + std::to_string(c.renderMax) + "|" + c.rejectionReason + "\n";
     }
-    result += "M|OFF\n";
+    result += "M|" + std::string(mmcssMode) + "\n";
     return result;
 }
 } // namespace ScanPlanV2V4

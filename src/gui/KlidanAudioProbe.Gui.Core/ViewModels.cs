@@ -198,6 +198,7 @@ public sealed class MainViewModel : ViewModel
     private ulong? _v4WorkerDiscoveryGeneration;
     private string? _v4PlanFingerprint;
     private int _v4DiagnosticPeriodMilliseconds = 5;
+    private string _v4DiagnosticMmcssMode = "OFF";
     private bool _v4DiagnosticPlanMode, _v4DiagnosticConsentChecked, _v4DiagnosticRunStarted;
     private CancellationTokenSource? _v4PreparationCancellation;
     private int _v4PreparationVersion, _v4RepeatabilityRuns = 5;
@@ -537,6 +538,8 @@ public sealed class MainViewModel : ViewModel
     public int V4RepeatabilityRuns { get => _v4RepeatabilityRuns; set { if (AutomaticScanBusy || value is < 0 or > 5 || !Set(ref _v4RepeatabilityRuns, value)) return; InvalidateV4PreparedPlan("VmV4PlanInvalidated"); } }
     public IReadOnlyList<int> V4DiagnosticPeriods { get; } = [5, 10];
     public int V4DiagnosticPeriodMilliseconds { get => _v4DiagnosticPeriodMilliseconds; set { if (value is not (5 or 10) || !Set(ref _v4DiagnosticPeriodMilliseconds, value)) return; InvalidateV4PreparedPlan("VmV4PlanInvalidated"); } }
+    public IReadOnlyList<ChoiceOption> V4DiagnosticMmcssOptions { get; } = [new("OFF", Localization.Get("VmWorkerMmcssOff")), new("PRO_AUDIO", Localization.Get("VmWorkerMmcssProAudio"))];
+    public string V4DiagnosticMmcssMode { get => _v4DiagnosticMmcssMode; set { if (AutomaticScanBusy || value is not ("OFF" or "PRO_AUDIO") || !Set(ref _v4DiagnosticMmcssMode, value)) return; InvalidateV4PreparedPlan("VmV4PlanInvalidated"); } }
     public bool V4DiagnosticPlanMode => _v4DiagnosticPlanMode;
     public bool V4DiagnosticConsentPending => _v4DiagnosticPlanMode && _v4ConsentPending;
     public bool V4SearchConsentPending => !_v4DiagnosticPlanMode && _v4ConsentPending;
@@ -1896,7 +1899,7 @@ public sealed class MainViewModel : ViewModel
             var renderMatrix = await _worker.QueryFormatMatrixAsync(render.EndpointId, "RENDER", [route.Render.Channels], cancellation.Token);
             if (!IsCurrentV4Preparation(version, workerGeneration, uiGeneration, processId, capture.EndpointId, render.EndpointId, routeFingerprint, route)) return;
             var plan = WorkerScanV2PlanPreparation.Prepare(capture.EndpointId, render.EndpointId, route, captureMatrix, renderMatrix, workerGeneration,
-                diagnosticOnly ? 0 : V4RepeatabilityRuns, diagnosticOnly ? V4DiagnosticPeriodMilliseconds : null);
+                diagnosticOnly ? 0 : V4RepeatabilityRuns, diagnosticOnly ? V4DiagnosticPeriodMilliseconds : null, V4DiagnosticMmcssMode);
             var fingerprint = WorkerScanV2ContractV4Fingerprint.Compute(capture.EndpointId, render.EndpointId, plan, workerGeneration);
             if (!IsCurrentV4Preparation(version, workerGeneration, uiGeneration, processId, capture.EndpointId, render.EndpointId, routeFingerprint, route)) return;
             _v4PreparedPlan = plan;
@@ -2107,7 +2110,7 @@ public sealed class MainViewModel : ViewModel
             plan.CaptureBounds.AlignmentFrames is null ? "ALIGNMENT_UNKNOWN" : plan.CaptureBounds.AlignmentFrames.Value.ToString(CultureInfo.CurrentCulture),
             plan.RenderBounds.AlignmentFrames is null ? "ALIGNMENT_UNKNOWN" : plan.RenderBounds.AlignmentFrames.Value.ToString(CultureInfo.CurrentCulture),
             plan.RepeatabilityRuns, plan.MaximumOperations, plan.MaximumActiveDuplexSeconds, plan.SessionLifetimeSeconds, plan.InitializeTimeoutSeconds, plan.CleanupDeadlineSeconds, _v4PlanFingerprint);
-        if (_v4DiagnosticPlanMode) consent = Localization.Get("V4DiagnosticConsentScope") + Environment.NewLine + consent;
+        if (_v4DiagnosticPlanMode) consent = string.Format(Localization.CurrentCulture, Localization.Get("V4DiagnosticConsentScope"), string.Join(",", plan.MmcssModes)) + Environment.NewLine + consent;
         return _v4ConsentReceipt is { } receipt ? consent + Environment.NewLine + string.Format(Localization.CurrentCulture, Localization.Get("VmV4ReceiptSummary"), receipt.ConfirmationId, receipt.DiscoveryGeneration) : consent;
 
         static string SelectedEndpointSummary(string? name, string id, WorkerScanV2Side side) => string.Format(Localization.CurrentCulture, Localization.Get("VmV4EndpointSummary"), name, id, side.SampleRateHz, side.Encoding, side.Channels, string.Join("/", side.SelectedIndicesZeroBased.Select(i => i + 1)));

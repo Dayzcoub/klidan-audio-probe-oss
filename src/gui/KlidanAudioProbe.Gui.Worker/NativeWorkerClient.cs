@@ -494,8 +494,8 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route);
         var candidate = plan.Candidates.SingleOrDefault(c => c.Index == candidateIndex)
             ?? throw new ArgumentOutOfRangeException(nameof(candidateIndex));
-        if (candidate.RejectionReason.Length != 0 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF")
-            throw new ArgumentException("V4 Duplex requires an eligible consented candidate and MMCSS OFF.", nameof(candidateIndex));
+        if (candidate.RejectionReason.Length != 0 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] is not ("OFF" or "PRO_AUDIO"))
+            throw new ArgumentException("V4 Duplex requires an eligible consented candidate and one explicitly authorized MMCSS mode.", nameof(candidateIndex));
         var payload = new Dictionary<string, object?> { ["contractVersion"] = 2, ["operationId"] = operationId,
             ["scanOperationId"] = operationId, ["scanSessionId"] = session.ScanSessionId, ["captureEndpointId"] = captureEndpointId,
             ["renderEndpointId"] = renderEndpointId, ["mode"] = route.Mode,
@@ -504,7 +504,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             ["routeFingerprint"] = routeFingerprint, ["candidateIndex"] = candidateIndex,
             ["captureFrames"] = candidate.CaptureFrames, ["capturePeriod100ns"] = candidate.CapturePeriod100ns,
             ["renderFrames"] = candidate.RenderFrames, ["renderPeriod100ns"] = candidate.RenderPeriod100ns,
-            ["period"] = "CUSTOM_V2", ["durationSeconds"] = 5, ["mmcss"] = "OFF" };
+            ["period"] = "CUSTOM_V2", ["durationSeconds"] = 5, ["mmcss"] = plan.MmcssModes[0] };
         if (testScenario is not null) payload["testScenario"] = testScenario;
         using var response = await SendAsync("ValidateCustomDuplexV2", payload, cancellationToken).ConfigureAwait(false);
         var result = response.RootElement.GetProperty("payload");

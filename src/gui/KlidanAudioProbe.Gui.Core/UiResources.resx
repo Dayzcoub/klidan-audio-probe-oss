@@ -1397,7 +1397,7 @@ Fallback: {1}
   <data name="V4DiagnosticConsentHeading" xml:space="preserve"><value>Point diagnostic consent</value></data>
   <data name="V4DiagnosticConsentCheck" xml:space="preserve"><value>I authorize only this exact 5-second Duplex candidate</value></data>
   <data name="V4StartDiagnostic" xml:space="preserve"><value>Run point diagnostic</value></data>
-  <data name="V4DiagnosticConsentScope" xml:space="preserve"><value>DIAGNOSTIC ONLY · one candidate · Capture Initialize + Render Initialize + one 5-second Duplex · MMCSS OFF · silence only · R=0 · no minimum claim or profile.</value></data>
+  <data name="V4DiagnosticConsentScope" xml:space="preserve"><value>DIAGNOSTIC ONLY · one candidate · Capture Initialize + Render Initialize + one 5-second Duplex · MMCSS {0} · silence only · R=0 · no minimum claim or profile.</value></data>
   <data name="VmV4DiagnosticUnavailable" xml:space="preserve"><value>Point diagnostic workflow is unavailable in this build.</value></data>
   <data name="VmV4DiagnosticNeedsBloodyFormat" xml:space="preserve"><value>Select MONO_TO_STEREO, 48 kHz PCM16 on both endpoints to prepare this reviewed point diagnostic.</value></data>
   <data name="VmV4DiagnosticPlanPending" xml:space="preserve"><value>Resolve the current V4 plan or consent before preparing another point diagnostic.</value></data>
