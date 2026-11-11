@@ -71,7 +71,8 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                 var provenance = duplex.GetProperty("provenance").GetString()!; attemptedProvenance.Add(provenance);
                 activeSeconds += 5;
                 var classification = V4ShortCleanEvaluator.Classify(prepared, session, candidate.Index, operationId, duplex);
-                Update(candidate.Index, e => e with { DuplexDisposition = classification, DuplexNotRun = false, SkipReason = null, ReasonCodes = [duplex.GetProperty("reasonCode").GetString()!], DuplexEvidence = duplex.Clone(),
+                var diagnosticFrames = V4ShortCleanEvaluator.CoverageMismatch(duplex);
+                Update(candidate.Index, e => e with { DuplexDisposition = classification, DuplexNotRun = false, SkipReason = null, ReasonCodes = [duplex.GetProperty("reasonCode").GetString()!, V4ShortCleanEvaluator.ExplainClassification(duplex, classification)], NativeDuplexDisposition = duplex.GetProperty("duplexDisposition").GetString(), EvaluatorReasonCode = V4ShortCleanEvaluator.ExplainClassification(duplex, classification), EvaluatorExpectedFrames = diagnosticFrames.Expected, EvaluatorActualFrames = diagnosticFrames.Actual, DuplexEvidence = duplex.Clone(),
                     ActualCaptureFrames = Positive(duplex, "actualCaptureFrames"), ActualCapturePeriod100ns = PositiveLong(duplex, "actualCapturePeriod100ns"),
                     ActualRenderFrames = Positive(duplex, "actualRenderFrames"), ActualRenderPeriod100ns = PositiveLong(duplex, "actualRenderPeriod100ns"), Provenance = provenance,
                     CaptureCleanup = CleanupSide(duplex, "CAPTURE"), RenderCleanup = CleanupSide(duplex, "RENDER") });
@@ -131,9 +132,9 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             var item = entries[i];
             var terminal = item.DuplexDisposition is "CLEAN" or "FAILED" or "UNSUPPORTED" or "REJECTED";
             var coverage = i < smallest && terminal ? "COMPLETE" : i >= smallest && selected is not null ? "COMPLETE" : state == "UNKNOWN" && !terminal ? "UNKNOWN" : "INCOMPLETE";
-            Update(i, e => e with { LowerPeriodCoverage = coverage, Provenance = e.Provenance == "NOT_RUN" ? (attemptedProvenance.Count == 1 ? attemptedProvenance.Single() : attemptedProvenance.Count == 0 ? "PLAN_ONLY" : "MIXED_PROVENANCE") : e.Provenance });
+            Update(i, e => e with { LowerPeriodCoverage = coverage, Provenance = e.Provenance == "NOT_RUN" ? AggregateProvenance(attemptedProvenance) : e.Provenance });
         }
-        var evidenceProvenance = attemptedProvenance.Count == 1 ? attemptedProvenance.Single() : attemptedProvenance.Count == 0 ? "PLAN_ONLY" : "MIXED_PROVENANCE";
+        var evidenceProvenance = AggregateProvenance(attemptedProvenance);
         V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries, state, evidenceProvenance)
         {
             EvidenceVersion = 3, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
@@ -212,6 +213,11 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                 testScenario?.Invoke(candidate.Index, direction + "_INITIALIZE")).ConfigureAwait(false);
             attemptedProvenance.Add(value.GetProperty("provenance").GetString()!);
             return value;
+        }
+        static string AggregateProvenance(IEnumerable<string> operations)
+        {
+            var sources = operations.Select(p => p.StartsWith("TEST_FAKE_", StringComparison.Ordinal) ? "TEST_FAKE" : p.StartsWith("REAL_", StringComparison.Ordinal) ? "REAL" : "UNKNOWN").Distinct(StringComparer.Ordinal).ToArray();
+            return sources.Length == 0 ? "PLAN_ONLY" : sources.Length == 1 && sources[0] == "REAL" ? "REAL_WASAPI_V4_DUPLEX" : sources.Length == 1 && sources[0] == "TEST_FAKE" ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "MIXED_PROVENANCE";
         }
         void FailInitialize(int index, string direction, JsonElement value)
         {

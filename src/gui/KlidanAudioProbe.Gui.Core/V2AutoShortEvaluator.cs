@@ -98,6 +98,36 @@ public static class V2AutoShortEvaluator
 
 public static class V4ShortCleanEvaluator
 {
+    public static bool SideCoverageClean(JsonElement side, WorkerScanV2Side route, int frames) =>
+        side.GetProperty("endpointId").GetString() is { Length: > 0 } &&
+        side.GetProperty("format").GetProperty("sampleRateHz").GetInt32() == route.SampleRateHz &&
+        side.GetProperty("format").GetProperty("channels").GetInt32() == route.Channels &&
+        side.GetProperty("format").GetProperty("encoding").GetString() == route.Encoding &&
+        side.GetProperty("startSucceeded").GetBoolean() && side.GetProperty("stopSucceeded").GetBoolean() &&
+        side.GetProperty("durationReached").GetBoolean() && side.GetProperty("framesProcessed").GetInt64() >= (long)Math.Ceiling(side.GetProperty("expectedFrames").GetInt64() * 0.99) &&
+        side.GetProperty("expectedFrames").GetInt64() >= (long)Math.Ceiling(route.SampleRateHz * 5.0 * 0.99) &&
+        side.GetProperty("actualBufferFrames").GetInt32() == frames && side.GetProperty("frameCoveragePercent").GetDouble() >= 99.0 &&
+        side.GetProperty("quality").GetString() == "CLEAN" && side.GetProperty("cleanup").GetString() == "RELEASE_ATTEMPTED" &&
+        new[] { "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "longEventIntervals" }.All(n => side.GetProperty(n).GetInt64() == 0) &&
+        new[] { "deviceInvalidated", "watchdogTimedOut", "cancelled" }.All(n => !side.GetProperty(n).GetBoolean());
+
+    public static string ExplainClassification(JsonElement evidence, string disposition)
+    {
+        if (disposition != "UNKNOWN") return disposition == "CLEAN" ? "CLEAN" : evidence.TryGetProperty("reasonCode", out var reason) ? reason.GetString() ?? "NATIVE_REPORTED_NON_CLEAN" : "NATIVE_REPORTED_NON_CLEAN";
+        if (!evidence.TryGetProperty("report", out var report) || !report.TryGetProperty("capture", out var capture) || !report.TryGetProperty("render", out var render)) return "REPORT_INCOMPLETE_OR_IDENTITY_MISMATCH";
+        foreach (var (name, side) in new[] { ("CAPTURE", capture), ("RENDER", render) })
+            if (side.TryGetProperty("expectedFrames", out var expected) && side.TryGetProperty("framesProcessed", out var frames) && expected.TryGetInt64(out var e) && frames.TryGetInt64(out var f) && e > 0 && f < (long)Math.Ceiling(e * 0.99)) return $"{name}_FRAME_COUNT_BELOW_99_PERCENT";
+        return "EVALUATOR_REJECTED_EVIDENCE";
+    }
+
+    public static (long? Expected, long? Actual) CoverageMismatch(JsonElement evidence)
+    {
+        if (!evidence.TryGetProperty("report", out var report)) return (null, null);
+        foreach (var name in new[] { "capture", "render" })
+            if (report.TryGetProperty(name, out var side) && side.TryGetProperty("expectedFrames", out var expected) && side.TryGetProperty("framesProcessed", out var frames) && expected.TryGetInt64(out var e) && frames.TryGetInt64(out var f) && e > 0 && f < (long)Math.Ceiling(e * 0.99)) return ((long)Math.Ceiling(e * 0.99), f);
+        return (null, null);
+    }
+
     public static string Classify(WorkerScanV2V4PreparedPlan prepared, WorkerScanSessionToken session,
         int candidateIndex, Guid operationId, JsonElement evidence)
     {
@@ -126,7 +156,7 @@ public static class V4ShortCleanEvaluator
                 report.GetProperty("route").GetProperty("fingerprint").GetString() != session.RouteFingerprint || report.GetProperty("route").GetProperty("mode").GetString() != prepared.Plan.Route.Mode) return "UNKNOWN";
             var cap = report.GetProperty("capture"); var ren = report.GetProperty("render"); var duplex = report.GetProperty("duplex");
             var clean = evidence.GetProperty("duplexDisposition").GetString() == "CLEAN" && duplex.GetProperty("status").GetString() == "DUPLEX_CLEAN" &&
-                SideClean(cap, prepared.Plan.Route.Capture, candidate.CaptureFrames) && SideClean(ren, prepared.Plan.Route.Render, candidate.RenderFrames) &&
+                SideCoverageClean(cap, prepared.Plan.Route.Capture, candidate.CaptureFrames) && SideCoverageClean(ren, prepared.Plan.Route.Render, candidate.RenderFrames) &&
                 evidence.GetProperty("actualCaptureFrames").GetInt32() == candidate.CaptureFrames && evidence.GetProperty("actualCapturePeriod100ns").GetInt64() == candidate.CapturePeriod100ns &&
                 evidence.GetProperty("actualRenderFrames").GetInt32() == candidate.RenderFrames && evidence.GetProperty("actualRenderPeriod100ns").GetInt64() == candidate.RenderPeriod100ns &&
                 evidence.GetProperty("cleanup").GetString() == "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED";
@@ -138,17 +168,5 @@ public static class V4ShortCleanEvaluator
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or FormatException or ArgumentException or OverflowException)
         { return "UNKNOWN"; }
 
-        static bool SideClean(JsonElement side, WorkerScanV2Side route, int frames) =>
-            side.GetProperty("endpointId").GetString() is { Length: > 0 } &&
-            side.GetProperty("format").GetProperty("sampleRateHz").GetInt32() == route.SampleRateHz &&
-            side.GetProperty("format").GetProperty("channels").GetInt32() == route.Channels &&
-            side.GetProperty("format").GetProperty("encoding").GetString() == route.Encoding &&
-            side.GetProperty("startSucceeded").GetBoolean() && side.GetProperty("stopSucceeded").GetBoolean() &&
-            side.GetProperty("durationReached").GetBoolean() && side.GetProperty("framesProcessed").GetInt64() >= side.GetProperty("expectedFrames").GetInt64() &&
-            side.GetProperty("expectedFrames").GetInt64() >= (long)Math.Ceiling(route.SampleRateHz * 5.0 * 0.99) &&
-            side.GetProperty("actualBufferFrames").GetInt32() == frames && side.GetProperty("frameCoveragePercent").GetDouble() >= 99.0 &&
-            side.GetProperty("quality").GetString() == "CLEAN" && side.GetProperty("cleanup").GetString() == "RELEASE_ATTEMPTED" &&
-            new[] { "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "longEventIntervals" }.All(n => side.GetProperty(n).GetInt64() == 0) &&
-            new[] { "deviceInvalidated", "watchdogTimedOut", "cancelled" }.All(n => !side.GetProperty(n).GetBoolean());
     }
 }

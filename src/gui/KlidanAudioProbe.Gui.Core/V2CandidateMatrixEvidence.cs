@@ -14,6 +14,10 @@ public sealed record V2CandidateMatrixEntry(WorkerScanV2Candidate Candidate, str
     public JsonElement? CaptureInitializeEvidence { get; init; }
     public JsonElement? RenderInitializeEvidence { get; init; }
     public JsonElement? DuplexEvidence { get; init; }
+    public string? NativeDuplexDisposition { get; init; }
+    public string? EvaluatorReasonCode { get; init; }
+    public long? EvaluatorExpectedFrames { get; init; }
+    public long? EvaluatorActualFrames { get; init; }
 }
 public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFingerprint, string RouteFingerprint,
     string Lifecycle, WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
