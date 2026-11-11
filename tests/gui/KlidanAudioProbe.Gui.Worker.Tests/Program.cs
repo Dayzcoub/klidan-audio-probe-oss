@@ -398,6 +398,7 @@ var injectedFormatClient = new NativeWorkerClient(formatFixtureWorker);
 await injectedFormatClient.ConnectAsync();
 Check(NativeWorkerClient.ResponseTimeoutForTest("ValidateDuplex") == TimeSpan.FromSeconds(51) && NativeWorkerClient.ResponseTimeoutForTest("ValidateSustainedDuplex") == TimeSpan.FromSeconds(641) && NativeWorkerClient.ResponseTimeoutForTest("ValidateStream") == TimeSpan.FromSeconds(45) && NativeWorkerClient.ResponseTimeoutForTest("ListEndpoints") == TimeSpan.FromSeconds(5), "short and sustained Duplex IPC deadlines remain distinct and bounded");
 Check(NativeWorkerClient.ResponseTimeoutForTest("CloseScanSession") == TimeSpan.FromSeconds(8), "CloseScanSession uses the shared bounded eight-second IPC budget");
+Check(NativeWorkerClient.ResponseTimeoutForTest("InitializeCustomPeriodV2") == TimeSpan.FromSeconds(30) && NativeWorkerClient.ResponseTimeoutForTest("ValidateCustomDuplexV2") == TimeSpan.FromSeconds(51), "V4 exact Initialize and Duplex use bounded native supervision deadlines");
 Check(injectedFormatClient.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal), "test-only worker advertises its injected non-WASAPI backend explicitly");
 var beforeDiscovery = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.QueryFormatMatrixAsync("injected-endpoint-capture", "CAPTURE"), "format query requires an endpoint from an explicit discovery response");
 Check(beforeDiscovery.ErrorCode == "ENDPOINT_NOT_DISCOVERED", "query before discovery performs no implicit endpoint scan");
@@ -727,10 +728,46 @@ try
     Check(v4Session.ContractVersion==4&&v4Session.RouteFingerprint==routeFingerprint,"Worker accepts exact v4 plan and returns an explicitly versioned non-executable token");
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.ValidateFormatMatrixInScanAsync(v4Session,Guid.NewGuid(),v2Capture,"CAPTURE",48000,2,"PCM16","MINIMUM"),"V4 token cannot enter legacy Initialize transport");
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(Guid.NewGuid().ToString("D"),v4Session,Guid.NewGuid(),route,v2Capture,v2Render,"MINIMUM",5,"OFF"),"V4 token cannot enter v3 Duplex transport");
+    var v4OutOfOrderId=Guid.NewGuid();var v4OutOfOrder=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,v4OutOfOrderId,route,v2Capture,v2Render,v4Plan,0),"V4 Duplex before both exact Initializes is rejected");
+    Check(v4OutOfOrder.ErrorCode=="V4_SEQUENCE_REJECTED","V4 transport enforces Capture Initialize then Render Initialize then Duplex");
+    var v4CaptureInitId=Guid.NewGuid();var v4CaptureInit=await v2SessionClient.InitializeCustomPeriodV2InScanAsync(v4Session,v4CaptureInitId,v2Capture,v2Render,v4Plan,0,"CAPTURE");
+    Check(v4CaptureInit.GetProperty("initializeDisposition").GetString()=="INITIALIZED_EXACT"&&v4CaptureInit.GetProperty("endpointId").GetString()==v2Capture&&v4CaptureInit.GetProperty("sampleRateHz").GetInt32()==route.Capture.SampleRateHz&&v4CaptureInit.GetProperty("channels").GetInt32()==route.Capture.Channels&&v4CaptureInit.GetProperty("encoding").GetString()==route.Capture.Encoding&&v4CaptureInit.GetProperty("actualFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4CaptureInit.GetProperty("actualPeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns,"V4 Capture Initialize preserves exact endpoint, format and 144-frame/3-ms requested and actual geometry");
+    var v4RenderInitId=Guid.NewGuid();var v4RenderInit=await v2SessionClient.InitializeCustomPeriodV2InScanAsync(v4Session,v4RenderInitId,v2Capture,v2Render,v4Plan,0,"RENDER");
+    Check(v4RenderInit.GetProperty("initializeDisposition").GetString()=="INITIALIZED_EXACT"&&v4RenderInit.GetProperty("actualFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4RenderInit.GetProperty("actualPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns,"V4 Render Initialize independently preserves exact candidate geometry");
+    var v4DuplexId=Guid.NewGuid();var v4Duplex=await v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,v4DuplexId,route,v2Capture,v2Render,v4Plan,0);
+    Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport returns exact endpoint identity, per-side geometry and explicit test provenance");
+    var v4EvidencePath=Path.Combine(Path.GetTempPath(),$"klidan-v4-test-evidence-{Guid.NewGuid():N}.json");
+    try{await File.WriteAllTextAsync(v4EvidencePath,v4Duplex.GetRawText());using var v4EvidenceReadback=JsonDocument.Parse(await File.ReadAllTextAsync(v4EvidencePath));Check(v4EvidenceReadback.RootElement.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX"&&v4EvidenceReadback.RootElement.GetProperty("operationId").GetGuid()==v4DuplexId,"v4 test harness persists and reads back the exact explicitly synthetic CUSTOM Duplex evidence");}
+    finally{if(File.Exists(v4EvidencePath))File.Delete(v4EvidencePath);}
+    var v4ChangedFrame=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.InitializeCustomPeriodV2InScanAsync(v4Session,Guid.NewGuid(),v2Capture,v2Render,v4Plan with { Candidates=[v4Candidates[1] with { CaptureFrames=v4Candidates[1].CaptureFrames+1 },..v4Candidates.Skip(2)] },1,"CAPTURE"),"V4 Initialize cannot substitute one frame outside the authorized candidate");
+    Check(v4ChangedFrame.ErrorCode=="V4_GEOMETRY_MISMATCH","V4 exact candidate geometry is enforced at the Native Worker boundary");
     await v2SessionClient.CancelScanSessionAsync(v4Session);
     var v4Replay=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent),"V4 consent receipt cannot be replayed after cancellation");
     Check(v4Replay.ErrorCode=="SCAN_CONSENT_REPLAY","Worker consumes v4 confirmation once and cancellation leaves no audio transport available");
     await v2SessionClient.CloseScanSessionAsync(v4Session);
+    foreach(var scenario in new[]{"INIT_FAILED","INIT_UNSUPPORTED","ALIGNMENT_MISMATCH","ACTUAL_FRAMES_MISMATCH","ACTUAL_PERIOD_MISMATCH","CLEANUP_UNKNOWN"})
+    {
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_V4_SCENARIO",scenario);
+        var scenarioClient=new NativeWorkerClient(formatFixtureWorker);
+        WorkerScanSessionToken? scenarioSession=null;
+        try
+        {
+            await scenarioClient.ConnectAsync();var scenarioEndpoints=await scenarioClient.ListWindowsEndpointsAsync();
+            var scenarioCapture=scenarioEndpoints.Endpoints.Single(e=>e.Direction=="CAPTURE").EndpointId!;var scenarioRender=scenarioEndpoints.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
+            var scenarioConsent=WorkerScanV2ContractV4Fingerprint.CreateConsent(scenarioCapture,scenarioRender,v4Plan,scenarioClient.DiscoveryGeneration,true,Guid.NewGuid());
+            scenarioSession=await scenarioClient.RegisterScanSessionV2V4Async(scenarioCapture,scenarioRender,v4Plan,scenarioConsent);
+            var result=await scenarioClient.InitializeCustomPeriodV2InScanAsync(scenarioSession,Guid.NewGuid(),scenarioCapture,scenarioRender,v4Plan,0,"CAPTURE");
+            var unknown=scenario=="CLEANUP_UNKNOWN";
+            Check(result.GetProperty("initializeDisposition").GetString()==(unknown?"UNKNOWN":scenario=="INIT_UNSUPPORTED"?"UNSUPPORTED":"FAILED")&&result.GetProperty("cleanup").GetString()==(unknown?"UNKNOWN":"RELEASE_ATTEMPTED"),$"V4 {scenario} keeps disposition and cleanup separate");
+            if(scenario=="ALIGNMENT_MISMATCH")Check(result.GetProperty("alignmentFrames").GetUInt32()==v4Candidates[0].CaptureFrames+1,"V4 alignment mismatch is reported and cannot authorize Duplex");
+            if(scenario=="ACTUAL_FRAMES_MISMATCH")Check(result.GetProperty("actualFrames").GetInt32()!=v4Candidates[0].CaptureFrames,"V4 actual frame mismatch is retained as exact evidence");
+            if(scenario=="ACTUAL_PERIOD_MISMATCH")Check(result.GetProperty("actualPeriod100ns").GetInt64()!=v4Candidates[0].CapturePeriod100ns,"V4 actual period mismatch is retained as exact evidence");
+            if(unknown){var stoppedId=Guid.NewGuid();var stopped=await ThrowsAsync<WorkerCommandException>(()=>scenarioClient.InitializeCustomPeriodV2InScanAsync(scenarioSession,stoppedId,scenarioCapture,scenarioRender,v4Plan,0,"CAPTURE"),"V4 UNKNOWN cleanup stops subsequent Initialize");Check(stopped.ErrorCode=="SCAN_SESSION_STALE","V4 UNKNOWN cleanup permanently stops the session");}
+            else {var next=await scenarioClient.InitializeCustomPeriodV2InScanAsync(scenarioSession,Guid.NewGuid(),scenarioCapture,scenarioRender,v4Plan,1,"CAPTURE");Check(next.GetProperty("candidateIndex").GetInt32()==1,"V4 confirmed non-clean Initialize advances to the next candidate");}
+            await scenarioClient.CloseScanSessionAsync(scenarioSession);
+        }
+        finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_V4_SCENARIO",null);await scenarioClient.DisposeAsync();}
+    }
     var mixedRateRoute=route with { Capture=route.Capture with { SampleRateHz=44100 } };
     var mixedRateCandidates=WorkerScanV2CandidatePlanning.GenerateFromBounds(mixedRateRoute,new WorkerScanV2PeriodBounds(30000,100000),new WorkerScanV2PeriodBounds(30000,100000));
     var mixedRateBudget=WorkerScanV2ContractV4Fingerprint.Budget(mixedRateCandidates.Count,0);
