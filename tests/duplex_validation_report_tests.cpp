@@ -45,6 +45,12 @@ int main() {
         side.quality = "CLEAN";
         side.cleanup = "RELEASE_ATTEMPTED";
         side.startOffsetMilliseconds = 0.026;
+        side.requestedPeriod100ns = 50'000; side.deviceDefaultPeriod100ns = 100'000; side.deviceMinimumPeriod100ns = 30'000; side.actualBufferPeriod100ns = 50'000;
+        side.firstEventDelayMilliseconds = 1.25; side.framesPerEventMinimum = 240; side.framesPerEventMaximum = 240; side.framesPerEventMean = 240.0;
+        side.eventWaitCount = 501; side.eventSignalCount = 500; side.eventTimeoutCount = 1; side.lastWaitResult = 0;
+        side.lastWaitReason = "AUDIO_EVENT";
+        side.cadenceAssessment = "OBSERVED_CADENCE_DIFFERS_FROM_BUFFER_PERIOD";
+        side.captureReleaseBufferHresult = "0x00000000"; side.renderReleaseBufferHresult = "0x00000000";
         side.peerStopped = false;
     };
     setSide(report.capture, report.captureEndpointId.c_str(), "CAPTURE");
@@ -65,7 +71,13 @@ int main() {
     if (parsed.HasParseError() || !DuplexValidationReport::Validate(parsed, report.captureEndpointId,
             report.renderEndpointId, "MINIMUM", 5, "OFF", report.operationId)) return 1;
     if (parsed["schemaVersion"].GetInt() != 2 || parsed["capture"]["intermediateWaitTimeouts"].GetUint64() != 1 ||
-        parsed["render"]["intermediateWaitTimeouts"].GetUint64() != 1) return 9;
+        parsed["render"]["intermediateWaitTimeouts"].GetUint64() != 1 ||
+        parsed["capture"]["requestedPeriod100ns"].GetUint64() != 50'000 || parsed["capture"]["deviceMinimumPeriod100ns"].GetUint64() != 30'000 ||
+        parsed["capture"]["actualBufferPeriod100ns"].GetUint64() != 50'000 || parsed["capture"]["firstEventDelayMilliseconds"].GetDouble() != 1.25 ||
+        parsed["capture"]["framesPerEventMean"].GetDouble() != 240.0 || parsed["render"]["eventSignalCount"].GetUint64() != 500 ||
+        parsed["render"]["eventTimeoutCount"].GetUint64() != 1 || std::string(parsed["render"]["lastWaitReason"].GetString()) != "AUDIO_EVENT" ||
+        std::string(parsed["render"]["cadenceAssessment"].GetString()) != "OBSERVED_CADENCE_DIFFERS_FROM_BUFFER_PERIOD" ||
+        std::string(parsed["render"]["renderReleaseBufferHresult"].GetString()) != "0x00000000") return 9;
 
     const auto cleanMustReject = [&](auto mutate) {
         auto candidate = DuplexValidationReport::ToJson(report);
@@ -126,7 +138,8 @@ int main() {
     const auto failedJson = DuplexValidationReport::ToJson(report);
     rapidjson::Document failedReport;
     failedReport.Parse(failedJson.data(), failedJson.size());
-    if (failedReport.HasParseError() || !DuplexValidationReport::Validate(failedReport, report.captureEndpointId,
+    if (failedReport.HasParseError() || failedReport["capture"]["requestedPeriod100ns"].GetUint64() != 50'000 ||
+            failedReport["capture"]["eventWaitCount"].GetUint64() != 501 || !DuplexValidationReport::Validate(failedReport, report.captureEndpointId,
             report.renderEndpointId, "MINIMUM", 5, "OFF", report.operationId)) return 13;
     report.status = "DUPLEX_CLEAN";
     report.capture.quality = "CLEAN";
