@@ -1391,6 +1391,20 @@ Fallback: {1}
   <data name="VmV4PlanAwaitingConsent" xml:space="preserve"><value>План готов. Проверьте его и подтвердите создание квитанции согласия.</value></data>
   <data name="VmV4PlanCancelled" xml:space="preserve"><value>Подготовка плана или согласие отменены.</value></data>
   <data name="VmV4PlanBlocked" xml:space="preserve"><value>Подготовка заблокирована: {0}</value></data>
+  <data name="V4DiagnosticHeading" xml:space="preserve"><value>V4 CUSTOM — Точечная диагностика (только один кандидат)</value></data>
+  <data name="V4DiagnosticPeriod" xml:space="preserve"><value>Запрошенный период</value></data>
+  <data name="V4PrepareDiagnostic" xml:space="preserve"><value>Подготовить диагностический план</value></data>
+  <data name="V4DiagnosticConsentHeading" xml:space="preserve"><value>Согласие на точечную диагностику</value></data>
+  <data name="V4DiagnosticConsentCheck" xml:space="preserve"><value>Разрешаю только этот точный 5-секундный Duplex-кандидат</value></data>
+  <data name="V4StartDiagnostic" xml:space="preserve"><value>Запустить точечную диагностику</value></data>
+  <data name="V4DiagnosticConsentScope" xml:space="preserve"><value>ТОЛЬКО ДИАГНОСТИКА · один кандидат · Capture Initialize + Render Initialize + один Duplex на 5 секунд · MMCSS OFF · только тишина · R=0 · без доказательства минимума и без профиля.</value></data>
+  <data name="VmV4DiagnosticUnavailable" xml:space="preserve"><value>Режим точечной диагностики недоступен в этой сборке.</value></data>
+  <data name="VmV4DiagnosticNeedsBloodyFormat" xml:space="preserve"><value>Для этого проверенного режима выберите MONO_TO_STEREO и 48 kHz PCM16 для обоих endpoints.</value></data>
+  <data name="VmV4DiagnosticPlanPending" xml:space="preserve"><value>Завершите текущий V4-план или согласие перед подготовкой другой точечной диагностики.</value></data>
+  <data name="VmV4DiagnosticBuildShaMissing" xml:space="preserve"><value>Запустите пакет через PowerShell launcher, чтобы в evidence записывался проверенный build SHA.</value></data>
+  <data name="VmV4DiagnosticResultHeader" xml:space="preserve"><value>ТОЛЬКО ДИАГНОСТИКА · запрошено {0} ms, C{1}/R{2} кадров · Native {3}; evaluator {4}; причина {5}; очистка C={6}, R={7}</value></data>
+  <data name="VmV4DiagnosticSideSummary" xml:space="preserve"><value>{0}: факт {1} · событий {2} · медиана/P95/P99 {3}/{4}/{5} ms · задержка первого события {6} ms · таймауты/ошибки ожидания {7}/{8} · кадров/событие {9} · покрытие {10}% · discontinuities {11}</value></data>
+  <data name="VmV4DiagnosticOnlyNoProfile" xml:space="preserve"><value>Только диагностическое evidence. Минимум устройства не доказан; профиль устройства или тестовый профиль не создан.</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Аудиосканирование v4 пока недоступно.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Доступны только просмотр и согласие. Initialize v4, CUSTOM Duplex, сканирование и создание стабильного профиля будут закрыты до следующих этапов.</value></data>
   <data name="VmV4AudioGateOpen" xml:space="preserve"><value>Сканирование V4 начинается только после подтверждения этого плана. Поиск без повторов использует R=0; повторы запускаются только при R=5. Пять секунд проверки не подтверждают длительную стабильность.</value></data>

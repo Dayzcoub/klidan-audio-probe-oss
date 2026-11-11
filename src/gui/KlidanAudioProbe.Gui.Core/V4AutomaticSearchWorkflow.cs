@@ -8,4 +8,8 @@ public interface IV4AutomaticSearchWorkflow
     Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
         WindowsEndpointDto render, string evidenceRoot, string profileDirectory, bool runRepeatability,
         IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken);
+
+    Task<V4AutomaticSearchResult> RunDiagnosticAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
+        WindowsEndpointDto render, string evidenceRoot, IProgress<V4AutomaticSearchProgress>? progress,
+        CancellationToken cancellationToken) => throw new NotSupportedException("V4 point diagnostic transport is unavailable.");
 }

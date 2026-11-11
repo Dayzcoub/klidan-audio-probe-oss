@@ -25,14 +25,15 @@ Configuration: Release, self-contained win-x64
 Native host dependency check: KlidanAudioProbe.exe and KlidanProbeWorker.exe use Windows system DLLs only (ole32, SETUPAPI where needed, AVRT, bcrypt, KERNEL32); no app-local VC++ runtime was required.
 
 ## Operator steps (RU)
-1. Подключите аудиоустройство вручную и дождитесь его готовности в Windows.
-2. Запустите `Run-KlidanAudioProbePhysicalQa.ps1` из PowerShell 7 в этой папке. Приложение не запускает обнаружение или аудиооперации автоматически.
-3. Выберите нужные Capture/Render endpoints и маршрут, проверьте план, затем явно подтвердите согласие и нажмите запуск сканирования.
-4. Для безопасной остановки нажмите «Отмена» в приложении и дождитесь финального статуса/сохранения evidence. Затем закройте приложение.
-5. Отправьте оператору содержимое `logs` и `evidence`; профили находятся в `profiles`.
+1. Подключите Bloody вручную и дождитесь его готовности в Windows.
+2. Запустите `Run-KlidanAudioProbePhysicalQa.ps1` из PowerShell 7 в этой папке; launcher проверит SHA-256 файлов и запишет полный build SHA в diagnostic evidence. GUI не запускает обнаружение или аудиооперации автоматически.
+3. Выберите Bloody Capture/Render, маршрут MONO_TO_STEREO, 48 kHz PCM16 и активные каналы. В разделе «V4 CUSTOM — Точечная диагностика» подготовьте 5 ms план, убедитесь, что он содержит только C240/R240, отдельно подтвердите согласие и запустите тест.
+4. Дождитесь сохранения evidence и подтверждённого завершения сессии. Затем выберите 10 ms, подготовьте новый план, проверьте только C480/R480, подтвердите новое согласие и запустите второй тест.
+5. При UNKNOWN, ошибке очистки или таймауте не запускайте следующий тест; используйте «Отмена» и дождитесь терминального состояния. Закройте приложение после обоих результатов.
+6. Передайте содержимое `logs` и `evidence`; диагностический тест не создаёт профиль.
 
 ## Operator steps (EN)
-Connect the device manually, run the launcher in PowerShell 7, select the exact Capture/Render endpoints and route, review and explicitly consent before starting. The app does not auto-discover or start audio work. To stop, use Cancel and wait for terminal cleanup/evidence status before closing. Share `logs` and `evidence` with the QA owner.
+Connect Bloody manually, run the PowerShell 7 launcher (it verifies the SHA-256 manifest and records the full build SHA), then select its Capture/Render endpoints, MONO_TO_STEREO, 48 kHz PCM16 and channels. In “V4 CUSTOM — Point diagnostic”, prepare 5 ms, verify the single C240/R240 candidate, explicitly consent and run. After evidence save and confirmed session close, prepare 10 ms as a new plan, verify only C480/R480, explicitly consent again and run. Stop after UNKNOWN, timeout or uncertain cleanup. Share `logs` and `evidence`; diagnostics never create a profile. The app does not auto-discover or start audio work.
 
 Physical tests are pending operator execution. Do not launch the GUI elevated and do not disconnect the device while a scan is active.
 "@ | Set-Content -LiteralPath (Join-Path $output 'README-Physical-QA.md') -Encoding UTF8

@@ -859,6 +859,38 @@ try
         }
         finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
+    async Task<V4AutomaticSearchResult> RunV4PointDiagnostic(int milliseconds)
+    {
+        var oldBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
+        Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('e', 40));
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        var found = await client.ListWindowsEndpointsAsync();
+        var captureEndpoint = found.Endpoints.Single(e => e.Direction == "CAPTURE");
+        var renderEndpoint = found.Endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!; var renderId = renderEndpoint.EndpointId!;
+        var candidate = WorkerScanV2CandidatePlanning.Make(0, milliseconds * 10_000L, route, 144, 480, 144, 480);
+        var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(1, 0);
+        var plan = new WorkerScanV2ContractV4(route, [candidate], ["OFF"], 0, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+        var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-point-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var workflow = (IV4AutomaticSearchWorkflow)new WorkerV4AutomaticSearchWorkflow(client);
+            var result = await workflow.RunDiagnosticAsync(new(captureId, renderId, plan, consent), captureEndpoint, renderEndpoint, evidenceRoot, null, CancellationToken.None);
+            var json = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
+            var row = result.Evidence.Candidates.Single();
+            var captureOperation = row.CaptureInitializeEvidence!.Value.GetProperty("operationId").GetString();
+            var renderOperation = row.RenderInitializeEvidence!.Value.GetProperty("operationId").GetString();
+            var duplexOperation = row.DuplexEvidence!.Value.GetProperty("operationId").GetString();
+            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && result.Evidence.DiagnosticOnly && result.Evidence.SelectionState == "DIAGNOSTIC_ONLY" && !result.Evidence.GlobalMinimumProven && result.Evidence.ProfilePath is null && !result.Evidence.ProfileEligible && result.Evidence.SessionCleanup == "CLOSE_CONFIRMED" && result.Evidence.CandidateDomain.Count == 1 && result.Evidence.UsedOperations == 3 && result.Evidence.MaximumOperations == 3 && result.Evidence.UsedActiveDuplexSeconds <= 5 && result.Evidence.RepeatabilityCompleted == 0 && result.Evidence.BuildSha == new string('e', 40) && json.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal), $"{milliseconds} ms V4 point diagnostic persists only one candidate, exact build SHA and closed no-profile evidence");
+            Check(candidate.CaptureFrames == (milliseconds == 5 ? 240 : 480) && candidate.RenderFrames == candidate.CaptureFrames && row.DuplexDisposition == "CLEAN" && new[] { captureOperation, renderOperation, duplexOperation }.All(id => Guid.TryParse(id, out _)) && new[] { captureOperation, renderOperation, duplexOperation }.Distinct().Count() == 3, $"{milliseconds} ms point diagnostic executes exact frames through two Initializes and one distinct Duplex operation ID");
+            return result;
+        }
+        finally { Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", oldBuildSha); await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
+    }
+    _ = await RunV4PointDiagnostic(5);
+    _ = await RunV4PointDiagnostic(10);
     var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true, createV4Profile: true);
     Check(bloodySearch.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.RepeatabilityCompleted == 5 && bloodySearch.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody confirms 5 ms only after five additional CLEAN repeats; larger candidates remain skipped");
     Check(bloodySearch.Operations.Where(x => x.Contains("REPEAT", StringComparison.Ordinal)).SequenceEqual(Enumerable.Range(1, 5).Select(i => $"5:REPEAT_{i}")) && bloodySearch.Operations.All(x => !x.StartsWith("6:", StringComparison.Ordinal)), "Bloody repeats only the selected 5 ms candidate and never falls back");

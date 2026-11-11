@@ -15,15 +15,29 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             captureEndpoint: capture, renderEndpoint: render, profileDirectory: profileDirectory, progress: progress).ConfigureAwait(false);
     }
 
+    async Task<V4AutomaticSearchResult> IV4AutomaticSearchWorkflow.RunDiagnosticAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
+        WindowsEndpointDto render, string evidenceRoot, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
+    {
+        if (prepared.Plan.Candidates.Count != 1 || prepared.Plan.RepeatabilityRuns != 0 || prepared.Plan.MaximumOperations != 3 ||
+            prepared.Plan.MaximumActiveDuplexSeconds != 5 || prepared.Plan.Candidates[0].RequestedDuration100ns is not (50_000 or 100_000) ||
+            prepared.Plan.Route.Mode != "MONO_TO_STEREO" || prepared.Plan.Route.Capture.Encoding != "PCM16" || prepared.Plan.Route.Render.Encoding != "PCM16" ||
+            prepared.Plan.Route.Capture.SampleRateHz != 48_000 || prepared.Plan.Route.Render.SampleRateHz != 48_000)
+            throw new InvalidOperationException("Point diagnostics require exactly one 5/10 ms 48 kHz PCM16 MONO_TO_STEREO candidate, R=0, and the three-operation/five-second budget.");
+        return await RunAsync(prepared, evidenceRoot, cancellationToken, diagnosticOnly: true,
+            captureEndpoint: capture, renderEndpoint: render, progress: progress).ConfigureAwait(false);
+    }
+
     public async Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared,
         string? evidenceRoot = null, CancellationToken cancellationToken = default,
         Func<int, string, string?>? testScenario = null, bool runRepeatability = false, DeviceConfigurationProfile? profileBase = null,
         WindowsEndpointDto? captureEndpoint = null, WindowsEndpointDto? renderEndpoint = null, string? profileDirectory = null,
-        IProgress<V4AutomaticSearchProgress>? progress = null)
+        IProgress<V4AutomaticSearchProgress>? progress = null, bool diagnosticOnly = false)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         var plan = prepared.Plan;
         var consent = prepared.Consent;
+        if (diagnosticOnly && (plan.Candidates.Count != 1 || plan.RepeatabilityRuns != 0 || plan.MaximumOperations != 3 || plan.MaximumActiveDuplexSeconds != 5 || runRepeatability))
+            throw new InvalidOperationException("Diagnostic execution cannot exceed one candidate, three operations, five active seconds, or R=0.");
         if (!consent.Accepted || consent.ConfirmationId == Guid.Empty || consent.DiscoveryGeneration != worker.DiscoveryGeneration ||
             WorkerScanV2ContractV4Fingerprint.Compute(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, consent.DiscoveryGeneration) != consent.PlanFingerprint)
             throw new InvalidOperationException("V4 search requires the exact current prepared plan and accepted consent receipt.");
@@ -32,6 +46,9 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             c.RejectionReason.Length == 0 ? "NOT_RUN" : c.RejectionReason, "INCOMPLETE", "NOT_RUN", "NOT_RUN")).ToArray();
         var operations = 0; var activeSeconds = 0; var selected = (int?)null; var state = "MINIMUM_NOT_PROVEN"; var lifecycle = "COMPLETED"; var stopReason = "CANDIDATE_DOMAIN_EXHAUSTED";
         var repeatRuns = new List<V4RepeatabilityRunEvidence>(); var sessionCleanup = "NOT_ATTEMPTED";
+        var diagnosticBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA")?.ToLowerInvariant() ?? "UNKNOWN";
+        var diagnosticTimestamp = diagnosticOnly ? DateTimeOffset.UtcNow : (DateTimeOffset?)null;
+        if (diagnosticOnly) selected = plan.Candidates[0].Index;
         WorkerScanSessionToken? session = null;
         var attemptedProvenance = new HashSet<string>(StringComparer.Ordinal);
         void Update(int index, Func<V2CandidateMatrixEntry, V2CandidateMatrixEntry> update) => entries[index] = update(entries[index]);
@@ -82,7 +99,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                 if (classification == "CLEAN")
                 {
                     progress?.Report(new("SHORT_CLEAN", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
-                    selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = "SMALLER_SHORT_CLEAN_FOUND";
+                    selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = diagnosticOnly ? "DIAGNOSTIC_CANDIDATE_COMPLETED" : "SMALLER_SHORT_CLEAN_FOUND";
                     foreach (var larger in plan.Candidates.Where(c => c.Index > candidate.Index)) Update(larger.Index, e => e with { CaptureInitializeDisposition = "SKIPPED", RenderInitializeDisposition = "SKIPPED", DuplexDisposition = "SKIPPED", DuplexNotRun = true, SkipReason = "SMALLER_SHORT_CLEAN_FOUND", ReasonCodes = ["SMALLER_SHORT_CLEAN_FOUND"] });
                     if (runRepeatability && plan.RepeatabilityRuns > 0)
                     {
@@ -126,6 +143,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
         }
         catch (OperationCanceledException) { state = "UNKNOWN"; lifecycle = "CANCELLED"; stopReason = "OPERATOR_CANCELLED"; }
         catch (Exception) { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "WORKER_OR_EVIDENCE_FAILURE"; }
+        if (diagnosticOnly && state != "UNKNOWN") stopReason = "DIAGNOSTIC_CANDIDATE_COMPLETED";
         var smallest = selected is { } selectedIndex ? selectedIndex : plan.Candidates.Count;
         for (var i = 0; i < entries.Length; i++)
         {
@@ -135,20 +153,22 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
             Update(i, e => e with { LowerPeriodCoverage = coverage, Provenance = e.Provenance == "NOT_RUN" ? AggregateProvenance(attemptedProvenance) : e.Provenance });
         }
         var evidenceProvenance = AggregateProvenance(attemptedProvenance);
-        V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries, state, evidenceProvenance)
+        V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries,
+            diagnosticOnly ? "DIAGNOSTIC_ONLY" : state, evidenceProvenance)
         {
-            EvidenceVersion = 3, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
+            EvidenceVersion = diagnosticOnly ? 4 : 3, DiagnosticOnly = diagnosticOnly, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
+            BuildSha = diagnosticOnly ? diagnosticBuildSha : "UNKNOWN", DiagnosticTimestampUtc = diagnosticTimestamp,
             GlobalMinimumProven = false, UsedOperations = operations,
             MaximumOperations = plan.MaximumOperations, UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
-            StopReason = stopReason, RepeatabilityPending = state == "MINIMUM_SHORT_CLEAN_FOUND",
-            RepeatabilityRequested = runRepeatability ? plan.RepeatabilityRuns : 0, RepeatabilityCompleted = repeatRuns.Count, RepeatabilityRuns = repeatRuns,
+            StopReason = stopReason, RepeatabilityPending = !diagnosticOnly && state == "MINIMUM_SHORT_CLEAN_FOUND",
+            RepeatabilityRequested = diagnosticOnly ? 0 : runRepeatability ? plan.RepeatabilityRuns : 0, RepeatabilityCompleted = repeatRuns.Count, RepeatabilityRuns = repeatRuns,
             SessionCleanup = sessionCleanup
         };
         var result = CreateEvidence();
         string? path = null;
         if (evidenceRoot is not null)
         {
-            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-open-session-{Guid.NewGuid():D}.json")); }
+            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-{(diagnosticOnly ? "diagnostic" : "search")}-open-session-{Guid.NewGuid():D}.json")); }
             catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
         }
         if (session is { } active)
@@ -165,10 +185,10 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
         if (result.UsedOperations > result.MaximumOperations) throw new InvalidDataException("V4 audio operations exceeded the consented budget.");
         if (evidenceRoot is not null)
         {
-            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-closed-session-{Guid.NewGuid():D}.json")); }
+            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-{(diagnosticOnly ? "diagnostic" : "search")}-closed-session-{Guid.NewGuid():D}.json")); }
             catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "FINAL_EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
         }
-        if ((profileBase is not null || captureEndpoint is not null && renderEndpoint is not null) && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
+        if (!diagnosticOnly && (profileBase is not null || captureEndpoint is not null && renderEndpoint is not null) && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
         {
             var evidenceDirectory = evidenceRoot!;
             var candidate = plan.Candidates[profileCandidate];

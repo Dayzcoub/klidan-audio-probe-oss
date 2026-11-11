@@ -54,6 +54,12 @@ Check(preparedFromPassiveBounds.Candidates.Select(c => c.CaptureFrames).Sequence
 var flow8Route = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 1, "PCM16", 0, [0]), new(48000, 2, "PCM16", 0, [0, 1]));
 var flow8Prepared = WorkerScanV2PlanPreparation.Prepare("cap", "ren", flow8Route, PassiveMatrix("cap", "CAPTURE", 1), PassiveMatrix("ren", "RENDER", 2), 9, 2);
 Check(flow8Prepared.Route.Capture.Channels == 1 && flow8Prepared.Route.Render.Channels == 2 && flow8Prepared.Candidates.First().CaptureFrames == 144 && flow8Prepared.Candidates.First().RenderFrames == 144, "FLOW 8 passive plan preserves mono Capture and stereo Render at their selected exact formats");
+var pointRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
+var point5 = WorkerScanV2PlanPreparation.Prepare("bloody-cap", "bloody-ren", pointRoute, PassiveMatrix("bloody-cap", "CAPTURE", 2), PassiveMatrix("bloody-ren", "RENDER", 2), 9, 0, 5);
+var point10 = WorkerScanV2PlanPreparation.Prepare("bloody-cap", "bloody-ren", pointRoute, PassiveMatrix("bloody-cap", "CAPTURE", 2), PassiveMatrix("bloody-ren", "RENDER", 2), 9, 0, 10);
+Check(point5.Candidates.Count == 1 && point5.Candidates[0].CaptureFrames == 240 && point5.Candidates[0].RenderFrames == 240 && point5.MaximumOperations == 3 && point5.MaximumActiveDuplexSeconds == 5 && point5.SessionLifetimeSeconds == 139 && point10.Candidates.Count == 1 && point10.Candidates[0].CaptureFrames == 480 && point10.Candidates[0].RenderFrames == 480 && WorkerScanV2ContractV4Fingerprint.Compute("bloody-cap", "bloody-ren", point5, 9) != WorkerScanV2ContractV4Fingerprint.Compute("bloody-cap", "bloody-ren", point10, 9), "V4 point plans authorize only the exact 240-frame 5ms or 480-frame 10ms candidate with N=1/R=0 and distinct fingerprints");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("bloody-cap", "bloody-ren", pointRoute, PassiveMatrix("bloody-cap", "CAPTURE", 2, min: 60_000), PassiveMatrix("bloody-ren", "RENDER", 2), 9, 0, 5), "point diagnostic refuses a requested period outside confirmed passive bounds");
+Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("bloody-cap", "bloody-ren", pointRoute with { Render = pointRoute.Render with { Encoding = "PCM24_IN_32" } }, PassiveMatrix("bloody-cap", "CAPTURE", 2), PassiveMatrix("bloody-ren", "RENDER", 2), 9, 0, 5), "point diagnostic refuses unreviewed formats");
 var mixedPrepared = WorkerScanV2PlanPreparation.Prepare("cap", "ren", flow8Route with { Capture = flow8Route.Capture with { SampleRateHz = 44100 } }, PassiveMatrix("cap", "CAPTURE", 1, rate: 44100), PassiveMatrix("ren", "RENDER", 2), 9, 0);
 Check(mixedPrepared.Candidates.All(c => c.CaptureFrames == (int)(((decimal)c.RequestedDuration100ns * 44100 + 5_000_000m) / 10_000_000m) && c.RenderFrames == (int)(((decimal)c.RequestedDuration100ns * 48000 + 5_000_000m) / 10_000_000m)), "passive plan independently converts mixed Capture/Render sample rates to frames");
 Throws<InvalidDataException>(() => WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("wrong", "CAPTURE", 8), PassiveMatrix("ren", "RENDER", 2), 9, 5), "passive preparation blocks mismatched endpoint identity");
@@ -69,6 +75,14 @@ Check(asymmetricCandidates.Count is > 0 and <= 8 && asymmetricCandidates.All(c =
 var prioritizedCandidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(autoRoute, new(30_000, 100_000), new(30_000, 100_000));
 Check(prioritizedCandidates.Select(c => c.RequestedDuration100ns).SequenceEqual(new long[] { 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000 }), "V4 candidate planning orders all 1 ms buffers from the reported minimum before the default boundary");
 Check(v4Budget == new WorkerScanV2Budget(29, 65, 1171) && WorkerScanV2ContractV4Fingerprint.Budget(1, 0) == new WorkerScanV2Budget(3, 5, 139), "V4 budget is checked at maximum and minimum operation scopes");
+using var diagnosticReportFixture = JsonDocument.Parse("{\"report\":{\"duplex\":{\"status\":\"DUPLEX_CLEAN\"},\"capture\":{\"events\":998,\"eventIntervalMedianMilliseconds\":5,\"eventIntervalP95Milliseconds\":5.1,\"eventIntervalP99Milliseconds\":5.2,\"firstEventDelayMilliseconds\":2,\"eventTimeoutCount\":0,\"eventFailureCount\":0,\"framesPerEventMean\":240,\"frameCoveragePercent\":100,\"discontinuities\":0},\"render\":{\"events\":500}}}");
+var pointDiagnosticEvidence = new V2CandidateMatrixEvidence(1, new string('a', 64), new string('b', 16), "COMPLETED", point5.CaptureBounds, point5.RenderBounds, point5.Candidates,
+    [new(point5.Candidates[0], "INITIALIZED", "INITIALIZED", "CLEAN", "RELEASE_ATTEMPTED", "RELEASE_ATTEMPTED", ["DIAGNOSTIC_ONLY"], false, null, "COMPLETE", "NOT_RUN", "TEST_FAKE_WASAPI_V4_DUPLEX")
+    { ActualCaptureFrames = 240, ActualCapturePeriod100ns = 50_000, ActualRenderFrames = 240, ActualRenderPeriod100ns = 50_000, DuplexEvidence = diagnosticReportFixture.RootElement.Clone(), NativeDuplexDisposition = "CLEAN", EvaluatorReasonCode = "CLEAN" }],
+    "DIAGNOSTIC_ONLY", "TEST_FAKE_WASAPI_V4_DUPLEX") { EvidenceVersion = 4, DiagnosticOnly = true, BuildSha = new string('c', 40), DiagnosticTimestampUtc = DateTimeOffset.UtcNow, DiscoveryGeneration = 9, SelectedCandidateIndex = 0, GlobalMinimumProven = false, UsedOperations = 3, MaximumOperations = 3, UsedActiveDuplexSeconds = 5, MaximumActiveDuplexSeconds = 5, StopReason = "DIAGNOSTIC_CANDIDATE_COMPLETED", RepeatabilityPending = false, RepeatabilityRequested = 0, RepeatabilityCompleted = 0, SessionCleanup = "CLOSE_CONFIRMED" };
+var pointDiagnosticJson = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(pointDiagnosticEvidence);
+Check(pointDiagnosticJson.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal) && pointDiagnosticJson.Contains(new string('c', 40), StringComparison.Ordinal) && !pointDiagnosticEvidence.GlobalMinimumProven && !pointDiagnosticEvidence.ProfileEligible, "diagnostic-only evidence round-trips one exact candidate, build SHA, timestamp, and closed profile/minimum gates");
+Throws<InvalidDataException>(() => V2CandidateMatrixEvidenceJson.Validate(pointDiagnosticEvidence with { ProfileEligible = true }), "point diagnostic evidence cannot be promoted to any profile");
 var v4Bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
 var v4Plan = new WorkerScanV2ContractV4(autoRoute, v4Grid, ["OFF"], 5, 29, 65, 30, 1171, 8, v4Bounds, v4Bounds);
 var v4Canonical = WorkerScanV2ContractV4Fingerprint.Canonicalize("capture-кириллица", "render-音声", v4Plan, 7);
@@ -658,7 +672,7 @@ using (var duplexReportSchemaV2 = JsonDocument.Parse(File.ReadAllBytes(Path.Comb
 using (var stableSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v5.schema.json"))))
     Check(stableSchema.RootElement.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32() == 5 && stableSchema.RootElement.GetProperty("required").EnumerateArray().Any(v => v.GetString() == "stableShortSelection") && stableSchema.RootElement.GetProperty("properties").GetProperty("duplexObservations").GetProperty("maxItems").GetInt32() == 0 && stableSchema.RootElement.GetProperty("properties").GetProperty("evidence").GetProperty("minItems").GetInt32() == 0 && stableSchema.RootElement.GetProperty("properties").GetProperty("stableShortSelection").GetProperty("properties").TryGetProperty("deviceContainerId", out _), "v5 accepts a direct V4 evidence reference without V3 Duplex rows while preserving its versioned profile schema");
     using var matrixSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs", "schemas", "v2-auto-short-candidate-matrix-v2.schema.json")));
-    Check(matrixSchema.RootElement.GetProperty("properties").GetProperty("evidenceVersion").GetProperty("const").GetInt32() == 3 && matrixSchema.RootElement.GetProperty("$defs").GetProperty("result").GetProperty("properties").TryGetProperty("duplexEvidence", out _), "versioned V4 matrix schema requires persisted native reports for direct profile qualification");
+    Check(matrixSchema.RootElement.GetProperty("properties").GetProperty("evidenceVersion").GetProperty("enum").EnumerateArray().Select(v => v.GetInt32()).SequenceEqual(new[] { 3, 4 }) && matrixSchema.RootElement.GetProperty("required").EnumerateArray().Any(v => v.GetString() == "diagnosticOnly") && matrixSchema.RootElement.GetProperty("$defs").GetProperty("result").GetProperty("properties").TryGetProperty("duplexEvidence", out _), "versioned V4 matrix schema preserves Profile v5 source reports and adds explicit one-candidate diagnostic evidence");
 var profileSource = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.Core/DeviceConfigurationProfile.cs"));
 Check(!profileSource.Contains("IAudioClient", StringComparison.Ordinal) && !profileSource.Contains("IMMDevice", StringComparison.Ordinal) && !profileSource.Contains("Wasapi", StringComparison.Ordinal), "profile creation and validation are pure data operations without hardware APIs");
 Check(mainWindowXaml.Contains("x:Name=\"OperatorTestPanel\"", StringComparison.Ordinal) && mainWindowXaml.Contains("ItemsSource=\"{Binding RealFormatRows}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding QueryRealFormatsCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding RequestRealInitializeCommand}\"", StringComparison.Ordinal) && mainWindowXaml.Contains("Command=\"{Binding ConfirmRealInitializeCommand}\"", StringComparison.Ordinal) && !mainWindowXaml.Contains("Binding RealFormatMatrix.EndpointId", StringComparison.Ordinal), "operator test step exposes the real query and fresh-consent Initialize flow without endpoint IDs");
@@ -3453,6 +3467,54 @@ try
     generationVm.DiscoverWindowsEndpointsCommand.Execute(null);
     Check(!generationVm.V4PlanReady && !generationVm.V4ConsentPending && generationVm.V4ConsentReceipt is null,
         "Worker discovery generation refresh immediately invalidates prepared v4 plan and consent receipt");
+
+    var previousDiagnosticBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
+    Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('d', 40));
+    var pointDiscovery = physicalPairFixture with { Endpoints = physicalPairFixture.Endpoints.Select(e => e with { FriendlyName = e.Direction == "CAPTURE" ? "Bloody Capture" : "Bloody Render" }).ToArray() };
+    var pointWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = pointDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 21,
+        RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, counts!.Single())) };
+    var pointWorkflow = new PointDiagnosticWorkflowFake();
+    var pointVm = new MainViewModel(worker: pointWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(pointDiscovery), v4AutomaticSearchWorkflow: pointWorkflow);
+    pointWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for one-candidate point diagnostic."));
+    pointVm.DiscoverWindowsEndpointsCommand.Execute(null);
+    Check(PumpUntil(() => pointVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "point diagnostic discovers the exact Bloody Capture/Render fixture");
+    pointVm.SelectedPhysicalDeviceGroup = pointVm.PhysicalDeviceGroups.Single();
+    pointVm.AutomaticScanV2CaptureChannels = 2; pointVm.AutomaticScanV2CaptureChannel1 = 1;
+    pointVm.AutomaticScanV2RenderChannels = 2; pointVm.AutomaticScanV2RenderChannel1 = 1; pointVm.AutomaticScanV2RenderChannel2 = 2;
+    var pointWindow = new MainWindow(pointVm) { Width = 1280, Height = 800, ShowActivated = false };
+    pointWindow.Show(); pointWindow.UpdateLayout();
+    var pointPrepareButton = (Button)pointWindow.FindName("V4PrepareDiagnosticButton");
+    var pointConsentBox = (CheckBox)pointWindow.FindName("V4DiagnosticConsentCheckBox");
+    var pointAcceptButton = (Button)pointWindow.FindName("V4AcceptDiagnosticButton");
+    var pointStartButton = (Button)pointWindow.FindName("V4StartDiagnosticButton");
+    Check(pointPrepareButton.IsEnabled && !pointAcceptButton.IsEnabled && !pointStartButton.IsEnabled && !string.IsNullOrWhiteSpace(pointConsentBox.Content?.ToString()), "diagnostic visual tree has a dedicated period, consent and start path disabled until its one-candidate plan exists");
+    Check(pointVm.V4SearchPlanUiVisible && pointWindow.FindName("V4PreparePlanButton") is Button { Visibility: Visibility.Visible }, "point diagnostics remain alongside the full V4 search controls");
+    pointPrepareButton.Command!.Execute(null);
+    Check(PumpUntil(() => pointVm.V4DiagnosticConsentPending, TimeSpan.FromSeconds(3)), "5 ms point plan completes passive bounds before consent");
+    var pointPlanField = typeof(MainViewModel).GetField("_v4PreparedPlan", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    var point5Plan = (WorkerScanV2ContractV4)pointPlanField.GetValue(pointVm)!;
+    Check(point5Plan.Candidates.Count == 1 && point5Plan.Candidates[0].CaptureFrames == 240 && point5Plan.Candidates[0].RenderFrames == 240 && point5Plan.RepeatabilityRuns == 0 && point5Plan.MaximumOperations == 3 && point5Plan.MaximumActiveDuplexSeconds == 5 && point5Plan.SessionLifetimeSeconds == 139 && pointVm.V4ConsentSummary.Contains("240", StringComparison.Ordinal), "5 ms GUI consent fingerprint covers only C240/R240, R=0 and the canonical 3-op/5-second/139-second scope");
+    Check(!pointVm.AcceptV4CustomPlanCommand.CanExecute(null) && !pointVm.StartV4ScanCommand.CanExecute(null) && !pointVm.StartV4DiagnosticCommand.CanExecute(null), "diagnostic plan cannot use full-search consent or start without diagnostic consent");
+    pointVm.V4DiagnosticConsentChecked = true;
+    Check(pointVm.AcceptV4DiagnosticPlanCommand.CanExecute(null), "separate diagnostic consent enables only the point-diagnostic authorization command");
+    pointVm.AcceptV4DiagnosticPlanCommand.Execute(null);
+    var point5Consent = pointVm.V4ConsentReceipt;
+    Check(point5Consent is { Accepted: true } && point5Consent.PlanFingerprint == pointVm.V4PlanFingerprint && pointStartButton.IsEnabled, "accepted 5 ms point receipt is bound to its exact one-candidate fingerprint");
+    pointStartButton.Command!.Execute(null);
+    Check(PumpUntil(() => !pointVm.V4ScanRunning && pointVm.V4ResultState == "DIAGNOSTIC_ONLY", TimeSpan.FromSeconds(3)) && pointWorkflow.Runs.Count == 1 && pointWorkflow.Runs[0].Plan.Candidates.Count == 1 && pointVm.V4ResultSummary.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal) && pointVm.V4ResultSummary.Contains("998", StringComparison.Ordinal) && pointVm.V4ResultSummary.Contains("240f", StringComparison.Ordinal) && pointVm.V4ConsentReceipt is null, "5 ms diagnostic consumes one consent, reports Native/evaluator timing, and cannot claim a minimum or profile");
+    pointVm.V4DiagnosticPeriodMilliseconds = 10;
+    Check(!pointVm.V4PlanReady && !pointVm.V4DiagnosticConsentPending && pointVm.V4ConsentReceipt is null, "changing 5 ms to 10 ms invalidates the previous plan and its one-use receipt");
+    pointPrepareButton.Command!.Execute(null);
+    Check(PumpUntil(() => pointVm.V4DiagnosticConsentPending, TimeSpan.FromSeconds(3)), "10 ms point plan obtains new passive bounds before consent");
+    var point10Plan = (WorkerScanV2ContractV4)pointPlanField.GetValue(pointVm)!;
+    Check(point10Plan.Candidates.Count == 1 && point10Plan.Candidates[0].CaptureFrames == 480 && point10Plan.Candidates[0].RenderFrames == 480 && point10Plan.MaximumOperations == 3 && point10Plan.MaximumActiveDuplexSeconds == 5 && WorkerScanV2ContractV4Fingerprint.Compute("local-windows-id", "local-render-id", point10Plan, 21) != WorkerScanV2ContractV4Fingerprint.Compute("local-windows-id", "local-render-id", point5Plan, 21), "10 ms plan authorizes only C480/R480 and has a fingerprint distinct from the 5 ms plan");
+    pointVm.V4DiagnosticConsentChecked = true; pointVm.AcceptV4DiagnosticPlanCommand.Execute(null);
+    Check(pointVm.V4ConsentReceipt is { Accepted: true } receipt10 && receipt10.ConfirmationId != point5Consent!.ConfirmationId, "10 ms requires a fresh, non-replayable consent receipt");
+    pointVm.AutomaticScanV2Mode = "STEREO_TO_STEREO";
+    Check(!pointVm.V4DiagnosticConsentPending && pointVm.V4ConsentReceipt is null && !pointVm.StartV4DiagnosticCommand.CanExecute(null), "route change invalidates the diagnostic plan and receipt before dispatch");
+    pointVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
+    pointWindow.Close();
+    Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", previousDiagnosticBuildSha);
 }
 finally { if (Directory.Exists(bundleUiRoot)) Directory.Delete(bundleUiRoot, true); }
 Console.WriteLine($"All GUI Core checks passed ({checks}).");
@@ -3702,6 +3764,44 @@ sealed class FragmentReadStream(byte[] content, int maximumRead) : MemoryStream(
 {
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => base.ReadAsync(buffer[..Math.Min(buffer.Length, maximumRead)], cancellationToken);
     public override int Read(byte[] buffer, int offset, int count) => base.Read(buffer, offset, Math.Min(count, maximumRead));
+}
+
+sealed class PointDiagnosticWorkflowFake : IV4AutomaticSearchWorkflow
+{
+    public List<WorkerScanV2V4PreparedPlan> Runs { get; } = [];
+    public Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
+        string evidenceRoot, string profileDirectory, bool runRepeatability, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("Point diagnostic fixture must not dispatch full search.");
+
+    public Task<V4AutomaticSearchResult> RunDiagnosticAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
+        string evidenceRoot, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
+    {
+        Runs.Add(prepared);
+        var candidate = prepared.Plan.Candidates.Single();
+        var frames = candidate.CaptureFrames;
+        var captureEvents = candidate.RequestedDuration100ns == 50_000 ? 998 : 500;
+        var renderEvents = candidate.RequestedDuration100ns == 50_000 ? 500 : 500;
+        using var report = JsonDocument.Parse($"{{\"report\":{{\"duplex\":{{\"status\":\"DUPLEX_CLEAN\"}},\"capture\":{{\"events\":{captureEvents},\"eventIntervalMedianMilliseconds\":5,\"eventIntervalP95Milliseconds\":5.1,\"eventIntervalP99Milliseconds\":5.2,\"firstEventDelayMilliseconds\":2,\"eventTimeoutCount\":0,\"eventFailureCount\":0,\"framesPerEventMean\":{frames},\"frameCoveragePercent\":100,\"discontinuities\":0}},\"render\":{{\"events\":{renderEvents},\"eventIntervalMedianMilliseconds\":10,\"eventIntervalP95Milliseconds\":10.1,\"eventIntervalP99Milliseconds\":10.2,\"firstEventDelayMilliseconds\":2,\"eventTimeoutCount\":0,\"eventFailureCount\":0,\"framesPerEventMean\":{frames},\"frameCoveragePercent\":100,\"discontinuities\":0}}}}}}");
+        var row = new V2CandidateMatrixEntry(candidate, "INITIALIZED", "INITIALIZED", "CLEAN", "RELEASE_ATTEMPTED", "RELEASE_ATTEMPTED",
+            ["DIAGNOSTIC_ONLY", "CLEAN"], false, null, "COMPLETE", "NOT_RUN", "TEST_FAKE_WASAPI_V4_DUPLEX")
+        {
+            ActualCaptureFrames = candidate.CaptureFrames, ActualCapturePeriod100ns = candidate.CapturePeriod100ns,
+            ActualRenderFrames = candidate.RenderFrames, ActualRenderPeriod100ns = candidate.RenderPeriod100ns,
+            DuplexEvidence = report.RootElement.Clone(), NativeDuplexDisposition = "CLEAN", EvaluatorReasonCode = "CLEAN"
+        };
+        var evidence = new V2CandidateMatrixEvidence(1, prepared.Consent.PlanFingerprint,
+            WorkerScanPlanV2Fingerprint.Route(prepared.CaptureEndpointId, prepared.RenderEndpointId, prepared.Plan.Route), "COMPLETED",
+            prepared.Plan.CaptureBounds, prepared.Plan.RenderBounds, prepared.Plan.Candidates, [row], "DIAGNOSTIC_ONLY", "TEST_FAKE_WASAPI_V4_DUPLEX")
+        {
+            EvidenceVersion = 4, DiagnosticOnly = true, BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA")!, DiagnosticTimestampUtc = DateTimeOffset.UtcNow,
+            DiscoveryGeneration = prepared.Consent.DiscoveryGeneration, SelectedCandidateIndex = 0, GlobalMinimumProven = false,
+            UsedOperations = 3, MaximumOperations = 3, UsedActiveDuplexSeconds = 5, MaximumActiveDuplexSeconds = 5,
+            StopReason = "DIAGNOSTIC_CANDIDATE_COMPLETED", RepeatabilityPending = false, RepeatabilityRequested = 0,
+            RepeatabilityCompleted = 0, SessionCleanup = "CLOSE_CONFIRMED"
+        };
+        V2CandidateMatrixEvidenceJson.Validate(evidence);
+        return Task.FromResult(new V4AutomaticSearchResult(evidence, Path.Combine(evidenceRoot, $"diagnostic-{frames}.json")));
+    }
 }
 
 sealed class DelegateScanExecutionAdapter(

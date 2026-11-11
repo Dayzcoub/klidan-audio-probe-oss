@@ -3,7 +3,8 @@ namespace KlidanAudioProbe.Gui.Core;
 public static class WorkerScanV2PlanPreparation
 {
     public static WorkerScanV2ContractV4 Prepare(string captureId, string renderId, WorkerScanV2Route route,
-        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns)
+        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns,
+        int? diagnosticPeriodMilliseconds = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
         ArgumentException.ThrowIfNullOrWhiteSpace(renderId);
@@ -11,7 +12,21 @@ public static class WorkerScanV2PlanPreparation
         if (captureId == renderId || discoveryGeneration == 0) throw new InvalidDataException("Fresh distinct endpoints and a current Worker discovery generation are required.");
         var captureBounds = ReadBounds(captureMatrix, captureId, "CAPTURE", route.Capture);
         var renderBounds = ReadBounds(renderMatrix, renderId, "RENDER", route.Render);
-        var candidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(route, captureBounds, renderBounds);
+        IReadOnlyList<WorkerScanV2Candidate> candidates;
+        if (diagnosticPeriodMilliseconds is { } diagnosticMs)
+        {
+            if (diagnosticMs is not (5 or 10) || repeatabilityRuns != 0 || route.Mode != "MONO_TO_STEREO" ||
+                route.Capture.SampleRateHz != 48_000 || route.Render.SampleRateHz != 48_000 ||
+                route.Capture.Encoding != "PCM16" || route.Render.Encoding != "PCM16")
+                throw new InvalidDataException("Point diagnostics require the reviewed 48 kHz PCM16 MONO_TO_STEREO route, 5/10 ms, and R=0.");
+            static int Frames(long period, int rate) => checked((int)(((decimal)period * rate + 5_000_000m) / 10_000_000m));
+            var candidate = WorkerScanV2CandidatePlanning.Make(0, diagnosticMs * 10_000L, route,
+                Frames(captureBounds.MinimumPeriod100ns, route.Capture.SampleRateHz), Frames(captureBounds.DefaultPeriod100ns, route.Capture.SampleRateHz),
+                Frames(renderBounds.MinimumPeriod100ns, route.Render.SampleRateHz), Frames(renderBounds.DefaultPeriod100ns, route.Render.SampleRateHz));
+            if (candidate.RejectionReason.Length != 0) throw new InvalidDataException("The exact diagnostic candidate is outside confirmed device bounds or geometry.");
+            candidates = [candidate];
+        }
+        else candidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(route, captureBounds, renderBounds);
         if (candidates.Count == 0) throw new InvalidDataException("Capture and Render reported period ranges do not produce any unique candidate periods.");
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeatabilityRuns);
         return new(route, candidates, ["OFF"], repeatabilityRuns, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds,
