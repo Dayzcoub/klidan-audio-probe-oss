@@ -198,7 +198,7 @@ public sealed class MainViewModel : ViewModel
     private ulong? _v4WorkerDiscoveryGeneration;
     private string? _v4PlanFingerprint;
     private int _v4DiagnosticPeriodMilliseconds = 5;
-    private bool _v4DiagnosticPlanMode, _v4DiagnosticConsentChecked;
+    private bool _v4DiagnosticPlanMode, _v4DiagnosticConsentChecked, _v4DiagnosticRunStarted;
     private CancellationTokenSource? _v4PreparationCancellation;
     private int _v4PreparationVersion, _v4RepeatabilityRuns = 5;
     private bool _v4Preparing, _v4ConsentPending, _v4ConsentChecked;
@@ -541,6 +541,7 @@ public sealed class MainViewModel : ViewModel
     public bool V4DiagnosticConsentPending => _v4DiagnosticPlanMode && _v4ConsentPending;
     public bool V4SearchConsentPending => !_v4DiagnosticPlanMode && _v4ConsentPending;
     public bool V4DiagnosticReceiptCreated => _v4DiagnosticPlanMode && V4ReceiptCreated;
+    public bool V4DiagnosticRunVisible => _v4DiagnosticPlanMode && (V4DiagnosticReceiptCreated || _v4DiagnosticRunStarted);
     public bool V4SearchReceiptCreated => !_v4DiagnosticPlanMode && V4ReceiptCreated;
     public bool V4DiagnosticConsentChecked { get => _v4DiagnosticConsentChecked; set { if (Set(ref _v4DiagnosticConsentChecked, value)) AcceptV4DiagnosticPlanCommand.Refresh(); } }
     public string V4DiagnosticAvailabilityReason => GetV4DiagnosticDisabledReason();
@@ -1864,7 +1865,7 @@ public sealed class MainViewModel : ViewModel
     {
         PrepareV4CustomPlanCommand?.Refresh(); AcceptV4CustomPlanCommand?.Refresh(); CancelV4CustomPlanCommand?.Refresh();
         PrepareV4DiagnosticPlanCommand?.Refresh(); AcceptV4DiagnosticPlanCommand?.Refresh(); StartV4DiagnosticCommand?.Refresh();
-        StartV4ScanCommand?.Refresh(); CancelV4ScanCommand?.Refresh(); Changed(nameof(V4PrepareDisabledReason)); Changed(nameof(V4DiagnosticAvailabilityReason)); Changed(nameof(V4DiagnosticPlanMode)); Changed(nameof(V4SearchPlanUiVisible)); Changed(nameof(V4DiagnosticConsentPending)); Changed(nameof(V4SearchConsentPending)); Changed(nameof(V4DiagnosticReceiptCreated)); Changed(nameof(V4SearchReceiptCreated));
+        StartV4ScanCommand?.Refresh(); CancelV4ScanCommand?.Refresh(); Changed(nameof(V4PrepareDisabledReason)); Changed(nameof(V4DiagnosticAvailabilityReason)); Changed(nameof(V4DiagnosticPlanMode)); Changed(nameof(V4SearchPlanUiVisible)); Changed(nameof(V4DiagnosticConsentPending)); Changed(nameof(V4SearchConsentPending)); Changed(nameof(V4DiagnosticReceiptCreated)); Changed(nameof(V4DiagnosticRunVisible)); Changed(nameof(V4SearchReceiptCreated));
     }
 
     private Task PrepareV4CustomPlanAsync() => PrepareV4PlanAsync(false);
@@ -1956,12 +1957,18 @@ public sealed class MainViewModel : ViewModel
         _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false;
         _v4PlanStatusKey = "VmV4ReceiptCreatedReady"; _v4PlanStatusArgument = null;
         Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); Changed(nameof(V4PlanStatus)); Changed(nameof(V4ConsentSummary));
-        AcceptV4CustomPlanCommand.Refresh(); AcceptV4DiagnosticPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
-        StartV4ScanCommand.Refresh(); StartV4DiagnosticCommand.Refresh();
+        RefreshV4Commands();
     }
 
     private bool CanStartV4Scan() => !_v4DiagnosticPlanMode && CanStartV4Plan();
-    private bool CanStartV4Diagnostic() => _v4DiagnosticPlanMode && CanStartV4Plan() && _v4PreparedPlan is { Candidates.Count: 1, RepeatabilityRuns: 0, MaximumOperations: 3, MaximumActiveDuplexSeconds: 5 } diagnostic && diagnostic.Candidates[0].RequestedDuration100ns is 50_000 or 100_000;
+    private bool CanStartV4Diagnostic()
+    {
+        if (!_v4DiagnosticPlanMode || !CanStartV4Plan() || _v4PreparedPlan is not { Candidates.Count: 1, RepeatabilityRuns: 0, MaximumOperations: 3, MaximumActiveDuplexSeconds: 5, SessionLifetimeSeconds: 139, Route.Mode: "MONO_TO_STEREO" } plan ||
+            plan.Route.Capture.SampleRateHz != 48_000 || plan.Route.Render.SampleRateHz != 48_000 || plan.Route.Capture.Encoding != "PCM16" || plan.Route.Render.Encoding != "PCM16" || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF") return false;
+        var candidate = plan.Candidates[0];
+        return candidate.Index == 0 && ((candidate.RequestedDuration100ns == 50_000 && candidate.CaptureFrames == 240 && candidate.RenderFrames == 240 && candidate.CapturePeriod100ns == 50_000 && candidate.RenderPeriod100ns == 50_000) ||
+            (candidate.RequestedDuration100ns == 100_000 && candidate.CaptureFrames == 480 && candidate.RenderFrames == 480 && candidate.CapturePeriod100ns == 100_000 && candidate.RenderPeriod100ns == 100_000));
+    }
     private bool CanStartV4Plan() => !V4ScanRunning && _v4AutomaticSearchWorkflow is not null && _v4PreparedPlan is { RepeatabilityRuns: 0 or 5 } prepared &&
         _v4ConsentReceipt is { Accepted: true } receipt && _v4CaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } capture &&
         _v4RenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } render && receipt.PlanFingerprint == _v4PlanFingerprint && IsCurrentV4Plan() &&
@@ -1972,7 +1979,9 @@ public sealed class MainViewModel : ViewModel
     {
         if (!(V4DiagnosticPlanMode ? CanStartV4Diagnostic() : CanStartV4Scan()) || _v4AutomaticSearchWorkflow is null || _v4PreparedPlan is null || _v4ConsentReceipt is null || _v4CaptureEndpoint is null || _v4RenderEndpoint is null) return;
         var prepared = new WorkerScanV2V4PreparedPlan(_v4CaptureEndpointId!, _v4RenderEndpointId!, _v4PreparedPlan, _v4ConsentReceipt);
+        _v4DiagnosticRunStarted = V4DiagnosticPlanMode;
         _v4ConsentReceipt = null;
+        Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); RefreshV4Commands();
         var capture = _v4CaptureEndpoint; var render = _v4RenderEndpoint;
         var cancellation = new CancellationTokenSource(); _v4ScanCancellation = cancellation;
         var terminal = _v4ScanTerminal = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -2074,7 +2083,7 @@ public sealed class MainViewModel : ViewModel
         if (!hadState) { RefreshV4Commands(); return; }
         Interlocked.Increment(ref _v4PreparationVersion);
         _v4PreparationCancellation?.Cancel();
-        _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false; _v4DiagnosticPlanMode = false;
+        _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false; _v4DiagnosticPlanMode = false; _v4DiagnosticRunStarted = false;
         _v4CaptureEndpointId = _v4RenderEndpointId = _v4CaptureFriendlyName = _v4RenderFriendlyName = _v4UiDiscoveryGeneration = null;
         _v4CaptureEndpoint = _v4RenderEndpoint = null;
         _v4WorkerDiscoveryGeneration = null; _v4PlanFingerprint = null; _v4Preparing = false; _v4PlanStatusKey = reasonKey; _v4PlanStatusArgument = null;
