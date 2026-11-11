@@ -1403,7 +1403,7 @@ Fallback: {1}
   <data name="VmV4DiagnosticPlanPending" xml:space="preserve"><value>Resolve the current V4 plan or consent before preparing another point diagnostic.</value></data>
   <data name="VmV4DiagnosticBuildShaMissing" xml:space="preserve"><value>Launch this package with its PowerShell launcher so evidence can record the verified build SHA.</value></data>
   <data name="VmV4DiagnosticResultHeader" xml:space="preserve"><value>DIAGNOSTIC_ONLY · requested {0} ms C{1}/R{2} frames · Native {3}; evaluator {4}; reason {5}; cleanup C={6}, R={7}</value></data>
-  <data name="VmV4DiagnosticSideSummary" xml:space="preserve"><value>{0} actual {1} · events {2} · median/P95/P99 {3}/{4}/{5} ms · first event {6} ms · wait timeouts/errors {7}/{8} · frames/event {9} · coverage {10}% · discontinuities {11}</value></data>
+  <data name="VmV4DiagnosticSideSummary" xml:space="preserve"><value>{0} actual {1} · events {2} · median/P95/P99 {3}/{4}/{5} ms · first event {6} ms · wait timeouts/errors {7}/{8} · frames/event {9} · coverage {10}% · discontinuities {11} · max interval {12} ms ending +{13} ms from Start · threshold &gt;{14} ms exceeded {15} times</value></data>
   <data name="VmV4DiagnosticOnlyNoProfile" xml:space="preserve"><value>Diagnostic evidence only. Global minimum is unproven; no device or test profile was created.</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Consent receipt created for this plan. v4 audio scanning is not available yet.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Preview and consent only. v4 Initialize, CUSTOM Duplex, scanning, and stable profile creation remain unavailable until later implementation stages.</value></data>

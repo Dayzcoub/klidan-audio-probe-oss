@@ -43,6 +43,9 @@ struct Side {
     std::uint64_t packetDrainLimitHits = 0;
     std::uint64_t intermediateWaitTimeouts = 0;
     std::uint64_t longEventIntervals = 0;
+    std::optional<double> eventIntervalMaximumMilliseconds;
+    std::optional<double> eventIntervalMaximumEndOffsetMilliseconds;
+    std::optional<double> longEventIntervalThresholdMilliseconds;
     std::optional<std::uint64_t> devicePositionAnomalies;
     std::optional<std::uint64_t> unavailableCaptureBuffers;
     std::optional<std::uint64_t> silentBuffersServiced;
@@ -172,6 +175,9 @@ inline std::string ToJson(const Report& report) {
         w.Key("packetDrainLimitHits"); w.Uint64(s.packetDrainLimitHits);
         w.Key("intermediateWaitTimeouts"); w.Uint64(s.intermediateWaitTimeouts);
         w.Key("longEventIntervals"); w.Uint64(s.longEventIntervals);
+        w.Key("eventIntervalMaximumMilliseconds"); if (s.eventIntervalMaximumMilliseconds) w.Double(*s.eventIntervalMaximumMilliseconds); else w.Null();
+        w.Key("eventIntervalMaximumEndOffsetMilliseconds"); if (s.eventIntervalMaximumEndOffsetMilliseconds) w.Double(*s.eventIntervalMaximumEndOffsetMilliseconds); else w.Null();
+        w.Key("longEventIntervalThresholdMilliseconds"); if (s.longEventIntervalThresholdMilliseconds) w.Double(*s.longEventIntervalThresholdMilliseconds); else w.Null();
         w.Key("devicePositionAnomalies"); if (s.devicePositionAnomalies) w.Uint64(*s.devicePositionAnomalies); else w.Null();
         w.Key("unavailableCaptureBuffers"); if (s.unavailableCaptureBuffers) w.Uint64(*s.unavailableCaptureBuffers); else w.Null();
         w.Key("silentBuffersServiced"); if (s.silentBuffersServiced) w.Uint64(*s.silentBuffersServiced); else w.Null();
@@ -309,6 +315,8 @@ inline bool Validate(const rapidjson::Value& root, std::string_view captureId,
             if (!side.HasMember(name) || !(side[name].IsNull() || (side[name].IsNumber() && std::isfinite(side[name].GetDouble()) && side[name].GetDouble() >= 0))) return false;
         if (!side.HasMember("startOffsetMilliseconds") || !(side["startOffsetMilliseconds"].IsNull() ||
             (side["startOffsetMilliseconds"].IsNumber() && std::isfinite(side["startOffsetMilliseconds"].GetDouble())))) return false;
+        for (const auto name : {"eventIntervalMaximumMilliseconds", "eventIntervalMaximumEndOffsetMilliseconds", "longEventIntervalThresholdMilliseconds"})
+            if (side.HasMember(name) && !(side[name].IsNull() || (side[name].IsNumber() && std::isfinite(side[name].GetDouble()) && side[name].GetDouble() >= 0))) return false;
         const auto quality = std::string_view(side["quality"].GetString(), side["quality"].GetStringLength());
         const auto cleanup = std::string_view(side["cleanup"].GetString(), side["cleanup"].GetStringLength());
         if (quality != "CLEAN" && quality != "ANOMALIES_PRESENT" && quality != "SEVERE_ANOMALIES" && quality != "UNKNOWN") return false;

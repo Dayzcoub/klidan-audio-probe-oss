@@ -64,6 +64,10 @@ int main() {
     report.render.eventIntervalsObserved = report.render.events;
     report.capture.intermediateWaitTimeouts = 1;
     report.render.intermediateWaitTimeouts = 1;
+    report.capture.eventIntervalMaximumMilliseconds = 22.5;
+    report.capture.eventIntervalMaximumEndOffsetMilliseconds = 231.4;
+    report.capture.longEventIntervalThresholdMilliseconds = 15.0;
+    report.capture.longEventIntervals = 0;
 
     const auto json = DuplexValidationReport::ToJson(report);
     rapidjson::Document parsed;
@@ -74,6 +78,9 @@ int main() {
         parsed["render"]["intermediateWaitTimeouts"].GetUint64() != 1 ||
         parsed["capture"]["requestedPeriod100ns"].GetUint64() != 50'000 || parsed["capture"]["deviceMinimumPeriod100ns"].GetUint64() != 30'000 ||
         parsed["capture"]["actualBufferPeriod100ns"].GetUint64() != 50'000 || parsed["capture"]["firstEventDelayMilliseconds"].GetDouble() != 1.25 ||
+        parsed["capture"]["eventIntervalMaximumMilliseconds"].GetDouble() != 22.5 ||
+        parsed["capture"]["eventIntervalMaximumEndOffsetMilliseconds"].GetDouble() != 231.4 ||
+        parsed["capture"]["longEventIntervalThresholdMilliseconds"].GetDouble() != 15.0 ||
         parsed["capture"]["framesPerEventMean"].GetDouble() != 240.0 || parsed["render"]["eventSignalCount"].GetUint64() != 500 ||
         parsed["render"]["eventTimeoutCount"].GetUint64() != 1 || std::string(parsed["render"]["lastWaitReason"].GetString()) != "AUDIO_EVENT" ||
         std::string(parsed["render"]["cadenceAssessment"].GetString()) != "OBSERVED_CADENCE_DIFFERS_FROM_BUFFER_PERIOD" ||
@@ -93,6 +100,23 @@ int main() {
         !cleanMustReject([](rapidjson::Document& d) { d["render"]["packetDrainLimitHits"].SetUint64(1); }) ||
         !cleanMustReject([](rapidjson::Document& d) { d["capture"]["framesProcessed"].SetUint64(100'000); }) ||
         !cleanMustReject([](rapidjson::Document& d) { d["capture"]["cleanup"].SetString("UNKNOWN", d.GetAllocator()); })) return 10;
+
+    report.capture.quality = "ANOMALIES_PRESENT";
+    report.capture.longEventIntervals = 1;
+    report.status = "DUPLEX_WARNINGS";
+    const auto warningJson = DuplexValidationReport::ToJson(report);
+    rapidjson::Document warningReport;
+    warningReport.Parse(warningJson.data(), warningJson.size());
+    if (warningReport.HasParseError() || !DuplexValidationReport::Validate(warningReport, report.captureEndpointId,
+            report.renderEndpointId, "MINIMUM", 5, "OFF", report.operationId) ||
+        warningReport["capture"]["longEventIntervals"].GetUint64() != 1 ||
+        warningReport["capture"]["eventIntervalMaximumMilliseconds"].GetDouble() != 22.5) return 16;
+    report.capture.quality = "CLEAN";
+    report.status = "DUPLEX_CLEAN";
+    report.capture.longEventIntervals = 0;
+    report.capture.eventIntervalMaximumMilliseconds.reset();
+    report.capture.eventIntervalMaximumEndOffsetMilliseconds.reset();
+    report.capture.longEventIntervalThresholdMilliseconds.reset();
 
     for (const auto period : {"MINIMUM", "DEFAULT"}) {
         report.period = period;

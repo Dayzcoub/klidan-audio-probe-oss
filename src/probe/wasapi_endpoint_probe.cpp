@@ -371,6 +371,8 @@ struct StreamExecution {
     std::chrono::steady_clock::time_point endedAt{};
     double eventIntervalSumMilliseconds = 0;
     double maximumEventIntervalMilliseconds = 0;
+    double maximumEventIntervalEndOffsetMilliseconds = 0;
+    double expectedEventIntervalMilliseconds = 0;
     double firstDiscontinuitySeconds = 0;
     double lastDiscontinuitySeconds = 0;
     double discontinuitySpacingSumSeconds = 0;
@@ -429,6 +431,9 @@ struct DuplexSideSummary {
     UINT64 releaseBufferFailures = 0;
     HRESULT lastCaptureReleaseBufferResult = E_PENDING, lastRenderReleaseBufferResult = E_PENDING;
     double firstEventDelayMilliseconds = 0;
+    double maximumEventIntervalMilliseconds = 0;
+    double maximumEventIntervalEndOffsetMilliseconds = 0;
+    double expectedEventIntervalMilliseconds = 0;
     std::optional<double> eventIntervalMedianMilliseconds;
     std::optional<double> eventIntervalP95Milliseconds;
     std::optional<double> eventIntervalP99Milliseconds;
@@ -601,6 +606,9 @@ public:
         summary.watchdogTimedOut = execution.watchdogTimedOut;
         summary.deviceInvalidated = execution.deviceInvalidated;
         summary.eventIntervalsObserved = execution.eventIntervalsObserved;
+        summary.maximumEventIntervalMilliseconds = execution.maximumEventIntervalMilliseconds;
+        summary.maximumEventIntervalEndOffsetMilliseconds = execution.maximumEventIntervalEndOffsetMilliseconds;
+        summary.expectedEventIntervalMilliseconds = execution.expectedEventIntervalMilliseconds;
         summary.eventWaitCount = execution.eventWaitCount;
         summary.eventSignalCount = execution.eventSignalCount;
         summary.eventTimeoutCount = execution.eventTimeoutCount;
@@ -861,6 +869,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
     std::vector<std::uint64_t> sourceFrameTags;
     MonitorLatency::RenderTracker renderMarkerTracker;
     const double expectedInterval = ProbeMath::ExpectedIntervalMilliseconds(bufferFrames, rate);
+    result.expectedEventIntervalMilliseconds = expectedInterval;
     const auto expectedIntervals = expectedInterval > 0
         ? static_cast<std::size_t>(durationSeconds * 1'000.0 / expectedInterval) + 64
         : 64;
@@ -1162,7 +1171,10 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                 const double interval = std::chrono::duration<double, std::milli>(eventAt - previousEventAt).count();
                 ++result.eventIntervalsObserved;
                 result.eventIntervalSumMilliseconds += interval;
-                result.maximumEventIntervalMilliseconds = std::max(result.maximumEventIntervalMilliseconds, interval);
+                if (interval > result.maximumEventIntervalMilliseconds) {
+                    result.maximumEventIntervalMilliseconds = interval;
+                    result.maximumEventIntervalEndOffsetMilliseconds = std::chrono::duration<double, std::milli>(eventAt - startedAt).count();
+                }
                 if (result.eventIntervalsMilliseconds.size() < result.eventIntervalsMilliseconds.capacity()) {
                     result.eventIntervalsMilliseconds.push_back(interval);
                 } else {
@@ -2416,6 +2428,13 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
             streamReport->unavailableCaptureBuffers = execution.unavailableCaptureBuffers;
             streamReport->bufferServiceFaults = execution.criticalErrors + execution.packetDrainLimitHits;
             streamReport->eventWaitTimeouts = execution.intermediateWaitTimeouts;
+            streamReport->longEventIntervals = execution.longEventIntervals;
+            if (execution.eventIntervalsObserved != 0) {
+                streamReport->eventIntervalMaximumMilliseconds = execution.maximumEventIntervalMilliseconds;
+                streamReport->eventIntervalMaximumEndOffsetMilliseconds = execution.maximumEventIntervalEndOffsetMilliseconds;
+            }
+            if (execution.expectedEventIntervalMilliseconds > 0)
+                streamReport->longEventIntervalThresholdMilliseconds = execution.expectedEventIntervalMilliseconds * 1.5;
             streamReport->durationReached = execution.durationReached;
             streamReport->cancelled = execution.cancelled;
             streamReport->watchdogTimedOut = execution.watchdogTimedOut;
@@ -2424,7 +2443,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
             streamReport->errorStage = execution.errorStage;
             if (execution.criticalError || execution.cancelled || execution.watchdogTimedOut)
                 streamReport->errorHresult = Hresult(execution.errorResult);
-            streamReport->streamQuality = execution.criticalError || execution.discontinuities || execution.timestampErrors || execution.packetDrainLimitHits || !execution.sufficientFrames
+            streamReport->streamQuality = execution.criticalError || execution.discontinuities || execution.timestampErrors || execution.packetDrainLimitHits || execution.longEventIntervals || !execution.sufficientFrames
                 ? "ANOMALIES_PRESENT" : execution.started && execution.durationReached && execution.sufficientFrames && execution.stopped ? "CLEAN" : "INCOMPLETE";
         }
         if (channelMeter != nullptr) {
@@ -4021,6 +4040,12 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.packetDrainLimitHits = source.packetDrainLimitHits;
             side.intermediateWaitTimeouts = source.intermediateWaitTimeouts;
             side.longEventIntervals = source.longEventIntervals;
+            if (source.eventIntervalsObserved != 0) {
+                side.eventIntervalMaximumMilliseconds = source.maximumEventIntervalMilliseconds;
+                side.eventIntervalMaximumEndOffsetMilliseconds = source.maximumEventIntervalEndOffsetMilliseconds;
+            }
+            if (source.expectedEventIntervalMilliseconds > 0)
+                side.longEventIntervalThresholdMilliseconds = source.expectedEventIntervalMilliseconds * 1.5;
             side.devicePositionAnomalies = direction == "CAPTURE"
                 ? std::optional<std::uint64_t>(source.devicePositionAnomalies) : std::nullopt;
             side.silentBuffersServiced = direction == "RENDER"

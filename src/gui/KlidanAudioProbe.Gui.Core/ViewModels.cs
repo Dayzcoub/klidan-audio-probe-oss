@@ -2061,7 +2061,8 @@ public sealed class MainViewModel : ViewModel
             return string.Format(Localization.CurrentCulture, Localization.Get("VmV4DiagnosticSideSummary"), direction, actual,
                 Value(side, "events"), Value(side, "eventIntervalMedianMilliseconds"), Value(side, "eventIntervalP95Milliseconds"), Value(side, "eventIntervalP99Milliseconds"),
                 Value(side, "firstEventDelayMilliseconds"), Value(side, "eventTimeoutCount"), Value(side, "eventFailureCount"), Value(side, "framesPerEventMean"),
-                Value(side, "frameCoveragePercent"), Value(side, "discontinuities"));
+                Value(side, "frameCoveragePercent"), Value(side, "discontinuities"), Value(side, "eventIntervalMaximumMilliseconds"),
+                Value(side, "eventIntervalMaximumEndOffsetMilliseconds"), Value(side, "longEventIntervalThresholdMilliseconds"), Value(side, "longEventIntervals"));
         }
         var requestedMs = candidate.RequestedDuration100ns / 10_000m;
         var nativeDisposition = row.NativeDuplexDisposition ?? "UNKNOWN";
@@ -3060,7 +3061,7 @@ public sealed class MainViewModel : ViewModel
         }
         var frames = Value("framesProcessed"); var expected = Value("expectedFrames");
         var coverage = report.TryGetProperty("frameCoveragePercent", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.Number && c.TryGetDouble(out var percent) && double.IsFinite(percent) ? percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%" : MissingReportValue;
-        var faults = string.Join(" · ", new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts" }.Select(name => $"{name}={Display(Value(name))}"));
+        var faults = string.Join(" · ", new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts", "longEventIntervals", "eventIntervalMaximumMilliseconds", "eventIntervalMaximumEndOffsetMilliseconds", "longEventIntervalThresholdMilliseconds" }.Select(name => $"{name}={Display(Value(name))}"));
         var quality = Text("streamQuality") ?? "UNKNOWN";
         var cleanup = Text("cleanup") ?? "UNKNOWN";
         var start = Outcome("startSucceeded", "startHresult");

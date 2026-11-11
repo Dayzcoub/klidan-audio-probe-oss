@@ -113,11 +113,36 @@ public static class V4ShortCleanEvaluator
 
     public static string ExplainClassification(JsonElement evidence, string disposition)
     {
-        if (disposition != "UNKNOWN") return disposition == "CLEAN" ? "CLEAN" : evidence.TryGetProperty("reasonCode", out var reason) ? reason.GetString() ?? "NATIVE_REPORTED_NON_CLEAN" : "NATIVE_REPORTED_NON_CLEAN";
+        if (disposition == "CLEAN") return "CLEAN";
         if (!evidence.TryGetProperty("report", out var report) || !report.TryGetProperty("capture", out var capture) || !report.TryGetProperty("render", out var render)) return "REPORT_INCOMPLETE_OR_IDENTITY_MISMATCH";
+        if (disposition == "FAILED") return string.Join(";", new[] { ExplainSide("CAPTURE", capture), ExplainSide("RENDER", render) });
         foreach (var (name, side) in new[] { ("CAPTURE", capture), ("RENDER", render) })
             if (side.TryGetProperty("expectedFrames", out var expected) && side.TryGetProperty("framesProcessed", out var frames) && expected.TryGetInt64(out var e) && frames.TryGetInt64(out var f) && e > 0 && f < (long)Math.Ceiling(e * 0.99)) return $"{name}_FRAME_COUNT_BELOW_99_PERCENT";
         return "EVALUATOR_REJECTED_EVIDENCE";
+
+        static string ExplainSide(string name, JsonElement side)
+        {
+            var reasons = new List<string>();
+            var quality = side.TryGetProperty("quality", out var q) ? q.GetString() ?? "UNKNOWN" : "UNKNOWN";
+            if (quality != "CLEAN") reasons.Add("QUALITY=" + quality);
+            foreach (var field in new[] { "discontinuities", "timestampErrors", "serviceFaults", "packetDrainLimitHits", "longEventIntervals" })
+                if (side.TryGetProperty(field, out var value) && value.TryGetInt64(out var count) && count > 0)
+                {
+                    var detail = field.ToUpperInvariant() + "=" + count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    if (field == "longEventIntervals")
+                    {
+                        var maximum = Number("eventIntervalMaximumMilliseconds");
+                        var offset = Number("eventIntervalMaximumEndOffsetMilliseconds");
+                        var threshold = Number("longEventIntervalThresholdMilliseconds");
+                        detail += $" (MAX={maximum};END_OFFSET_FROM_START={offset};THRESHOLD={threshold})";
+                    }
+                    reasons.Add(detail);
+                }
+            return name + ":" + (reasons.Count == 0 ? "CLEAN" : string.Join(",", reasons));
+
+            string Number(string field) => side.TryGetProperty(field, out var value) && value.ValueKind == JsonValueKind.Number
+                ? value.GetDouble().ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + "ms" : "UNKNOWN";
+        }
     }
 
     public static (long? Expected, long? Actual) CoverageMismatch(JsonElement evidence)
