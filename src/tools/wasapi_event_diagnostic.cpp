@@ -316,6 +316,7 @@ int Run(const Options& options) {
             report.bufferGetCount = bufferGetCount;
             report.bufferReleaseCount = bufferReleaseCount;
             report.framesProcessed = framesProcessed;
+            report.waitTimeoutCount = waitTimeoutCount;
             if (*report.elapsedMilliseconds > 0.0)
                 report.eventRateHz = static_cast<double>(eventCount) / (*report.elapsedMilliseconds / 1000.0);
             if (bufferReleaseCount > 0)
