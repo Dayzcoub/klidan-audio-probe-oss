@@ -128,6 +128,7 @@ public sealed class MainViewModel : ViewModel
     private bool _windowsDiscoveryCurrent, _windowsDiscoveryLoading;
     private string? _windowsDiscoveryError;
     private string? _windowsDiscoveryGeneration;
+    private ulong? _windowsDiscoveryWorkerGeneration;
     private int _bindingCheckVersion;
     private bool _bindingCheckRunning;
     private bool _bindingCheckExpectedInitialConnection;
@@ -453,7 +454,7 @@ public sealed class MainViewModel : ViewModel
         : Localization.Get("VmOperatorProfileEvidenceWithStreams");
     public string OperatorResultDetails => _realInitializationError ?? _realFormatError ?? (RealInitializationResult is not null ? RealInitializationSummary : RealFormatMatrix is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmOperatorResultDetails"), RealFormatMatrixStatus, _operatorResultEndpoint, _operatorResultConfiguration, RealFormatRows.Count) : Localization.Get("VmOperatorQueryNotRun"));
     public string OperatorResultProvenance => _operatorResultProvenance;
-    public bool DeviceScanConsentPending { get => _deviceScanConsentPending; private set { if (Set(ref _deviceScanConsentPending, value)) { Changed(nameof(DeviceScanConsentText)); ConfirmDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
+    public bool DeviceScanConsentPending { get => _deviceScanConsentPending; private set { if (Set(ref _deviceScanConsentPending, value)) { Changed(nameof(DeviceScanConsentText)); ConfirmDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RefreshV4Commands(); } } }
     public bool DeviceScanConsentChecked { get => _deviceScanConsentChecked; set { if (Set(ref _deviceScanConsentChecked, value)) ConfirmDeviceScanCommand.Refresh(); } }
     public IReadOnlyList<RealStreamValidationDto> StreamValidations => _streamValidations.ToArray();
     public RealFormatCandidateDto? SelectedStreamCandidate { get => _selectedStreamCandidate; set { if (Set(ref _selectedStreamCandidate, value)) { Changed(nameof(StreamValidationConsentText)); Changed(nameof(StreamValidationAvailability)); RequestStreamValidationCommand.Refresh(); } } }
@@ -495,7 +496,7 @@ public sealed class MainViewModel : ViewModel
     public string StreamValidationResultsSummary => string.Join(" · ", StreamValidationRows.Select(r => $"{r.Period}: {r.FinalStatus}"));
     public string StreamValidationConsentText => SelectedWindowsEndpoint is { } e && SelectedStreamCandidate is { } c ? string.Format(Localization.CurrentCulture, Localization.Get("VmStreamValidationConsent"), e.FriendlyNameDisplay, DirectionDisplayLabel(e.Direction), e.EndpointId, c.Channels, c.Period.ToUpperInvariant()) : Localization.Get("VmStreamValidationSelectInitializedCandidate");
     public string StreamValidationAvailability => Localization.Get(CanRequestStreamValidation() ? "VmStreamValidationAuthorizationRequired" : "VmStreamValidationNeedsCurrentInitialize");
-    public bool DeviceScanRunning { get => _deviceScanRunning; private set { if (Set(ref _deviceScanRunning, value)) { CancelDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RequestStreamValidationCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestRealInitializeCommand.Refresh(); Changed(nameof(CanSaveDeviceProfile)); } } }
+    public bool DeviceScanRunning { get => _deviceScanRunning; private set { if (Set(ref _deviceScanRunning, value)) { CancelDeviceScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RequestStreamValidationCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestRealInitializeCommand.Refresh(); Changed(nameof(CanSaveDeviceProfile)); RefreshV4Commands(); } } }
     public bool AutomaticScanPairEnabled
     {
         get => _automaticScanPairEnabled;
@@ -538,7 +539,8 @@ public sealed class MainViewModel : ViewModel
     public string V4PlanStatus => _v4PlanStatusKey == "VmV4PlanBlocked" ? string.Format(Localization.CurrentCulture, Localization.Get(_v4PlanStatusKey), _v4PlanStatusArgument) : Localization.Get(_v4PlanStatusKey);
     public bool V4CustomPlanControlsVisible => AutomaticScanEngine == "V2_ADAPTIVE";
     public string V4AudioGateText => Localization.Get(_v4AutomaticSearchWorkflow is null ? "VmV4AudioGateClosed" : "VmV4AudioGateOpen");
-    public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); StartV4ScanCommand.Refresh(); CancelV4ScanCommand.Refresh(); PrepareV4CustomPlanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
+    public string V4PrepareDisabledReason => GetV4PrepareDisabledReason();
+    public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); RefreshV4Commands(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
     public string V4ProgressText => _v4ProgressText;
     public string V4ResultState => _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
     public string V4ResultSummary => BuildV4ResultSummary();
@@ -551,10 +553,10 @@ public sealed class MainViewModel : ViewModel
     public string AutomaticScanV2PhysicalMappingWarning => Localization.Get("VmV2PhysicalMappingUnknown");
     public string AutomaticScanV2RouteSummary => BuildV2Route() is { } route ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2RouteSummary"), route.Mode, string.Join("/", route.Capture.SelectedIndicesZeroBased.Select(i => i + 1)), string.Join("/", route.Render.SelectedIndicesZeroBased.Select(i => i + 1))) : Localization.Get("VmV2RouteInvalid");
     public string AutomaticScanV2Availability => !AutomaticScanV2ControlsVisible ? Localization.Get("VmV2NotSelected") : _automaticScanWorkflow is null || _worker?.Capabilities.Contains("RealExclusiveDuplexValidationV2", StringComparer.Ordinal) != true ? Localization.Get("VmV2CapabilityUnavailable") : !HasCurrentDuplexPair ? Localization.Get("VmV2SelectPair") : BuildV2Route() is null ? Localization.Get("VmV2RouteInvalid") : Localization.Get("VmV2ReadyToQuery");
-    public bool AutomaticScanPreparing { get => _automaticScanPreparing; private set { if (Set(ref _automaticScanPreparing, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
-    public bool AutomaticScanConsentPending { get => _automaticScanConsentPending; private set { if (Set(ref _automaticScanConsentPending, value)) { Changed(nameof(AutomaticScanConsentText)); ConfirmAutomaticScanCommand.Refresh(); CancelAutomaticScanConsentCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
+    public bool AutomaticScanPreparing { get => _automaticScanPreparing; private set { if (Set(ref _automaticScanPreparing, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); RefreshV4Commands(); } } }
+    public bool AutomaticScanConsentPending { get => _automaticScanConsentPending; private set { if (Set(ref _automaticScanConsentPending, value)) { Changed(nameof(AutomaticScanConsentText)); ConfirmAutomaticScanCommand.Refresh(); CancelAutomaticScanConsentCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); RefreshV4Commands(); } } }
     public bool AutomaticScanConsentChecked { get => _automaticScanConsentChecked; set { if (Set(ref _automaticScanConsentChecked, value)) ConfirmAutomaticScanCommand.Refresh(); } }
-    public bool AutomaticScanRunning { get => _automaticScanRunning; private set { if (Set(ref _automaticScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
+    public bool AutomaticScanRunning { get => _automaticScanRunning; private set { if (Set(ref _automaticScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); RefreshV4Commands(); } } }
     public bool AutomaticScanBusy => AutomaticScanPreparing || AutomaticScanRunning || V4ScanRunning;
     public IReadOnlyList<ChoiceOption> AutomaticSustainedModes { get; } = [new("Standard (300 s)", Localization.Get("VmAutomaticSustainedStandard")), new("Extended (600 s)", Localization.Get("VmAutomaticSustainedExtended"))];
     public string AutomaticSustainedMode { get => _automaticSustainedMode; set { if (AutomaticScanBusy || !AutomaticSustainedModes.Any(option => option.Value == value)) return; if (Set(ref _automaticSustainedMode, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); } } }
@@ -948,7 +950,7 @@ public sealed class MainViewModel : ViewModel
     }
     public WindowsEndpointDto? SelectedDuplexCaptureEndpoint { get => _selectedDuplexCapture; set => SetDuplexEndpoint(ref _selectedDuplexCapture, value, true); }
     public WindowsEndpointDto? SelectedDuplexRenderEndpoint { get => _selectedDuplexRender; set => SetDuplexEndpoint(ref _selectedDuplexRender, value, false); }
-    public bool DuplexConsentPending { get => _duplexConsentPending; private set { if (Set(ref _duplexConsentPending, value)) { Changed(nameof(DuplexConsentText)); ConfirmDuplexValidationCommand.Refresh(); } } }
+    public bool DuplexConsentPending { get => _duplexConsentPending; private set { if (Set(ref _duplexConsentPending, value)) { Changed(nameof(DuplexConsentText)); ConfirmDuplexValidationCommand.Refresh(); RefreshV4Commands(); } } }
     public bool DuplexConsentChecked { get => _duplexConsentChecked; set { if (Set(ref _duplexConsentChecked, value)) ConfirmDuplexValidationCommand.Refresh(); } }
     public bool DuplexValidationRunning => _duplexValidationRunning;
     public string DuplexStatus => _duplexStatus;
@@ -1090,7 +1092,7 @@ public sealed class MainViewModel : ViewModel
             return string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializationSummary"), endpointName, c.Encoding, c.SampleRate, c.Channels, c.SupportStatus, c.Period.ToUpperInvariant(), requestedPeriod, c.InitializeStatus, initializeHr, c.ActualBufferFrames?.ToString() ?? Localization.Get("VmRealEvidenceUnknown"), eventReady, cleanup);
         }
     }
-    public bool RealInitializeConsentPending { get => _realInitializeConsentPending; private set { if (Set(ref _realInitializeConsentPending, value)) { Changed(nameof(RealInitializeConsentChecked)); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealInitializeDisabledReason)); ConfirmRealInitializeCommand.Refresh(); CancelRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); } } }
+    public bool RealInitializeConsentPending { get => _realInitializeConsentPending; private set { if (Set(ref _realInitializeConsentPending, value)) { Changed(nameof(RealInitializeConsentChecked)); Changed(nameof(RealInitializeConsentText)); Changed(nameof(RealInitializeDisabledReason)); ConfirmRealInitializeCommand.Refresh(); CancelRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RefreshV4Commands(); } } }
     public bool RealInitializeConsentChecked { get => _realInitializeConsentChecked; set { if (Set(ref _realInitializeConsentChecked, value)) ConfirmRealInitializeCommand.Refresh(); } }
     public string RealInitializeConsentText => _pendingRealFormatCandidate is { } c && _pendingRealEndpointId is not null && _pendingRealDirection is { } direction ? string.Format(Localization.CurrentCulture, Localization.Get("VmRealInitializeConsentDescription"), DirectionDisplayLabel(direction), c.Encoding, c.SampleRate, c.Channels, c.Period) : Localization.Get("VmRealInitializeSelectSupportedFormat");
     public bool HasSelectedWindowsEndpoint => SelectedWindowsEndpoint is not null;
@@ -1196,7 +1198,7 @@ public sealed class MainViewModel : ViewModel
     public bool WorkerConsentChecked { get => _workerConsentChecked; set { if (Set(ref _workerConsentChecked, value)) ConfirmWorkerSessionCommand.Refresh(); } }
     public WorkerSessionSettingsDto? WorkerPendingSettings => _workerPendingSettings;
     public WorkerSessionSettingsDto? WorkerSessionSettings { get => _workerSessionSettings; private set { if (Set(ref _workerSessionSettings, value)) { Changed(nameof(WorkerSessionSettingsText)); Changed(nameof(WorkerMeterFormatSummary)); RefreshContext(); } } }
-    public SessionDto? WorkerSession { get => _workerSession; private set { if (value is not null && _workerSession?.Id != value.Id) { _workerCaptureMeter = null; _workerRenderMeter = null; _workerMeterBank = 0; _workerMeterStale = false; _workerMeterFinal = false; Changed(nameof(WorkerMeterBank)); Changed(nameof(WorkerMeterVisible)); Changed(nameof(WorkerMeterHeading)); Changed(nameof(WorkerMeterInterpretation)); Changed(nameof(WorkerVisibleMeterChannels)); Changed(nameof(WorkerMeterStatusText)); } if (Set(ref _workerSession, value)) { Changed(nameof(WorkerOperationActive)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(WorkerStatusVisible)); Changed(nameof(WorkerMeterVisible)); Changed(nameof(WorkerMeterHeading)); Changed(nameof(WorkerMeterInterpretation)); Changed(nameof(WorkerVisibleMeterChannels)); Changed(nameof(WorkerMeterStatusText)); RequestDeviceScanCommand.Refresh(); RefreshWorkerCommands(); RefreshContext(); } } }
+    public SessionDto? WorkerSession { get => _workerSession; private set { if (value is not null && _workerSession?.Id != value.Id) { _workerCaptureMeter = null; _workerRenderMeter = null; _workerMeterBank = 0; _workerMeterStale = false; _workerMeterFinal = false; Changed(nameof(WorkerMeterBank)); Changed(nameof(WorkerMeterVisible)); Changed(nameof(WorkerMeterHeading)); Changed(nameof(WorkerMeterInterpretation)); Changed(nameof(WorkerVisibleMeterChannels)); Changed(nameof(WorkerMeterStatusText)); } if (Set(ref _workerSession, value)) { Changed(nameof(WorkerOperationActive)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(WorkerStatusVisible)); Changed(nameof(WorkerMeterVisible)); Changed(nameof(WorkerMeterHeading)); Changed(nameof(WorkerMeterInterpretation)); Changed(nameof(WorkerVisibleMeterChannels)); Changed(nameof(WorkerMeterStatusText)); RequestDeviceScanCommand.Refresh(); RefreshWorkerCommands(); RefreshV4Commands(); RefreshContext(); } } }
     public bool WorkerOperationActive => WorkerSession?.Lifecycle is SessionLifecycle.Preparing or SessionLifecycle.Ready or SessionLifecycle.Started or SessionLifecycle.Stopping;
     public string WorkerNotice { get => _workerNotice; private set => Set(ref _workerNotice, value); }
     public bool WorkerMeterVisible => WorkerSession is not null;
@@ -1593,6 +1595,7 @@ public sealed class MainViewModel : ViewModel
         if (DeviceLossCommand is not null) DeviceLossCommand.Refresh();
         if (RequestStreamValidationCommand is not null) RequestStreamValidationCommand.Refresh();
         if (PrepareAutomaticScanCommand is not null) PrepareAutomaticScanCommand.Refresh();
+        RefreshV4Commands();
         if (PrepareDuplexRepeatabilityCommand is not null) PrepareDuplexRepeatabilityCommand.Refresh();
         Changed(nameof(DuplexRepeatabilityReadiness));
         Changed(nameof(CanPrepareDuplexRepeatability));
@@ -1805,12 +1808,30 @@ public sealed class MainViewModel : ViewModel
                 ? SelectedDuplexCaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } && SelectedDuplexRenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 }
                 : SelectedWindowsEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 }));
 
-    private bool CanPrepareV4CustomPlan() => !_v4Preparing && !_windowsDiscoveryLoading && _windowsDiscoveryCurrent &&
-        WorkerState.State == WorkerConnectionState.ConnectedFake && _worker is { DiscoveryGeneration: > 0 } &&
-        _worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal) && HasCurrentDuplexPair && BuildV2Route() is not null &&
-        !AutomaticScanBusy && !AutomaticScanConsentPending && !WorkerOperationActive && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning &&
-        !_duplexValidationRunning && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !_periodDiscoveryRunning && !_periodDiscoveryConsentPending &&
-        !DeviceScanConsentPending && !RealInitializeConsentPending && !DuplexConsentPending && !_streamConsentPending;
+    private bool CanPrepareV4CustomPlan() => string.IsNullOrEmpty(GetV4PrepareDisabledReason());
+
+    private string GetV4PrepareDisabledReason()
+    {
+        if (_v4Preparing) return Localization.Get("VmV4PrepareBusy");
+        if (_automaticScanOutcomeUnknown || _workerStartOutcomeUnknown) return Localization.Get("VmV4PrepareOutcomeUnknown");
+        if (AutomaticScanBusy || WorkerOperationActive || _bindingCheckRunning || _deviceScanRunning || _realQueryRunning || _realInitializeRunning || _streamValidationRunning || _duplexValidationRunning || _duplexRepeatabilityRunning || _periodDiscoveryRunning || _customPeriodDuplexRunning)
+            return Localization.Get("VmV4PrepareOperationActive");
+        if (AutomaticScanConsentPending || DeviceScanConsentPending || RealInitializeConsentPending || DuplexConsentPending || _streamConsentPending || _duplexRepeatabilityConsentPending || _periodDiscoveryConsentPending || _customPeriodDuplexConsentPending)
+            return Localization.Get("VmV4PrepareOtherConsentPending");
+        if (WorkerState.State != WorkerConnectionState.ConnectedFake || _worker is null) return Localization.Get("VmV4PrepareWorkerDisconnected");
+        if (_windowsDiscoveryLoading) return Localization.Get("VmV4PrepareDiscoveryLoading");
+        if (!_windowsDiscoveryCurrent || _windowsDiscoveryWorkerGeneration != _worker.DiscoveryGeneration) return Localization.Get("VmV4PrepareDiscoveryStale");
+        if (_worker.DiscoveryGeneration == 0 || !_worker.Capabilities.Contains("RealExclusiveFormatQuery", StringComparer.Ordinal)) return Localization.Get("VmV4PrepareCapabilityMissing");
+        if (!HasCurrentDuplexPair) return Localization.Get("VmV4PrepareSelectPair");
+        if (BuildV2Route() is null) return Localization.Get("VmV4PrepareInvalidRoute");
+        return string.Empty;
+    }
+
+    private void RefreshV4Commands()
+    {
+        PrepareV4CustomPlanCommand?.Refresh(); AcceptV4CustomPlanCommand?.Refresh(); CancelV4CustomPlanCommand?.Refresh();
+        StartV4ScanCommand?.Refresh(); CancelV4ScanCommand?.Refresh(); Changed(nameof(V4PrepareDisabledReason));
+    }
 
     private async Task PrepareV4CustomPlanAsync()
     {
@@ -1828,7 +1849,7 @@ public sealed class MainViewModel : ViewModel
         _v4Preparing = true;
         _v4PlanStatusKey = "VmV4PlanQueryingBounds"; _v4PlanStatusArgument = null;
         Changed(nameof(V4PlanPreparing)); Changed(nameof(V4PlanStatus));
-        PrepareV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
+        RefreshV4Commands();
         try
         {
             var captureMatrix = await _worker.QueryFormatMatrixAsync(capture.EndpointId, "CAPTURE", [route.Capture.Channels], cancellation.Token);
@@ -1862,7 +1883,7 @@ public sealed class MainViewModel : ViewModel
             if (version == Volatile.Read(ref _v4PreparationVersion)) _v4Preparing = false;
             Changed(nameof(V4PlanPreparing)); Changed(nameof(V4PlanReady)); Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentReceipt));
             Changed(nameof(V4PlanStatus)); Changed(nameof(V4PlanFingerprint)); Changed(nameof(V4ConsentSummary)); Changed(nameof(V4ReceiptCreated));
-            PrepareV4CustomPlanCommand.Refresh(); AcceptV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
+            RefreshV4Commands();
         }
     }
 
@@ -1976,7 +1997,7 @@ public sealed class MainViewModel : ViewModel
     {
         _v4ScanCancellation?.Cancel();
         var hadState = _v4Preparing || _v4PreparedPlan is not null || _v4ConsentPending || _v4ConsentReceipt is not null;
-        if (!hadState) return;
+        if (!hadState) { RefreshV4Commands(); return; }
         Interlocked.Increment(ref _v4PreparationVersion);
         _v4PreparationCancellation?.Cancel();
         _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4ConsentPending = false; _v4ConsentChecked = false;
@@ -1985,7 +2006,7 @@ public sealed class MainViewModel : ViewModel
         _v4WorkerDiscoveryGeneration = null; _v4PlanFingerprint = null; _v4Preparing = false; _v4PlanStatusKey = reasonKey; _v4PlanStatusArgument = null;
         Changed(nameof(V4PlanPreparing)); Changed(nameof(V4PlanReady)); Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated));
         Changed(nameof(V4PlanStatus)); Changed(nameof(V4PlanFingerprint)); Changed(nameof(V4ConsentSummary));
-        PrepareV4CustomPlanCommand.Refresh(); AcceptV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh(); StartV4ScanCommand.Refresh();
+        RefreshV4Commands();
     }
 
     private string BuildV4ConsentSummary()
@@ -2073,6 +2094,7 @@ public sealed class MainViewModel : ViewModel
         _windowsEndpointSnapshot = discovery;
         _lastWindowsEndpointSnapshot = discovery;
         _windowsDiscoveryCurrent = true;
+        _windowsDiscoveryWorkerGeneration = _worker?.DiscoveryGeneration;
         _windowsDiscoveryError = null;
         var refreshedGroups = PhysicalDeviceGrouping.Group(discovery.Endpoints);
         _physicalDeviceGroups = refreshedGroups;
@@ -2592,6 +2614,7 @@ public sealed class MainViewModel : ViewModel
         _streamConsentPending = true;
         Changed(nameof(StreamConsentPending)); Changed(nameof(StreamValidationConsentText));
         ConfirmStreamValidationCommand.Refresh(); CancelStreamConsentCommand.Refresh(); RequestStreamValidationCommand.Refresh();
+        RefreshV4Commands();
     }
 
     private void SetDuplexEndpoint(ref WindowsEndpointDto? field, WindowsEndpointDto? value, bool capture)
@@ -2650,7 +2673,7 @@ public sealed class MainViewModel : ViewModel
             _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityPlanPrepared");
         }
         catch (Exception ex) { _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityPlanFailed"), ex.GetType().Name, ex.Message); }
-        Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityConsentCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh();
+        Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityConsentCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh(); RefreshV4Commands();
     }
 
     private async Task ConfirmDuplexRepeatabilityAsync()
@@ -2663,7 +2686,7 @@ public sealed class MainViewModel : ViewModel
             CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityAuthorizationInvalidated"));
             return;
         }
-        _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityRunning = true; _duplexRepeatabilityCancellation = new CancellationTokenSource();
+        _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityRunning = true; _duplexRepeatabilityCancellation = new CancellationTokenSource(); RefreshV4Commands();
         _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityApprovalAccepted");
         Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityStatus));
         try
@@ -2672,14 +2695,14 @@ public sealed class MainViewModel : ViewModel
             _duplexRepeatabilityResult = result; _duplexRepeatabilityStatus = result.PersistenceStatus == "SAVE_FAILED" ? $"SAVE_FAILED · {result.PersistenceError}" : RepeatabilitySummaryDisplay(result);
         }
         catch (Exception ex) { _duplexRepeatabilityStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmRepeatabilityOutcomeUnknown"), ex.GetType().Name, ex.Message); }
-        finally { _duplexRepeatabilityRunning = false; _duplexRepeatabilityCancellation?.Dispose(); _duplexRepeatabilityCancellation = null; Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityResultText)); Changed(nameof(DuplexRepeatabilityStatus)); PrepareDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityCommand.Refresh(); }
+        finally { _duplexRepeatabilityRunning = false; _duplexRepeatabilityCancellation?.Dispose(); _duplexRepeatabilityCancellation = null; Changed(nameof(DuplexRepeatabilityRunning)); Changed(nameof(DuplexRepeatabilityResult)); Changed(nameof(DuplexRepeatabilityResultText)); Changed(nameof(DuplexRepeatabilityStatus)); PrepareDuplexRepeatabilityCommand.Refresh(); CancelDuplexRepeatabilityCommand.Refresh(); RefreshV4Commands(); }
     }
 
     private void CancelDuplexRepeatabilityConsent()
     {
         if (!_duplexRepeatabilityConsentPending) return;
         _duplexRepeatabilityConsentPending = false; _duplexRepeatabilityConsentChecked = false; _duplexRepeatabilityPreparation = null; _duplexRepeatabilityStatus = Localization.Get("VmRepeatabilityApprovalCancelled");
-        Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh();
+        Changed(nameof(DuplexRepeatabilityConsentPending)); Changed(nameof(DuplexRepeatabilityConsentChecked)); Changed(nameof(DuplexRepeatabilityPlanText)); Changed(nameof(DuplexRepeatabilityStatus)); ConfirmDuplexRepeatabilityCommand.Refresh(); PrepareDuplexRepeatabilityCommand.Refresh(); RefreshV4Commands();
     }
 
     private void CancelDuplexRepeatabilityAuthorization(string? message = null)
@@ -2766,17 +2789,17 @@ public sealed class MainViewModel : ViewModel
             if (_periodDiscoveryConsentPending) CancelPeriodDiscovery(Localization.Get("VmPeriodDiscoveryApprovalDiscarded"));
             return;
         }
-        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryRunning = true; _periodDiscoveryCancellation = new CancellationTokenSource(); _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryApprovalAccepted");
+        _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryRunning = true; _periodDiscoveryCancellation = new CancellationTokenSource(); _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryApprovalAccepted"); RefreshV4Commands();
         Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryConsentChecked)); Changed(nameof(PeriodDiscoveryRunning)); Changed(nameof(PeriodDiscoveryStatus));
         try { _periodDiscoveryResult = await _exclusivePeriodDiscoveryWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), message => { _periodDiscoveryStatus = message; Changed(nameof(PeriodDiscoveryStatus)); }, _periodDiscoveryCancellation.Token).ConfigureAwait(true); _periodDiscoveryResultFingerprint = _periodDiscoveryResult.Lifecycle == "COMPLETED" ? preparation.DiscoveryFingerprint : null; _periodDiscoveryStatus = _periodDiscoveryResult.PersistenceStatus; }
         catch (Exception ex) { _periodDiscoveryResultFingerprint = null; _periodDiscoveryStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmPeriodDiscoveryOutcomeUnknown"), ex.GetType().Name, ex.Message); }
-        finally { _periodDiscoveryRunning = false; _periodDiscoveryCancellation?.Dispose(); _periodDiscoveryCancellation = null; Changed(nameof(PeriodDiscoveryRunning)); Changed(nameof(PeriodDiscoveryResultText)); Changed(nameof(PeriodDiscoveryMatrixText)); Changed(nameof(PeriodDiscoveryReportPath)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); PreparePeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryRunCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
+        finally { _periodDiscoveryRunning = false; _periodDiscoveryCancellation?.Dispose(); _periodDiscoveryCancellation = null; Changed(nameof(PeriodDiscoveryRunning)); Changed(nameof(PeriodDiscoveryResultText)); Changed(nameof(PeriodDiscoveryMatrixText)); Changed(nameof(PeriodDiscoveryReportPath)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); PreparePeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryRunCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); RefreshV4Commands(); }
     }
     private void CancelPeriodDiscovery(string? message = null)
     {
         if (!_periodDiscoveryConsentPending && _periodDiscoveryPreparation is null) return;
         _periodDiscoveryConsentPending = false; _periodDiscoveryConsentChecked = false; _periodDiscoveryPreparation = null; _periodDiscoveryStatus = message ?? Localization.Get("VmPeriodDiscoveryApprovalCancelled");
-        Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryConsentChecked)); Changed(nameof(PeriodDiscoveryPlanText)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmPeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryCommand.Refresh(); PreparePeriodDiscoveryCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
+        Changed(nameof(PeriodDiscoveryConsentPending)); Changed(nameof(PeriodDiscoveryConsentChecked)); Changed(nameof(PeriodDiscoveryPlanText)); Changed(nameof(PeriodDiscoveryStatus)); Changed(nameof(CustomPeriodDuplexAvailabilityReason)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmPeriodDiscoveryCommand.Refresh(); CancelPeriodDiscoveryCommand.Refresh(); PreparePeriodDiscoveryCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); RefreshV4Commands();
     }
     private void CancelPeriodDiscoveryRun() { if (_periodDiscoveryRunning) { _periodDiscoveryStatus = Localization.Get("VmPeriodDiscoveryCancellationRequested"); _periodDiscoveryCancellation?.Cancel(); Changed(nameof(PeriodDiscoveryStatus)); } }
 
@@ -2801,22 +2824,22 @@ public sealed class MainViewModel : ViewModel
             _customPeriodDuplexConsentChecked = false; _customPeriodDuplexConsentPending = true; _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexPlanPrepared");
         }
         catch (Exception ex) { _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomPeriodDuplexPreparationFailed"), ex.GetType().Name, ex.Message); }
-        Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh();
+        Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); RefreshV4Commands();
     }
 
     private async Task ConfirmCustomPeriodDuplexAsync()
     {
         if (_customPeriodDuplexWorkflow is null || !_customPeriodDuplexConsentPending || !_customPeriodDuplexConsentChecked || _customPeriodDuplexPreparation is not { } preparation || _windowsEndpointSnapshot is null || SelectedDuplexCaptureEndpoint?.EndpointId != preparation.Capture.EndpointId || SelectedDuplexRenderEndpoint?.EndpointId != preparation.Render.EndpointId || ExclusivePeriodDiscoveryPlanning.Fingerprint(_windowsEndpointSnapshot) != preparation.DiscoveryFingerprint || !_windowsDiscoveryCurrent || WorkerState.State != WorkerConnectionState.ConnectedFake)
         { if (_customPeriodDuplexConsentPending) CancelCustomPeriodDuplexConsent(Localization.Get("VmCustomPeriodDuplexAuthorizationInvalidated")); return; }
-        _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexRunning = true; _customPeriodDuplexCancellation = new(); _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexApprovalAccepted");
+        _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexRunning = true; _customPeriodDuplexCancellation = new(); _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexApprovalAccepted"); RefreshV4Commands();
         Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexRunning)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomRepeatabilityCommand.Refresh();
         try { _customPeriodDuplexResult = await _customPeriodDuplexWorkflow.RunApprovedAsync(preparation, Guid.NewGuid(), _customPeriodDuplexCancellation.Token).ConfigureAwait(true); _customPeriodDuplexStatus = _customPeriodDuplexResult.PersistenceStatus; }
         catch (Exception ex) { _customPeriodDuplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmCustomPeriodDuplexOutcomeUnknown"), ex.GetType().Name, ex.Message); }
-        finally { _customPeriodDuplexRunning = false; _customPeriodDuplexCancellation?.Dispose(); _customPeriodDuplexCancellation = null; Changed(nameof(CustomPeriodDuplexRunning)); Changed(nameof(CustomPeriodDuplexResultText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); CancelCustomPeriodDuplexCommand.Refresh(); }
+        finally { _customPeriodDuplexRunning = false; _customPeriodDuplexCancellation?.Dispose(); _customPeriodDuplexCancellation = null; Changed(nameof(CustomPeriodDuplexRunning)); Changed(nameof(CustomPeriodDuplexResultText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); CancelCustomPeriodDuplexCommand.Refresh(); RefreshV4Commands(); }
     }
 
     private void CancelCustomPeriodDuplexConsent(string? message = null)
-    { _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = message ?? Localization.Get("VmCustomPeriodDuplexApprovalCancelled"); Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); }
+    { _customPeriodDuplexConsentPending = false; _customPeriodDuplexConsentChecked = false; _customPeriodDuplexPreparation = null; _customPeriodDuplexStatus = message ?? Localization.Get("VmCustomPeriodDuplexApprovalCancelled"); Changed(nameof(CustomPeriodDuplexConsentPending)); Changed(nameof(CustomPeriodDuplexConsentChecked)); Changed(nameof(CustomPeriodDuplexPlanText)); Changed(nameof(CustomPeriodDuplexStatus)); Changed(nameof(CanPrepareCustomRepeatability)); ConfirmCustomPeriodDuplexCommand.Refresh(); CancelCustomPeriodDuplexConsentCommand.Refresh(); PrepareCustomPeriodDuplexCommand.Refresh(); PrepareCustomRepeatabilityCommand.Refresh(); RefreshV4Commands(); }
     private void CancelCustomPeriodDuplex() { if (_customPeriodDuplexRunning) { _customPeriodDuplexStatus = Localization.Get("VmCustomPeriodDuplexCancellationRequested"); _customPeriodDuplexCancellation?.Cancel(); Changed(nameof(CustomPeriodDuplexStatus)); } }
 
     private bool CanRequestDuplexValidation() => HasCurrentDuplexPair && _worker is not null && _worker.Capabilities.Contains("RealExclusiveDuplexValidation", StringComparer.Ordinal) && !_duplexValidationRunning && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning && !_streamValidationRunning && !DuplexConsentPending && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending;
@@ -2849,7 +2872,7 @@ public sealed class MainViewModel : ViewModel
         if (_worker is null || !DuplexConsentPending || !DuplexConsentChecked || _pendingDuplexConsent is not { } consent || _pendingDuplexPeriod is not { } period || SelectedDuplexCaptureEndpoint is not { EndpointId: { } captureId, DeviceState: "ACTIVE" } capture || SelectedDuplexRenderEndpoint is not { EndpointId: { } renderId, DeviceState: "ACTIVE" } render) return;
         if (!HasCurrentDuplexPair || consent.RequestFingerprint != DuplexConsent.Fingerprint(captureId, renderId, period, 5, "OFF")) { CancelDuplexConsent(); _duplexStatus = Localization.Get("VmDuplexPairChanged"); Changed(nameof(DuplexStatus)); return; }
         _pendingDuplexConsent = null; _pendingDuplexPeriod = null; DuplexConsentPending = false; DuplexConsentChecked = false;
-        var operationId = Guid.NewGuid().ToString("D"); _activeDuplexOperationId = operationId; _duplexValidationRunning = true;
+        var operationId = Guid.NewGuid().ToString("D"); _activeDuplexOperationId = operationId; _duplexValidationRunning = true; RefreshV4Commands();
         _duplexStatus = string.Format(Localization.CurrentCulture, Localization.Get("VmDuplexRunning"), period);
         Changed(nameof(DuplexValidationRunning)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(DuplexStatus)); CancelDuplexValidationCommand.Refresh(); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh();
         try
@@ -2873,7 +2896,7 @@ public sealed class MainViewModel : ViewModel
         }
         finally
         {
-            _activeDuplexOperationId = null; _duplexValidationRunning = false; Changed(nameof(DuplexValidationRunning)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(DuplexStatus)); CancelDuplexValidationCommand.Refresh(); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh();
+            _activeDuplexOperationId = null; _duplexValidationRunning = false; Changed(nameof(DuplexValidationRunning)); Changed(nameof(HasDuplexPairProfileEvidence)); Changed(nameof(CanSaveDeviceProfile)); Changed(nameof(DuplexStatus)); CancelDuplexValidationCommand.Refresh(); RequestDuplexMinimumCommand.Refresh(); RequestDuplexDefaultCommand.Refresh(); RefreshV4Commands();
         }
     }
 
@@ -2900,7 +2923,7 @@ public sealed class MainViewModel : ViewModel
         _lastStreamAttemptPeriod = period;
         _streamAttemptedSinceProfileSave = true;
         _streamValidationRows[period] = new(period, candidate.ActualBufferFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Localization.Get("VmStreamUnknownValue"), candidate.InitializeStatus, "RUNNING", Localization.Get("VmStreamUnknownValue"), Localization.Get("VmStreamUnknownValue"), "UNKNOWN", Localization.Get("VmStreamUnknownValue"), "RUNNING", "NOT_RUN", "RUNNING", Localization.Get("VmStreamAwaitingWorkerResult"));
-        _streamValidationRunning = true; Changed(nameof(StreamValidationRunning)); Changed(nameof(StreamValidationRows)); RequestStreamValidationCommand.Refresh(); CancelStreamValidationCommand.Refresh();
+        _streamValidationRunning = true; Changed(nameof(StreamValidationRunning)); Changed(nameof(StreamValidationRows)); RequestStreamValidationCommand.Refresh(); CancelStreamValidationCommand.Refresh(); RefreshV4Commands();
         _streamValidationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         _activeStreamOperationId = Guid.NewGuid().ToString("D");
         _streamValidationProgress = string.Format(Localization.CurrentCulture, Localization.Get("VmStreamProgress"), DirectionDisplayLabel(endpoint.Direction), period);
@@ -2934,7 +2957,7 @@ public sealed class MainViewModel : ViewModel
         }
         finally
         {
-            _streamValidationCancellation?.Dispose(); _streamValidationCancellation = null; _activeStreamOperationId = null; _streamValidationRunning = false;
+            _streamValidationCancellation?.Dispose(); _streamValidationCancellation = null; _activeStreamOperationId = null; _streamValidationRunning = false; RefreshV4Commands();
             Changed(nameof(StreamValidationRunning)); Changed(nameof(StreamValidationRows)); RequestStreamValidationCommand.Refresh(); CancelStreamValidationCommand.Refresh();
         }
     }
@@ -3075,7 +3098,7 @@ public sealed class MainViewModel : ViewModel
         var previousPeriod = RealInitializePeriod;
         var previousMatrixEndpoint = RealFormatMatrix?.EndpointId;
         var previousSelectionCurrent = HasCurrentOperatorQueryResult;
-        _realQueryRunning = true;
+        _realQueryRunning = true; RefreshV4Commands();
         RequestDeviceScanCommand.Refresh();
         _realFormatError = Localization.Get("VmQueryInvalidated");
         Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh();
@@ -3117,7 +3140,7 @@ public sealed class MainViewModel : ViewModel
             if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result);
         }
         catch (Exception ex) { _operatorResultEndpoint = $"{endpoint.FriendlyNameDisplay} · {DirectionDisplayLabel(endpoint.Direction)} · {endpoint.DeviceState}"; _operatorResultMode = OperatorResultKind.FormatQuery; _realFormatError = $"{Localization.Get("VmQueryErrorPrefix")} REAL_WASAPI_QUERY: {ex.GetType().Name}: {ex.Message}" + (RealFormatMatrix is null ? "" : Localization.Get("VmQueryHistoricalSuffix")); OperatorResultOutcome = Localization.Get("VmQueryFailureOutcome"); NotifyOperatorResult(); Changed(nameof(RealFormatMatrixStatus)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorQueryResult)); Changed(nameof(HasCurrentOperatorQueryResult)); Changed(nameof(NeedsInitializeFormatQuery)); Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); WorkerNotice = _realFormatError; if (OperatorTestMode != "INITIALIZE_ONLY") NavigateOperatorStep(OperatorStep.Result); }
-        finally { _realQueryRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
+        finally { _realQueryRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(CanSaveDeviceProfile)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RefreshV4Commands(); }
     }
 
     private bool CanRequestRealInitialize() => OperatorTestMode == "INITIALIZE_ONLY" && HasCurrentOperatorQueryResult && CanUseSelectedWindowsEndpoint && !_realQueryRunning && !_realInitializeRunning && !_deviceScanRunning && !WorkerOperationActive && !_duplexRepeatabilityRunning && !_duplexRepeatabilityConsentPending && !RealInitializeConsentPending && !DeviceScanConsentPending && _worker is not null && _worker.Capabilities.Contains("RealExclusiveFormatInitialize", StringComparer.Ordinal) && SelectedRealFormatRow is { IsConflict: false, DisplayStatus: "SUPPORTED_REPORTED" } row && SelectedRealFormatCandidate is { SupportStatus: "SUPPORTED_REPORTED", Status: "SUPPORTED_REPORTED" } candidate && row.EvidenceCandidates.Contains(candidate);
@@ -3137,7 +3160,7 @@ public sealed class MainViewModel : ViewModel
         var endpointId = _pendingRealEndpointId; var direction = _pendingRealDirection;
         if (!CanUseSelectedWindowsEndpoint || SelectedWindowsEndpoint?.EndpointId != endpointId || SelectedWindowsEndpoint.Direction != direction || SelectedRealFormatCandidate != candidate || RealFormatMatrixIsStale)
         { CancelRealInitialize(); WorkerNotice = Localization.Get("VmInitializeSelectionChanged"); return; }
-        _realInitializeRunning = true;
+        _realInitializeRunning = true; RefreshV4Commands();
         RequestDeviceScanCommand.Refresh();
         Changed(nameof(RealInitializeDisabledReason)); RequestRealInitializeCommand.Refresh();
         try
@@ -3160,7 +3183,7 @@ public sealed class MainViewModel : ViewModel
             NavigateOperatorStep(OperatorStep.Result);
         }
         catch (Exception ex) { _realInitializationError = $"{Localization.Get("VmInitializeErrorPrefix")} · {ex.GetType().Name}: {ex.Message}"; OperatorResultOutcome = Localization.Get("VmInitializeUnknownOutcome"); Changed(nameof(RealInitializationDetails)); Changed(nameof(RealInitializationSummary)); Changed(nameof(RealFormatSummary)); Changed(nameof(HasOperatorInitializeResult)); NotifyOperatorResult(); WorkerNotice = _realInitializationError; NavigateOperatorStep(OperatorStep.Result); }
-        finally { CancelRealInitialize(); _realInitializeRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(RealFormatSummary)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); }
+        finally { CancelRealInitialize(); _realInitializeRunning = false; Changed(nameof(RealInitializeDisabledReason)); Changed(nameof(RealFormatSummary)); RequestRealInitializeCommand.Refresh(); RequestDeviceScanCommand.Refresh(); RefreshV4Commands(); }
     }
 
     private void CancelRealInitialize()
@@ -3309,7 +3332,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (!CanCheckSavedProfileBinding() || _worker is null) return;
         var requestVersion = ++_bindingCheckVersion;
-        _bindingCheckRunning = true;
+        _bindingCheckRunning = true; RefreshV4Commands();
         Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh(); DiscoverWindowsEndpointsCommand.Refresh();
         try
         {
@@ -3411,7 +3434,7 @@ public sealed class MainViewModel : ViewModel
         }
         finally
         {
-            _bindingCheckRunning = false;
+            _bindingCheckRunning = false; RefreshV4Commands();
             Changed(nameof(SavedProfileBindingChecking)); Changed(nameof(SavedProfileBindingStatus)); Changed(nameof(SavedProfileBindingExplanation)); Changed(nameof(SavedProfileBindingTechnicalDetails)); Changed(nameof(HasSavedProfileBindingAssessment)); Changed(nameof(SavedProfileOperatorStatus)); Changed(nameof(SavedProfileOperatorHistory)); Changed(nameof(SavedProfileOperatorLimitation));
             CheckSavedProfileBindingCommand.Refresh(); DiscoverWindowsEndpointsCommand.Refresh();
         }
@@ -3447,7 +3470,7 @@ public sealed class MainViewModel : ViewModel
         CancelDuplexRepeatabilityAuthorization(Localization.Get("VmRepeatabilityDiscoveryUpdating"));
         CancelPeriodDiscovery(Localization.Get("VmPeriodPlanDiscardedDiscoveryUpdating"));
         InvalidateV4PreparedPlan("VmV4PlanInvalidated");
-        _windowsDiscoveryLoading = true;_windowsDiscoveryCurrent = false;_windowsDiscoveryError = null;
+        _windowsDiscoveryLoading = true;_windowsDiscoveryCurrent = false;_windowsDiscoveryError = null; RefreshV4Commands();
         EndpointDiscoveryQaTrace.Write("loading-enter", state: WorkerState.State.ToString(), loading: true);
         Changed(nameof(SavedProfileBindingChecking)); CheckSavedProfileBindingCommand.Refresh();
         _physicalDeviceGroups = [];
@@ -3682,6 +3705,11 @@ public sealed class MainViewModel : ViewModel
 
     private void ApplyWorkerState(WorkerStateDto state, bool callbackDelivery = false)
     {
+        if (state.State == WorkerConnectionState.ConnectedFake && _windowsDiscoveryWorkerGeneration is { } discoveryGeneration && _worker?.DiscoveryGeneration != discoveryGeneration)
+        {
+            _windowsDiscoveryCurrent = false;
+            Changed(nameof(HasCurrentWindowsEndpoints)); Changed(nameof(WindowsDiscoveryStatusText)); Changed(nameof(HasCurrentDuplexPair)); Changed(nameof(DuplexDiscoveryFreshness));
+        }
         if (state.State != WorkerConnectionState.ConnectedFake || _worker?.DiscoveryGeneration != _v4WorkerDiscoveryGeneration)
             InvalidateV4PreparedPlan("VmV4PlanInvalidated");
         if (_bindingCheckExpectedInitialConnection && state.State is WorkerConnectionState.Starting or WorkerConnectionState.Connecting or WorkerConnectionState.Handshaking)

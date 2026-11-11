@@ -1396,6 +1396,16 @@ Fallback: {1}
   <data name="VmV4AudioGateOpen" xml:space="preserve"><value>V4 scanning starts only after you accept this exact plan. Search-only uses R=0; repeatability runs only with R=5. A five-second qualification does not prove long-term stability.</value></data>
   <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Consent receipt created for this exact plan. Start the scan when ready.</value></data>
   <data name="VmV4SearchOnly" xml:space="preserve"><value>Search only (R=0)</value></data>
+  <data name="VmV4PrepareWorkerDisconnected" xml:space="preserve"><value>Connect the Worker before preparing a plan.</value></data>
+  <data name="VmV4PrepareDiscoveryLoading" xml:space="preserve"><value>Windows device discovery is still running.</value></data>
+  <data name="VmV4PrepareDiscoveryStale" xml:space="preserve"><value>Refresh Windows devices; the current list is missing or stale.</value></data>
+  <data name="VmV4PrepareCapabilityMissing" xml:space="preserve"><value>The connected Worker does not support passive format queries.</value></data>
+  <data name="VmV4PrepareSelectPair" xml:space="preserve"><value>Select an active Capture and Render endpoint from the current device list.</value></data>
+  <data name="VmV4PrepareInvalidRoute" xml:space="preserve"><value>Fix the route: selected channels must be valid and distinct for each side.</value></data>
+  <data name="VmV4PrepareOperationActive" xml:space="preserve"><value>Wait for the active operation to finish before preparing a plan.</value></data>
+  <data name="VmV4PrepareOtherConsentPending" xml:space="preserve"><value>Finish or cancel the other pending consent before preparing a plan.</value></data>
+  <data name="VmV4PrepareOutcomeUnknown" xml:space="preserve"><value>A prior operation has an unknown outcome. Reconnect and refresh devices before continuing.</value></data>
+  <data name="VmV4PrepareBusy" xml:space="preserve"><value>Plan preparation is already running.</value></data>
   <data name="V4StartScan" xml:space="preserve"><value>Start V4 scan</value></data>
   <data name="V4ResultsHeading" xml:space="preserve"><value>V4 results</value></data>
   <data name="VmV4ScanStarting" xml:space="preserve"><value>Starting scan with the accepted plan and consent receipt…</value></data>

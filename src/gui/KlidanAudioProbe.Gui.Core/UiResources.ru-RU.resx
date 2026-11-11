@@ -1396,6 +1396,16 @@ Fallback: {1}
   <data name="VmV4AudioGateOpen" xml:space="preserve"><value>Сканирование V4 начинается только после подтверждения этого плана. Поиск без повторов использует R=0; повторы запускаются только при R=5. Пять секунд проверки не подтверждают длительную стабильность.</value></data>
   <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Запустите сканирование, когда будете готовы.</value></data>
   <data name="VmV4SearchOnly" xml:space="preserve"><value>Только поиск (R=0)</value></data>
+  <data name="VmV4PrepareWorkerDisconnected" xml:space="preserve"><value>Сначала подключите Worker.</value></data>
+  <data name="VmV4PrepareDiscoveryLoading" xml:space="preserve"><value>Обнаружение устройств Windows ещё выполняется.</value></data>
+  <data name="VmV4PrepareDiscoveryStale" xml:space="preserve"><value>Обновите список устройств Windows: текущий список отсутствует или устарел.</value></data>
+  <data name="VmV4PrepareCapabilityMissing" xml:space="preserve"><value>Подключённый Worker не поддерживает пассивный запрос форматов.</value></data>
+  <data name="VmV4PrepareSelectPair" xml:space="preserve"><value>Выберите активные Capture и Render из текущего списка устройств.</value></data>
+  <data name="VmV4PrepareInvalidRoute" xml:space="preserve"><value>Исправьте маршрут: каналы каждой стороны должны быть допустимыми и различаться.</value></data>
+  <data name="VmV4PrepareOperationActive" xml:space="preserve"><value>Дождитесь завершения текущей операции перед подготовкой плана.</value></data>
+  <data name="VmV4PrepareOtherConsentPending" xml:space="preserve"><value>Завершите или отмените другое ожидающее согласие.</value></data>
+  <data name="VmV4PrepareOutcomeUnknown" xml:space="preserve"><value>Результат предыдущей операции неизвестен. Переподключите Worker и обновите список устройств.</value></data>
+  <data name="VmV4PrepareBusy" xml:space="preserve"><value>Подготовка плана уже выполняется.</value></data>
   <data name="V4StartScan" xml:space="preserve"><value>Запустить сканирование V4</value></data>
   <data name="V4ResultsHeading" xml:space="preserve"><value>Результаты V4</value></data>
   <data name="VmV4ScanStarting" xml:space="preserve"><value>Запуск по подтверждённому плану и квитанции согласия…</value></data>
