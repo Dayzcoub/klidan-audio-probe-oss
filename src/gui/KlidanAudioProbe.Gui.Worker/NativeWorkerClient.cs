@@ -321,11 +321,14 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
 
     public async Task<JsonElement> InitializeCustomPeriodV2InScanAsync(WorkerScanSessionToken session, Guid operationId,
         string captureEndpointId, string renderEndpointId, WorkerScanV2ContractV4 plan, int candidateIndex,
-        string direction, CancellationToken cancellationToken = default)
+        string direction, CancellationToken cancellationToken = default, string? testScenario = null)
     {
         if (session.ContractVersion != 4 || session.ScanSessionId == Guid.Empty || operationId == Guid.Empty ||
             direction is not ("CAPTURE" or "RENDER") || !_capabilities.Contains("V2CustomTransportContractV4", StringComparer.Ordinal))
             throw new ArgumentException("An explicitly registered v4 custom transport session is required.");
+        if (testScenario is not null && (!_capabilities.Contains("TestInjectedDuplexBackend", StringComparer.Ordinal) ||
+            testScenario is not ("INIT_FAILED" or "INIT_UNSUPPORTED" or "ALIGNMENT_MISMATCH" or "ACTUAL_FRAMES_MISMATCH" or "ACTUAL_PERIOD_MISMATCH" or "CLEANUP_UNKNOWN")))
+            throw new ArgumentException("Injected v4 Initialize scenarios are available only in test workers.", nameof(testScenario));
         var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, plan.Route);
         var candidate = plan.Candidates.SingleOrDefault(c => c.Index == candidateIndex)
             ?? throw new ArgumentOutOfRangeException(nameof(candidateIndex));
@@ -338,7 +341,12 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var payload = new { operationId, scanOperationId = operationId, scanSessionId = session.ScanSessionId,
             candidateIndex, endpointId, direction, sampleRate = side.SampleRateHz, channels = side.Channels,
             encoding = side.Encoding, requestedPeriod100ns = period, requestedFrames = frames, routeFingerprint };
-        using var response = await SendAsync("InitializeCustomPeriodV2", payload, cancellationToken).ConfigureAwait(false);
+        var request = new Dictionary<string, object?> { ["operationId"] = operationId, ["scanOperationId"] = operationId,
+            ["scanSessionId"] = session.ScanSessionId, ["candidateIndex"] = candidateIndex, ["endpointId"] = endpointId,
+            ["direction"] = direction, ["sampleRate"] = side.SampleRateHz, ["channels"] = side.Channels,
+            ["encoding"] = side.Encoding, ["requestedPeriod100ns"] = period, ["requestedFrames"] = frames, ["routeFingerprint"] = routeFingerprint };
+        if (testScenario is not null) request["testScenario"] = testScenario;
+        using var response = await SendAsync("InitializeCustomPeriodV2", request, cancellationToken).ConfigureAwait(false);
         var result = response.RootElement.GetProperty("payload");
         var disposition = result.GetProperty("initializeDisposition").GetString();
         var cleanup = result.GetProperty("cleanup").GetString();
