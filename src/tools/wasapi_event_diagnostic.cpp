@@ -3,6 +3,7 @@
 #include "wasapi_event_diagnostic_json.h"
 
 #include <windows.h>
+#include <avrt.h>
 #include <audioclient.h>
 #include <mmdeviceapi.h>
 #include <ksmedia.h>
@@ -77,13 +78,18 @@ double Percentile(const std::vector<double>& values, double percentile) {
 void PrintHelp() {
     std::puts("Independent WASAPI Exclusive Render event diagnostic (fixed 3 ms / 5 s; silence only).");
     std::puts("No operation runs without the explicit confirmation flag.");
-    std::puts("Usage: WasapiRenderEventDiagnostic.exe --confirm-operator-authorization --render-id {0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8} --duration 5 --rate 48000 --channels 2 --period-ms 3 --format pcm16 --mmcss off --silence-only --output-json ABSOLUTE_PATH");
+    std::puts("Usage: WasapiRenderEventDiagnostic.exe --confirm-operator-authorization --render-id {0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8} --duration 5 --rate 48000 --channels 2 --period-ms 3 --format pcm16 --mmcss off|pro-audio --silence-only --output-json ABSOLUTE_PATH");
     std::puts("The executable performs one Exclusive EVENTCALLBACK operation and never changes Windows device settings.");
 }
 
 int Run(const Options& options) {
     Report report;
     report.buildCommit = WASAPI_DIAGNOSTIC_BUILD_COMMIT;
+    report.mmcss = options.useProAudioMmcss ? "PRO_AUDIO" : "OFF";
+    if (options.useProAudioMmcss) {
+        report.mmcssRegistrationHresult = "NOT_ATTEMPTED";
+        report.mmcssRevertHresult = "NOT_REQUIRED";
+    }
     report.timestampUtc = TimestampUtc();
     HRESULT comHr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     report.comInitializeHresult = Hresult(comHr);
@@ -117,6 +123,8 @@ int Run(const Options& options) {
     HANDLE eventHandle = nullptr;
     HANDLE cancelHandle = nullptr;
     bool started = false;
+    HANDLE mmcssHandle = nullptr;
+    bool mmcssRevertSucceeded = false;
     bool bufferLeaseUnknown = false;
     bool stopSucceeded = false;
     std::vector<double> intervals;
@@ -232,6 +240,19 @@ int Run(const Options& options) {
             if (FAILED(releaseHr)) { bufferLeaseUnknown = true; fail("PREFILL_RELEASE_BUFFER", releaseHr, true); }
         }
     }
+    if (report.errorStage == "NONE" && options.useProAudioMmcss) {
+        DWORD taskIndex = 0;
+        mmcssHandle = AvSetMmThreadCharacteristicsW(L"Pro Audio", &taskIndex);
+        const DWORD error = mmcssHandle == nullptr ? GetLastError() : ERROR_SUCCESS;
+        const HRESULT hr = mmcssHandle != nullptr ? S_OK
+            : error == ERROR_SUCCESS ? E_FAIL : HRESULT_FROM_WIN32(error);
+        report.mmcssRegistrationHresult = Hresult(hr);
+        report.mmcssRegistered = mmcssHandle != nullptr;
+        if (mmcssHandle == nullptr) fail("MMCSS_REGISTER", hr);
+    }
+    if (report.errorStage == "NONE" &&
+        !MmcssRegistrationAllowsStart(options.useProAudioMmcss, report.mmcssRegistered))
+        fail("MMCSS_REGISTER", E_FAIL);
     if (report.errorStage == "NONE") {
         cancelHandle = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         report.cancelEventCreateHresult = cancelHandle != nullptr ? Hresult(S_OK) : Hresult(HRESULT_FROM_WIN32(GetLastError()));
@@ -252,9 +273,11 @@ int Run(const Options& options) {
             startedAt = start;
             const auto deadline = start + std::chrono::seconds(kDurationSeconds);
             auto previousEvent = Clock::time_point{};
+            auto lastEventAt = start;
             bool stoppedByError = false;
-            while (Clock::now() < deadline) {
+            while (true) {
                 const auto now = Clock::now();
+                if (now >= deadline) { report.durationReached = true; break; }
                 const auto remaining = std::chrono::ceil<std::chrono::milliseconds>(deadline - now).count();
                 const DWORD waitMs = static_cast<DWORD>(std::clamp<std::int64_t>(remaining, 1, 1000));
                 HANDLE waits[] = {eventHandle, cancelHandle};
@@ -265,12 +288,19 @@ int Run(const Options& options) {
                 if (wait == WAIT_OBJECT_0 + 1) { report.cancelled = true; report.diagnosticDisposition = "CANCELLED"; break; }
                 if (wait == WAIT_TIMEOUT) {
                     ++waitTimeoutCount;
-                    if (eventAt >= deadline) { report.durationReached = true; break; }
-                    report.watchdogTimedOut = true;
-                    report.diagnosticDisposition = "UNKNOWN";
-                    fail("AUDIO_EVENT_WATCHDOG", HRESULT_FROM_WIN32(ERROR_TIMEOUT), true);
-                    stoppedByError = true;
-                    break;
+                    const auto timeoutDisposition = ClassifyWaitTimeout(eventAt, deadline, lastEventAt);
+                    if (timeoutDisposition == WaitTimeoutDisposition::DeadlineReached) {
+                        report.durationReached = true;
+                        break;
+                    }
+                    if (timeoutDisposition == WaitTimeoutDisposition::WatchdogExpired) {
+                        report.watchdogTimedOut = true;
+                        report.diagnosticDisposition = "UNKNOWN";
+                        fail("AUDIO_EVENT_WATCHDOG", HRESULT_FROM_WIN32(ERROR_TIMEOUT), true);
+                        stoppedByError = true;
+                        break;
+                    }
+                    continue;
                 }
                 if (wait != WAIT_OBJECT_0) {
                     const HRESULT waitHr = HRESULT_FROM_WIN32(wait == WAIT_FAILED ? waitError : ERROR_INVALID_DATA);
@@ -296,6 +326,7 @@ int Run(const Options& options) {
                     }
                 }
                 previousEvent = eventAt;
+                lastEventAt = eventAt;
                 BYTE* buffer = nullptr;
                 const HRESULT getHr = render->GetBuffer(kRequestedFrames, &buffer);
                 if (FAILED(getHr)) {
@@ -341,6 +372,16 @@ int Run(const Options& options) {
         stopSucceeded = hr == S_OK;
         if (!stopSucceeded) fail("AUDIOCLIENT_STOP", FAILED(hr) ? hr : E_FAIL, true);
     }
+    if (mmcssHandle != nullptr) {
+        const BOOL reverted = AvRevertMmThreadCharacteristics(mmcssHandle);
+        const DWORD error = reverted ? ERROR_SUCCESS : GetLastError();
+        const HRESULT hr = reverted ? S_OK : error == ERROR_SUCCESS ? E_FAIL : HRESULT_FROM_WIN32(error);
+        report.mmcssRevertHresult = Hresult(hr);
+        report.mmcssReverted = reverted != FALSE;
+        mmcssRevertSucceeded = reverted != FALSE;
+        if (!mmcssRevertSucceeded) fail("MMCSS_REVERT", hr, true);
+        mmcssHandle = nullptr;
+    }
     if (g_cancelEvent.load(std::memory_order_acquire) != nullptr) {
         SetConsoleCtrlHandler(ConsoleControl, FALSE);
         g_cancelEvent.store(nullptr, std::memory_order_release);
@@ -365,9 +406,10 @@ int Run(const Options& options) {
     if (comInitialized) CoUninitialize();
 
     if (stageFailure.empty() && report.diagnosticDisposition == "COMPLETED") report.errorStage = "NONE";
-    if (started && stopSucceeded && report.eventHandleClosed && report.cancelEventClosed && report.clientReleased && !bufferLeaseUnknown)
+    const bool mmcssCleanup = MmcssCleanupConfirmed(options.useProAudioMmcss, report.mmcssRegistered, mmcssRevertSucceeded);
+    if (started && stopSucceeded && report.eventHandleClosed && report.cancelEventClosed && report.clientReleased && !bufferLeaseUnknown && mmcssCleanup)
         report.cleanupState = "CONFIRMED";
-    else if (!started && report.eventHandleClosed && report.cancelEventClosed && report.clientReleased && !bufferLeaseUnknown)
+    else if (!started && report.eventHandleClosed && report.cancelEventClosed && report.clientReleased && !bufferLeaseUnknown && mmcssCleanup)
         report.cleanupState = "CONFIRMED_NOT_STARTED";
     else report.cleanupState = "UNKNOWN";
     if (report.cleanupState == "UNKNOWN") {
@@ -395,6 +437,7 @@ int wmain(int argc, wchar_t** argv) {
     const Options options = ParseArguments(argc, argv);
     if (options.command == Command::Help) { PrintHelp(); return 0; }
     if (options.command == Command::SelfTest) { std::puts("SELF_TEST_ONLY: no COM or WASAPI call"); return 0; }
+    if (options.command == Command::BuildInfo) { std::printf("BUILD_COMMIT=%s\n", WASAPI_DIAGNOSTIC_BUILD_COMMIT); return 0; }
     if (options.command != Command::Run) {
         std::fwprintf(stderr, L"%ls\n", options.error.empty() ? L"Invalid arguments." : options.error.c_str());
         return 2;

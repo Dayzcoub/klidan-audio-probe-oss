@@ -11,8 +11,8 @@ inline std::string ToJson(const Report& r) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> w(buffer);
     w.StartObject();
-    w.Key("schemaVersion"); w.Uint(1);
-    w.Key("reportType"); w.String("independent-wasapi-render-event-diagnostic-v1");
+    w.Key("schemaVersion"); w.Uint(kSchemaVersion);
+    w.Key("reportType"); w.String(kReportType.data(), static_cast<rapidjson::SizeType>(kReportType.size()));
     w.Key("provenance"); w.String(kProvenance.data(), static_cast<rapidjson::SizeType>(kProvenance.size()));
     w.Key("buildCommit"); w.String(r.buildCommit.c_str());
     w.Key("operationId"); w.String(r.operationId.c_str());
@@ -26,7 +26,11 @@ inline std::string ToJson(const Report& r) {
     w.Key("rateHz"); w.Uint(kRate);
     w.Key("channels"); w.Uint(kChannels);
     w.Key("encoding"); w.String("PCM16");
-    w.Key("mmcss"); w.String("OFF");
+    w.Key("mmcss"); w.String(r.mmcss.c_str());
+    w.Key("mmcssRegistrationHresult"); w.String(r.mmcssRegistrationHresult.c_str());
+    w.Key("mmcssRevertHresult"); w.String(r.mmcssRevertHresult.c_str());
+    w.Key("mmcssRegistered"); w.Bool(r.mmcssRegistered);
+    w.Key("mmcssReverted"); w.Bool(r.mmcssReverted);
     w.Key("renderPolicy"); w.String("SILENCE_ONLY");
     w.Key("durationSeconds"); w.Uint(kDurationSeconds);
     w.Key("requestedPeriod100ns"); w.Int64(kPeriod100ns);

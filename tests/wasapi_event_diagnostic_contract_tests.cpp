@@ -24,6 +24,7 @@ Options Parse(std::vector<std::wstring> values) {
 }
 
 int main() {
+    using namespace std::chrono_literals;
     std::vector<std::wstring> args = {
         L"WasapiRenderEventDiagnostic.exe", L"--confirm-operator-authorization",
         L"--render-id", std::wstring(kRenderEndpointId), L"--duration", L"5",
@@ -32,6 +33,10 @@ int main() {
         L"--output-json", L"C:\\qa\\one.json"};
     const auto valid = Parse(args);
     if (valid.command != Command::Run || valid.outputPath != L"C:\\qa\\one.json") return 1;
+    auto proAudio = args;
+    proAudio[15] = L"pro-audio";
+    const auto proAudioOptions = Parse(proAudio);
+    if (proAudioOptions.command != Command::Run || !proAudioOptions.useProAudioMmcss) return 15;
     auto noConsent = args;
     noConsent.erase(noConsent.begin() + 1);
     if (Parse(std::move(noConsent)).command != Command::Invalid) return 2;
@@ -42,14 +47,28 @@ int main() {
     wrongDuration[5] = L"60";
     if (Parse(std::move(wrongDuration)).command != Command::Invalid) return 4;
     auto wrongMode = args;
-    wrongMode[15] = L"pro-audio";
+    wrongMode[15] = L"high-priority";
     if (Parse(std::move(wrongMode)).command != Command::Invalid) return 5;
     auto toneFlag = args;
     toneFlag.insert(toneFlag.end() - 2, L"--test-tone");
     if (Parse(std::move(toneFlag)).command != Command::Invalid) return 6;
 
+    using Clock = std::chrono::steady_clock;
+    const auto start = Clock::time_point{};
+    const auto deadline = start + std::chrono::seconds(5);
+    if (ClassifyWaitTimeout(deadline - std::chrono::microseconds(214), deadline, deadline - 10ms) !=
+        WaitTimeoutDisposition::ContinueWaiting) return 16;
+    if (ClassifyWaitTimeout(deadline, deadline, start) != WaitTimeoutDisposition::DeadlineReached) return 17;
+    if (ClassifyWaitTimeout(start + 999ms, deadline, start) != WaitTimeoutDisposition::ContinueWaiting) return 18;
+    if (ClassifyWaitTimeout(start + 1s, deadline, start) != WaitTimeoutDisposition::WatchdogExpired) return 19;
+    if (!MmcssRegistrationAllowsStart(false, false) || MmcssRegistrationAllowsStart(true, false) ||
+        !MmcssRegistrationAllowsStart(true, true)) return 20;
+    if (!MmcssCleanupConfirmed(false, false, false) || !MmcssCleanupConfirmed(true, false, false) ||
+        MmcssCleanupConfirmed(true, true, false) || !MmcssCleanupConfirmed(true, true, true)) return 21;
+
     Report fixture;
     fixture.buildCommit = "test-fixture";
+    fixture.mmcss = "OFF";
     fixture.operationId = "{00000000-0000-0000-0000-000000000001}";
     fixture.timestampUtc = "2026-11-11T00:00:00.000Z";
     fixture.diagnosticDisposition = "COMPLETED";
@@ -76,6 +95,8 @@ int main() {
     fixture.clientReleased = true;
     fixture.eventHandleClosed = true;
     fixture.cancelEventClosed = true;
+    fixture.mmcssRegistrationHresult = "NOT_REQUESTED";
+    fixture.mmcssRevertHresult = "NOT_REQUESTED";
     const auto json = ToJson(fixture);
     rapidjson::Document document;
     document.Parse(json.data(), json.size());
@@ -89,12 +110,28 @@ int main() {
     rapidjson::SchemaDocument schema(schemaJson);
     rapidjson::SchemaValidator validator(schema);
     if (!document.Accept(validator)) {
-        std::cerr << "Independent WASAPI diagnostic JSON does not satisfy schema v1.\n";
+        std::cerr << "Independent WASAPI diagnostic JSON does not satisfy schema v2.\n";
         return 10;
     }
-    if (std::string(document["audioQualityDisposition"].GetString()) != "NOT_CLASSIFIED" ||
+    if (document["schemaVersion"].GetUint() != 2 ||
+        std::string(document["reportType"].GetString()) != kReportType ||
+        std::string(document["audioQualityDisposition"].GetString()) != "NOT_CLASSIFIED" ||
         std::string(document["renderPolicy"].GetString()) != "SILENCE_ONLY" || std::string(document["shareMode"].GetString()) != "EXCLUSIVE" ||
         document["requestedFrames"].GetUint() != 144 || document["framesProcessed"].GetUint64() != 72'000) return 11;
+
+    Report proFixture = fixture;
+    proFixture.mmcss = "PRO_AUDIO";
+    proFixture.mmcssRegistrationHresult = "0x00000000";
+    proFixture.mmcssRevertHresult = "0x00000000";
+    proFixture.mmcssRegistered = true;
+    proFixture.mmcssReverted = true;
+    const auto proJson = ToJson(proFixture);
+    rapidjson::Document proDocument;
+    proDocument.Parse(proJson.data(), proJson.size());
+    rapidjson::SchemaValidator proValidator(schema);
+    if (proDocument.HasParseError() || !proDocument.Accept(proValidator) ||
+        std::string(proDocument["mmcss"].GetString()) != "PRO_AUDIO" ||
+        !proDocument["mmcssRegistered"].GetBool() || !proDocument["mmcssReverted"].GetBool()) return 22;
 
     const auto unique = std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64());
     const auto output = std::filesystem::temp_directory_path() / (L"klidan-event-diagnostic-" + unique + L".json");
