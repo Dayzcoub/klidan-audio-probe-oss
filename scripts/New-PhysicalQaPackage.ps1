@@ -31,8 +31,8 @@ Native host dependency check: KlidanAudioProbe.exe and KlidanProbeWorker.exe use
 ## Headless V4 workflow
 
 - `Run-V4HeadlessSearch.ps1 -Mode DryRun -Scenario BLOODY` uses only the separately marked Fake Worker; it exercises the production V4 plan/workflow/evaluator and never creates a DEVICE profile.
-- `-Mode ShortSearch -AuthorizeShortSearch` selects the two previously confirmed Bloody endpoint identities, performs current Windows discovery and passive 48 kHz PCM16 queries, then asks for exact typed short-search consent before registering a session.
-- Add `-AuthorizeR5` only after separate operator approval. The runner asks for an additional exact R=5 confirmation and fingerprints R=5 into the authorized budget. Without it the plan has R=0 and no repeatability operation can run.
+- `-Mode ShortSearch -AuthorizeShortSearch` is the explicit operator consent for the bounded physical short-search scope. It selects the two previously confirmed Bloody endpoint identities and performs current Windows discovery and passive 48 kHz PCM16 queries before Worker session registration.
+- Add `-AuthorizeR5` only after separate operator approval. This is a distinct authorization flag and fingerprints R=5 into the authorized budget. Without it the plan has R=0 and no repeatability operation can run. The launcher and runner require no interactive terminal input.
 - The search is sequential, limited to eight bounds-derived candidates and stops on UNKNOWN. FAILED advances only after confirmed cleanup. Capture and Render evidence, evaluator results, the candidate matrix and read-back verified per-candidate JSON are saved under `evidence`.
 - No stable profile is created. AudioHost load qualification remains required. Do not start physical mode without separate operator authorization.
 

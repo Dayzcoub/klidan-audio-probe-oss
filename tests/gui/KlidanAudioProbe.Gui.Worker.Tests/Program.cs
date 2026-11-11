@@ -98,9 +98,31 @@ var testWorker = Path.Combine(AppContext.BaseDirectory, "KlidanAudioProbe.Gui.Wo
 var stallWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_stall_fixture.exe");
 var mismatchWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_mismatch_fixture.exe");
 var formatFixtureWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_format_fixture.exe");
-foreach (var binary in new[] { buildWorker, nativeWorker, testWorker, stallWorker, mismatchWorker, formatFixtureWorker }) if (!File.Exists(binary)) throw new FileNotFoundException("Build the native worker and worker fixtures before running these tests.", binary);
+var headlessRunner = Path.Combine(root.FullName, "src", "tools", "KlidanAudioProbe.V4.Headless", "bin", "Release", "net10.0-windows", "KlidanAudioProbe.V4.Headless.exe");
+foreach (var binary in new[] { buildWorker, nativeWorker, testWorker, stallWorker, mismatchWorker, formatFixtureWorker, headlessRunner }) if (!File.Exists(binary)) throw new FileNotFoundException("Build the GUI, headless runner, native worker, and worker fixtures before running these tests.", binary);
 var productionWorkerBinaryText = Encoding.ASCII.GetString(File.ReadAllBytes(nativeWorker));
 Check(!productionWorkerBinaryText.Contains("KLIDAN_TEST_PERIOD_SCENARIO", StringComparison.Ordinal) && !productionWorkerBinaryText.Contains("REJECT_FIRST_FOUR", StringComparison.Ordinal), "production Release Worker contains no period-discovery Fake Worker scenario mechanism");
+
+var headlessAuthorizationRoot = Path.Combine(Path.GetTempPath(), "klidan-headless-auth-test-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(headlessAuthorizationRoot);
+var headlessFakeWorker = Path.Combine(headlessAuthorizationRoot, "KlidanProbeWorker.exe");
+File.Copy(formatFixtureWorker, headlessFakeWorker);
+async Task<(int ExitCode, string Output)> RunHeadlessWithoutTerminalInput(params string[] arguments)
+{
+    var start = new ProcessStartInfo(headlessRunner) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(headlessRunner)! };
+    foreach (var argument in arguments) start.ArgumentList.Add(argument);
+    start.Environment["KLIDAN_BUILD_SHA"] = new string('a', 40);
+    using var process = Process.Start(start) ?? throw new InvalidOperationException("Headless runner test process did not start.");
+    process.StandardInput.Close();
+    var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
+    try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15)); }
+    catch { if (!process.HasExited) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(); } throw; }
+    return (process.ExitCode, (await stdout) + (await stderr));
+}
+var noAuthorization = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "unauthorized"));
+Check(noAuthorization.ExitCode == 64 && noAuthorization.Output.Contains("requires --authorize-short-search", StringComparison.Ordinal) && !noAuthorization.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "headless physical search without explicit authorization exits before Worker startup without stdin");
+var authorizedNoTty = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "authorized"), "--authorize-short-search");
+Check(authorizedNoTty.ExitCode == 3 && authorizedNoTty.Output.Contains("Exact CAPTURE endpoint", StringComparison.Ordinal) && !authorizedNoTty.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "authorized headless search advances without TTY/stdin and stops on fake endpoint identity before audio operations");
 
 var handshakeId = Guid.NewGuid();
 var incompatibleHandshakes = new[]

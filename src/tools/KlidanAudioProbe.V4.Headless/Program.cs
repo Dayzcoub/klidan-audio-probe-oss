@@ -9,8 +9,8 @@ var options = Parse(args);
 if (options is null) return 64;
 if (options.Mode == "SHORT_SEARCH" && (!options.AuthorizeShortSearch || options.Scenario is not null))
     return Fail("Physical mode requires --authorize-short-search and does not accept test scenarios.", 64);
-if (options.AuthorizeRepeatability && options.Mode != "SHORT_SEARCH" && options.Mode != "DRY_RUN")
-    return Fail("R=5 authorization is available only for a bounded V4 search.", 64);
+if (options.AuthorizeRepeatability && (options.Mode != "SHORT_SEARCH" || !options.AuthorizeShortSearch))
+    return Fail("R=5 requires a separately authorized physical V4 short search.", 64);
 if (options.Mode == "DRY_RUN" && options.Scenario is not ("BLOODY" or "FAILED" or "UNKNOWN" or "FIRST_CLEAN"))
     return Fail("Dry-run scenario must be BLOODY, FAILED, UNKNOWN, or FIRST_CLEAN.", 64);
 
@@ -56,11 +56,6 @@ try
     var summary = WorkerScanV2ContractV4Fingerprint.ConsentSummary(capture.EndpointId!, render.EndpointId!, plan, worker.DiscoveryGeneration);
     Console.WriteLine($"MODE={options.Mode}; ENDPOINTS={capture.EndpointId} / {render.EndpointId}; ROUTE=MONO_TO_STEREO; FORMAT=48k PCM16; MMCSS=PRO_AUDIO; R={repeats}");
     Console.WriteLine(summary);
-    if (options.Mode == "SHORT_SEARCH")
-    {
-        if (!Confirm("AUTHORIZE V4 SHORT SEARCH")) return Fail("Short-search consent was not confirmed; no session or audio operation was started.", 77);
-        if (repeats == 5 && !Confirm("AUTHORIZE V4 REPEATABILITY R=5")) return Fail("Separate R=5 consent was not confirmed; no session or audio operation was started.", 77);
-    }
     var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(capture.EndpointId!, render.EndpointId!, plan,
         worker.DiscoveryGeneration, true, Guid.NewGuid());
     var prepared = new WorkerScanV2V4PreparedPlan(capture.EndpointId!, render.EndpointId!, plan, consent);
@@ -191,12 +186,6 @@ static Func<int, string, string?> DryRunScenario(string scenario) => scenario sw
     "FIRST_CLEAN" => (_, operation) => operation == "DUPLEX" ? "CLEAN" : null,
     _ => throw new ArgumentOutOfRangeException(nameof(scenario))
 };
-
-static bool Confirm(string expected)
-{
-    Console.Write($"Type exactly '{expected}' to grant this separate scope: ");
-    return string.Equals(Console.ReadLine(), expected, StringComparison.Ordinal);
-}
 
 static void WriteNoOverwriteAndVerify(string path, byte[] bytes, string identityProperty, string expectedIdentity)
 {
