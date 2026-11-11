@@ -81,7 +81,7 @@ int Run() {
     mismatch.Begin(0, Step::CaptureInitialize, "cap-mismatch"); mismatch.Complete(Disposition::Clean, true, false);
     assert(mismatch.CandidateIndex() == 1); // A successful Initialize with different actual geometry cannot authorize Duplex.
 
-    TransportSequence bloody(candidates, 24, 40);
+    TransportSequence bloody(candidates, 29, 65, 5);
     for (unsigned i = 0; i < 3; ++i) {
         bloody.Begin(i, Step::CaptureInitialize, "bc" + std::to_string(i)); bloody.Complete(Disposition::Clean, true);
         bloody.Begin(i, Step::RenderInitialize, "br" + std::to_string(i)); bloody.Complete(Disposition::Clean, true);
@@ -89,6 +89,28 @@ int Run() {
         bloody.Complete(i == 2 ? Disposition::Clean : Disposition::Failed, true);
     }
     assert(bloody.Stopped() && bloody.RepeatabilityPending() && bloody.CandidateIndex() == 2);
+    bloody.BeginRepeatability();
+    for (unsigned i = 0; i < 5; ++i) {
+        assert(bloody.SelectedCandidateIndex() == 2 && bloody.ExpectedStep() == Step::Repeatability);
+        bloody.Begin(2, Step::Repeatability, "repeat-" + std::to_string(i), 5);
+        bloody.Complete(Disposition::Clean, true);
+        if (i < 4) { assert(bloody.RepeatabilityPending()); bloody.BeginRepeatability(); }
+    }
+    assert(bloody.Complete() && bloody.RepeatabilityCompleted() == 5 && bloody.UsedActiveSeconds() == 40);
+    bool sixthRejected = false;
+    try { bloody.Begin(2, Step::Repeatability, "repeat-sixth", 5); } catch (const std::invalid_argument&) { sixthRejected = true; }
+    assert(sixthRejected);
+
+    TransportSequence repeatFailure(candidates, 29, 65, 5);
+    repeatFailure.Begin(0, Step::CaptureInitialize, "rc"); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.Begin(0, Step::RenderInitialize, "rr"); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.Begin(0, Step::Duplex, "rd", 5); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.BeginRepeatability(); repeatFailure.Begin(0, Step::Repeatability, "rf1", 5);
+    repeatFailure.Complete(Disposition::Failed, true);
+    assert(repeatFailure.RepeatabilityFailed() && repeatFailure.CandidateIndex() == 0);
+    bool fallbackRejected = false;
+    try { repeatFailure.Begin(1, Step::CaptureInitialize, "fallback"); } catch (const std::invalid_argument&) { fallbackRejected = true; }
+    assert(fallbackRejected);
 
     TransportSequence flow8(candidates, 24, 40);
     flow8.Begin(0, Step::CaptureInitialize, "fc0"); flow8.Complete(Disposition::Clean, true);

@@ -118,8 +118,12 @@ public static class V4ShortCleanEvaluator
                 evidence.GetProperty("requestedRenderFrames").GetInt32() != candidate.RenderFrames || evidence.GetProperty("requestedRenderPeriod100ns").GetInt64() != candidate.RenderPeriod100ns ||
                 evidence.GetProperty("provenance").GetString() is not ("REAL_WASAPI_V4_DUPLEX" or "TEST_FAKE_WASAPI_V4_DUPLEX")) return "UNKNOWN";
             var report = evidence.GetProperty("report");
-            if (report.ValueKind != JsonValueKind.Object || report.GetProperty("requested").GetProperty("durationSeconds").GetInt32() != 5 ||
-                report.GetProperty("requested").GetProperty("mmcss").GetString() != "OFF") return "UNKNOWN";
+            var reportProvenance = evidence.GetProperty("provenance").GetString() == "TEST_FAKE_WASAPI_V4_DUPLEX" ? "TEST_FAKE_WASAPI_DUPLEX_V2" : "REAL_WASAPI_DUPLEX_V2";
+            var requested = report.GetProperty("requested");
+            if (report.ValueKind != JsonValueKind.Object || report.GetProperty("schemaVersion").GetInt32() != 3 || report.GetProperty("reportType").GetString() != "wasapi-duplex-validation-v2" || report.GetProperty("provenance").GetString() != reportProvenance || report.GetProperty("operationId").GetGuid() != operationId ||
+                !DateTimeOffset.TryParse(report.GetProperty("timestampUtc").GetString(), out _) || requested.GetProperty("captureEndpointId").GetString() != prepared.CaptureEndpointId || requested.GetProperty("renderEndpointId").GetString() != prepared.RenderEndpointId || requested.GetProperty("durationSeconds").GetInt32() != 5 ||
+                requested.GetProperty("mmcss").GetString() != "OFF" || requested.GetProperty("sampleRateHz").GetInt32() != prepared.Plan.Route.Capture.SampleRateHz || requested.GetProperty("encoding").GetString() != prepared.Plan.Route.Capture.Encoding || requested.GetProperty("channels").GetInt32() != prepared.Plan.Route.Capture.Channels ||
+                report.GetProperty("route").GetProperty("fingerprint").GetString() != session.RouteFingerprint || report.GetProperty("route").GetProperty("mode").GetString() != prepared.Plan.Route.Mode) return "UNKNOWN";
             var cap = report.GetProperty("capture"); var ren = report.GetProperty("render"); var duplex = report.GetProperty("duplex");
             var clean = evidence.GetProperty("duplexDisposition").GetString() == "CLEAN" && duplex.GetProperty("status").GetString() == "DUPLEX_CLEAN" &&
                 SideClean(cap, prepared.Plan.Route.Capture, candidate.CaptureFrames) && SideClean(ren, prepared.Plan.Route.Render, candidate.RenderFrames) &&
