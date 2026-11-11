@@ -26,13 +26,13 @@ Native host dependency check: KlidanAudioProbe.exe and KlidanProbeWorker.exe use
 
 ## Operator steps (RU)
 1. Подключите аудиоустройство вручную и дождитесь его готовности в Windows.
-2. Запустите `Run-KlidanAudioProbePhysicalQa.ps1` из этой папки. Приложение не запускает обнаружение или аудиооперации автоматически.
+2. Запустите `Run-KlidanAudioProbePhysicalQa.ps1` из PowerShell 7 в этой папке. Приложение не запускает обнаружение или аудиооперации автоматически.
 3. Выберите нужные Capture/Render endpoints и маршрут, проверьте план, затем явно подтвердите согласие и нажмите запуск сканирования.
 4. Для безопасной остановки нажмите «Отмена» в приложении и дождитесь финального статуса/сохранения evidence. Затем закройте приложение.
 5. Отправьте оператору содержимое `logs` и `evidence`; профили находятся в `profiles`.
 
 ## Operator steps (EN)
-Connect the device manually, run the PowerShell launcher, select the exact Capture/Render endpoints and route, review and explicitly consent before starting. The app does not auto-discover or start audio work. To stop, use Cancel and wait for terminal cleanup/evidence status before closing. Share `logs` and `evidence` with the QA owner.
+Connect the device manually, run the launcher in PowerShell 7, select the exact Capture/Render endpoints and route, review and explicitly consent before starting. The app does not auto-discover or start audio work. To stop, use Cancel and wait for terminal cleanup/evidence status before closing. Share `logs` and `evidence` with the QA owner.
 
 Physical tests are pending operator execution. Do not launch the GUI elevated and do not disconnect the device while a scan is active.
 "@ | Set-Content -LiteralPath (Join-Path $output 'README-Physical-QA.md') -Encoding UTF8

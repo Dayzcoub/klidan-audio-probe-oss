@@ -1,3 +1,4 @@
+#requires -Version 7.0
 $ErrorActionPreference = 'Stop'
 $package = [IO.Path]::GetFullPath($PSScriptRoot)
 $gui = Join-Path $package 'KlidanAudioProbe.Gui.App.exe'
