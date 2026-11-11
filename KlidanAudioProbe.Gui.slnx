@@ -5,6 +5,9 @@
     <Project Path="src/gui/KlidanAudioProbe.Gui.Core/KlidanAudioProbe.Gui.Core.csproj" />
     <Project Path="src/gui/KlidanAudioProbe.Gui.Worker/KlidanAudioProbe.Gui.Worker.csproj" />
   </Folder>
+  <Folder Name="/src/tools/">
+    <Project Path="src/tools/KlidanAudioProbe.V4.Headless/KlidanAudioProbe.V4.Headless.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/gui/">
     <Project Path="tests/gui/KlidanAudioProbe.Gui.Core.Tests/KlidanAudioProbe.Gui.Core.Tests.csproj" />

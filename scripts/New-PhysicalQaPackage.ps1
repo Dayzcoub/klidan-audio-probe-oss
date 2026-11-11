@@ -1,22 +1,26 @@
 #requires -Version 7.0
 param(
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [string]$PublishDirectory = (Join-Path $PSScriptRoot '..\build\physical-qa-publish')
+    [string]$PublishDirectory = (Join-Path $PSScriptRoot '..\build\physical-qa-publish'),
+    [string]$FakeWorkerPath = (Join-Path $PSScriptRoot '..\build\worker-tests\Release\probe_worker_format_fixture.exe')
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publish = (Resolve-Path $PublishDirectory).Path
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw "Refusing to overwrite QA package: $output" }
-foreach ($required in @('KlidanAudioProbe.Gui.App.exe', 'KlidanProbeWorker.exe', 'KlidanAudioProbe.exe')) {
+foreach ($required in @('KlidanAudioProbe.Gui.App.exe', 'KlidanAudioProbe.V4.Headless.exe', 'KlidanProbeWorker.exe', 'KlidanAudioProbe.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $publish $required) -PathType Leaf)) { throw "Release publish output is missing $required" }
 }
+if (-not (Test-Path -LiteralPath $FakeWorkerPath -PathType Leaf)) { throw "Test-only Worker fixture is missing: $FakeWorkerPath" }
 $head = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not read source revision.' }
 New-Item -ItemType Directory -Path $output | Out-Null
 Get-ChildItem -LiteralPath $publish -Force | Copy-Item -Destination $output -Recurse
 New-Item -ItemType Directory -Path (Join-Path $output 'logs'), (Join-Path $output 'evidence'), (Join-Path $output 'profiles') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Run-KlidanAudioProbePhysicalQa.ps1') -Destination $output
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Run-V4HeadlessSearch.ps1') -Destination $output
+Copy-Item -LiteralPath $FakeWorkerPath -Destination (Join-Path $output 'KlidanProbeWorker.FakeTest.exe')
 @"
 # KLIDAN Audio Probe physical QA package
 
@@ -24,18 +28,15 @@ Source commit: $head
 Configuration: Release, self-contained win-x64
 Native host dependency check: KlidanAudioProbe.exe and KlidanProbeWorker.exe use Windows system DLLs only (ole32, SETUPAPI where needed, AVRT, bcrypt, KERNEL32); no app-local VC++ runtime was required.
 
-## Operator steps (RU)
-1. Подключите Bloody вручную и дождитесь его готовности в Windows.
-2. Запустите `Run-KlidanAudioProbePhysicalQa.ps1` из PowerShell 7 в этой папке. Launcher проверит все SHA-256, запишет UTC/PID/build identity и откроет только Release GUI с отдельной папкой evidence. Аудиооперация автоматически не запускается.
-3. В GUI выберите Bloody Capture/Render, маршрут MONO_TO_STEREO, 48 kHz PCM16 и подтверждённые активные каналы. В `V4 CUSTOM — Точечная диагностика` выберите 10 ms и PRO_AUDIO, подготовьте план и проверьте N=1, C480/R480, R=0, 3 операции и 5 секунд.
-4. Создайте отдельное согласие и запустите ровно один 5-секундный Exclusive Duplex. Не запускайте полный поиск, повторы или следующий период. Этот результат предварительный и не создаёт профиль.
-5. При FAILED сохраните причину. При UNKNOWN, таймауте, отмене или неизвестной очистке ничего больше не запускайте. Закройте приложение после сохранения JSON.
-6. Передайте Codex содержимое `logs` и `evidence` для проверки полного JSON и cleanup. Квалификация R=5 и испытание под нагрузкой KLIDAN AudioHost — отдельные последующие этапы.
+## Headless V4 workflow
 
-## Operator steps (EN)
-Connect Bloody manually and run the PowerShell 7 launcher. It verifies the complete package SHA-256 manifest and records launch metadata, then opens Release GUI with isolated evidence storage; it starts no audio operation. Select the exact Capture/Render pair, MONO_TO_STEREO, 48 kHz PCM16, 10 ms and PRO_AUDIO. Verify the one-candidate C480/R480, R=0 and 3-operation/5-second budget, then explicitly consent and run exactly one diagnostic Duplex. Do not run the full search or repeats. Preserve FAILED evidence; stop on UNKNOWN, timeout, cancellation or uncertain cleanup. Diagnostics never create a profile. Send `logs` and `evidence` to Codex for JSON and cleanup review. R=5 and KLIDAN AudioHost load qualification are later stages.
+- `Run-V4HeadlessSearch.ps1 -Mode DryRun -Scenario BLOODY` uses only the separately marked Fake Worker; it exercises the production V4 plan/workflow/evaluator and never creates a DEVICE profile.
+- `-Mode ShortSearch -AuthorizeShortSearch` selects the two previously confirmed Bloody endpoint identities, performs current Windows discovery and passive 48 kHz PCM16 queries, then asks for exact typed short-search consent before registering a session.
+- Add `-AuthorizeR5` only after separate operator approval. The runner asks for an additional exact R=5 confirmation and fingerprints R=5 into the authorized budget. Without it the plan has R=0 and no repeatability operation can run.
+- The search is sequential, limited to eight bounds-derived candidates and stops on UNKNOWN. FAILED advances only after confirmed cleanup. Capture and Render evidence, evaluator results, the candidate matrix and read-back verified per-candidate JSON are saved under `evidence`.
+- No stable profile is created. AudioHost load qualification remains required. Do not start physical mode without separate operator authorization.
 
-Physical tests are pending operator execution. Do not launch the GUI elevated and do not disconnect the device while a scan is active.
+Run Release, not a Debug build. Package manifest verification is mandatory. The GUI launcher remains available for the separately scoped point diagnostic; it does not perform headless search.
 "@ | Set-Content -LiteralPath (Join-Path $output 'README-Physical-QA.md') -Encoding UTF8
 $files = Get-ChildItem -LiteralPath $output -File -Recurse | ForEach-Object {
     [pscustomobject]@{ path = [IO.Path]::GetRelativePath($output, $_.FullName); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); bytes = $_.Length }
