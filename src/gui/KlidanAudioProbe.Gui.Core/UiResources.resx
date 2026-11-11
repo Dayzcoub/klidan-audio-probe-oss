@@ -1059,6 +1059,7 @@ Fallback: {1}
   <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · historical short results
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>V4 short-run qualification · {0} · {1} · {2} Hz · {3} channels · repeatability {4}/{5}. Long-term AudioHost stability and physical KLIDAN QA are not established.</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Only exact endpoint IDs matched in the fresh list. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not revalidated.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>This check does not authorize applying Primary/Fallback or turn historical results into fresh measurements.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>No technical data.</value></data>
@@ -1392,6 +1393,26 @@ Fallback: {1}
   <data name="VmV4PlanBlocked" xml:space="preserve"><value>Plan blocked: {0}</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Consent receipt created for this plan. v4 audio scanning is not available yet.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Preview and consent only. v4 Initialize, CUSTOM Duplex, scanning, and stable profile creation remain unavailable until later implementation stages.</value></data>
+  <data name="VmV4AudioGateOpen" xml:space="preserve"><value>V4 scanning starts only after you accept this exact plan. Search-only uses R=0; repeatability runs only with R=5. A five-second qualification does not prove long-term stability.</value></data>
+  <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Consent receipt created for this exact plan. Start the scan when ready.</value></data>
+  <data name="VmV4SearchOnly" xml:space="preserve"><value>Search only (R=0)</value></data>
+  <data name="V4StartScan" xml:space="preserve"><value>Start V4 scan</value></data>
+  <data name="V4ResultsHeading" xml:space="preserve"><value>V4 results</value></data>
+  <data name="VmV4ScanStarting" xml:space="preserve"><value>Starting scan with the accepted plan and consent receipt…</value></data>
+  <data name="VmV4ScanProgress" xml:space="preserve"><value>{0} · candidate {1} · requested Capture/Render {2}/{3} frames · actual Capture/Render {5}/{6} frames · repeats {4}/5</value></data>
+  <data name="VmV4ScanError" xml:space="preserve"><value>V4 scan stopped: {0}: {1}</value></data>
+  <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. Waiting for worker cleanup and evidence save…</value></data>
+  <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Not proven in tested candidate domain</value></data>
+  <data name="VmV4ScanResults" xml:space="preserve"><value>Result: {0}
+Selected period: {1} · Capture frames: {2} · Render frames: {3}
+Minimum verified candidate: {4}
+SHORT_CLEAN: {5} · Actual periods: Capture {6}, Render {7}
+Repeatability: {8}/5
+Profile: {9}
+Reasons: {10}
+Candidate matrix:
+{11}
+Evidence JSON: {12}</value></data>
   <data name="VmV4NoFingerprint" xml:space="preserve"><value>No plan fingerprint</value></data>
   <data name="VmV4BoundsSummary" xml:space="preserve"><value>Reported bounds (Default is search upper bound, not hardware maximum): Capture {0}–{1} ms; Render {2}–{3} ms; overlap {4}–{5} ms.</value></data>
   <data name="VmV4CandidateSummary" xml:space="preserve"><value>Requested {0} ms · Capture {1} frames ({2} ms) / Render {3} frames ({4} ms){5}</value></data>

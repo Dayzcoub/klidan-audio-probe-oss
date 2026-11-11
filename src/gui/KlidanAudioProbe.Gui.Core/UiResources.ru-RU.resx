@@ -1059,6 +1059,7 @@ Fallback: {1}
   <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · исторические короткие результаты
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>Краткосрочная проверка V4 · {0} · {1} · {2} Гц · каналов {3} · повторяемость {4}/{5}. Длительная стабильность AudioHost и физическая проверка KLIDAN не подтверждены.</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>Технических данных нет.</value></data>
@@ -1392,6 +1393,26 @@ Fallback: {1}
   <data name="VmV4PlanBlocked" xml:space="preserve"><value>Подготовка заблокирована: {0}</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Аудиосканирование v4 пока недоступно.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Доступны только просмотр и согласие. Initialize v4, CUSTOM Duplex, сканирование и создание стабильного профиля будут закрыты до следующих этапов.</value></data>
+  <data name="VmV4AudioGateOpen" xml:space="preserve"><value>Сканирование V4 начинается только после подтверждения этого плана. Поиск без повторов использует R=0; повторы запускаются только при R=5. Пять секунд проверки не подтверждают длительную стабильность.</value></data>
+  <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Запустите сканирование, когда будете готовы.</value></data>
+  <data name="VmV4SearchOnly" xml:space="preserve"><value>Только поиск (R=0)</value></data>
+  <data name="V4StartScan" xml:space="preserve"><value>Запустить сканирование V4</value></data>
+  <data name="V4ResultsHeading" xml:space="preserve"><value>Результаты V4</value></data>
+  <data name="VmV4ScanStarting" xml:space="preserve"><value>Запуск по подтверждённому плану и квитанции согласия…</value></data>
+  <data name="VmV4ScanProgress" xml:space="preserve"><value>{0} · кандидат {1} · запрошено Capture/Render {2}/{3} кадров · фактически Capture/Render {5}/{6} кадров · повторы {4}/5</value></data>
+  <data name="VmV4ScanError" xml:space="preserve"><value>Сканирование V4 остановлено: {0}: {1}</value></data>
+  <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Ожидание очистки Worker и сохранения evidence…</value></data>
+  <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Минимум в проверенном диапазоне кандидатов не доказан</value></data>
+  <data name="VmV4ScanResults" xml:space="preserve"><value>Результат: {0}
+Выбранный период: {1} · Capture frames: {2} · Render frames: {3}
+Минимальный подтверждённый кандидат: {4}
+SHORT_CLEAN: {5} · Фактические периоды: Capture {6}, Render {7}
+Повторяемость: {8}/5
+Профиль: {9}
+Причины: {10}
+Матрица кандидатов:
+{11}
+Evidence JSON: {12}</value></data>
   <data name="VmV4NoFingerprint" xml:space="preserve"><value>Нет fingerprint плана</value></data>
   <data name="VmV4BoundsSummary" xml:space="preserve"><value>Заявленные границы (Default — верхняя граница поиска, не аппаратный максимум): Capture {0}–{1} мс; Render {2}–{3} мс; пересечение {4}–{5} мс.</value></data>
   <data name="VmV4CandidateSummary" xml:space="preserve"><value>Запрошено {0} мс · Capture {1} кадров ({2} мс) / Render {3} кадров ({4} мс){5}</value></data>

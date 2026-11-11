@@ -3,14 +3,23 @@ using KlidanAudioProbe.Gui.Core;
 
 namespace KlidanAudioProbe.Gui.Worker;
 
-public sealed record V4AutomaticSearchResult(V2CandidateMatrixEvidence Evidence, string? EvidencePath);
-
-/// <summary>Testable, explicitly invoked v4 search. This is not wired to the GUI scan command.</summary>
-public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
+/// <summary>Runs the explicitly consented V4 search through one worker session.</summary>
+public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) : IV4AutomaticSearchWorkflow
 {
+    async Task<V4AutomaticSearchResult> IV4AutomaticSearchWorkflow.RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
+        WindowsEndpointDto render, string evidenceRoot, string profileDirectory, bool runRepeatability,
+        IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
+    {
+        if (runRepeatability && prepared.Plan.RepeatabilityRuns != 5) throw new ArgumentException("GUI repeatability authorization is available only for an R=5 plan.", nameof(runRepeatability));
+        return await RunAsync(prepared, evidenceRoot, cancellationToken, runRepeatability: runRepeatability,
+            captureEndpoint: capture, renderEndpoint: render, profileDirectory: profileDirectory, progress: progress).ConfigureAwait(false);
+    }
+
     public async Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared,
         string? evidenceRoot = null, CancellationToken cancellationToken = default,
-        Func<int, string, string?>? testScenario = null, bool runRepeatability = false, DeviceConfigurationProfile? profileBase = null)
+        Func<int, string, string?>? testScenario = null, bool runRepeatability = false, DeviceConfigurationProfile? profileBase = null,
+        WindowsEndpointDto? captureEndpoint = null, WindowsEndpointDto? renderEndpoint = null, string? profileDirectory = null,
+        IProgress<V4AutomaticSearchProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         var plan = prepared.Plan;
@@ -32,6 +41,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
             foreach (var candidate in plan.Candidates)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(new("CANDIDATE", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
                 if (worker.DiscoveryGeneration != consent.DiscoveryGeneration || session.ContractVersion != 4 || session.RouteFingerprint != routeFingerprint)
                     throw new InvalidOperationException("V4 plan generation or route changed during search.");
                 if (candidate.RejectionReason.Length != 0)
@@ -41,11 +51,13 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
                 }
 
                 var capture = await Initialize(candidate, "CAPTURE");
-                Update(candidate.Index, e => e with { CaptureInitializeDisposition = MatrixInitialize(capture), CaptureCleanup = capture.GetProperty("cleanup").GetString()!, ActualCaptureFrames = Positive(capture, "actualFrames"), ActualCapturePeriod100ns = PositiveLong(capture, "actualPeriod100ns"), Provenance = capture.GetProperty("provenance").GetString()! });
+                Update(candidate.Index, e => e with { CaptureInitializeDisposition = MatrixInitialize(capture), CaptureCleanup = capture.GetProperty("cleanup").GetString()!, ActualCaptureFrames = Positive(capture, "actualFrames"), ActualCapturePeriod100ns = PositiveLong(capture, "actualPeriod100ns"), Provenance = capture.GetProperty("provenance").GetString()!, CaptureInitializeEvidence = capture.Clone() });
+                progress?.Report(new("CAPTURE_INITIALIZED", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count, Positive(capture, "actualFrames")));
                 if (capture.GetProperty("initializeDisposition").GetString() != "INITIALIZED_EXACT") { FailInitialize(candidate.Index, "CAPTURE", capture); if (capture.GetProperty("initializeDisposition").GetString() == "UNKNOWN" || capture.GetProperty("cleanup").GetString() != "RELEASE_ATTEMPTED") { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "CAPTURE_INITIALIZE_UNKNOWN"; break; } continue; }
 
                 var render = await Initialize(candidate, "RENDER");
-                Update(candidate.Index, e => e with { RenderInitializeDisposition = MatrixInitialize(render), RenderCleanup = render.GetProperty("cleanup").GetString()!, ActualRenderFrames = Positive(render, "actualFrames"), ActualRenderPeriod100ns = PositiveLong(render, "actualPeriod100ns"), Provenance = render.GetProperty("provenance").GetString()! });
+                Update(candidate.Index, e => e with { RenderInitializeDisposition = MatrixInitialize(render), RenderCleanup = render.GetProperty("cleanup").GetString()!, ActualRenderFrames = Positive(render, "actualFrames"), ActualRenderPeriod100ns = PositiveLong(render, "actualPeriod100ns"), Provenance = render.GetProperty("provenance").GetString()!, RenderInitializeEvidence = render.Clone() });
+                progress?.Report(new("RENDER_INITIALIZED", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count, Positive(capture, "actualFrames"), Positive(render, "actualFrames")));
                 if (render.GetProperty("initializeDisposition").GetString() != "INITIALIZED_EXACT") { FailInitialize(candidate.Index, "RENDER", render); if (render.GetProperty("initializeDisposition").GetString() == "UNKNOWN" || render.GetProperty("cleanup").GetString() != "RELEASE_ATTEMPTED") { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "RENDER_INITIALIZE_UNKNOWN"; break; } continue; }
 
                 if (!Exact(capture, candidate, true) || !Exact(render, candidate, false))
@@ -59,13 +71,16 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
                 var provenance = duplex.GetProperty("provenance").GetString()!; attemptedProvenance.Add(provenance);
                 activeSeconds += 5;
                 var classification = V4ShortCleanEvaluator.Classify(prepared, session, candidate.Index, operationId, duplex);
-                Update(candidate.Index, e => e with { DuplexDisposition = classification, DuplexNotRun = false, SkipReason = null, ReasonCodes = [duplex.GetProperty("reasonCode").GetString()!],
+                Update(candidate.Index, e => e with { DuplexDisposition = classification, DuplexNotRun = false, SkipReason = null, ReasonCodes = [duplex.GetProperty("reasonCode").GetString()!], DuplexEvidence = duplex.Clone(),
                     ActualCaptureFrames = Positive(duplex, "actualCaptureFrames"), ActualCapturePeriod100ns = PositiveLong(duplex, "actualCapturePeriod100ns"),
                     ActualRenderFrames = Positive(duplex, "actualRenderFrames"), ActualRenderPeriod100ns = PositiveLong(duplex, "actualRenderPeriod100ns"), Provenance = provenance,
                     CaptureCleanup = CleanupSide(duplex, "CAPTURE"), RenderCleanup = CleanupSide(duplex, "RENDER") });
+                progress?.Report(new("DUPLEX_" + classification, candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count,
+                    Positive(duplex, "actualCaptureFrames"), Positive(duplex, "actualRenderFrames")));
                 if (classification == "UNKNOWN") { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "DUPLEX_UNKNOWN_OR_INVALID_EVIDENCE"; break; }
                 if (classification == "CLEAN")
                 {
+                    progress?.Report(new("SHORT_CLEAN", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
                     selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = "SMALLER_SHORT_CLEAN_FOUND";
                     foreach (var larger in plan.Candidates.Where(c => c.Index > candidate.Index)) Update(larger.Index, e => e with { CaptureInitializeDisposition = "SKIPPED", RenderInitializeDisposition = "SKIPPED", DuplexDisposition = "SKIPPED", DuplexNotRun = true, SkipReason = "SMALLER_SHORT_CLEAN_FOUND", ReasonCodes = ["SMALLER_SHORT_CLEAN_FOUND"] });
                     if (runRepeatability && plan.RepeatabilityRuns > 0)
@@ -73,6 +88,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
                         for (var run = 0; run < plan.RepeatabilityRuns; run++)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
+                            progress?.Report(new($"REPEATABILITY_{run + 1}_OF_{plan.RepeatabilityRuns}", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
                             var repeatId = Guid.NewGuid(); operations++;
                             JsonElement repeatEvidence;
                             try
@@ -92,6 +108,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
                             var repeatClass = V4ShortCleanEvaluator.Classify(prepared, session, candidate.Index, repeatId, repeatEvidence);
                             var repeat = ToRepeatabilityEvidence(repeatEvidence, session, candidate, repeatClass);
                             repeatRuns.Add(repeat);
+                            progress?.Report(new("REPEATABILITY", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
                             Update(candidate.Index, e => e with { RepeatabilityStatus = repeatClass == "CLEAN" ? "NOT_RUN" : repeatClass == "FAILED" ? "FAILED" : "UNKNOWN" });
                             if (repeatClass == "UNKNOWN") { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "REPEATABILITY_UNKNOWN"; break; }
                             if (repeatClass == "FAILED") { state = "REPEATABILITY_FAILED"; stopReason = "REPEATABILITY_FAILED_NO_FALLBACK"; break; }
@@ -119,7 +136,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
         var evidenceProvenance = attemptedProvenance.Count == 1 ? attemptedProvenance.Single() : attemptedProvenance.Count == 0 ? "PLAN_ONLY" : "MIXED_PROVENANCE";
         V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries, state, evidenceProvenance)
         {
-            EvidenceVersion = 2, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
+            EvidenceVersion = 3, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
             GlobalMinimumProven = false, UsedOperations = operations,
             MaximumOperations = plan.MaximumOperations, UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
             StopReason = stopReason, RepeatabilityPending = state == "MINIMUM_SHORT_CLEAN_FOUND",
@@ -150,33 +167,38 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
             try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-closed-session-{Guid.NewGuid():D}.json")); }
             catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "FINAL_EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
         }
-        if (profileBase is not null && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
+        if ((profileBase is not null || captureEndpoint is not null && renderEndpoint is not null) && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
         {
             var evidenceDirectory = evidenceRoot!;
             var candidate = plan.Candidates[profileCandidate];
             var sourceHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
             var repeatProvenance = repeatRuns.Select(r => r.Provenance).Distinct(StringComparer.Ordinal).Single();
             var testOnly = repeatProvenance == "TEST_FAKE_WASAPI_V4_DUPLEX";
+            static int ContainerBits(string encoding) => encoding == "PCM16" ? 16 : 32;
+            static int ValidBits(string encoding) => encoding switch { "PCM16" => 16, "PCM24_IN_32" => 24, "FLOAT32" => 32, _ => throw new InvalidDataException("Unsupported V4 profile encoding.") };
             var selection = new ProfileStableShortSelection(testOnly ? "TEST_ONLY" : "DEVICE", prepared.CaptureEndpointId, prepared.RenderEndpointId, plan.Route.Mode,
-                new(plan.Route.Capture.Encoding, plan.Route.Capture.SampleRateHz, plan.Route.Capture.Channels, plan.Route.Capture.Encoding == "PCM16" ? 16 : 32, plan.Route.Capture.Encoding == "PCM16" ? 16 : 32, $"CUSTOM:{candidate.CaptureFrames}:{candidate.CapturePeriod100ns}"),
-                new(plan.Route.Render.Encoding, plan.Route.Render.SampleRateHz, plan.Route.Render.Channels, plan.Route.Render.Encoding == "PCM16" ? 16 : 32, plan.Route.Render.Encoding == "PCM16" ? 16 : 32, $"CUSTOM:{candidate.RenderFrames}:{candidate.RenderPeriod100ns}"),
+                new(plan.Route.Capture.Encoding, plan.Route.Capture.SampleRateHz, plan.Route.Capture.Channels, ContainerBits(plan.Route.Capture.Encoding), ValidBits(plan.Route.Capture.Encoding), $"CUSTOM:{candidate.CaptureFrames}:{candidate.CapturePeriod100ns}"),
+                new(plan.Route.Render.Encoding, plan.Route.Render.SampleRateHz, plan.Route.Render.Channels, ContainerBits(plan.Route.Render.Encoding), ValidBits(plan.Route.Render.Encoding), $"CUSTOM:{candidate.RenderFrames}:{candidate.RenderPeriod100ns}"),
                 plan.Route.Capture.SelectedIndicesZeroBased, plan.Route.Render.SelectedIndicesZeroBased, candidate.CaptureFrames, candidate.CapturePeriod100ns, candidate.CaptureFrames, candidate.CapturePeriod100ns,
                 candidate.RenderFrames, candidate.RenderPeriod100ns, candidate.RenderFrames, candidate.RenderPeriod100ns, "OFF", candidate.Index, consent.PlanFingerprint, consent.DiscoveryGeneration,
                 "MINIMUM_SHORT_CLEAN_FOUND", 5, 5, repeatRuns.Select(r => r.OperationId).ToArray(), repeatProvenance,
-                Path.GetFileName(path), sourceHash, DateTimeOffset.UtcNow);
+                Path.GetFileName(path), sourceHash, DateTimeOffset.UtcNow,
+                captureEndpoint?.ContainerId is { Length: > 0 } containerId && containerId == renderEndpoint?.ContainerId ? containerId : null);
             try
             {
-                var profile = DeviceConfigurationProfileFactory.CreateStableShort(profileBase, selection);
-                var profilePath = DeviceConfigurationProfileStorage.SaveLocal(profile, evidenceDirectory);
+                var profile = profileBase is not null
+                    ? DeviceConfigurationProfileFactory.CreateStableShort(profileBase, selection)
+                    : DeviceConfigurationProfileFactory.CreateStableShortFromV4(prepared, path, selection, captureEndpoint!, renderEndpoint!);
+                var profilePath = DeviceConfigurationProfileStorage.SaveLocal(profile, profileDirectory ?? evidenceDirectory);
                 var profileReadBack = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(profilePath));
                 if (profileReadBack.ProfileId != profile.ProfileId || profileReadBack.StableShortSelection?.SourceEvidenceSha256 != sourceHash || profileReadBack.StableShortSelection!.RepeatOperationIds.Count != 5 || profileReadBack.StableShortSelection.CaptureEndpointId != prepared.CaptureEndpointId || profileReadBack.StableShortSelection.RenderEndpointId != prepared.RenderEndpointId) throw new InvalidDataException("Stable profile exact read-back verification failed.");
                 var profileHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(profilePath))).ToLowerInvariant();
                 result = result with { ProfileEligible = true, ProfilePath = profilePath, ProfileSha256 = profileHash };
                 path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profiled-{Guid.NewGuid():D}.json"));
             }
-            catch
+            catch (Exception ex)
             {
-                state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "PROFILE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence();
+                stopReason = "PROFILE_SAVE_OR_READBACK_FAILED:" + ex.GetType().Name; result = CreateEvidence();
                 try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profile-failure-{Guid.NewGuid():D}.json")); } catch { }
             }
         }
@@ -184,6 +206,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
 
         async Task<JsonElement> Initialize(WorkerScanV2Candidate candidate, string direction)
         {
+            progress?.Report(new($"INITIALIZE_{direction}", candidate.Index, candidate.CaptureFrames, candidate.RenderFrames, repeatRuns.Count));
             operations++;
             var value = await worker.InitializeCustomPeriodV2InScanAsync(session!, Guid.NewGuid(), prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, candidate.Index, direction, cancellationToken,
                 testScenario?.Invoke(candidate.Index, direction + "_INITIALIZE")).ConfigureAwait(false);
@@ -200,10 +223,10 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
 
     private static int? Positive(JsonElement e, string name) => e.TryGetProperty(name, out var x) && x.ValueKind == JsonValueKind.Number && x.TryGetInt32(out var v) && v > 0 ? v : null;
     private static V4RepeatabilityRunEvidence ToRepeatabilityEvidence(JsonElement e, WorkerScanSessionToken session, WorkerScanV2Candidate candidate, string classification) =>
-        new(e.GetProperty("operationId").GetGuid(), session.ScanSessionId, session.RouteFingerprint!, candidate.Index, classification, e.GetProperty("reasonCode").GetString()!,
+        new V4RepeatabilityRunEvidence(e.GetProperty("operationId").GetGuid(), session.ScanSessionId, session.RouteFingerprint!, candidate.Index, classification, e.GetProperty("reasonCode").GetString()!,
             candidate.CaptureFrames, candidate.CapturePeriod100ns, Positive(e, "actualCaptureFrames"), PositiveLong(e, "actualCapturePeriod100ns"),
             candidate.RenderFrames, candidate.RenderPeriod100ns, Positive(e, "actualRenderFrames"), PositiveLong(e, "actualRenderPeriod100ns"),
-            e.GetProperty("cleanup").GetString()!, e.GetProperty("provenance").GetString()!);
+            e.GetProperty("cleanup").GetString()!, e.GetProperty("provenance").GetString()!) { Evidence = e.Clone() };
     private static V4RepeatabilityRunEvidence UnknownRepeat(Guid operationId, WorkerScanSessionToken session, WorkerScanV2Candidate candidate, string reason) =>
         new(operationId, session.ScanSessionId, session.RouteFingerprint!, candidate.Index, "UNKNOWN", reason, candidate.CaptureFrames, candidate.CapturePeriod100ns, null, null,
             candidate.RenderFrames, candidate.RenderPeriod100ns, null, null, "UNKNOWN", "UNKNOWN");

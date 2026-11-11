@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:klidan-audio-probe:device-configuration-profile:v5",
   "title": "KLIDAN Audio Probe Device Configuration Profile v5",
-  "description": "A local, evidence-backed stable short-run WASAPI Exclusive profile. Advisory only; it does not authorize AudioHost activation or claim physical KLIDAN QA.",
+  "description": "A local exact-device WASAPI Exclusive profile backed by a persisted V4 candidate matrix with native reports. Five-second repeatability is short-run qualification only; this does not authorize AudioHost activation or claim physical KLIDAN QA.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -74,7 +74,7 @@
     },
     "evidence": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "maxItems": 1024
     },
     "audioHostAssessments": {
@@ -232,6 +232,10 @@
             "REAL_WASAPI_V4_DUPLEX",
             "TEST_FAKE_WASAPI_V4_DUPLEX"
           ]
+        },
+        "deviceContainerId": {
+          "type": ["string", "null"],
+          "maxLength": 256
         }
       },
       "required": [
@@ -262,7 +266,8 @@
         "evidenceProvenance",
         "sourceEvidenceId",
         "sourceEvidenceSha256",
-        "qualifiedAtUtc"
+        "qualifiedAtUtc",
+        "deviceContainerId"
       ],
       "additionalProperties": false,
       "type": "object"

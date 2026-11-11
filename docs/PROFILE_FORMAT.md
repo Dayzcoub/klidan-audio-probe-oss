@@ -51,6 +51,14 @@ HRESULTs are serialized as eight-digit hexadecimal strings; unknown HRESULTs and
 
 All unmeasured fields should be `null` / omitted, never copied from a different interface, API or OS. Drivers may expose **Windows endpoints** differently from physical mixer channel strips; report the source of channel topology.
 
+## Profile v5: V4 short-run qualification
+
+The repository has no `ADR-004` file or KLIDAN consumer source tree. The implemented local consumer contract is `device-configuration-profile-v5.schema.json`, `DeviceConfigurationProfileJson`, local profile storage, exact endpoint binding revalidation, and the evidence bundle reader. Profile v5 uses that existing profile envelope and is not downgraded to a V3 profile.
+
+A V4 profile is created only from a saved and read-back candidate matrix with the exact consented plan, a proven candidate-domain minimum, the original `SHORT_CLEAN`, five additional independently evaluated CLEAN reports, and confirmed Worker session close. Version 2 candidate-matrix schema records the raw Capture/Render Initialize reports and every native Duplex response. Profile v5 references the source matrix by filename and SHA-256; its `evidence` and capability arrays remain empty because V4 evidence is linked through `stableShortSelection`, not represented as legacy V3 observations.
+
+`TEST_ONLY` profiles retain explicit fake provenance and are rejected by physical endpoint binding assessment. Five-second 5/5 qualification is short-run repeatability only. It does not establish sustained AudioHost stability, physical loopback latency, or KLIDAN QA.
+
 ## Device identity and trust
 - Same model name alone is insufficient; driver version, firmware and selected USB mode may change formats/periods.
 - No publicly committed serial number, raw endpoint ID, Windows user name, machine-specific path or microphone recording.

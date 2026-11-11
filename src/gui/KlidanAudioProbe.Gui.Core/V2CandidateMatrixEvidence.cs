@@ -11,6 +11,9 @@ public sealed record V2CandidateMatrixEntry(WorkerScanV2Candidate Candidate, str
     public long? ActualCapturePeriod100ns { get; init; }
     public int? ActualRenderFrames { get; init; }
     public long? ActualRenderPeriod100ns { get; init; }
+    public JsonElement? CaptureInitializeEvidence { get; init; }
+    public JsonElement? RenderInitializeEvidence { get; init; }
+    public JsonElement? DuplexEvidence { get; init; }
 }
 public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFingerprint, string RouteFingerprint,
     string Lifecycle, WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
@@ -38,7 +41,10 @@ public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFin
 public sealed record V4RepeatabilityRunEvidence(Guid OperationId, Guid SessionId, string RouteFingerprint, int CandidateIndex, string Result, string ReasonCode,
     int? RequestedCaptureFrames, long? RequestedCapturePeriod100ns, int? ActualCaptureFrames, long? ActualCapturePeriod100ns,
     int? RequestedRenderFrames, long? RequestedRenderPeriod100ns, int? ActualRenderFrames, long? ActualRenderPeriod100ns,
-    string Cleanup, string Provenance);
+    string Cleanup, string Provenance)
+{
+    public JsonElement? Evidence { get; init; }
+}
 
 public static class V2CandidateMatrixEvidenceJson
 {
@@ -58,11 +64,11 @@ public static class V2CandidateMatrixEvidenceJson
     {
         static bool Hash(string? s, int length) => s is { } value && value.Length == length && value.All(Uri.IsHexDigit);
         static bool State(string s) => s is "NOT_TESTED" or "SKIPPED" or "REJECTED" or "FAILED" or "UNSUPPORTED" or "UNKNOWN" or "CLEAN";
-        if (value.SchemaVersion != 1 || value.EvidenceVersion is not (1 or 2) || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
+        if (value.SchemaVersion != 1 || value.EvidenceVersion is not (1 or 2 or 3) || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
             throw new InvalidDataException("Candidate matrix envelope is invalid.");
         if (value.CaptureBounds.MinimumPeriod100ns <= 0 || value.CaptureBounds.DefaultPeriod100ns < value.CaptureBounds.MinimumPeriod100ns || value.RenderBounds.MinimumPeriod100ns <= 0 || value.RenderBounds.DefaultPeriod100ns < value.RenderBounds.MinimumPeriod100ns ||
             value.EvidenceVersion == 1 && (value.CaptureBounds.AlignmentFrames is <= 0 || value.RenderBounds.AlignmentFrames is <= 0) ||
-            value.EvidenceVersion == 2 && (value.CaptureBounds.AlignmentFrames is < 0 || value.RenderBounds.AlignmentFrames is < 0))
+            value.EvidenceVersion >= 2 && (value.CaptureBounds.AlignmentFrames is < 0 || value.RenderBounds.AlignmentFrames is < 0))
             throw new InvalidDataException("Candidate matrix device bounds or alignment state is invalid.");
         for (var i = 0; i < value.Candidates.Count; i++)
         {
@@ -71,9 +77,9 @@ public static class V2CandidateMatrixEvidenceJson
                 throw new InvalidDataException($"Candidate matrix row {i} is invalid.");
         }
         if (value.SelectionState is not ("MINIMUM_SHORT_CLEAN_FOUND" or "REPEATABILITY_CONFIRMED" or "REPEATABILITY_FAILED" or "MINIMUM_NOT_PROVEN" or "UNKNOWN")) throw new InvalidDataException("Candidate matrix selection state is invalid.");
-        if (value.EvidenceVersion == 2 && (value.Lifecycle == "PLANNED" || value.DiscoveryGeneration == 0 || value.MaximumOperations is < 1 or > 29 || value.UsedOperations < 0 || value.UsedOperations > value.MaximumOperations || value.MaximumActiveDuplexSeconds is < 0 or > 65 || value.UsedActiveDuplexSeconds < 0 || value.UsedActiveDuplexSeconds > value.MaximumActiveDuplexSeconds || string.IsNullOrWhiteSpace(value.StopReason) || value.SelectedCandidateIndex is { } selected && (selected < 0 || selected >= value.CandidateDomain.Count) || value.RepeatabilityPending != (value.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND")))
+        if (value.EvidenceVersion >= 2 && (value.Lifecycle == "PLANNED" || value.DiscoveryGeneration == 0 || value.MaximumOperations is < 1 or > 29 || value.UsedOperations < 0 || value.UsedOperations > value.MaximumOperations || value.MaximumActiveDuplexSeconds is < 0 or > 65 || value.UsedActiveDuplexSeconds < 0 || value.UsedActiveDuplexSeconds > value.MaximumActiveDuplexSeconds || string.IsNullOrWhiteSpace(value.StopReason) || value.SelectedCandidateIndex is { } selected && (selected < 0 || selected >= value.CandidateDomain.Count) || value.RepeatabilityPending != (value.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND")))
             throw new InvalidDataException("V4 completed candidate matrix budget, generation, or selection evidence is invalid.");
-        if (value.EvidenceVersion == 2)
+        if (value.EvidenceVersion >= 2)
         {
             var profileExpected = value.SelectionState == "REPEATABILITY_CONFIRMED" && value.RepeatabilityRequested == 5 && value.RepeatabilityCompleted == 5 && value.SessionCleanup == "CLOSE_CONFIRMED" && !string.IsNullOrWhiteSpace(value.ProfilePath) && !string.IsNullOrWhiteSpace(value.ProfileSha256);
             if (value.RepeatabilityRequested is < 0 or > 5 || value.RepeatabilityCompleted != value.RepeatabilityRuns.Count || value.RepeatabilityCompleted > value.RepeatabilityRequested || value.SessionCleanup is not ("NOT_ATTEMPTED" or "CLOSE_CONFIRMED" or "CANCEL_CONFIRMED" or "UNKNOWN") || value.ProfileEligible != profileExpected || value.ProfilePath is not null && string.IsNullOrWhiteSpace(value.ProfileSha256) || value.ProfileSha256 is not null && !Hash(value.ProfileSha256, 64))
@@ -86,6 +92,15 @@ public static class V2CandidateMatrixEvidenceJson
                 var candidate = value.CandidateDomain[run.CandidateIndex];
                 if (run.RequestedCaptureFrames != candidate.CaptureFrames || run.RequestedCapturePeriod100ns != candidate.CapturePeriod100ns || run.RequestedRenderFrames != candidate.RenderFrames || run.RequestedRenderPeriod100ns != candidate.RenderPeriod100ns || run.Result == "CLEAN" && (run.ActualCaptureFrames != run.RequestedCaptureFrames || run.ActualCapturePeriod100ns != run.RequestedCapturePeriod100ns || run.ActualRenderFrames != run.RequestedRenderFrames || run.ActualRenderPeriod100ns != run.RequestedRenderPeriod100ns || run.Cleanup != "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED"))
                     throw new InvalidDataException("Repeatability geometry or cleanup evidence is inconsistent.");
+                if (value.EvidenceVersion == 3 && run.Result == "CLEAN" && run.Evidence is not { ValueKind: JsonValueKind.Object })
+                    throw new InvalidDataException("Version 3 repeatability evidence requires each completed native report.");
+            }
+            if (value.EvidenceVersion == 3 && value.SelectionState is "MINIMUM_SHORT_CLEAN_FOUND" or "REPEATABILITY_CONFIRMED" or "REPEATABILITY_FAILED")
+            {
+                var selectedEntry = value.Candidates[value.SelectedCandidateIndex!.Value];
+                if (selectedEntry.DuplexDisposition == "CLEAN" && selectedEntry.DuplexEvidence is not { ValueKind: JsonValueKind.Object } ||
+                    selectedEntry.DuplexDisposition == "CLEAN" && (selectedEntry.CaptureInitializeEvidence is not { ValueKind: JsonValueKind.Object } || selectedEntry.RenderInitializeEvidence is not { ValueKind: JsonValueKind.Object }))
+                    throw new InvalidDataException("Version 3 selected candidate evidence requires both Initialize reports and its complete Duplex report.");
             }
         }
     }
@@ -109,5 +124,14 @@ public static class V2CandidateMatrixEvidenceJson
             return path;
         }
         catch { if (File.Exists(temporary)) File.Delete(temporary); throw; }
+    }
+
+    public static V2CandidateMatrixEvidence Read(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        if (bytes.Length is 0 or > 16 * 1024 * 1024) throw new InvalidDataException("Candidate matrix file is empty or exceeds 16 MiB.");
+        var value = JsonSerializer.Deserialize<V2CandidateMatrixEvidence>(bytes, Options) ?? throw new InvalidDataException("Candidate matrix is empty.");
+        Validate(value);
+        return value;
     }
 }

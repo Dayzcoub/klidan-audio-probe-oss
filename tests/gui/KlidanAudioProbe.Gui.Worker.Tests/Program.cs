@@ -786,12 +786,14 @@ try
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
     await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
-    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default)
+    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default, bool createV4Profile = false)
     {
         var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
         var found = await client.ListWindowsEndpointsAsync();
-        var captureId = found.Endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!;
-        var renderId = found.Endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
+        var captureEndpoint = found.Endpoints.Single(e => e.Direction == "CAPTURE");
+        var renderEndpoint = found.Endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!;
+        var renderId = renderEndpoint.EndpointId!;
         var searchRoute = routeOverride ?? route;
         var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
@@ -803,20 +805,46 @@ try
         try
         {
             var result = await new WorkerV4AutomaticSearchWorkflow(client).RunAsync(new(captureId, renderId, searchPlan, accepted), evidenceRoot,
-                cancellationToken, testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); }, runRepeatability: qualify);
+                cancellationToken, testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); }, runRepeatability: qualify,
+                captureEndpoint: createV4Profile ? captureEndpoint : null, renderEndpoint: createV4Profile ? renderEndpoint : null,
+                profileDirectory: createV4Profile ? Path.Combine(evidenceRoot, "profiles") : null);
             var serializedEvidence = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
             Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && serializedEvidence.Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal), $"{name} full candidate matrix persists and reads back synthetic provenance [path={result.EvidencePath ?? "null"}; exists={result.EvidencePath is not null && File.Exists(result.EvidencePath)}; lifecycle={result.Evidence.Lifecycle}; state={result.Evidence.SelectionState}; stop={result.Evidence.StopReason}; matrix={result.Evidence.Candidates.FirstOrDefault()?.DuplexDisposition}; repeats={result.Evidence.RepeatabilityCompleted}; ops={string.Join(',', seen)}; provenance={result.Evidence.Provenance}]");
+            if (createV4Profile && result.Evidence.ProfilePath is { } profilePath)
+            {
+                var profile = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(profilePath));
+                Check(profile.SchemaVersion == 5 && profile.Evidence.Count == 0 && profile.StableShortSelection?.ProfileKind == "TEST_ONLY" && profile.StableShortSelection.SourceEvidenceSha256 == Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(evidenceRoot, profile.StableShortSelection.SourceEvidenceId)))).ToLowerInvariant(), $"{name} V4 evidence creates a schema v5 TEST_ONLY profile directly without a V3 Duplex base");
+                var sourceMatrix = V2CandidateMatrixEvidenceJson.Read(Path.Combine(evidenceRoot, profile.StableShortSelection!.SourceEvidenceId));
+                Check(sourceMatrix.EvidenceVersion == 3 && sourceMatrix.Candidates[profile.StableShortSelection.SelectedCandidateIndex].CaptureInitializeEvidence is { ValueKind: JsonValueKind.Object } && sourceMatrix.Candidates[profile.StableShortSelection.SelectedCandidateIndex].DuplexEvidence is { ValueKind: JsonValueKind.Object } && sourceMatrix.RepeatabilityRuns.All(r => r.Evidence is { ValueKind: JsonValueKind.Object }), $"{name} Profile v5 source retains every native Initialize, first SHORT_CLEAN and repeat report");
+                if (profile.StableShortSelection.CaptureFormat.Encoding == "PCM16")
+                    Check(profile.StableShortSelection.CaptureFormat.ContainerBits == 16 && profile.StableShortSelection.CaptureFormat.ValidBits == 16 && profile.StableShortSelection.RenderFormat.ContainerBits == 16 && profile.StableShortSelection.RenderFormat.ValidBits == 16, $"{name} PCM16 profile stores 16 container/valid bits");
+                if (profile.StableShortSelection.CaptureFormat.Encoding is "PCM24_IN_32" or "FLOAT32")
+                    Check(profile.StableShortSelection.CaptureFormat.ContainerBits == 32 && profile.StableShortSelection.CaptureFormat.ValidBits == (profile.StableShortSelection.CaptureFormat.Encoding == "PCM24_IN_32" ? 24 : 32) && profile.StableShortSelection.RenderFormat.ContainerBits == 32 && profile.StableShortSelection.RenderFormat.ValidBits == (profile.StableShortSelection.RenderFormat.Encoding == "PCM24_IN_32" ? 24 : 32), $"{name} profile stores correct 32-bit container and encoding-specific valid bits");
+                var cannotPromoteFake = false;
+                try
+                {
+                    var fakeSelection = profile.StableShortSelection! with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" };
+                    _ = DeviceConfigurationProfileFactory.CreateStableShortFromV4(new(captureId, renderId, searchPlan, accepted), Path.Combine(evidenceRoot, fakeSelection.SourceEvidenceId), fakeSelection, captureEndpoint, renderEndpoint);
+                }
+                catch (InvalidDataException) { cannotPromoteFake = true; }
+                Check(cannotPromoteFake, $"{name} TEST_FAKE V4 evidence cannot be relabeled as a physical DEVICE profile");
+            }
             return (result, seen.ToArray());
         }
         finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
-    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true);
+    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true, createV4Profile: true);
     Check(bloodySearch.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.RepeatabilityCompleted == 5 && bloodySearch.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody confirms 5 ms only after five additional CLEAN repeats; larger candidates remain skipped");
     Check(bloodySearch.Operations.Where(x => x.Contains("REPEAT", StringComparison.Ordinal)).SequenceEqual(Enumerable.Range(1, 5).Select(i => $"5:REPEAT_{i}")) && bloodySearch.Operations.All(x => !x.StartsWith("6:", StringComparison.Ordinal)), "Bloody repeats only the selected 5 ms candidate and never falls back");
     Check(bloodySearch.Result.Evidence.UsedOperations == 14 && bloodySearch.Result.Evidence.UsedActiveDuplexSeconds == 40 && bloodySearch.Result.Evidence.SessionCleanup == "CLOSE_CONFIRMED", "B4 records repeat operations, active duration, and confirmed same-session close");
     var flow8Route = route with { Capture = route.Capture with { Channels = 1, ChannelMask = 0, SelectedIndicesZeroBased = [0] } };
-    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: flow8Route);
+    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: flow8Route, createV4Profile: true);
     Check(flow8Search.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && flow8Search.Result.Evidence.SelectedCandidateIndex == 0 && flow8Search.Result.Evidence.RepeatabilityCompleted == 5 && flow8Search.Result.Evidence.RepeatabilityRuns.All(r => r.ActualCaptureFrames == flow8Route.Capture.SampleRateHz * 3 / 1000 && r.ActualRenderFrames == flow8Route.Render.SampleRateHz * 3 / 1000), "FLOW 8 mono Capture/stereo Render retains exact 3 ms geometry across five CLEAN repeats");
+    foreach (var encoding in new[] { "PCM24_IN_32", "FLOAT32" })
+    {
+        var encodingRoute = route with { Capture = route.Capture with { Encoding = encoding }, Render = route.Render with { Encoding = encoding } };
+        _ = await RunV4Search($"{encoding} V4 profile synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: encodingRoute, createV4Profile: true);
+    }
     var unknownSearch = await RunV4Search("UNKNOWN stop synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEANUP_UNKNOWN" : null);
     Check(unknownSearch.Result.Evidence.SelectionState == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates[0].DuplexDisposition == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "NOT_TESTED" && e.LowerPeriodCoverage == "UNKNOWN") && unknownSearch.Operations.Length == 3, "UNKNOWN immediately stops the search and leaves later candidates explicitly untested");
     foreach (var failAt in new[] { 1, 3, 5 })

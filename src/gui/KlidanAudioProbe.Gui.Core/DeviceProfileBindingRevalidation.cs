@@ -75,6 +75,9 @@ public static class DeviceProfileBindingRevalidation
             return baseResult with { Overall = DeviceProfileBindingAssessment.ProfileInvalidOrUnsupported, Reasons = [$"PROFILE_INVALID_OR_UNSUPPORTED: {ex.Message}"], RequiresFurtherVerification = true };
         }
 
+        if (profile.StableShortSelection?.ProfileKind == "TEST_ONLY")
+            return baseResult with { Overall = DeviceProfileBindingAssessment.ProfileInvalidOrUnsupported, Reasons = ["TEST_ONLY_PROFILE_CANNOT_BE_BOUND_AS_A_PHYSICAL_DEVICE"], RequiresFurtherVerification = true };
+
         if (profile.Privacy != "LOCAL_MACHINE" || profile.EndpointBindings.Capture?.Binding != "LOCAL_EXACT" || profile.EndpointBindings.Render?.Binding != "LOCAL_EXACT")
             return baseResult with { Overall = DeviceProfileBindingAssessment.SanitizedUnboundProfile, Capture = DeviceProfileEndpointAssessment.NotExamined, Render = DeviceProfileEndpointAssessment.NotExamined, Reasons = ["PROFILE_ENDPOINT_BINDINGS_ARE_SANITIZED_OR_UNBOUND"], Limitations = [ExclusiveVerificationLimitation], RequiresFurtherVerification = true };
 

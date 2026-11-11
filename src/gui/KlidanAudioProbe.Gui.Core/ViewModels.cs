@@ -75,7 +75,9 @@ public sealed class MainViewModel : ViewModel
     private readonly IDuplexRepeatabilityWorkflow? _duplexRepeatabilityWorkflow;
     private readonly IExclusivePeriodDiscoveryWorkflow? _exclusivePeriodDiscoveryWorkflow;
     private readonly ICustomPeriodDuplexWorkflow? _customPeriodDuplexWorkflow;
+    private readonly IV4AutomaticSearchWorkflow? _v4AutomaticSearchWorkflow;
     private readonly string? _profileDirectory;
+    private readonly string? _v4EvidenceDirectory;
     private readonly ILaboratoryEvidenceBundleExportInteraction? _bundleExportInteraction;
     private readonly Func<string, LaboratoryEvidenceBundleDirectories>? _bundleDirectoriesFactory;
     private readonly DeviceProfileBindingRevalidationState _savedProfileBindingState = new();
@@ -197,6 +199,12 @@ public sealed class MainViewModel : ViewModel
     private CancellationTokenSource? _v4PreparationCancellation;
     private int _v4PreparationVersion, _v4RepeatabilityRuns = 5;
     private bool _v4Preparing, _v4ConsentPending, _v4ConsentChecked;
+    private bool _v4ScanRunning;
+    private WindowsEndpointDto? _v4CaptureEndpoint, _v4RenderEndpoint;
+    private CancellationTokenSource? _v4ScanCancellation;
+    private TaskCompletionSource? _v4ScanTerminal;
+    private V4AutomaticSearchResult? _v4SearchResult;
+    private string _v4ProgressText = "", _v4EvidencePath = "";
     private string _v4PlanStatusKey = "VmV4PlanNotPrepared";
     private string? _v4PlanStatusArgument;
     private string _automaticScanV2CaptureFormat = "48000|PCM16", _automaticScanV2RenderFormat = "48000|PCM16";
@@ -257,7 +265,7 @@ public sealed class MainViewModel : ViewModel
     private long _workerTimelineSequence;
     private readonly List<WorkerEventDto> _earlyWorkerEvents = [];
     private TaskCompletionSource? _workerTerminal;
-    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null, bool developerToolsAvailable = true)
+    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null, bool developerToolsAvailable = true, IV4AutomaticSearchWorkflow? v4AutomaticSearchWorkflow = null, string? evidenceDirectory = null)
     {
         _client = client ?? new FakeProbeClient();
         _worker = worker;
@@ -265,7 +273,9 @@ public sealed class MainViewModel : ViewModel
         _duplexRepeatabilityWorkflow = duplexRepeatabilityWorkflow;
         _exclusivePeriodDiscoveryWorkflow = exclusivePeriodDiscoveryWorkflow;
         _customPeriodDuplexWorkflow = customPeriodDuplexWorkflow;
+        _v4AutomaticSearchWorkflow = v4AutomaticSearchWorkflow;
         _profileDirectory = profileDirectory;
+        _v4EvidenceDirectory = evidenceDirectory;
         _bundleExportInteraction = bundleExportInteraction;
         _bundleDirectoriesFactory = bundleDirectoriesFactory;
         _developerToolsAvailable = developerToolsAvailable;
@@ -306,6 +316,8 @@ public sealed class MainViewModel : ViewModel
         PrepareV4CustomPlanCommand = new(PrepareV4CustomPlanAsync, CanPrepareV4CustomPlan);
         AcceptV4CustomPlanCommand = new(AcceptV4CustomPlan, CanAcceptV4CustomPlan);
         CancelV4CustomPlanCommand = new(CancelV4CustomPlan, () => _v4Preparing || _v4ConsentPending || _v4ConsentReceipt is not null);
+        StartV4ScanCommand = new(StartV4ScanAsync, CanStartV4Scan);
+        CancelV4ScanCommand = new(CancelV4Scan, () => V4ScanRunning);
         CancelAutomaticScanCommand = new(CancelAutomaticScan, () => _automaticScanPreparing || _automaticScanRunning);
         OpenAutomaticScanLocationCommand = new(OpenAutomaticScanLocation, CanOpenAutomaticScanLocation);
         ExportAutomaticScanCommand = new(ExportAutomaticScanAsync, () => CanExportAutomaticScan);
@@ -515,8 +527,8 @@ public sealed class MainViewModel : ViewModel
     public int AutomaticScanV2CaptureChannel2 { get => _automaticScanV2CaptureChannel2; set => SetV2Channel(ref _automaticScanV2CaptureChannel2, value, nameof(AutomaticScanV2CaptureChannel2)); }
     public int AutomaticScanV2RenderChannel1 { get => _automaticScanV2RenderChannel1; set => SetV2Channel(ref _automaticScanV2RenderChannel1, value, nameof(AutomaticScanV2RenderChannel1)); }
     public int AutomaticScanV2RenderChannel2 { get => _automaticScanV2RenderChannel2; set => SetV2Channel(ref _automaticScanV2RenderChannel2, value, nameof(AutomaticScanV2RenderChannel2)); }
-    public IReadOnlyList<SelectionOption> V4RepeatabilityOptions { get; } = Enumerable.Range(0, 6).Select(i => new SelectionOption(i, i.ToString(CultureInfo.CurrentCulture))).ToArray();
-    public int V4RepeatabilityRuns { get => _v4RepeatabilityRuns; set { if (value is < 0 or > 5 || !Set(ref _v4RepeatabilityRuns, value)) return; InvalidateV4PreparedPlan("VmV4PlanInvalidated"); } }
+    public IReadOnlyList<SelectionOption> V4RepeatabilityOptions { get; } = [new(0, Localization.Get("VmV4SearchOnly")), new(5, "5")];
+    public int V4RepeatabilityRuns { get => _v4RepeatabilityRuns; set { if (AutomaticScanBusy || value is < 0 or > 5 || !Set(ref _v4RepeatabilityRuns, value)) return; InvalidateV4PreparedPlan("VmV4PlanInvalidated"); } }
     public bool V4PlanPreparing => _v4Preparing;
     public bool V4ConsentPending => _v4ConsentPending;
     public bool V4ConsentChecked { get => _v4ConsentChecked; set { if (Set(ref _v4ConsentChecked, value)) AcceptV4CustomPlanCommand.Refresh(); } }
@@ -525,7 +537,12 @@ public sealed class MainViewModel : ViewModel
     public bool V4ReceiptCreated => _v4ConsentReceipt is not null;
     public string V4PlanStatus => _v4PlanStatusKey == "VmV4PlanBlocked" ? string.Format(Localization.CurrentCulture, Localization.Get(_v4PlanStatusKey), _v4PlanStatusArgument) : Localization.Get(_v4PlanStatusKey);
     public bool V4CustomPlanControlsVisible => AutomaticScanEngine == "V2_ADAPTIVE";
-    public string V4AudioGateText => Localization.Get("VmV4AudioGateClosed");
+    public string V4AudioGateText => Localization.Get(_v4AutomaticSearchWorkflow is null ? "VmV4AudioGateClosed" : "VmV4AudioGateOpen");
+    public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); StartV4ScanCommand.Refresh(); CancelV4ScanCommand.Refresh(); PrepareV4CustomPlanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
+    public string V4ProgressText => _v4ProgressText;
+    public string V4ResultState => _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
+    public string V4ResultSummary => BuildV4ResultSummary();
+    public string V4EvidencePath => _v4EvidencePath;
     public string V4PlanFingerprint => _v4PlanFingerprint ?? Localization.Get("VmV4NoFingerprint");
     public string V4ConsentSummary => BuildV4ConsentSummary();
     public bool AutomaticScanV2SecondCaptureVisible => AutomaticScanV2Mode == "STEREO_TO_STEREO";
@@ -538,7 +555,7 @@ public sealed class MainViewModel : ViewModel
     public bool AutomaticScanConsentPending { get => _automaticScanConsentPending; private set { if (Set(ref _automaticScanConsentPending, value)) { Changed(nameof(AutomaticScanConsentText)); ConfirmAutomaticScanCommand.Refresh(); CancelAutomaticScanConsentCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
     public bool AutomaticScanConsentChecked { get => _automaticScanConsentChecked; set { if (Set(ref _automaticScanConsentChecked, value)) ConfirmAutomaticScanCommand.Refresh(); } }
     public bool AutomaticScanRunning { get => _automaticScanRunning; private set { if (Set(ref _automaticScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(CanNavigateAwayFromAutomaticScan)); Changed(nameof(AutomaticScanAvailabilityReason)); CancelAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); PrepareAutomaticScanCommand.Refresh(); } } }
-    public bool AutomaticScanBusy => AutomaticScanPreparing || AutomaticScanRunning;
+    public bool AutomaticScanBusy => AutomaticScanPreparing || AutomaticScanRunning || V4ScanRunning;
     public IReadOnlyList<ChoiceOption> AutomaticSustainedModes { get; } = [new("Standard (300 s)", Localization.Get("VmAutomaticSustainedStandard")), new("Extended (600 s)", Localization.Get("VmAutomaticSustainedExtended"))];
     public string AutomaticSustainedMode { get => _automaticSustainedMode; set { if (AutomaticScanBusy || !AutomaticSustainedModes.Any(option => option.Value == value)) return; if (Set(ref _automaticSustainedMode, value)) { CancelAutomaticScanConsent(); Changed(nameof(AutomaticScanConsentText)); } } }
     public bool CanNavigateAwayFromAutomaticScan => !AutomaticScanBusy;
@@ -1155,6 +1172,9 @@ public sealed class MainViewModel : ViewModel
                 var fallback = sustained.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileFallback"), f.Period, f.DurationSeconds) : "NONE";
                 return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileEvidenceSummary"), primary, fallback, Localization.Get("VmSavedProfileEvidenceCaveat"));
             }
+            if (profile.SchemaVersion == 5 && profile.StableShortSelection is { ProfileKind: "DEVICE" } shortRun)
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmV5SavedProfileSummary"), shortRun.CaptureFormat.Period, shortRun.CaptureFormat.Encoding,
+                    shortRun.CaptureFormat.SampleRate, shortRun.CaptureFormat.Channels, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
             return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileShortHistory"), profile.SchemaVersion, Localization.Get("VmSavedProfileEvidenceCaveat"));
         }
     }
@@ -1281,6 +1301,8 @@ public sealed class MainViewModel : ViewModel
     public AsyncRelayCommand PrepareV4CustomPlanCommand { get; }
     public RelayCommand AcceptV4CustomPlanCommand { get; }
     public RelayCommand CancelV4CustomPlanCommand { get; }
+    public AsyncRelayCommand StartV4ScanCommand { get; }
+    public RelayCommand CancelV4ScanCommand { get; }
     public RelayCommand CancelAutomaticScanCommand { get; }
     public RelayCommand OpenAutomaticScanLocationCommand { get; }
     public AsyncRelayCommand ExportAutomaticScanCommand { get; }
@@ -1818,6 +1840,7 @@ public sealed class MainViewModel : ViewModel
             if (!IsCurrentV4Preparation(version, workerGeneration, uiGeneration, processId, capture.EndpointId, render.EndpointId, routeFingerprint, route)) return;
             _v4PreparedPlan = plan;
             _v4CaptureEndpointId = capture.EndpointId; _v4RenderEndpointId = render.EndpointId;
+            _v4CaptureEndpoint = capture; _v4RenderEndpoint = render;
             _v4CaptureFriendlyName = capture.FriendlyNameDisplay; _v4RenderFriendlyName = render.FriendlyNameDisplay;
             _v4WorkerDiscoveryGeneration = workerGeneration; _v4UiDiscoveryGeneration = uiGeneration;
             _v4PlanFingerprint = fingerprint;
@@ -1852,38 +1875,117 @@ public sealed class MainViewModel : ViewModel
         BuildV2Route() is { } currentRoute && WorkerScanPlanV2Fingerprint.Route(captureId, renderId, currentRoute) == routeFingerprint &&
         WorkerScanPlanV2Fingerprint.Route(captureId, renderId, route) == routeFingerprint;
 
-    private bool CanAcceptV4CustomPlan() => _v4ConsentPending && _v4PreparedPlan is not null && _v4ConsentReceipt is null && _v4ConsentChecked && !_v4Preparing && !WorkerOperationActive &&
-        _v4CaptureEndpointId is { Length: > 0 } captureId && _v4RenderEndpointId is { Length: > 0 } renderId && _v4WorkerDiscoveryGeneration is { } generation &&
+    private bool IsCurrentV4Plan() => _v4PreparedPlan is { } prepared && _v4CaptureEndpointId is { Length: > 0 } captureId && _v4RenderEndpointId is { Length: > 0 } renderId && _v4WorkerDiscoveryGeneration is { } generation &&
         _v4UiDiscoveryGeneration is { } uiGeneration && _v4PlanFingerprint is { } fingerprint && _worker is not null &&
         WorkerState.State == WorkerConnectionState.ConnectedFake && _worker.DiscoveryGeneration == generation && _windowsDiscoveryCurrent && _windowsDiscoveryGeneration == uiGeneration &&
         SelectedDuplexCaptureEndpoint?.EndpointId == captureId && SelectedDuplexRenderEndpoint?.EndpointId == renderId && BuildV2Route() is { } route &&
-        WorkerScanV2ContractV4Fingerprint.Compute(captureId, renderId, _v4PreparedPlan, generation) == fingerprint &&
-        WorkerScanPlanV2Fingerprint.Route(captureId, renderId, route) == WorkerScanPlanV2Fingerprint.Route(captureId, renderId, _v4PreparedPlan.Route);
+        WorkerScanV2ContractV4Fingerprint.Compute(captureId, renderId, prepared, generation) == fingerprint &&
+        WorkerScanPlanV2Fingerprint.Route(captureId, renderId, route) == WorkerScanPlanV2Fingerprint.Route(captureId, renderId, prepared.Route);
+
+    private bool CanAcceptV4CustomPlan() => _v4ConsentPending && _v4PreparedPlan is not null && _v4ConsentReceipt is null && _v4ConsentChecked && !_v4Preparing && !AutomaticScanBusy && !WorkerOperationActive && IsCurrentV4Plan() &&
+        _v4CaptureEndpointId is { Length: > 0 } captureId && _v4RenderEndpointId is { Length: > 0 } renderId && _v4WorkerDiscoveryGeneration is { } generation &&
+        _v4UiDiscoveryGeneration is not null && _v4PlanFingerprint is not null && _worker is not null;
 
     private void AcceptV4CustomPlan()
     {
         if (!CanAcceptV4CustomPlan() || _worker is null || _v4PreparedPlan is null || _v4CaptureEndpointId is null || _v4RenderEndpointId is null || _v4WorkerDiscoveryGeneration is null) return;
         _v4ConsentReceipt = WorkerScanV2ContractV4Fingerprint.CreateConsent(_v4CaptureEndpointId, _v4RenderEndpointId, _v4PreparedPlan, _v4WorkerDiscoveryGeneration.Value, true, Guid.NewGuid());
         _v4ConsentPending = false; _v4ConsentChecked = false;
-        _v4PlanStatusKey = "VmV4ReceiptCreatedAudioUnavailable"; _v4PlanStatusArgument = null;
+        _v4PlanStatusKey = "VmV4ReceiptCreatedReady"; _v4PlanStatusArgument = null;
         Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); Changed(nameof(V4PlanStatus)); Changed(nameof(V4ConsentSummary));
         AcceptV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
+        StartV4ScanCommand.Refresh();
+    }
+
+    private bool CanStartV4Scan() => !V4ScanRunning && _v4AutomaticSearchWorkflow is not null && _v4PreparedPlan is { RepeatabilityRuns: 0 or 5 } prepared &&
+        _v4ConsentReceipt is { Accepted: true } receipt && _v4CaptureEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } capture &&
+        _v4RenderEndpoint is { DeviceState: "ACTIVE", EndpointId.Length: > 0 } render && receipt.PlanFingerprint == _v4PlanFingerprint && IsCurrentV4Plan() &&
+        !AutomaticScanBusy && !WorkerOperationActive && !_deviceScanRunning && !_realQueryRunning && !_realInitializeRunning && !_duplexValidationRunning &&
+        !_duplexRepeatabilityRunning && !_periodDiscoveryRunning && !_customPeriodDuplexRunning;
+
+    private async Task StartV4ScanAsync()
+    {
+        if (!CanStartV4Scan() || _v4AutomaticSearchWorkflow is null || _v4PreparedPlan is null || _v4ConsentReceipt is null || _v4CaptureEndpoint is null || _v4RenderEndpoint is null) return;
+        var prepared = new WorkerScanV2V4PreparedPlan(_v4CaptureEndpointId!, _v4RenderEndpointId!, _v4PreparedPlan, _v4ConsentReceipt);
+        var capture = _v4CaptureEndpoint; var render = _v4RenderEndpoint;
+        var cancellation = new CancellationTokenSource(); _v4ScanCancellation = cancellation;
+        var terminal = _v4ScanTerminal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _v4SearchResult = null; _v4EvidencePath = ""; _v4ProgressText = Localization.Get("VmV4ScanStarting");
+        Changed(nameof(V4ResultState)); Changed(nameof(V4ResultSummary)); Changed(nameof(V4EvidencePath)); Changed(nameof(V4ProgressText));
+        V4ScanRunning = true;
+        var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KlidanAudioProbe");
+        var evidenceRoot = _v4EvidenceDirectory ?? Path.Combine(localRoot, "Scans", "V4");
+        var profileDirectory = _profileDirectory ?? Path.Combine(localRoot, "Profiles");
+        var progress = new Progress<V4AutomaticSearchProgress>(p =>
+        {
+            _v4ProgressText = string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanProgress"), p.Stage, p.CandidateIndex + 1,
+                p.CaptureFrames?.ToString(CultureInfo.CurrentCulture) ?? "?", p.RenderFrames?.ToString(CultureInfo.CurrentCulture) ?? "?", p.RepeatabilityCompleted,
+                p.ActualCaptureFrames?.ToString(CultureInfo.CurrentCulture) ?? "?", p.ActualRenderFrames?.ToString(CultureInfo.CurrentCulture) ?? "?");
+            Changed(nameof(V4ProgressText));
+        });
+        try
+        {
+            var result = await _v4AutomaticSearchWorkflow.RunAsync(prepared, capture, render, evidenceRoot, profileDirectory,
+                prepared.Plan.RepeatabilityRuns == 5, progress, cancellation.Token);
+            _v4SearchResult = result; _v4EvidencePath = result.EvidencePath ?? "";
+            _v4ProgressText = result.Evidence.StopReason;
+        }
+        catch (Exception ex)
+        {
+            _v4ProgressText = string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanError"), ex.GetType().Name, ex.Message);
+        }
+        finally
+        {
+            if (ReferenceEquals(_v4ScanCancellation, cancellation)) _v4ScanCancellation = null;
+            cancellation.Dispose(); V4ScanRunning = false;
+            terminal.TrySetResult();
+            if (ReferenceEquals(_v4ScanTerminal, terminal)) _v4ScanTerminal = null;
+            Changed(nameof(V4ResultState)); Changed(nameof(V4ResultSummary)); Changed(nameof(V4EvidencePath)); Changed(nameof(V4ProgressText));
+            StartV4ScanCommand.Refresh(); CancelV4ScanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
+        }
+    }
+
+    private void CancelV4Scan()
+    {
+        _v4ScanCancellation?.Cancel();
+        _v4ProgressText = Localization.Get("VmV4ScanCancellationRequested"); Changed(nameof(V4ProgressText));
+    }
+
+    private string BuildV4ResultSummary()
+    {
+        if (_v4SearchResult is not { } result) return _v4ProgressText;
+        var evidence = result.Evidence;
+        var state = evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
+        var selected = evidence.SelectedCandidateIndex;
+        var selectedRow = selected is { } index && index < evidence.Candidates.Count ? evidence.Candidates[index] : null;
+        var candidate = selectedRow?.Candidate;
+        var period = candidate is null ? "UNKNOWN" : (candidate.RequestedDuration100ns / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms";
+        var captureActual = selectedRow?.ActualCapturePeriod100ns is { } cp ? (cp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
+        var renderActual = selectedRow?.ActualRenderPeriod100ns is { } rp ? (rp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
+        var lowerProven = selected is { } si && evidence.Candidates.Take(si).All(c => c.LowerPeriodCoverage == "COMPLETE" && c.DuplexDisposition is "FAILED" or "UNSUPPORTED");
+        var minimum = lowerProven && candidate is not null ? period : Localization.Get("VmV4MinimumNotProven");
+        var reasons = string.Join("; ", evidence.Candidates.Where(c => c.DuplexDisposition is "FAILED" or "UNSUPPORTED" or "UNKNOWN").Select(c => $"{c.Candidate.Index + 1}: {c.DuplexDisposition} {string.Join(',', c.ReasonCodes)}"));
+        var rows = string.Join(Environment.NewLine, evidence.Candidates.Select(c => $"{(c.Candidate.RequestedDuration100ns / 10_000m).ToString("0.###", Localization.CurrentCulture)} ms · {c.DuplexDisposition} · Capture {c.ActualCaptureFrames?.ToString() ?? "?"}f / Render {c.ActualRenderFrames?.ToString() ?? "?"}f · {c.SkipReason ?? string.Join(',', c.ReasonCodes)}"));
+        var profile = evidence.ProfileEligible ? $"PROFILE_SAVED: {evidence.ProfilePath}" : evidence.Provenance.Contains("TEST_FAKE", StringComparison.Ordinal) ? "TEST_ONLY" : evidence.StopReason.Contains("PROFILE_SAVE_OR_READBACK_FAILED", StringComparison.Ordinal) ? evidence.StopReason : "PROFILE_NOT_CREATED: short-run evidence is preliminary or unqualified";
+        return string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanResults"), state, period, selectedRow?.ActualCaptureFrames?.ToString() ?? "UNKNOWN", selectedRow?.ActualRenderFrames?.ToString() ?? "UNKNOWN", minimum, selectedRow?.DuplexDisposition == "CLEAN" ? "SHORT_CLEAN" : "NO", captureActual, renderActual, evidence.RepeatabilityCompleted, profile, string.IsNullOrWhiteSpace(reasons) ? "NONE" : reasons, rows, _v4EvidencePath);
     }
 
     private void CancelV4CustomPlan() => InvalidateV4PreparedPlan("VmV4PlanCancelled");
 
     private void InvalidateV4PreparedPlan(string reasonKey)
     {
+        _v4ScanCancellation?.Cancel();
         var hadState = _v4Preparing || _v4PreparedPlan is not null || _v4ConsentPending || _v4ConsentReceipt is not null;
         if (!hadState) return;
         Interlocked.Increment(ref _v4PreparationVersion);
         _v4PreparationCancellation?.Cancel();
         _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4ConsentPending = false; _v4ConsentChecked = false;
         _v4CaptureEndpointId = _v4RenderEndpointId = _v4CaptureFriendlyName = _v4RenderFriendlyName = _v4UiDiscoveryGeneration = null;
+        _v4CaptureEndpoint = _v4RenderEndpoint = null;
         _v4WorkerDiscoveryGeneration = null; _v4PlanFingerprint = null; _v4Preparing = false; _v4PlanStatusKey = reasonKey; _v4PlanStatusArgument = null;
         Changed(nameof(V4PlanPreparing)); Changed(nameof(V4PlanReady)); Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated));
         Changed(nameof(V4PlanStatus)); Changed(nameof(V4PlanFingerprint)); Changed(nameof(V4ConsentSummary));
-        PrepareV4CustomPlanCommand.Refresh(); AcceptV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh();
+        PrepareV4CustomPlanCommand.Refresh(); AcceptV4CustomPlanCommand.Refresh(); CancelV4CustomPlanCommand.Refresh(); StartV4ScanCommand.Refresh();
     }
 
     private string BuildV4ConsentSummary()
@@ -3253,7 +3355,12 @@ public sealed class MainViewModel : ViewModel
                 return;
             }
             var validProfiles = _savedDeviceProfiles.Where(p => p.Profile is not null && p.Status == "AVAILABLE").ToArray();
-            var v4Matches = validProfiles.Where(p => p.Profile!.SchemaVersion == 4 && p.Profile.SustainedSelection is not null && DeviceProfileBindingRevalidation.Evaluate(p.Profile, discovery, generation, p.Path).Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery).ToArray();
+            var v4Matches = validProfiles.Where(p => p.Profile is { } profile && (profile switch
+            {
+                { SchemaVersion: 4, SustainedSelection: not null } => true,
+                { SchemaVersion: 5, StableShortSelection.ProfileKind: "DEVICE" } => true,
+                _ => false
+            }) && DeviceProfileBindingRevalidation.Evaluate(profile, discovery, generation, p.Path).Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery).ToArray();
             var legacyMatches = validProfiles.Where(p => p.Profile!.SchemaVersion is >= 1 and <= 3 && DeviceProfileBindingRevalidation.Evaluate(p.Profile, discovery, generation, p.Path).Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery).ToArray();
             _matchingSavedProfiles = v4Matches;
             Changed(nameof(SavedProfileMatchingSummary));
@@ -3312,6 +3419,9 @@ public sealed class MainViewModel : ViewModel
 
     private static string HistoricalOperatorText(DeviceConfigurationProfile profile)
     {
+        if (profile.SchemaVersion == 5 && profile.StableShortSelection is { ProfileKind: "DEVICE" } shortRun)
+            return string.Format(Localization.CurrentCulture, Localization.Get("VmV5SavedProfileSummary"), shortRun.CaptureFormat.Period, shortRun.CaptureFormat.Encoding,
+                shortRun.CaptureFormat.SampleRate, shortRun.CaptureFormat.Channels, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
         if (profile.SchemaVersion != 4 || profile.SustainedSelection is not { } sustained) return Localization.Get("VmHistoricalOperatorSectionMissing");
         var primary = sustained.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorPrimary"), p.Period, p.Mmcss, p.DurationSeconds, p.Confidence) : Localization.Get("VmHistoricalOperatorPrimaryNone");
         var fallback = sustained.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorFallback"), f.Period, f.DurationSeconds) : Localization.Get("VmHistoricalOperatorFallbackNone");
@@ -3511,6 +3621,13 @@ public sealed class MainViewModel : ViewModel
                 CancelAutomaticScan();
                 if (_automaticScanTask is { } scanTask)
                     try { await scanTask; } catch { _automaticScanOutcomeUnknown = true; }
+            }
+            if (V4ScanRunning)
+            {
+                CancelV4Scan();
+                if (_v4ScanTerminal is { } v4Terminal)
+                    try { await v4Terminal.Task.WaitAsync(TimeSpan.FromSeconds(60)); }
+                    catch { _v4ProgressText = "UNKNOWN · SESSION_CLEANUP_UNCONFIRMED"; Changed(nameof(V4ProgressText)); }
             }
             if (WorkerOperationActive && WorkerSession is { } active)
             {

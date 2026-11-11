@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://klidan-audio-probe.local/schemas/v2-auto-short-candidate-matrix-v2.schema.json",
+  "title": "V4 Custom Candidate Matrix v2",
+  "description": "V4 search evidence with persisted native Initialize and Duplex reports. Version 3 evidence rows are required for Profile v5 qualification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "planFingerprint", "routeFingerprint", "lifecycle", "captureBounds", "renderBounds", "candidateDomain", "candidates", "selectionState", "provenance", "evidenceVersion", "discoveryGeneration", "selectedCandidateIndex", "globalMinimumProven", "usedOperations", "maximumOperations", "usedActiveDuplexSeconds", "maximumActiveDuplexSeconds", "stopReason", "repeatabilityPending", "repeatabilityRequested", "repeatabilityCompleted", "repeatabilityRuns", "sessionCleanup", "profileEligible", "profilePath", "profileSha256"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "planFingerprint": {"$ref": "v2-auto-short-candidate-matrix-v1.schema.json#/$defs/hash"},
+    "routeFingerprint": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "lifecycle": {"enum": ["PLANNED", "COMPLETED", "UNKNOWN", "CANCELLED"]},
+    "captureBounds": {"$ref": "v2-auto-short-candidate-matrix-v1.schema.json#/$defs/bounds"},
+    "renderBounds": {"$ref": "v2-auto-short-candidate-matrix-v1.schema.json#/$defs/bounds"},
+    "candidateDomain": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "v2-auto-short-candidate-matrix-v1.schema.json#/$defs/candidate"}},
+    "candidates": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/result"}},
+    "selectionState": {"enum": ["MINIMUM_SHORT_CLEAN_FOUND", "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED", "MINIMUM_NOT_PROVEN", "UNKNOWN"]},
+    "provenance": {"type": "string", "minLength": 1, "maxLength": 64},
+    "evidenceVersion": {"const": 3},
+    "discoveryGeneration": {"type": "integer", "minimum": 1},
+    "selectedCandidateIndex": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+    "globalMinimumProven": {"type": "boolean"},
+    "usedOperations": {"type": "integer", "minimum": 0, "maximum": 29},
+    "maximumOperations": {"type": "integer", "minimum": 1, "maximum": 29},
+    "usedActiveDuplexSeconds": {"type": "integer", "minimum": 0, "maximum": 65},
+    "maximumActiveDuplexSeconds": {"type": "integer", "minimum": 0, "maximum": 65},
+    "stopReason": {"type": "string", "minLength": 1, "maxLength": 128},
+    "repeatabilityPending": {"type": "boolean"},
+    "repeatabilityRequested": {"type": "integer", "minimum": 0, "maximum": 5},
+    "repeatabilityCompleted": {"type": "integer", "minimum": 0, "maximum": 5},
+    "repeatabilityRuns": {"type": "array", "maxItems": 5, "items": {"$ref": "#/$defs/repeat"}},
+    "sessionCleanup": {"enum": ["NOT_ATTEMPTED", "CLOSE_CONFIRMED", "CANCEL_CONFIRMED", "UNKNOWN"]},
+    "profileEligible": {"type": "boolean"},
+    "profilePath": {"type": ["string", "null"], "maxLength": 4096},
+    "profileSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "rawEvidence": {"type": ["object", "null"], "additionalProperties": true},
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate", "actualCaptureFrames", "actualCapturePeriod100ns", "actualRenderFrames", "actualRenderPeriod100ns", "captureInitializeDisposition", "renderInitializeDisposition", "duplexDisposition", "captureCleanup", "renderCleanup", "reasonCodes", "duplexNotRun", "skipReason", "lowerPeriodCoverage", "repeatabilityStatus", "provenance", "captureInitializeEvidence", "renderInitializeEvidence", "duplexEvidence"],
+      "properties": {
+        "candidate": {"$ref": "v2-auto-short-candidate-matrix-v1.schema.json#/$defs/candidate"},
+        "actualCaptureFrames": {"type": ["integer", "null"], "minimum": 1}, "actualCapturePeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "actualRenderFrames": {"type": ["integer", "null"], "minimum": 1}, "actualRenderPeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "captureInitializeDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "INITIALIZED", "UNKNOWN"]},
+        "renderInitializeDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "INITIALIZED", "UNKNOWN"]},
+        "duplexDisposition": {"enum": ["NOT_TESTED", "SKIPPED", "REJECTED", "FAILED", "UNSUPPORTED", "UNKNOWN", "CLEAN"]},
+        "captureCleanup": {"enum": ["NOT_ATTEMPTED", "RELEASE_ATTEMPTED", "UNKNOWN", "FAILED"]},
+        "renderCleanup": {"enum": ["NOT_ATTEMPTED", "RELEASE_ATTEMPTED", "UNKNOWN", "FAILED"]},
+        "reasonCodes": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 128}},
+        "duplexNotRun": {"type": "boolean"}, "skipReason": {"type": ["string", "null"], "maxLength": 256},
+        "lowerPeriodCoverage": {"enum": ["COMPLETE", "INCOMPLETE", "UNKNOWN"]},
+        "repeatabilityStatus": {"enum": ["NOT_RUN", "CONFIRMED", "FAILED", "UNKNOWN"]},
+        "provenance": {"type": "string", "minLength": 1, "maxLength": 64},
+        "captureInitializeEvidence": {"$ref": "#/$defs/rawEvidence"}, "renderInitializeEvidence": {"$ref": "#/$defs/rawEvidence"}, "duplexEvidence": {"$ref": "#/$defs/rawEvidence"}
+      }
+    },
+    "repeat": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operationId", "sessionId", "routeFingerprint", "candidateIndex", "result", "reasonCode", "requestedCaptureFrames", "requestedCapturePeriod100ns", "actualCaptureFrames", "actualCapturePeriod100ns", "requestedRenderFrames", "requestedRenderPeriod100ns", "actualRenderFrames", "actualRenderPeriod100ns", "cleanup", "provenance", "evidence"],
+      "properties": {
+        "operationId": {"type": "string", "format": "uuid"}, "sessionId": {"type": "string", "format": "uuid"}, "routeFingerprint": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "candidateIndex": {"type": "integer", "minimum": 0, "maximum": 7}, "result": {"enum": ["CLEAN", "FAILED", "UNKNOWN"]}, "reasonCode": {"type": "string", "minLength": 1, "maxLength": 256},
+        "requestedCaptureFrames": {"type": ["integer", "null"], "minimum": 1}, "requestedCapturePeriod100ns": {"type": ["integer", "null"], "minimum": 1}, "actualCaptureFrames": {"type": ["integer", "null"], "minimum": 1}, "actualCapturePeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "requestedRenderFrames": {"type": ["integer", "null"], "minimum": 1}, "requestedRenderPeriod100ns": {"type": ["integer", "null"], "minimum": 1}, "actualRenderFrames": {"type": ["integer", "null"], "minimum": 1}, "actualRenderPeriod100ns": {"type": ["integer", "null"], "minimum": 1},
+        "cleanup": {"enum": ["CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED", "UNKNOWN"]}, "provenance": {"enum": ["REAL_WASAPI_V4_DUPLEX", "TEST_FAKE_WASAPI_V4_DUPLEX", "UNKNOWN"]}, "evidence": {"$ref": "#/$defs/rawEvidence"}
+      }
+    }
+  }
+}

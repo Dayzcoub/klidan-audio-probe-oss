@@ -28,13 +28,13 @@ public partial class MainWindow : Window
 
     public MainWindow() : this(null) { }
 
-    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null, bool developerToolsAvailable = true)
+    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null, bool developerToolsAvailable = true, string? evidenceDirectory = null)
     {
         InitializeComponent();
         Title = KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle");
         _ownsWorkerLifecycle = viewModel is null;
         _profileDirectory = profileDirectory;
-        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable);
+        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: new WorkerV4AutomaticSearchWorkflow(_worker), evidenceDirectory: evidenceDirectory);
         DataContext = _vm;
         _vm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(MainViewModel.Screen) or nameof(MainViewModel.WorkflowStep) or nameof(MainViewModel.DeveloperToolsOpen)) { UpdateScreenVisibility(); UpdateResponsiveLayout(); } if (e.PropertyName == nameof(MainViewModel.SelectedWindowsEndpoint)) UpdateWindowsEndpointDetailsVisibility(); };
         DataContextChanged += (_, _) => UpdateWindowsEndpointDetailsVisibility();
@@ -85,6 +85,7 @@ public partial class MainWindow : Window
         _closeRequested = true;
         _meterTimer.Stop(); _stopTimer.Stop(); _durationTimer.Stop();
         _vm.CancelAutomaticScanCommand.Execute(null);
+        _vm.CancelV4ScanCommand.Execute(null);
         _vm.CancelDeviceScanCommand.Execute(null);
         await _vm.ShutdownWorkerAsync();
         await Dispatcher.InvokeAsync(() => { _closeAfterWorker = true; Close(); }, DispatcherPriority.ApplicationIdle).Task;
