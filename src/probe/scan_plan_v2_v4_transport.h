@@ -52,7 +52,12 @@ public:
         if (!exactGeometry && inFlightStep_ != Step::Duplex) disposition = Disposition::Failed;
         if (inFlightStep_ == Step::Duplex || inFlightStep_ == Step::Repeatability) usedActiveSeconds_ += inFlightDuration_;
         if (inFlightStep_ == Step::Repeatability) {
-            if (disposition != Disposition::Clean) { stopped_ = true; phase_ = Phase::RepeatabilityFailed; return; }
+            if (disposition != Disposition::Clean) {
+                if (!repeatSelected_ && cursor_ + 1 < candidates_.size()) {
+                    ++cursor_; repeatabilityCompleted_ = 0; selectedCandidateIndex_ = static_cast<unsigned>(-1); AdvancePastRejected();
+                } else { stopped_ = true; phase_ = Phase::RepeatabilityFailed; }
+                return;
+            }
             ++repeatabilityCompleted_;
             if (repeatabilityCompleted_ == repeatabilityRuns_) { stopped_ = true; phase_ = Phase::Done; }
             else { stopped_ = true; phase_ = Phase::RepeatabilityPending; }

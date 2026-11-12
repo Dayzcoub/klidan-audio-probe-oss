@@ -8,8 +8,20 @@ public static class WorkerScanV2PlanPreparation
         => PrepareCore(captureId, renderId, route, captureMatrix, renderMatrix, discoveryGeneration, repeatabilityRuns, diagnosticPeriodMilliseconds, diagnosticMmcssMode, false);
 
     public static WorkerScanV2ContractV4 PrepareRepeatSelected(string captureId, string renderId, WorkerScanV2Route route,
-        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, bool testOnlyAllowFake = false)
-        => PrepareCore(captureId, renderId, route, captureMatrix, renderMatrix, discoveryGeneration, 5, 10, "PRO_AUDIO", true, testOnlyAllowFake);
+        RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration,
+        WorkerScanV2Candidate selectedCandidate, bool testOnlyAllowFake = false)
+    {
+        ArgumentNullException.ThrowIfNull(selectedCandidate);
+        var prepared = PrepareCore(captureId, renderId, route, captureMatrix, renderMatrix, discoveryGeneration, 5, null, "PRO_AUDIO", true, testOnlyAllowFake);
+        var candidate = WorkerScanV2CandidatePlanning.Make(0, selectedCandidate.RequestedDuration100ns, route,
+            prepared.Candidates[0].CaptureMinimumFrames, prepared.Candidates[0].CaptureMaximumFrames,
+            prepared.Candidates[0].RenderMinimumFrames, prepared.Candidates[0].RenderMaximumFrames);
+        if (selectedCandidate.Index < 0 || selectedCandidate.RejectionReason.Length != 0 || candidate.RejectionReason.Length != 0 ||
+            candidate.CaptureFrames != selectedCandidate.CaptureFrames || candidate.RenderFrames != selectedCandidate.RenderFrames ||
+            selectedCandidate.CapturePeriod100ns != selectedCandidate.RequestedDuration100ns || selectedCandidate.RenderPeriod100ns != selectedCandidate.RequestedDuration100ns)
+            throw new InvalidDataException("Selected RepeatSelected candidate does not match current confirmed device bounds and frame geometry.");
+        return prepared with { Candidates = [candidate] };
+    }
 
     private static WorkerScanV2ContractV4 PrepareCore(string captureId, string renderId, WorkerScanV2Route route,
         RealFormatMatrixDto captureMatrix, RealFormatMatrixDto renderMatrix, ulong discoveryGeneration, int repeatabilityRuns,
@@ -24,7 +36,7 @@ public static class WorkerScanV2PlanPreparation
         IReadOnlyList<WorkerScanV2Candidate> candidates;
         if (diagnosticPeriodMilliseconds is { } diagnosticMs)
         {
-            if (diagnosticMs is not (5 or 10) || (!repeatSelected && repeatabilityRuns != 0) || diagnosticMmcssMode is not ("OFF" or "PRO_AUDIO") || route.Mode != "MONO_TO_STEREO" ||
+            if (diagnosticMs <= 0 || (!repeatSelected && repeatabilityRuns != 0) || diagnosticMmcssMode is not ("OFF" or "PRO_AUDIO") || route.Mode != "MONO_TO_STEREO" ||
                 route.Capture.SampleRateHz != 48_000 || route.Render.SampleRateHz != 48_000 ||
                 route.Capture.Encoding != "PCM16" || route.Render.Encoding != "PCM16")
                 throw new InvalidDataException(repeatSelected ? "RepeatSelected requires the reviewed 10 ms 48 kHz PCM16 MONO_TO_STEREO route." : "Point diagnostics require the reviewed 48 kHz PCM16 MONO_TO_STEREO route, 5/10 ms, and R=0.");

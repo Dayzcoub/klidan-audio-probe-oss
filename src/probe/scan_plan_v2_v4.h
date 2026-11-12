@@ -26,10 +26,10 @@ struct Budget { unsigned operations{}, activeSeconds{}, sessionSeconds{}; };
 
 inline Budget ComputeBudget(unsigned n, unsigned r) {
     if (n < 1 || n > 8 || r > 5) throw std::invalid_argument("V4 candidate/repeatability count out of range");
-    const auto operations = 3U * n + r;
-    const auto active = 5U * (n + r);
-    const auto session = 111U * n + 51U * r + 28U;
-    if (operations > 29 || active > 65 || session > 1171) throw std::invalid_argument("V4 budget exceeds hard ceiling");
+    const auto operations = n * (3U + r);
+    const auto active = 5U * n * (1U + r);
+    const auto session = 111U * n + 51U * n * r + 28U;
+    if (operations > 64 || active > 240 || session > 3600) throw std::invalid_argument("V4 budget exceeds hard ceiling");
     return {operations, active, session};
 }
 
@@ -62,7 +62,7 @@ inline std::string Canonical(std::string_view captureId, std::string_view render
                              std::string_view routeFingerprint, bool repeatSelected = false) {
     if (captureId.empty() || renderId.empty() || captureId == renderId || captureId != route.captureEndpointId || renderId != route.renderEndpointId || candidates.empty() || candidates.size() > 8 || repeatability > 5 || (mmcssMode != "OFF" && mmcssMode != "PRO_AUDIO"))
         throw std::invalid_argument("invalid V4 identity or scope");
-    if (repeatSelected && (candidates.size() != 1 || repeatability != 5 || candidates[0].duration100ns != 100'000 || candidates[0].captureFrames != 480 || candidates[0].renderFrames != 480))
+    if (repeatSelected && (candidates.size() != 1 || repeatability != 5))
         throw std::invalid_argument("invalid RepeatSelected candidate scope");
     const auto budget = repeatSelected ? ComputeRepeatSelectedBudget() : ComputeBudget(static_cast<unsigned>(candidates.size()), repeatability);
     ValidateBounds(captureBounds); ValidateBounds(renderBounds);

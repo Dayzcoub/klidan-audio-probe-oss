@@ -123,7 +123,7 @@ async Task<(int ExitCode, string Output)> RunHeadlessWithoutTerminalInput(params
 var noAuthorization = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "unauthorized"));
 Check(noAuthorization.ExitCode == 64 && noAuthorization.Output.Contains("requires --authorize-short-search", StringComparison.Ordinal) && !noAuthorization.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "headless physical search without explicit authorization exits before Worker startup without stdin");
 var authorizedNoTty = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "authorized"), "--authorize-short-search");
-Check(authorizedNoTty.ExitCode == 3 && authorizedNoTty.Output.Contains("Exact CAPTURE endpoint", StringComparison.Ordinal) && !authorizedNoTty.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "authorized headless search advances without TTY/stdin and stops on fake endpoint identity before audio operations");
+Check(authorizedNoTty.ExitCode == 64 && authorizedNoTty.Output.Contains("--capture-id and --render-id", StringComparison.Ordinal) && !authorizedNoTty.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "authorized headless search requires explicit discovered endpoint IDs before Worker startup");
 var originalSummary = Path.Combine(root.FullName, "..", "..", "..", "artifacts", "AS-N4B.2.2B5B.8A.1-headless-a22939757964-20261111-204406", "evidence", "v4-headless-a1623be774314a62a10043ff057fe237", "headless-summary.json");
 originalSummary = Path.GetFullPath(originalSummary);
 var staleEndpointRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "stale-endpoint"), "--authorize-r5", "--source-evidence", originalSummary);
@@ -865,7 +865,7 @@ try
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
     await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
-    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default, bool createV4Profile = false)
+    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default, bool createV4Profile = false, IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null)
     {
         var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
         var found = await client.ListWindowsEndpointsAsync();
@@ -874,7 +874,7 @@ try
         var captureId = captureEndpoint.EndpointId!;
         var renderId = renderEndpoint.EndpointId!;
         var searchRoute = routeOverride ?? route;
-        var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
+        var candidates = candidateOverride ?? WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeats);
         var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["PRO_AUDIO"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
@@ -945,8 +945,13 @@ try
     foreach (var failAt in new[] { 1, 3, 5 })
     {
         var failedRepeat = await RunV4Search($"repeat {failAt} FAILED synthetic", (index, operation) => operation == $"REPEAT_{failAt}" ? "SERVICE_FAILURE" : null, true);
-        Check(failedRepeat.Result.Evidence.SelectionState == "REPEATABILITY_FAILED" && failedRepeat.Result.Evidence.RepeatabilityCompleted == failAt && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED stops without extra repeats or stable profile");
+        Check(failedRepeat.Result.Evidence.SelectionState == "MINIMUM_NOT_PROVEN" && failedRepeat.Result.Evidence.StopReason == "NO_CANDIDATE_PASSED_REPEATABILITY" && failedRepeat.Result.Evidence.Candidates.All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Count == failAt) && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 8 * failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED is retained per candidate and search exhausts safely without a profile");
     }
+    var threeCandidates = new[] { 30_000L, 50_000L, 100_000L }.Select((period, index) => WorkerScanV2CandidatePlanning.Make(index, period, route, 144, 480, 144, 480)).ToArray();
+    var repeatFallback = await RunV4Search("3-to-5-to-10 repeatability fallback synthetic", (index, operation) => index < 2 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
+    Check(repeatFallback.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatFallback.Result.Evidence.SelectedCandidateIndex == 2 && repeatFallback.Result.Evidence.Candidates[0].Candidate.RequestedDuration100ns == 30_000 && repeatFallback.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && repeatFallback.Result.Evidence.Candidates[2].Candidate.RequestedDuration100ns == 100_000 && repeatFallback.Result.Evidence.Candidates.Take(2).All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Single().Result == "FAILED") && repeatFallback.Result.Evidence.Candidates[2].RepeatabilityStatus == "CONFIRMED" && repeatFallback.Result.Evidence.RepeatabilityCompleted == 5, "repeatability fallback checks 3, 5, then 10 ms in order and retains each failure before confirming 10 ms");
+    var stableFive = await RunV4Search("5 ms minimum stable synthetic", (index, operation) => index == 0 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
+    Check(stableFive.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && stableFive.Result.Evidence.SelectedCandidateIndex == 1 && stableFive.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && stableFive.Result.Evidence.Candidates[2].DuplexDisposition == "SKIPPED", "5 ms is chosen over 10 ms when it passes all repeatability checks");
     var unknownRepeat = await RunV4Search("repeat cleanup UNKNOWN synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : operation == "REPEAT_2" ? "CLEANUP_UNKNOWN" : null, true);
     Check(unknownRepeat.Result.Evidence.SelectionState == "UNKNOWN" && unknownRepeat.Result.Evidence.RepeatabilityCompleted == 2 && unknownRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 2 && unknownRepeat.Result.Evidence.RepeatabilityRuns[1].Cleanup == "UNKNOWN", "UNKNOWN cleanup on a repeat preserves that run and stops every later operation");
     using (var cancelRepeat = new CancellationTokenSource())
@@ -972,12 +977,12 @@ try
         {
             var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
             var captureId = endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!; var renderId = endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
-            var candidate = WorkerScanV2CandidatePlanning.Make(0, 100_000, route, 144, 480, 144, 480); var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+            var candidate = WorkerScanV2CandidatePlanning.Make(0, 50_000, route, 144, 480, 144, 480); var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
             var budget = new WorkerScanV2Budget(7, 25, 600);
             var plan = new WorkerScanV2ContractV4(route, [candidate], ["PRO_AUDIO"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds, true);
             var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
             var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-repeat-selected-" + Guid.NewGuid().ToString("N"));
-            var result = await new WorkerV4AutomaticSearchWorkflow(client).RepeatSelectedAsync(new(captureId, renderId, plan, consent), new string('b', 64), root,
+            var result = await new WorkerV4AutomaticSearchWorkflow(client).RepeatSelectedAsync(new(captureId, renderId, plan, consent), new string('b', 64), 4, root,
                 testScenario: i => { operations.Add($"REPEAT_{i + 1}"); return stopAt == $"REPEAT_{i + 1}" ? "SERVICE_FAILURE" : stopAt == "UNKNOWN" && i == 0 ? "CLEANUP_UNKNOWN" : "CLEAN"; }, testOnlyAllowFake: true);
             return (result, operations.ToArray(), root);
         }

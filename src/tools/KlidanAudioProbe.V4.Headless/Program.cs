@@ -3,12 +3,12 @@ using System.Text.Json;
 using KlidanAudioProbe.Gui.Core;
 using KlidanAudioProbe.Gui.Worker;
 
-const string BloodyCaptureId = "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}";
-const string BloodyRenderId = "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}";
 var options = Parse(args);
 if (options is null) return 64;
 if (options.Mode == "SHORT_SEARCH" && (!options.AuthorizeShortSearch || options.Scenario is not null))
     return Fail("Physical mode requires --authorize-short-search and does not accept test scenarios.", 64);
+if (options.Mode == "SHORT_SEARCH" && (string.IsNullOrWhiteSpace(options.CaptureId) || string.IsNullOrWhiteSpace(options.RenderId)))
+    return Fail("SHORT_SEARCH requires the freshly discovered --capture-id and --render-id.", 64);
 if (options.Mode == "REPEAT_SELECTED" && (!options.AuthorizeRepeatability || options.AuthorizeShortSearch || options.Scenario is not null || string.IsNullOrWhiteSpace(options.SourceEvidence)))
     return Fail("RepeatSelected requires a separate --authorize-r5 and --source-evidence; it never authorizes or runs ShortSearch.", 64);
 if (options.AuthorizeRepeatability && options.Mode != "REPEAT_SELECTED")
@@ -48,8 +48,8 @@ try
     await using var worker = new NativeWorkerClient(workerPath);
     await worker.ConnectAsync(cancellation.Token);
     var discovery = await worker.ListWindowsEndpointsAsync(cancellation.Token);
-    var captureId = options.Mode == "SHORT_SEARCH" ? BloodyCaptureId : options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("captureEndpointId").GetString() : options.CaptureId;
-    var renderId = options.Mode == "SHORT_SEARCH" ? BloodyRenderId : options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("renderEndpointId").GetString() : options.RenderId;
+    var captureId = options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("captureEndpointId").GetString() : options.CaptureId;
+    var renderId = options.Mode == "REPEAT_SELECTED" ? sourceSummary!.RootElement.GetProperty("renderEndpointId").GetString() : options.RenderId;
     var capture = SelectEndpoint(discovery, captureId, "CAPTURE", options.Mode == "DRY_RUN");
     var render = SelectEndpoint(discovery, renderId, "RENDER", options.Mode == "DRY_RUN");
     if (capture.EndpointId == render.EndpointId) throw new InvalidDataException("Capture and Render must be distinct current endpoints.");
@@ -58,16 +58,17 @@ try
     var captureMatrix = await worker.QueryFormatMatrixAsync(capture.EndpointId!, "CAPTURE", [2], cancellation.Token);
     var renderMatrix = await worker.QueryFormatMatrixAsync(render.EndpointId!, "RENDER", [2], cancellation.Token);
     var repeats = options.AuthorizeRepeatability ? 5 : 0;
+    WorkerScanV2Candidate? selectedSourceCandidate = options.Mode == "REPEAT_SELECTED" ? ReadSourceCandidate(sourceSummary!.RootElement, options.SourceEvidence!) : null;
     var plan = options.Mode == "SHORT_SEARCH"
         ? WorkerScanV2PlanPreparation.Prepare(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats)
         : options.Mode == "REPEAT_SELECTED"
-            ? WorkerScanV2PlanPreparation.PrepareRepeatSelected(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, worker.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal))
+            ? WorkerScanV2PlanPreparation.PrepareRepeatSelected(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, selectedSourceCandidate!, worker.Capabilities.Contains("TestInjectedFormatBackend", StringComparer.Ordinal))
         : PrepareFakePlan(capture.EndpointId!, render.EndpointId!, route, captureMatrix, renderMatrix, worker.DiscoveryGeneration, repeats);
     if (options.Mode == "REPEAT_SELECTED")
     {
         var original = sourceSummary!.RootElement;
         if (original.GetProperty("provenance").GetString() != "REAL_WASAPI_V4_DUPLEX" || original.GetProperty("selectionState").GetString() != "MINIMUM_SHORT_CLEAN_FOUND" ||
-            original.GetProperty("selectedCandidateIndex").GetInt32() != 7 || original.GetProperty("sessionCleanup").GetString() != "CLOSE_CONFIRMED" ||
+            original.GetProperty("selectedCandidateIndex").GetInt32() != selectedSourceCandidate!.Index || original.GetProperty("sessionCleanup").GetString() != "CLOSE_CONFIRMED" ||
             original.GetProperty("captureEndpointId").GetString() != capture.EndpointId || original.GetProperty("renderEndpointId").GetString() != render.EndpointId)
             throw new InvalidDataException("Verified source evidence no longer matches its selected real candidate or freshly discovered endpoints.");
     }
@@ -82,7 +83,7 @@ try
     var progress = new ConsoleProgress();
     var scenario = options.Mode == "DRY_RUN" ? DryRunScenario(options.Scenario!) : null;
     var result = options.Mode == "REPEAT_SELECTED"
-        ? await new WorkerV4AutomaticSearchWorkflow(worker).RepeatSelectedAsync(prepared, sourceEvidenceSha!, runRoot, cancellation.Token,
+        ? await new WorkerV4AutomaticSearchWorkflow(worker).RepeatSelectedAsync(prepared, sourceEvidenceSha!, selectedSourceCandidate!.Index, runRoot, cancellation.Token,
             testScenario: null, testOnlyAllowFake: false)
         : await new WorkerV4AutomaticSearchWorkflow(worker).RunAsync(prepared, runRoot, cancellation.Token,
             testScenario: scenario, runRepeatability: repeats == 5, captureEndpoint: capture, renderEndpoint: render, progress: progress);
@@ -120,7 +121,7 @@ try
             captureInitializeEvidence = entry.CaptureInitializeEvidence,
             renderInitializeEvidence = entry.RenderInitializeEvidence,
             duplexEvidence = entry.DuplexEvidence,
-            repeatability = result.Evidence.RepeatabilityRuns.Where(r => r.CandidateIndex == entry.Candidate.Index).ToArray()
+            repeatability = entry.RepeatabilityEvidence
         }, Options());
         WriteNoOverwriteAndVerify(path, json, "candidateIndex", entry.Candidate.Index.ToString());
         candidateFiles.Add(new { path = filename, sha256 = Hash(json) });
@@ -149,7 +150,7 @@ try
         candidateCount = result.Evidence.CandidateDomain.Count,
         repeatabilityAuthorized = repeats == 5,
         sourceEvidenceSha256 = sourceEvidenceSha,
-        sourceCandidateIndex = sourceEvidenceSha is null ? (int?)null : 7,
+        sourceCandidateIndex = selectedSourceCandidate?.Index,
         repeatabilityRequested = result.Evidence.RepeatabilityRequested,
         repeatabilityCompleted = result.Evidence.RepeatabilityCompleted,
         selectionState = result.Evidence.SelectionState,
@@ -232,9 +233,9 @@ static string VerifySourceEvidence(string summaryPath, out JsonDocument summary)
     summary = JsonDocument.Parse(bytes);
     var root = summary.RootElement;
     if (root.GetProperty("schemaVersion").GetInt32() != 1 || root.GetProperty("mode").GetString() != "SHORT_SEARCH" ||
-        root.GetProperty("buildSha").GetString() != "a22939757964da4a89532085a6c21baf9016ef65" || root.GetProperty("route").GetString() != "MONO_TO_STEREO" ||
+        root.GetProperty("buildSha").GetString() is not { Length: 40 } sourceBuildSha || !sourceBuildSha.All(Uri.IsHexDigit) || root.GetProperty("route").GetString() != "MONO_TO_STEREO" ||
         root.GetProperty("sampleRateHz").GetInt32() != 48_000 || root.GetProperty("encoding").GetString() != "PCM16" || root.GetProperty("mmcss").GetString() != "PRO_AUDIO" ||
-        root.GetProperty("selectionState").GetString() != "MINIMUM_SHORT_CLEAN_FOUND" || root.GetProperty("selectedCandidateIndex").GetInt32() != 7 ||
+        root.GetProperty("selectionState").GetString() != "MINIMUM_SHORT_CLEAN_FOUND" || root.GetProperty("selectedCandidateIndex").GetInt32() < 0 ||
         root.GetProperty("repeatabilityAuthorized").GetBoolean() || root.GetProperty("repeatabilityCompleted").GetInt32() != 0 ||
         root.GetProperty("sessionCleanup").GetString() != "CLOSE_CONFIRMED" || root.GetProperty("profileEligible").GetBoolean())
         throw new InvalidDataException("Source summary has an unexpected result, route or cleanup state.");
@@ -244,12 +245,13 @@ static string VerifySourceEvidence(string summaryPath, out JsonDocument summary)
     var matrixPath = SourcePath(directory, root.GetProperty("candidateMatrixPath").GetString()!);
     if (HashFile(matrixPath) != root.GetProperty("candidateMatrixSha256").GetString()) throw new InvalidDataException("Candidate matrix SHA-256 mismatch.");
     using var matrix = JsonDocument.Parse(File.ReadAllBytes(matrixPath));
-    var selected = matrix.RootElement.GetProperty("candidates").EnumerateArray().Single(e => e.GetProperty("candidate").GetProperty("index").GetInt32() == 7);
+    var selectedIndex = root.GetProperty("selectedCandidateIndex").GetInt32();
+    var selected = matrix.RootElement.GetProperty("candidates").EnumerateArray().Single(e => e.GetProperty("candidate").GetProperty("index").GetInt32() == selectedIndex);
     var capInit = selected.GetProperty("captureInitializeEvidence"); var renInit = selected.GetProperty("renderInitializeEvidence"); var duplex = selected.GetProperty("duplexEvidence");
     var report = duplex.GetProperty("report"); var requested = report.GetProperty("requested"); var route = report.GetProperty("route");
     if (duplex.GetProperty("routeFingerprint").GetString() != matrix.RootElement.GetProperty("routeFingerprint").GetString() ||
-        selected.GetProperty("candidate").GetProperty("requestedDuration100ns").GetInt64() != 100_000 ||
-        selected.GetProperty("candidate").GetProperty("captureFrames").GetInt32() != 480 || selected.GetProperty("candidate").GetProperty("renderFrames").GetInt32() != 480 ||
+        selected.GetProperty("candidate").GetProperty("requestedDuration100ns").GetInt64() <= 0 ||
+        selected.GetProperty("candidate").GetProperty("captureFrames").GetInt32() <= 0 || selected.GetProperty("candidate").GetProperty("renderFrames").GetInt32() <= 0 ||
         selected.GetProperty("duplexDisposition").GetString() != "CLEAN" || selected.GetProperty("provenance").GetString() != "REAL_WASAPI_V4_DUPLEX" ||
         selected.GetProperty("captureCleanup").GetString() != "RELEASE_ATTEMPTED" || selected.GetProperty("renderCleanup").GetString() != "RELEASE_ATTEMPTED" ||
         duplex.GetProperty("cleanup").GetString() != "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" ||
@@ -268,6 +270,16 @@ static string VerifySourceEvidence(string summaryPath, out JsonDocument summary)
         if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Source evidence contains an unsafe relative path.");
         return path;
     }
+}
+static WorkerScanV2Candidate ReadSourceCandidate(JsonElement summary, string summaryPath)
+{
+    var directory = Path.GetDirectoryName(Path.GetFullPath(summaryPath))!;
+    var matrixPath = Path.GetFullPath(Path.Combine(directory, summary.GetProperty("candidateMatrixPath").GetString()!));
+    using var matrix = JsonDocument.Parse(File.ReadAllBytes(matrixPath));
+    var index = summary.GetProperty("selectedCandidateIndex").GetInt32();
+    var element = matrix.RootElement.GetProperty("candidates").EnumerateArray().Single(e => e.GetProperty("candidate").GetProperty("index").GetInt32() == index).GetProperty("candidate");
+    return JsonSerializer.Deserialize<WorkerScanV2Candidate>(element.GetRawText(), new JsonSerializerOptions(JsonSerializerDefaults.Web))
+        ?? throw new InvalidDataException("Selected source candidate is missing.");
 }
 static int Fail(string message, int code) { Console.Error.WriteLine($"ERROR={message}"); return code; }
 static JsonSerializerOptions Options() => new(JsonSerializerDefaults.Web) { WriteIndented = true };

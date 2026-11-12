@@ -23,9 +23,9 @@ int Run() {
         candidates.push_back({i, duration, frames, frames, duration, duration, 0, 0, false, false, 144, 480, 144, 480, ""});
     }
     const PeriodBounds normalBounds{30'000, 100'000, 0, false};
-    assert(ComputeBudget(8, 5).operations == 29);
-    assert(ComputeBudget(8, 5).activeSeconds == 65);
-    assert(ComputeBudget(8, 5).sessionSeconds == 1171);
+    assert(ComputeBudget(8, 5).operations == 64);
+    assert(ComputeBudget(8, 5).activeSeconds == 240);
+    assert(ComputeBudget(8, 5).sessionSeconds == 2956);
     const auto repeatBudget = ComputeRepeatSelectedBudget();
     assert(repeatBudget.operations == 7 && repeatBudget.activeSeconds == 25 && repeatBudget.sessionSeconds == 600);
     const std::vector<Candidate> selected{{0, 100'000, 480, 480, 100'000, 100'000, 0, 0, false, false, 144, 480, 144, 480, ""}};
@@ -42,13 +42,13 @@ int Run() {
         if (i < 4) repeatSelectedSequence.BeginRepeatability();
     }
     assert(repeatSelectedSequence.Complete() && repeatSelectedSequence.UsedOperations() == 7 && repeatSelectedSequence.UsedActiveSeconds() == 25);
-    const auto canonical = Canonical("capture", "render", route, normalBounds, normalBounds, candidates, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(route));
+    const auto canonical = Canonical("capture", "render", route, normalBounds, normalBounds, candidates, 5, "OFF", 64, 240, 30, 2956, 8, 7, Fingerprint(route));
     assert(canonical.starts_with("SCAN_PLAN_V2|4|7|capture|render|"));
     assert(canonical.find("B|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n") != std::string::npos);
     assert(canonical.find("C|0|30000|144|144|30000|30000|0|false|0|false|144|480|144|480|\n") != std::string::npos);
     auto changed = candidates; changed[0].captureFrames++;
     bool rejected = false;
-    try { (void)Canonical("capture", "render", route, normalBounds, normalBounds, changed, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(route)); } catch (const std::invalid_argument&) { rejected = true; }
+    try { (void)Canonical("capture", "render", route, normalBounds, normalBounds, changed, 5, "OFF", 64, 240, 30, 2956, 8, 7, Fingerprint(route)); } catch (const std::invalid_argument&) { rejected = true; }
     assert(rejected);
     rejected = false;
     try { (void)ComputeBudget(9, 5); } catch (const std::invalid_argument&) { rejected = true; }
@@ -65,14 +65,14 @@ int Run() {
     unicodeRoute.capture.format.sampleRate = 48'000;
     unicodeRoute.captureEndpointId = "capture-кириллица";
     unicodeRoute.renderEndpointId = "render-音声";
-    auto unicodeCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "OFF", 29, 65, 30, 1171, 8, 7, Fingerprint(unicodeRoute));
-    const std::string expected = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|29|65|30|1171|8|\nB|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n"
+    auto unicodeCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "OFF", 64, 240, 30, 2956, 8, 7, Fingerprint(unicodeRoute));
+    const std::string expected = "SCAN_PLAN_V2|4|7|capture-кириллица|render-音声|d2e58c0f94fa7718|5|64|240|30|2956|8|\nB|30000|100000|ALIGNMENT_UNKNOWN|30000|100000|ALIGNMENT_UNKNOWN\n"
         "C|0|30000|144|144|30000|30000|0|false|0|false|144|480|144|480|\nC|1|40000|192|192|40000|40000|0|false|0|false|144|480|144|480|\n"
         "C|2|50000|240|240|50000|50000|0|false|0|false|144|480|144|480|\nC|3|60000|288|288|60000|60000|0|false|0|false|144|480|144|480|\n"
         "C|4|70000|336|336|70000|70000|0|false|0|false|144|480|144|480|\nC|5|80000|384|384|80000|80000|0|false|0|false|144|480|144|480|\n"
         "C|6|90000|432|432|90000|90000|0|false|0|false|144|480|144|480|\nC|7|100000|480|480|100000|100000|0|false|0|false|144|480|144|480|\nM|OFF\n";
     assert(unicodeCanonical == expected);
-    const auto proAudioCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "PRO_AUDIO", 29, 65, 30, 1171, 8, 7, Fingerprint(unicodeRoute));
+    const auto proAudioCanonical = Canonical(unicodeRoute.captureEndpointId, unicodeRoute.renderEndpointId, unicodeRoute, normalBounds, normalBounds, candidates, 5, "PRO_AUDIO", 64, 240, 30, 2956, 8, 7, Fingerprint(unicodeRoute));
     assert(proAudioCanonical.ends_with("M|PRO_AUDIO\n") && proAudioCanonical != canonical);
 
     TransportSequence sequence(candidates, 24, 40);
@@ -119,16 +119,31 @@ int Run() {
     try { bloody.Begin(2, Step::Repeatability, "repeat-sixth", 5); } catch (const std::invalid_argument&) { sixthRejected = true; }
     assert(sixthRejected);
 
-    TransportSequence repeatFailure(candidates, 29, 65, 5);
+    TransportSequence repeatFailure(candidates, 64, 240, 5);
     repeatFailure.Begin(0, Step::CaptureInitialize, "rc"); repeatFailure.Complete(Disposition::Clean, true);
     repeatFailure.Begin(0, Step::RenderInitialize, "rr"); repeatFailure.Complete(Disposition::Clean, true);
     repeatFailure.Begin(0, Step::Duplex, "rd", 5); repeatFailure.Complete(Disposition::Clean, true);
     repeatFailure.BeginRepeatability(); repeatFailure.Begin(0, Step::Repeatability, "rf1", 5);
     repeatFailure.Complete(Disposition::Failed, true);
-    assert(repeatFailure.RepeatabilityFailed() && repeatFailure.CandidateIndex() == 0);
-    bool fallbackRejected = false;
-    try { repeatFailure.Begin(1, Step::CaptureInitialize, "fallback"); } catch (const std::invalid_argument&) { fallbackRejected = true; }
-    assert(fallbackRejected);
+    assert(!repeatFailure.Stopped() && !repeatFailure.RepeatabilityFailed() && repeatFailure.CandidateIndex() == 1);
+    repeatFailure.Begin(1, Step::CaptureInitialize, "fallback"); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.Begin(1, Step::RenderInitialize, "fallback-render"); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.Begin(1, Step::Duplex, "fallback-duplex", 5); repeatFailure.Complete(Disposition::Clean, true);
+    repeatFailure.BeginRepeatability();
+    for (unsigned i = 0; i < 5; ++i) {
+        repeatFailure.Begin(1, Step::Repeatability, "fallback-repeat-" + std::to_string(i), 5);
+        repeatFailure.Complete(Disposition::Clean, true);
+        if (i < 4) repeatFailure.BeginRepeatability();
+    }
+    assert(repeatFailure.Complete() && repeatFailure.SelectedCandidateIndex() == 1);
+
+    TransportSequence repeatCleanupUnknown(candidates, 64, 240, 5);
+    repeatCleanupUnknown.Begin(0, Step::CaptureInitialize, "rcu-c"); repeatCleanupUnknown.Complete(Disposition::Clean, true);
+    repeatCleanupUnknown.Begin(0, Step::RenderInitialize, "rcu-r"); repeatCleanupUnknown.Complete(Disposition::Clean, true);
+    repeatCleanupUnknown.Begin(0, Step::Duplex, "rcu-d", 5); repeatCleanupUnknown.Complete(Disposition::Clean, true);
+    repeatCleanupUnknown.BeginRepeatability(); repeatCleanupUnknown.Begin(0, Step::Repeatability, "rcu-repeat", 5);
+    repeatCleanupUnknown.Complete(Disposition::Failed, false);
+    assert(repeatCleanupUnknown.Stopped() && repeatCleanupUnknown.CandidateIndex() == 0);
 
     TransportSequence flow8(candidates, 24, 40);
     flow8.Begin(0, Step::CaptureInitialize, "fc0"); flow8.Complete(Disposition::Clean, true);

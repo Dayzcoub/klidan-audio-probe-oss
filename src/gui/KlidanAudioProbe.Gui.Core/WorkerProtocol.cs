@@ -290,10 +290,10 @@ public static class WorkerScanV2ContractV4Fingerprint
         if (candidateCount is < 1 or > 8 || repeatabilityRuns is < 0 or > 5) throw new ArgumentOutOfRangeException(nameof(candidateCount));
         checked
         {
-            var operations = 3 * candidateCount + repeatabilityRuns;
-            var active = 5 * (candidateCount + repeatabilityRuns);
-            var lifetime = 111 * candidateCount + 51 * repeatabilityRuns + 28;
-            if (operations > 29 || active > 65 || lifetime > 1171) throw new ArgumentOutOfRangeException(nameof(candidateCount));
+            var operations = candidateCount * (3 + repeatabilityRuns);
+            var active = 5 * candidateCount * (1 + repeatabilityRuns);
+            var lifetime = 111 * candidateCount + 51 * candidateCount * repeatabilityRuns + 28;
+            if (operations > 64 || active > 240 || lifetime > 3600) throw new ArgumentOutOfRangeException(nameof(candidateCount));
             return new(operations, active, lifetime);
         }
     }
