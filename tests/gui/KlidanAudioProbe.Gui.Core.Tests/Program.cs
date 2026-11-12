@@ -1068,6 +1068,32 @@ v4ConsentCheck.IsChecked = true; v2LayoutWindow.UpdateLayout();
 Check(v4AcceptButton.IsEnabled, "WPF enables v4 consent acceptance only after explicit plan review");
 v4AcceptButton.Command!.Execute(null);
 Check(v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt?.PlanFingerprint == v2RouteVm.V4PlanFingerprint && v2RouteVm.V4ConsentReceipt?.DiscoveryGeneration == v2RouteWorker.DiscoveryGeneration && v2RouteWorker.RealInitializeCalls == 0 && v2RouteWorker.DuplexCalls == 0, "v4 receipt binds the displayed plan fingerprint and Worker generation without opening audio transport");
+var v4RunPanel = (StackPanel)v2LayoutWindow.FindName("V4SearchRunPanel");
+var v4CancelScanButton = (Button)v2LayoutWindow.FindName("V4CancelScanButton");
+var v4ProgressText = (TextBlock)v2LayoutWindow.FindName("V4ScanProgressText");
+var v4ResultsPanel = (Border)v2LayoutWindow.FindName("V4SearchResultsPanel");
+var heldV4Workflow = new HeldV4SearchWorkflow();
+typeof(MainViewModel).GetField("_v4AutomaticSearchWorkflow", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, heldV4Workflow);
+v2RouteVm.StartV4ScanCommand.Refresh(); v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.V4SearchUiState == "READY" && v4RunPanel.Visibility == Visibility.Visible && v4StartButton.Visibility == Visibility.Visible && v4StartButton.IsEnabled && v4CancelScanButton.Visibility != Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, $"V4 READY exposes one-use start consent and hides progress/result controls [state={v2RouteVm.V4SearchUiState}; panel={v4RunPanel.Visibility}; start={v4StartButton.Visibility}/{v4StartButton.IsEnabled}; cancel={v4CancelScanButton.Visibility}; result={v4ResultsPanel.Visibility}]");
+v4StartButton.Command!.Execute(null);
+Check(PumpUntil(() => heldV4Workflow.Started, TimeSpan.FromSeconds(2)), "V4 fake workflow enters RUNNING without starting native audio");
+v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.V4SearchUiState == "RUNNING" && v2RouteVm.V4ConsentReceipt is null && !v2RouteVm.StartV4ScanCommand.CanExecute(null) && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility == Visibility.Visible && v4ProgressText.Visibility == Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, "V4 RUNNING consumes the receipt, shows progress/cancel, and blocks replay");
+var unknownSearchEvidence = displayEvidence with { SelectionState = "UNKNOWN", SelectedCandidateIndex = null, ProfileEligible = false, ProfilePath = null, StopReason = "IPC_RESPONSE_UNKNOWN" };
+heldV4Workflow.Complete(new V4AutomaticSearchResult(unknownSearchEvidence, "unknown-evidence.json"));
+Check(PumpUntil(() => v2RouteVm.V4SearchUiState == "FINISHED", TimeSpan.FromSeconds(3)), "V4 UNKNOWN reaches terminal state");
+v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.V4ResultState == "UNKNOWN" && v2RouteVm.V4ResultSummary.Contains("UNKNOWN", StringComparison.Ordinal) && v2RouteVm.V4ResultSummary.Contains("unknown-evidence.json", StringComparison.Ordinal) && v2RouteVm.V4ConsentReceipt is null && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility != Visibility.Visible && v4ProgressText.Visibility != Visibility.Visible && v4ResultsPanel.Visibility == Visibility.Visible && ((TextBlock)v2LayoutWindow.FindName("V4EvidencePathText")).Text == "unknown-evidence.json", "V4 FINISHED keeps UNKNOWN result and evidence visible with no replay control");
+v2RouteVm.V4RepeatabilityRuns = 0;
+v2RouteVm.PrepareV4CustomPlanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.V4ConsentPending, TimeSpan.FromSeconds(3)), "V4 failure-path test prepares a fresh plan and receipt");
+v2RouteVm.V4ConsentChecked = true; v2RouteVm.AcceptV4CustomPlanCommand.Execute(null);
+heldV4Workflow.FailNext(new IOException("fixture workflow failure"));
+v2RouteVm.StartV4ScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.V4SearchUiState == "FINISHED", TimeSpan.FromSeconds(3)), "V4 workflow exception reaches terminal state");
+v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.V4ResultState == "FAILED" && v2RouteVm.V4ResultSummary.Contains("fixture workflow failure", StringComparison.Ordinal) && v4ResultsPanel.Visibility == Visibility.Visible && v2RouteVm.V4ConsentReceipt is null, "V4 FINISHED retains workflow failure summary after receipt consumption");
 Check(Localization.Get("V4ConsentCheck", System.Globalization.CultureInfo.GetCultureInfo("en-US")).Contains("open speakers", StringComparison.OrdinalIgnoreCase) && typeof(MainViewModel).GetField("_v4AudioHostConsentPlanFingerprint", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm) as string == v2RouteVm.V4PlanFingerprint, "physical AudioHost permission is explicit and bound to the accepted endpoint plan");
 Check(Localization.Get("VmV4AudioGateClosed", ruCulture).Contains("профиля", StringComparison.Ordinal) && Localization.Get("V4PlanHeading", System.Globalization.CultureInfo.GetCultureInfo("en-US")).Contains("CUSTOM", StringComparison.Ordinal), "v4 consent gate is localized in Russian and English");
 v2RouteVm.V4RepeatabilityRuns = 4;
@@ -3842,6 +3868,25 @@ sealed class FragmentReadStream(byte[] content, int maximumRead) : MemoryStream(
 {
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => base.ReadAsync(buffer[..Math.Min(buffer.Length, maximumRead)], cancellationToken);
     public override int Read(byte[] buffer, int offset, int count) => base.Read(buffer, offset, Math.Min(count, maximumRead));
+}
+
+sealed class HeldV4SearchWorkflow : IV4AutomaticSearchWorkflow
+{
+    private TaskCompletionSource<V4AutomaticSearchResult> _next = NewCompletion();
+    public bool Started { get; private set; }
+    public Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
+        string evidenceRoot, string profileDirectory, bool runRepeatability, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
+    {
+        Started = true;
+        return _next.Task;
+    }
+    public void Complete(V4AutomaticSearchResult result) => _next.TrySetResult(result);
+    public void FailNext(Exception exception)
+    {
+        _next = NewCompletion();
+        _next.SetException(exception);
+    }
+    private static TaskCompletionSource<V4AutomaticSearchResult> NewCompletion() => new();
 }
 
 sealed class PointDiagnosticWorkflowFake : IV4AutomaticSearchWorkflow

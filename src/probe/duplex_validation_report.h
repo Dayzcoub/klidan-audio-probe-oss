@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <cmath>
 #include <charconv>
+#include <array>
+#include <cstddef>
 #include <vector>
 #include <optional>
 #include <string>
@@ -25,6 +27,18 @@ struct DiscontinuityPacket {
     std::optional<std::uint64_t> devicePositionDeltaFrames;
     const char* devicePositionTransition = "UNAVAILABLE";
     const char* phase = "UNKNOWN";
+};
+
+struct DiscontinuityPacketBuffer {
+    static constexpr std::size_t Capacity = 16;
+    std::array<DiscontinuityPacket, Capacity> packets{};
+    std::size_t count = 0;
+    std::uint64_t omitted = 0;
+
+    void Record(const DiscontinuityPacket& packet) noexcept {
+        if (count < packets.size()) packets[count++] = packet;
+        else ++omitted;
+    }
 };
 
 struct Side {

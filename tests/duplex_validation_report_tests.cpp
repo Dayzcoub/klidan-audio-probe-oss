@@ -91,8 +91,11 @@ int main() {
     diagnosticReport.capture.startupDiscontinuities = 0;
     diagnosticReport.capture.steadyDiscontinuities = 1;
     diagnosticReport.capture.discontinuitiesWithoutPositionAnomaly = 1;
-    diagnosticReport.capture.discontinuityPackets.push_back({500, 499, 2'345.67, 0x1u, 240'000, 123'456,
-        0, "CONTIGUOUS", "STEADY"});
+    DuplexValidationReport::DiscontinuityPacketBuffer packetBuffer;
+    for (std::uint64_t ordinal = 500; ordinal < 517; ++ordinal)
+        packetBuffer.Record({ordinal, 499, 2'345.67, 0x1u, 240'000, 123'456, 0, "CONTIGUOUS", "STEADY"});
+    diagnosticReport.capture.discontinuityPacketDetailsOmitted = packetBuffer.omitted;
+    diagnosticReport.capture.discontinuityPackets.assign(packetBuffer.packets.begin(), packetBuffer.packets.begin() + packetBuffer.count);
     const auto diagnosticJson = DuplexValidationReport::ToJson(diagnosticReport);
     rapidjson::Document diagnostic;
     diagnostic.Parse(diagnosticJson.data(), diagnosticJson.size());
@@ -100,8 +103,10 @@ int main() {
     if (diagnostic.HasParseError() || capture["discontinuities"].GetUint64() != 1 ||
         capture["startupDiscontinuities"].GetUint64() != 0 || capture["steadyDiscontinuities"].GetUint64() != 1 ||
         capture["discontinuitiesWithoutPositionAnomaly"].GetUint64() != 1 ||
-        capture["discontinuityPackets"].Size() != 1 ||
+        packetBuffer.count != 16 || packetBuffer.omitted != 1 ||
+        capture["discontinuityPacketDetailsOmitted"].GetUint64() != 1 || capture["discontinuityPackets"].Size() != 16 ||
         capture["discontinuityPackets"][0]["packetOrdinal"].GetUint64() != 500 ||
+        capture["discontinuityPackets"][15]["packetOrdinal"].GetUint64() != 515 ||
         capture["discontinuityPackets"][0]["eventOrdinal"].GetUint64() != 499 ||
         capture["discontinuityPackets"][0]["millisecondsSinceStart"].GetDouble() != 2'345.67 ||
         capture["discontinuityPackets"][0]["flags"].GetUint() != 1 ||

@@ -206,6 +206,7 @@ public sealed class MainViewModel : ViewModel
     private bool _v4Preparing, _v4ConsentPending, _v4ConsentChecked;
     private string? _v4AudioHostConsentPlanFingerprint;
     private bool _v4ScanRunning;
+    private bool _v4ScanFinished;
     private WindowsEndpointDto? _v4CaptureEndpoint, _v4RenderEndpoint;
     private CancellationTokenSource? _v4ScanCancellation;
     private TaskCompletionSource? _v4ScanTerminal;
@@ -548,7 +549,12 @@ public sealed class MainViewModel : ViewModel
     public bool V4SearchConsentPending => !_v4DiagnosticPlanMode && _v4ConsentPending;
     public bool V4DiagnosticReceiptCreated => _v4DiagnosticPlanMode && V4ReceiptCreated;
     public bool V4DiagnosticRunVisible => _v4DiagnosticPlanMode && (V4DiagnosticReceiptCreated || _v4DiagnosticRunStarted);
-    public bool V4SearchReceiptCreated => !_v4DiagnosticPlanMode && V4ReceiptCreated;
+    public string V4SearchUiState => _v4DiagnosticPlanMode ? "HIDDEN" : V4ScanRunning ? "RUNNING" : _v4ScanFinished ? "FINISHED" : V4ReceiptCreated ? "READY" : "HIDDEN";
+    public bool V4SearchRunVisible => V4SearchUiState != "HIDDEN";
+    public bool V4SearchReady => V4SearchUiState == "READY";
+    public bool V4SearchRunning => V4SearchUiState == "RUNNING";
+    public bool V4SearchFinished => V4SearchUiState == "FINISHED";
+    public bool V4SearchReceiptCreated => V4SearchReady;
     public bool V4DiagnosticConsentChecked { get => _v4DiagnosticConsentChecked; set { if (Set(ref _v4DiagnosticConsentChecked, value)) AcceptV4DiagnosticPlanCommand.Refresh(); } }
     public string V4DiagnosticAvailabilityReason => GetV4DiagnosticDisabledReason();
     public bool V4PlanPreparing => _v4Preparing;
@@ -562,9 +568,9 @@ public sealed class MainViewModel : ViewModel
     public bool V4SearchPlanUiVisible => V4CustomPlanControlsVisible;
     public string V4AudioGateText => Localization.Get(_v4AutomaticSearchWorkflow is null ? "VmV4AudioGateClosed" : "VmV4AudioGateOpen");
     public string V4PrepareDisabledReason => GetV4PrepareDisabledReason();
-    public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); RefreshV4Commands(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
+    public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(V4SearchUiState)); Changed(nameof(V4SearchRunVisible)); Changed(nameof(V4SearchReady)); Changed(nameof(V4SearchRunning)); Changed(nameof(V4SearchFinished)); Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); RefreshV4Commands(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
     public string V4ProgressText => _v4ProgressText;
-    public string V4ResultState => _v4SearchResult?.Evidence.DiagnosticOnly == true ? "DIAGNOSTIC_ONLY" : _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
+    public string V4ResultState => _v4SearchResult is null && _v4ScanFinished ? "FAILED" : _v4SearchResult?.Evidence.DiagnosticOnly == true ? "DIAGNOSTIC_ONLY" : _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
     public string V4ResultSummary => BuildV4ResultSummary();
     public string V4EvidencePath => _v4EvidencePath;
     public string V4PlanFingerprint => _v4PlanFingerprint ?? Localization.Get("VmV4NoFingerprint");
@@ -1871,7 +1877,7 @@ public sealed class MainViewModel : ViewModel
     {
         PrepareV4CustomPlanCommand?.Refresh(); AcceptV4CustomPlanCommand?.Refresh(); CancelV4CustomPlanCommand?.Refresh();
         PrepareV4DiagnosticPlanCommand?.Refresh(); AcceptV4DiagnosticPlanCommand?.Refresh(); StartV4DiagnosticCommand?.Refresh();
-        StartV4ScanCommand?.Refresh(); CancelV4ScanCommand?.Refresh(); Changed(nameof(V4PrepareDisabledReason)); Changed(nameof(V4DiagnosticAvailabilityReason)); Changed(nameof(V4DiagnosticPlanMode)); Changed(nameof(V4SearchPlanUiVisible)); Changed(nameof(V4DiagnosticConsentPending)); Changed(nameof(V4SearchConsentPending)); Changed(nameof(V4DiagnosticReceiptCreated)); Changed(nameof(V4DiagnosticRunVisible)); Changed(nameof(V4SearchReceiptCreated));
+        StartV4ScanCommand?.Refresh(); CancelV4ScanCommand?.Refresh(); Changed(nameof(V4PrepareDisabledReason)); Changed(nameof(V4DiagnosticAvailabilityReason)); Changed(nameof(V4DiagnosticPlanMode)); Changed(nameof(V4SearchPlanUiVisible)); Changed(nameof(V4DiagnosticConsentPending)); Changed(nameof(V4SearchConsentPending)); Changed(nameof(V4DiagnosticReceiptCreated)); Changed(nameof(V4DiagnosticRunVisible)); Changed(nameof(V4SearchUiState)); Changed(nameof(V4SearchRunVisible)); Changed(nameof(V4SearchReady)); Changed(nameof(V4SearchRunning)); Changed(nameof(V4SearchFinished)); Changed(nameof(V4SearchReceiptCreated));
     }
 
     private Task PrepareV4CustomPlanAsync() => PrepareV4PlanAsync(false);
@@ -1884,6 +1890,8 @@ public sealed class MainViewModel : ViewModel
             SelectedDuplexRenderEndpoint is not { DeviceState: "ACTIVE", EndpointId.Length: > 0 } render ||
             _windowsDiscoveryGeneration is not { } uiGeneration) return;
         InvalidateV4PreparedPlan("VmV4PlanPreparationStarted");
+        _v4ScanFinished = false; _v4SearchResult = null; _v4EvidencePath = "";
+        Changed(nameof(V4SearchUiState)); Changed(nameof(V4SearchRunVisible)); Changed(nameof(V4SearchFinished)); Changed(nameof(V4ResultState)); Changed(nameof(V4ResultSummary)); Changed(nameof(V4EvidencePath));
         _v4DiagnosticPlanMode = diagnosticOnly;
         var version = Interlocked.Increment(ref _v4PreparationVersion);
         var workerGeneration = _worker.DiscoveryGeneration;
@@ -1963,7 +1971,7 @@ public sealed class MainViewModel : ViewModel
         _v4AudioHostConsentPlanFingerprint = !_v4DiagnosticPlanMode && _v4ConsentChecked ? _v4PlanFingerprint : null;
         _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false;
         _v4PlanStatusKey = "VmV4ReceiptCreatedReady"; _v4PlanStatusArgument = null;
-        Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); Changed(nameof(V4PlanStatus)); Changed(nameof(V4ConsentSummary));
+        Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); Changed(nameof(V4SearchUiState)); Changed(nameof(V4SearchRunVisible)); Changed(nameof(V4SearchReady)); Changed(nameof(V4SearchReceiptCreated)); Changed(nameof(V4PlanStatus)); Changed(nameof(V4ConsentSummary));
         RefreshV4Commands();
     }
 
@@ -2036,6 +2044,7 @@ public sealed class MainViewModel : ViewModel
         }
         finally
         {
+            _v4ScanFinished = true;
             if (ReferenceEquals(_v4ScanCancellation, cancellation)) _v4ScanCancellation = null;
             cancellation.Dispose(); V4ScanRunning = false;
             terminal.TrySetResult();

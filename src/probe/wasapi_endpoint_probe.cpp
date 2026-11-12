@@ -293,7 +293,6 @@ void PrintChannelTopology(const char* label, const ChannelMeter::FormatTopology&
 }
 
 struct StreamExecution {
-    static constexpr std::size_t kMaximumDiscontinuityPacketDetails = 16;
     bool startAttempted = false;
     bool started = false;
     bool durationReached = false;
@@ -334,9 +333,7 @@ struct StreamExecution {
     UINT64 positionAnomaliesWithoutDiscontinuity = 0;
     UINT64 discontinuitiesWithoutPositionAnomaly = 0;
     UINT64 discontinuitiesWithoutPositionComparison = 0;
-    std::array<DuplexValidationReport::DiscontinuityPacket, kMaximumDiscontinuityPacketDetails> discontinuityPackets{};
-    std::size_t discontinuityPacketDetailsCount = 0;
-    UINT64 discontinuityPacketDetailsOmitted = 0;
+    DuplexValidationReport::DiscontinuityPacketBuffer discontinuityPacketDetails;
     UINT64 timestampErrors = 0;
     UINT64 qpcValidPackets = 0;
     UINT64 firstDevicePosition = 0;
@@ -390,7 +387,6 @@ struct StreamExecution {
 };
 
 struct DuplexSideSummary {
-    static constexpr std::size_t kMaximumDiscontinuityPacketDetails = StreamExecution::kMaximumDiscontinuityPacketDetails;
     bool startSucceeded = false;
     bool hasEnd = false;
     std::chrono::steady_clock::time_point startedAt{};
@@ -429,9 +425,7 @@ struct DuplexSideSummary {
     UINT64 positionAnomaliesWithDiscontinuity = 0;
     UINT64 discontinuitiesWithoutPositionAnomaly = 0;
     UINT64 discontinuitiesWithoutPositionComparison = 0;
-    UINT64 discontinuityPacketDetailsOmitted = 0;
-    std::array<DuplexValidationReport::DiscontinuityPacket, kMaximumDiscontinuityPacketDetails> discontinuityPackets{};
-    std::size_t discontinuityPacketDetailsCount = 0;
+    DuplexValidationReport::DiscontinuityPacketBuffer discontinuityPacketDetails;
     bool peerStopped = false;
     bool watchdogTimedOut = false;
     bool deviceInvalidated = false;
@@ -606,10 +600,7 @@ public:
         summary.positionAnomaliesWithDiscontinuity = execution.positionAnomaliesWithDiscontinuity;
         summary.discontinuitiesWithoutPositionAnomaly = execution.discontinuitiesWithoutPositionAnomaly;
         summary.discontinuitiesWithoutPositionComparison = execution.discontinuitiesWithoutPositionComparison;
-        summary.discontinuityPacketDetailsOmitted = execution.discontinuityPacketDetailsOmitted;
-        summary.discontinuityPacketDetailsCount = execution.discontinuityPacketDetailsCount;
-        std::copy_n(execution.discontinuityPackets.begin(), execution.discontinuityPacketDetailsCount,
-            summary.discontinuityPackets.begin());
+        summary.discontinuityPacketDetails = execution.discontinuityPacketDetails;
         summary.timestampErrors = execution.timestampErrors;
         summary.elapsedMilliseconds = elapsedMilliseconds;
         summary.durationReached = execution.durationReached;
@@ -1451,20 +1442,17 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                         } else {
                             ++result.discontinuitiesWithoutPositionAnomaly;
                         }
-                        if (result.discontinuityPacketDetailsCount < result.discontinuityPackets.size()) {
-                            auto& detail = result.discontinuityPackets[result.discontinuityPacketDetailsCount++];
-                            detail.packetOrdinal = result.capturePacketsObserved;
-                            detail.eventOrdinal = result.events;
-                            detail.millisecondsSinceStart = secondsSinceStart * 1'000.0;
-                            detail.flags = flags;
-                            detail.devicePosition = devicePosition;
-                            detail.qpcPosition = qpcPosition;
-                            if (positionTransitionChecked) detail.devicePositionDeltaFrames = positionDeltaFrames;
-                            detail.devicePositionTransition = positionTransition;
-                            detail.phase = secondsSinceStart <= 1.0 ? "STARTUP" : "STEADY";
-                        } else {
-                            ++result.discontinuityPacketDetailsOmitted;
-                        }
+                        DuplexValidationReport::DiscontinuityPacket detail;
+                        detail.packetOrdinal = result.capturePacketsObserved;
+                        detail.eventOrdinal = result.events;
+                        detail.millisecondsSinceStart = secondsSinceStart * 1'000.0;
+                        detail.flags = flags;
+                        detail.devicePosition = devicePosition;
+                        detail.qpcPosition = qpcPosition;
+                        if (positionTransitionChecked) detail.devicePositionDeltaFrames = positionDeltaFrames;
+                        detail.devicePositionTransition = positionTransition;
+                        detail.phase = secondsSinceStart <= 1.0 ? "STARTUP" : "STEADY";
+                        result.discontinuityPacketDetails.Record(detail);
                     }
                     if (positionAnomaly && !dataDiscontinuity) {
                         ++result.positionAnomaliesWithoutDiscontinuity;
@@ -4081,9 +4069,9 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.positionAnomaliesWithDiscontinuity = source.positionAnomaliesWithDiscontinuity;
             side.discontinuitiesWithoutPositionAnomaly = source.discontinuitiesWithoutPositionAnomaly;
             side.discontinuitiesWithoutPositionComparison = source.discontinuitiesWithoutPositionComparison;
-            side.discontinuityPacketDetailsOmitted = source.discontinuityPacketDetailsOmitted;
-            side.discontinuityPackets.assign(source.discontinuityPackets.begin(),
-                source.discontinuityPackets.begin() + source.discontinuityPacketDetailsCount);
+            side.discontinuityPacketDetailsOmitted = source.discontinuityPacketDetails.omitted;
+            side.discontinuityPackets.assign(source.discontinuityPacketDetails.packets.begin(),
+                source.discontinuityPacketDetails.packets.begin() + source.discontinuityPacketDetails.count);
             side.timestampErrors = source.timestampErrors;
             side.serviceFaults = source.serviceFaults;
             side.packetDrainLimitHits = source.packetDrainLimitHits;
