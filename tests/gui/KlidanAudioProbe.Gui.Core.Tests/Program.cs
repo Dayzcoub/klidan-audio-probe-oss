@@ -500,8 +500,16 @@ var testOnlyProfileDirectory = Path.Combine(Path.GetTempPath(), "klidan-v5-test-
 try
 {
     var testOnlyProfilePath = DeviceConfigurationProfileStorage.SaveLocal(testQualifiedRoundTrip, testOnlyProfileDirectory);
+    var retainedProfilePath = Environment.GetEnvironmentVariable("KLIDAN_TEST_ONLY_PROFILE_OUTPUT");
+    if (!string.IsNullOrWhiteSpace(retainedProfilePath))
+    {
+        retainedProfilePath = Path.GetFullPath(retainedProfilePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(retainedProfilePath)!);
+        File.Copy(testOnlyProfilePath, retainedProfilePath, overwrite: true);
+        testOnlyProfilePath = retainedProfilePath;
+    }
     var diskReadback = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(testOnlyProfilePath));
-    Check(diskReadback.StableShortSelection?.ProfileKind == "TEST_ONLY" && diskReadback.AudioHostQualification?.Provenance == "TEST_ONLY" && diskReadback.AudioHostQualification?.Result == "TEST_FIXTURE_SUCCEEDED" && diskReadback.Recommendation.Preferred is null, "synthetic qualified Profile v5 saves, validates and reads back from disk as TEST_ONLY without a DEVICE recommendation");
+    Check(diskReadback.StableShortSelection?.ProfileKind == "TEST_ONLY" && diskReadback.AudioHostQualification?.Provenance == "TEST_ONLY" && diskReadback.AudioHostQualification?.Result == "TEST_FIXTURE_SUCCEEDED" && diskReadback.Recommendation.Preferred is null, $"synthetic qualified Profile v5 saves, validates and reads back from disk as TEST_ONLY without a DEVICE recommendation [path={testOnlyProfilePath}]");
 }
 finally { if (Directory.Exists(testOnlyProfileDirectory)) Directory.Delete(testOnlyProfileDirectory, true); }
 Throws<InvalidDataException>(() => DeviceConfigurationProfileJson.Validate(testQualifiedProfile with { StableShortSelection = testQualifiedProfile.StableShortSelection! with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" } }), "synthetic AudioHost fixture cannot promote a DEVICE profile");
