@@ -7,12 +7,25 @@
 #include <cstdint>
 #include <cmath>
 #include <charconv>
+#include <vector>
 #include <optional>
 #include <string>
 #include <string_view>
 #include "channel_routing.h"
 
 namespace DuplexValidationReport {
+
+struct DiscontinuityPacket {
+    std::uint64_t packetOrdinal = 0;
+    std::uint64_t eventOrdinal = 0;
+    double millisecondsSinceStart = 0;
+    std::uint32_t flags = 0;
+    std::uint64_t devicePosition = 0;
+    std::uint64_t qpcPosition = 0;
+    std::optional<std::uint64_t> devicePositionDeltaFrames;
+    const char* devicePositionTransition = "UNAVAILABLE";
+    const char* phase = "UNKNOWN";
+};
 
 struct Side {
     std::string endpointId;
@@ -38,6 +51,12 @@ struct Side {
     std::uint64_t events = 0;
     std::uint64_t packets = 0;
     std::uint64_t discontinuities = 0;
+    std::uint64_t startupDiscontinuities = 0, steadyDiscontinuities = 0;
+    std::uint64_t positionAnomaliesWithDiscontinuity = 0;
+    std::uint64_t discontinuitiesWithoutPositionAnomaly = 0;
+    std::uint64_t discontinuitiesWithoutPositionComparison = 0;
+    std::uint64_t discontinuityPacketDetailsOmitted = 0;
+    std::vector<DiscontinuityPacket> discontinuityPackets;
     std::uint64_t timestampErrors = 0;
     std::uint64_t serviceFaults = 0;
     std::uint64_t packetDrainLimitHits = 0;
@@ -170,6 +189,27 @@ inline std::string ToJson(const Report& report) {
         w.Key("events"); w.Uint64(s.events);
         w.Key("packets"); w.Uint64(s.packets);
         w.Key("discontinuities"); w.Uint64(s.discontinuities);
+        w.Key("startupDiscontinuities"); w.Uint64(s.startupDiscontinuities);
+        w.Key("steadyDiscontinuities"); w.Uint64(s.steadyDiscontinuities);
+        w.Key("positionAnomaliesWithDiscontinuity"); w.Uint64(s.positionAnomaliesWithDiscontinuity);
+        w.Key("discontinuitiesWithoutPositionAnomaly"); w.Uint64(s.discontinuitiesWithoutPositionAnomaly);
+        w.Key("discontinuitiesWithoutPositionComparison"); w.Uint64(s.discontinuitiesWithoutPositionComparison);
+        w.Key("discontinuityPacketDetailsOmitted"); w.Uint64(s.discontinuityPacketDetailsOmitted);
+        w.Key("discontinuityPackets"); w.StartArray();
+        for (const auto& packet : s.discontinuityPackets) {
+            w.StartObject();
+            w.Key("packetOrdinal"); w.Uint64(packet.packetOrdinal);
+            w.Key("eventOrdinal"); w.Uint64(packet.eventOrdinal);
+            w.Key("millisecondsSinceStart"); w.Double(packet.millisecondsSinceStart);
+            w.Key("flags"); w.Uint(packet.flags);
+            w.Key("devicePosition"); w.Uint64(packet.devicePosition);
+            w.Key("qpcPosition"); w.Uint64(packet.qpcPosition);
+            w.Key("devicePositionDeltaFrames"); if (packet.devicePositionDeltaFrames) w.Uint64(*packet.devicePositionDeltaFrames); else w.Null();
+            w.Key("devicePositionTransition"); w.String(packet.devicePositionTransition);
+            w.Key("phase"); w.String(packet.phase);
+            w.EndObject();
+        }
+        w.EndArray();
         w.Key("timestampErrors"); w.Uint64(s.timestampErrors);
         w.Key("serviceFaults"); w.Uint64(s.serviceFaults);
         w.Key("packetDrainLimitHits"); w.Uint64(s.packetDrainLimitHits);

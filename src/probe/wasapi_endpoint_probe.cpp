@@ -293,6 +293,7 @@ void PrintChannelTopology(const char* label, const ChannelMeter::FormatTopology&
 }
 
 struct StreamExecution {
+    static constexpr std::size_t kMaximumDiscontinuityPacketDetails = 16;
     bool startAttempted = false;
     bool started = false;
     bool durationReached = false;
@@ -333,6 +334,9 @@ struct StreamExecution {
     UINT64 positionAnomaliesWithoutDiscontinuity = 0;
     UINT64 discontinuitiesWithoutPositionAnomaly = 0;
     UINT64 discontinuitiesWithoutPositionComparison = 0;
+    std::array<DuplexValidationReport::DiscontinuityPacket, kMaximumDiscontinuityPacketDetails> discontinuityPackets{};
+    std::size_t discontinuityPacketDetailsCount = 0;
+    UINT64 discontinuityPacketDetailsOmitted = 0;
     UINT64 timestampErrors = 0;
     UINT64 qpcValidPackets = 0;
     UINT64 firstDevicePosition = 0;
@@ -386,6 +390,7 @@ struct StreamExecution {
 };
 
 struct DuplexSideSummary {
+    static constexpr std::size_t kMaximumDiscontinuityPacketDetails = StreamExecution::kMaximumDiscontinuityPacketDetails;
     bool startSucceeded = false;
     bool hasEnd = false;
     std::chrono::steady_clock::time_point startedAt{};
@@ -420,6 +425,13 @@ struct DuplexSideSummary {
     UINT64 devicePositionAnomalies = 0;
     UINT64 unavailableCaptureBuffers = 0;
     UINT64 silentBuffersServiced = 0;
+    UINT64 startupDiscontinuities = 0, steadyDiscontinuities = 0;
+    UINT64 positionAnomaliesWithDiscontinuity = 0;
+    UINT64 discontinuitiesWithoutPositionAnomaly = 0;
+    UINT64 discontinuitiesWithoutPositionComparison = 0;
+    UINT64 discontinuityPacketDetailsOmitted = 0;
+    std::array<DuplexValidationReport::DiscontinuityPacket, kMaximumDiscontinuityPacketDetails> discontinuityPackets{};
+    std::size_t discontinuityPacketDetailsCount = 0;
     bool peerStopped = false;
     bool watchdogTimedOut = false;
     bool deviceInvalidated = false;
@@ -589,6 +601,15 @@ public:
         summary.selectedCaptureSamples = execution.selectedCaptureSamples;
         summary.invalidSelectedCaptureSamples = execution.invalidSelectedCaptureSamples;
         summary.discontinuities = execution.discontinuities;
+        summary.startupDiscontinuities = execution.startupDiscontinuities;
+        summary.steadyDiscontinuities = execution.steadyDiscontinuities;
+        summary.positionAnomaliesWithDiscontinuity = execution.positionAnomaliesWithDiscontinuity;
+        summary.discontinuitiesWithoutPositionAnomaly = execution.discontinuitiesWithoutPositionAnomaly;
+        summary.discontinuitiesWithoutPositionComparison = execution.discontinuitiesWithoutPositionComparison;
+        summary.discontinuityPacketDetailsOmitted = execution.discontinuityPacketDetailsOmitted;
+        summary.discontinuityPacketDetailsCount = execution.discontinuityPacketDetailsCount;
+        std::copy_n(execution.discontinuityPackets.begin(), execution.discontinuityPacketDetailsCount,
+            summary.discontinuityPackets.begin());
         summary.timestampErrors = execution.timestampErrors;
         summary.elapsedMilliseconds = elapsedMilliseconds;
         summary.durationReached = execution.durationReached;
@@ -1365,6 +1386,8 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                     bool positionAnomaly = false;
                     bool positionValueValid = timestampValid;
                     bool positionTransitionChecked = false;
+                    std::uint64_t positionDeltaFrames = 0;
+                    const char* positionTransition = timestampValid ? "INITIAL" : "TIMESTAMP_INVALID";
                     if (timestampValid) {
                         ++result.qpcValidPackets;
                         if (result.qpcValidPackets == 1) {
@@ -1380,6 +1403,9 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                             ++result.positionTransitionsChecked;
                             const auto delta = ProbeMath::CompareDevicePosition(
                                 true, result.previousDeviceEnd, devicePosition, true);
+                            positionDeltaFrames = delta.frames;
+                            positionTransition = delta.transition == ProbeMath::PositionTransition::Jump ? "JUMP"
+                                : delta.transition == ProbeMath::PositionTransition::Overlap ? "OVERLAP" : "CONTIGUOUS";
                             if (delta.transition == ProbeMath::PositionTransition::Jump) {
                                 ++result.positionJumps;
                                 result.jumpFramesTotal += delta.frames;
@@ -1393,6 +1419,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                             }
                         } else if (result.capturePacketsObserved > 1) {
                             ++result.positionRebases;
+                            positionTransition = "REBASE";
                         }
                         if (devicePosition > std::numeric_limits<UINT64>::max() - frames) {
                             ++result.invalidDevicePositions;
@@ -1423,6 +1450,20 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                             ++result.positionAnomaliesWithDiscontinuity;
                         } else {
                             ++result.discontinuitiesWithoutPositionAnomaly;
+                        }
+                        if (result.discontinuityPacketDetailsCount < result.discontinuityPackets.size()) {
+                            auto& detail = result.discontinuityPackets[result.discontinuityPacketDetailsCount++];
+                            detail.packetOrdinal = result.capturePacketsObserved;
+                            detail.eventOrdinal = result.events;
+                            detail.millisecondsSinceStart = secondsSinceStart * 1'000.0;
+                            detail.flags = flags;
+                            detail.devicePosition = devicePosition;
+                            detail.qpcPosition = qpcPosition;
+                            if (positionTransitionChecked) detail.devicePositionDeltaFrames = positionDeltaFrames;
+                            detail.devicePositionTransition = positionTransition;
+                            detail.phase = secondsSinceStart <= 1.0 ? "STARTUP" : "STEADY";
+                        } else {
+                            ++result.discontinuityPacketDetailsOmitted;
                         }
                     }
                     if (positionAnomaly && !dataDiscontinuity) {
@@ -4035,6 +4076,14 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.events = source.events;
             side.packets = source.packets;
             side.discontinuities = source.discontinuities;
+            side.startupDiscontinuities = source.startupDiscontinuities;
+            side.steadyDiscontinuities = source.steadyDiscontinuities;
+            side.positionAnomaliesWithDiscontinuity = source.positionAnomaliesWithDiscontinuity;
+            side.discontinuitiesWithoutPositionAnomaly = source.discontinuitiesWithoutPositionAnomaly;
+            side.discontinuitiesWithoutPositionComparison = source.discontinuitiesWithoutPositionComparison;
+            side.discontinuityPacketDetailsOmitted = source.discontinuityPacketDetailsOmitted;
+            side.discontinuityPackets.assign(source.discontinuityPackets.begin(),
+                source.discontinuityPackets.begin() + source.discontinuityPacketDetailsCount);
             side.timestampErrors = source.timestampErrors;
             side.serviceFaults = source.serviceFaults;
             side.packetDrainLimitHits = source.packetDrainLimitHits;

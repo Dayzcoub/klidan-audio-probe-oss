@@ -86,6 +86,28 @@ int main() {
         std::string(parsed["render"]["cadenceAssessment"].GetString()) != "OBSERVED_CADENCE_DIFFERS_FROM_BUFFER_PERIOD" ||
         std::string(parsed["render"]["renderReleaseBufferHresult"].GetString()) != "0x00000000") return 9;
 
+    auto diagnosticReport = report;
+    diagnosticReport.capture.discontinuities = 1;
+    diagnosticReport.capture.startupDiscontinuities = 0;
+    diagnosticReport.capture.steadyDiscontinuities = 1;
+    diagnosticReport.capture.discontinuitiesWithoutPositionAnomaly = 1;
+    diagnosticReport.capture.discontinuityPackets.push_back({500, 499, 2'345.67, 0x1u, 240'000, 123'456,
+        0, "CONTIGUOUS", "STEADY"});
+    const auto diagnosticJson = DuplexValidationReport::ToJson(diagnosticReport);
+    rapidjson::Document diagnostic;
+    diagnostic.Parse(diagnosticJson.data(), diagnosticJson.size());
+    const auto& capture = diagnostic["capture"];
+    if (diagnostic.HasParseError() || capture["discontinuities"].GetUint64() != 1 ||
+        capture["startupDiscontinuities"].GetUint64() != 0 || capture["steadyDiscontinuities"].GetUint64() != 1 ||
+        capture["discontinuitiesWithoutPositionAnomaly"].GetUint64() != 1 ||
+        capture["discontinuityPackets"].Size() != 1 ||
+        capture["discontinuityPackets"][0]["packetOrdinal"].GetUint64() != 500 ||
+        capture["discontinuityPackets"][0]["eventOrdinal"].GetUint64() != 499 ||
+        capture["discontinuityPackets"][0]["millisecondsSinceStart"].GetDouble() != 2'345.67 ||
+        capture["discontinuityPackets"][0]["flags"].GetUint() != 1 ||
+        capture["discontinuityPackets"][0]["devicePositionDeltaFrames"].GetUint64() != 0 ||
+        std::string(capture["discontinuityPackets"][0]["phase"].GetString()) != "STEADY") return 20;
+
     const auto cleanMustReject = [&](auto mutate) {
         auto candidate = DuplexValidationReport::ToJson(report);
         rapidjson::Document doc;
