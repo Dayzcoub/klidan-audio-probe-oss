@@ -4,7 +4,9 @@ param(
     [ValidateSet('BLOODY', 'FAILED', 'UNKNOWN', 'FIRST_CLEAN')][string]$Scenario = 'BLOODY',
     [switch]$AuthorizeShortSearch,
     [switch]$AuthorizeR5,
-    [string]$SourceEvidence
+    [string]$SourceEvidence,
+    [string]$CaptureId,
+    [string]$RenderId
 )
 $ErrorActionPreference = 'Stop'
 $package = [IO.Path]::GetFullPath($PSScriptRoot)
@@ -18,6 +20,7 @@ foreach ($item in $manifest.files) {
     if ((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $item.sha256) { throw "Package hash mismatch: $($item.path)" }
 }
 if ($Mode -eq 'ShortSearch' -and !$AuthorizeShortSearch) { throw 'ShortSearch is locked. Pass -AuthorizeShortSearch only after operator authorization.' }
+if ($Mode -eq 'ShortSearch' -and ([string]::IsNullOrWhiteSpace($CaptureId) -or [string]::IsNullOrWhiteSpace($RenderId) -or $CaptureId -eq $RenderId)) { throw 'ShortSearch requires distinct Capture and Render endpoint IDs selected from current discovery.' }
 if ($Mode -eq 'RepeatSelected' -and (!$AuthorizeR5 -or $AuthorizeShortSearch -or !$SourceEvidence)) { throw 'RepeatSelected requires -AuthorizeR5 and -SourceEvidence; ShortSearch authorization is not applicable.' }
 if ($AuthorizeR5 -and $Mode -ne 'RepeatSelected') { throw '-AuthorizeR5 is valid only for RepeatSelected.' }
 if ($Mode -eq 'RepeatSelected' -and !(Test-Path -LiteralPath $SourceEvidence -PathType Leaf)) { throw 'Source evidence summary does not exist.' }
@@ -50,6 +53,7 @@ try {
     $runnerArgs = @('--mode', $runnerMode, '--worker-path', $worker, '--evidence-root', $evidenceRoot)
     if ($Mode -eq 'DryRun') { $runnerArgs += @('--scenario', $Scenario) }
     if ($AuthorizeShortSearch) { $runnerArgs += '--authorize-short-search' }
+    if ($Mode -eq 'ShortSearch') { $runnerArgs += @('--capture-id', $CaptureId, '--render-id', $RenderId) }
     if ($AuthorizeR5) { $runnerArgs += '--authorize-r5' }
     if ($Mode -eq 'RepeatSelected') { $runnerArgs += @('--source-evidence', (Resolve-Path -LiteralPath $SourceEvidence).Path) }
     & $runner @runnerArgs 2>&1 | Tee-Object -FilePath $log
