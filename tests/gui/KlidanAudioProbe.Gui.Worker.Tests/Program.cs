@@ -954,7 +954,7 @@ try
     Check(stableFive.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && stableFive.Result.Evidence.SelectedCandidateIndex == 1 && stableFive.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && stableFive.Result.Evidence.Candidates[2].DuplexDisposition == "SKIPPED", "5 ms is chosen over 10 ms when it passes all repeatability checks");
     async Task<(V4ScanQualificationResult Result, string[] Operations, int[] AdapterCandidates, string Root)> RunQualificationCoordinator(
         string name, Func<int, string, string?> scanScenario, Func<AudioHostCandidateQualificationRequest, AudioHostCandidateQualificationResult> loadResult,
-        IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null)
+        IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null, string? realPackage = null)
     {
         var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
         var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
@@ -968,16 +968,41 @@ try
         var authorization = new AudioHostQualificationAuthorization(consent.ConfirmationId, consent.PlanFingerprint, consent.DiscoveryGeneration,
             captureId, renderId, true, true, domain.Count, checked(60 * domain.Count), DateTimeOffset.UtcNow.AddSeconds(plan.SessionLifetimeSeconds + 175 * domain.Count + 30));
         var adapterCandidates = new List<int>(); var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-v4-qualification-" + name + "-" + Guid.NewGuid().ToString("N"));
-        var adapter = new ControlledAudioHostQualificationAdapter(request => { adapterCandidates.Add(request.Candidate.Index); Check(File.Exists(request.RepeatabilityMatrixPath), $"{name}: AudioHost adapter receives persisted scanner evidence"); return loadResult(request); });
+        IAudioHostQualificationAdapter adapter = realPackage is null
+            ? new ControlledAudioHostQualificationAdapter(request => { adapterCandidates.Add(request.Candidate.Index); Check(File.Exists(request.RepeatabilityMatrixPath), $"{name}: AudioHost adapter receives persisted scanner evidence"); return loadResult(request); })
+            : new AudioHostPowerShellQualificationAdapter();
         try
         {
             var coordinator = new WorkerV4ScanQualificationCoordinator(new WorkerV4AutomaticSearchWorkflow(client), adapter,
                 (index, operation) => { operations.Add($"{domain[index].RequestedDuration100ns / 10_000}:{operation}"); return scanScenario(index, operation); });
-            var result = await coordinator.RunAsync(prepared, captureEndpoint, renderEndpoint, authorization, "TEST_ONLY_PACKAGE", root,
+            var result = await coordinator.RunAsync(prepared, captureEndpoint, renderEndpoint, authorization, realPackage ?? "TEST_ONLY_PACKAGE", root,
                 cancellationToken: CancellationToken.None, testOnly: true);
             return (result, operations.ToArray(), adapterCandidates.ToArray(), root);
         }
         finally { await client.DisposeAsync(); }
+    }
+    if (args.Length == 2 && args[0] == "--joined-e2e")
+    {
+        var candidate = threeCandidates[0];
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", "success");
+        var success = await RunQualificationCoordinator("joined-success", (_, _) => null, _ => throw new InvalidOperationException("Real PowerShell adapter was bypassed."), null, args[1]);
+        var qualified = success.Result.Evidence.Candidates[0].AudioHostQualification ?? throw new InvalidOperationException("Coordinator did not persist AudioHost qualification evidence.");
+        if (success.Result.Status != "TEST_ONLY" || success.Result.ProfilePath is not null || qualified is not { Status: "TEST_ONLY", Cleanup: "CONFIRMED", Provenance: "TEST_ONLY", ResultPath: not null }) throw new InvalidOperationException("JOINED_E2E_SUCCESS failed coordinator status, cleanup, provenance or no-profile read-back.");
+        using (var controlled = JsonDocument.Parse(await File.ReadAllBytesAsync(qualified.ResultPath!)))
+        {
+            var run = controlled.RootElement;
+            if (run.GetProperty("controlledPeerMode").GetBoolean() != true || run.GetProperty("profileCreated").GetBoolean() || run.GetProperty("qualificationConfigSha256").GetString() is not { Length: 64 } || run.GetProperty("watchdogOutcome").GetString() != "RUNNER_SUCCEEDED") throw new InvalidOperationException("JOINED_E2E_SUCCESS entrypoint read-back did not confirm controlled peer, config SHA, watchdog or profile isolation.");
+            var summary = JsonDocument.Parse(await File.ReadAllBytesAsync(run.GetProperty("runnerSummary").GetString()!));
+            using var requestConfig = JsonDocument.Parse(await File.ReadAllBytesAsync(run.GetProperty("qualificationConfigPath").GetString()!));
+            var requested = requestConfig.RootElement;
+            if (summary.RootElement.GetProperty("result").GetString() != "LOAD_CLEAN" || summary.RootElement.GetProperty("cleanup").GetProperty("confirmed").GetBoolean() != true || summary.RootElement.GetProperty("sourceEvidence").GetProperty("shortSearchSha256").GetString() is not { Length: 64 } || summary.RootElement.GetProperty("transport").GetProperty("period100ns").GetInt64() != candidate.RequestedDuration100ns || summary.RootElement.GetProperty("transport").GetProperty("captureFrames").GetUInt32() != candidate.CaptureFrames || summary.RootElement.GetProperty("endpoints").GetProperty("captureId").GetString() != requested.GetProperty("endpoints").GetProperty("captureId").GetString() || summary.RootElement.GetProperty("endpoints").GetProperty("renderId").GetString() != requested.GetProperty("endpoints").GetProperty("renderId").GetString()) throw new InvalidOperationException("JOINED_E2E_SUCCESS runner read-back does not match exact candidate/source endpoints or cleanup.");
+        }
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", "unknown");
+        var unknown = await RunQualificationCoordinator("joined-unknown", (_, _) => null, _ => throw new InvalidOperationException("Real PowerShell adapter was bypassed."), null, args[1]);
+        if (unknown.Result.Status != "UNKNOWN" || unknown.Result.ProfilePath is not null || unknown.Result.SelectedCandidateIndex is not null || unknown.Operations.Any(x => x.Contains("5:", StringComparison.Ordinal)) || unknown.Result.Evidence.Candidates[0].AudioHostQualification?.Cleanup is not ("UNKNOWN" or "CONFIRMED")) throw new InvalidOperationException("JOINED_E2E_UNKNOWN failed stop/no-fallback/no-profile read-back.");
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", null);
+        Console.WriteLine($"JOINED_E2E_SUCCESS=PASS evidence={success.Root}; JOINED_E2E_UNKNOWN=PASS evidence={unknown.Root}; WASAPI_OPENED=NO; DEVICE_PROFILE_CREATED=NO");
+        return 0;
     }
     AudioHostCandidateQualificationResult TestLoad(string status, string cleanup = "CONFIRMED") => new(status, cleanup, null, null, null, null, null, null, null, "TEST_ONLY");
     var coordinatorA = await RunQualificationCoordinator("A", (index, op) => index == 0 && op == "DUPLEX" || index == 1 && op == "REPEAT_1" ? "SERVICE_FAILURE" : null,

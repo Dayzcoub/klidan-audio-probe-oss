@@ -92,17 +92,19 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             var audioClock = System.Diagnostics.Stopwatch.StartNew(); audioHostRuns++;
             var qualification = await audioHost.QualifyAsync(new(audioHostPackage, Path.Combine(evidenceRoot, "audiohost"),
                 source.ShortSummary, source.RepeatSummary, scanPath, prepared, candidate, authorization, testOnly,
-                testOnly ? "success" : null), cancellationToken).ConfigureAwait(false);
+                testOnly ? "TEST_ONLY_CONTROLLED_PEER" : null), cancellationToken).ConfigureAwait(false);
             audioClock.Stop(); audioHostSeconds += audioClock.Elapsed.TotalSeconds;
             var qualificationPath = await WriteQualificationEvidence(candidate, qualification, source, evidenceRoot, cancellationToken).ConfigureAwait(false);
             rows[candidate.Index] = rows[candidate.Index] with { AudioHostQualification = qualification };
-            if (testOnly && qualification.Status == "LOAD_CLEAN" && qualification.Cleanup == "CONFIRMED" && qualification.Provenance == "TEST_ONLY")
+            if (testOnly && (qualification.Status is "LOAD_CLEAN" or "TEST_ONLY") && qualification.Cleanup == "CONFIRMED" && qualification.Provenance == "TEST_ONLY")
             {
                 attempts.Add(new(candidate.Index, candidate.CapturePeriod100ns, "TEST_ONLY_REPEATABILITY_CONFIRMED", scanPath, "TEST_ONLY_LOAD_CLEAN", "CONFIRMED", qualificationPath));
                 var testEvidence = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, false, lastLifecycle, lastWorkerCleanup, "TEST_ONLY_SYNTHETIC");
                 var testPath = SaveEvidence(testEvidence, Path.Combine(evidenceRoot, $"v4-test-only-qualified-c{candidate.Index:D2}-{Guid.NewGuid():D}.json"));
                 return new("TEST_ONLY", candidate.Index, attempts, testEvidence, testPath, "Synthetic qualification; no DEVICE profile created.");
             }
+            if (testOnly && qualification.Status == "UNKNOWN")
+                return await Stop("UNKNOWN", qualification.Diagnostic ?? "Controlled peer reported UNKNOWN.", candidate.Index).ConfigureAwait(false);
             if (qualification.Status == "LOAD_CLEAN" && qualification.Cleanup == "CONFIRMED" && qualification.Provenance == "REAL_AUDIOHOST")
             {
                 attempts.Add(new(candidate.Index, candidate.CapturePeriod100ns, "REPEATABILITY_CONFIRMED", scanPath, qualification.Status, qualification.Cleanup, qualificationPath));

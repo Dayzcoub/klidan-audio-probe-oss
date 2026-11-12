@@ -88,8 +88,10 @@ public static class V2CandidateMatrixEvidenceJson
                 throw new InvalidDataException($"Candidate matrix row {i} is invalid.");
             if (item.RepeatabilityEvidence.Count > 5 || item.RepeatabilityEvidence.Any(r => r is null || r.CandidateIndex != item.Candidate.Index || r.Result is not ("CLEAN" or "FAILED" or "UNKNOWN")))
                 throw new InvalidDataException($"Candidate matrix row {i} has invalid repeatability evidence.");
-            if (item.AudioHostQualification is { } load && (load.Status is not ("LOAD_CLEAN" or "LOAD_UNSTABLE" or "QA_FAILED" or "UNKNOWN" or "NOT_QUALIFIED" or "TEST_FIXTURE_SUCCEEDED") ||
-                load.Status is "LOAD_CLEAN" or "LOAD_UNSTABLE" && load.Cleanup != "CONFIRMED" || load.Provenance == "REAL_AUDIOHOST" && (load.RunId is null || !Hash(load.QualificationConfigSha256, 64) || !Hash(load.ResultSha256, 64) || !Hash(load.AudioHostBuildSha, 40) || !Hash(load.SourceEvidenceSha256, 64))))
+            if (item.AudioHostQualification is { } load && (load.Status is not ("LOAD_CLEAN" or "LOAD_UNSTABLE" or "QA_FAILED" or "UNKNOWN" or "NOT_QUALIFIED" or "TEST_FIXTURE_SUCCEEDED" or "TEST_ONLY") ||
+                load.Status is "LOAD_CLEAN" or "LOAD_UNSTABLE" && load.Cleanup != "CONFIRMED" ||
+                load.Provenance == "REAL_AUDIOHOST" && (load.RunId is null || !Hash(load.QualificationConfigSha256, 64) || !Hash(load.ResultSha256, 64) || !Hash(load.AudioHostBuildSha, 40) || !Hash(load.SourceEvidenceSha256, 64)) ||
+                load.Status == "TEST_ONLY" && (load.Provenance != "TEST_ONLY" || load.Cleanup != "CONFIRMED" || load.RunId is null || !Hash(load.QualificationConfigSha256, 64) || !Hash(load.ResultSha256, 64) || !Hash(load.AudioHostBuildSha, 40) || !Hash(load.SourceEvidenceSha256, 64))))
                 throw new InvalidDataException($"Candidate matrix row {i} has invalid AudioHost qualification evidence.");
         }
         if (value.SelectionState is not ("MINIMUM_SHORT_CLEAN_FOUND" or "REPEATABILITY_CONFIRMED" or "REPEATABILITY_FAILED" or "MINIMUM_NOT_PROVEN" or "UNKNOWN" or "DIAGNOSTIC_ONLY")) throw new InvalidDataException("Candidate matrix selection state is invalid.");

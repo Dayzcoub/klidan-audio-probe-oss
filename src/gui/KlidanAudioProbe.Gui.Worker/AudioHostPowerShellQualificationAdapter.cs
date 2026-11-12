@@ -46,9 +46,18 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
             psi.ArgumentList.Add("-ExpectedQualificationConfigSha256"); psi.ArgumentList.Add(configSha);
             psi.ArgumentList.Add("-EvidenceRoot"); psi.ArgumentList.Add(runEvidence);
             psi.ArgumentList.Add("-AuthorizePhysicalLoad"); psi.ArgumentList.Add("-NoOpenSpeakersConfirmed");
+            if (request.TestOnly) psi.Environment["KLIDAN_TEST_ONLY_PEER_SCENARIO"] = Environment.GetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO") == "unknown" ? "unknown" : "success";
             if (request.TestOnly)
             {
-                psi.ArgumentList.Add("-TestOnlyFixture"); psi.ArgumentList.Add(request.TestFixture ?? throw new InvalidDataException("TEST_ONLY fixture is missing."));
+                if (request.TestFixture != "TEST_ONLY_CONTROLLED_PEER") throw new InvalidDataException("TEST_ONLY qualification requires the controlled IPC peer route.");
+                var peer = Path.Combine(package, "tools", "AudioHostQaIpcPeerFixture", "AudioHostQaIpcPeerFixture.exe");
+                var peerSha = HashFile(peer);
+                var peerEntry = manifest["files"]!.AsArray().SingleOrDefault(f => f?["path"]?.GetValue<string>() == "tools/AudioHostQaIpcPeerFixture/AudioHostQaIpcPeerFixture.exe");
+                if (peerEntry?["sha256"]?.GetValue<string>() != peerSha) throw new InvalidDataException("Controlled IPC peer differs from package manifest.");
+                psi.ArgumentList.Add("-TestOnlyFixture"); psi.ArgumentList.Add("TEST_ONLY_CONTROLLED_PEER");
+                psi.ArgumentList.Add("-TestOnlyPeerPath"); psi.ArgumentList.Add(peer);
+                psi.ArgumentList.Add("-TestOnlyPeerSha256"); psi.ArgumentList.Add(peerSha);
+                psi.ArgumentList.Add("-TestOnlyPeerScenario"); psi.ArgumentList.Add(Environment.GetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO") == "unknown" ? "unknown" : "success");
             }
             using var process = new Process { StartInfo = psi };
             if (!process.Start()) return Unknown(runId, configSha, buildSha, "Could not start AudioHost QA adapter process.");
@@ -76,13 +85,14 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
                 "LOAD_CLEAN" => ReadCleanCleanup(result),
                 "LOAD_UNSTABLE" => IsProvenTransportFailure(result) ? ReadAnyCleanup(result) : "UNKNOWN",
                 "TEST_FIXTURE_SUCCEEDED" => request.TestOnly && WatchdogSucceeded(result) ? "CONFIRMED" : "UNKNOWN",
+                "TEST_ONLY" => request.TestOnly && WatchdogSucceeded(result) && ReadAnyCleanup(result) == "CONFIRMED" ? "CONFIRMED" : "UNKNOWN",
                 "QA_FAILED" => ReadAnyCleanup(result),
                 _ => "UNKNOWN"
             };
             if (!process.HasExited || process.ExitCode is not (0 or 1) || cleanup != "CONFIRMED") status = status is "LOAD_CLEAN" or "LOAD_UNSTABLE" or "QA_FAILED" ? "UNKNOWN" : status;
-            if (status is not ("LOAD_CLEAN" or "LOAD_UNSTABLE" or "QA_FAILED" or "TEST_FIXTURE_SUCCEEDED")) status = "UNKNOWN";
+            if (status is not ("LOAD_CLEAN" or "LOAD_UNSTABLE" or "QA_FAILED" or "TEST_FIXTURE_SUCCEEDED" or "TEST_ONLY")) status = "UNKNOWN";
             var resultSha = Convert.ToHexString(SHA256.HashData(resultBytes)).ToLowerInvariant();
-            return new(status, cleanup, status == "LOAD_CLEAN" || status == "LOAD_UNSTABLE" || status == "TEST_FIXTURE_SUCCEEDED" ? null : "AudioHost qualification did not produce a clean transport result.",
+            return new(status, cleanup, status is "LOAD_CLEAN" or "LOAD_UNSTABLE" or "TEST_FIXTURE_SUCCEEDED" or "TEST_ONLY" ? null : "AudioHost qualification did not produce a clean transport result.",
                 runId.ToString("D"), configSha, resultSha, buildSha, HashFile(request.RepeatabilityMatrixPath), resultFiles[0], request.TestOnly ? "TEST_ONLY" : "REAL_AUDIOHOST");
         }
         catch (OperationCanceledException) { return Unknown(null, null, null, "Operator cancellation."); }
@@ -151,5 +161,5 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
         if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), SHA256.HashData(readBack))) throw new InvalidDataException("Qualification request read-back SHA mismatch.");
     }
     private static AudioHostCandidateQualificationResult Unknown(Guid? id, string? configSha, string? buildSha, string diagnostic) =>
-        new("UNKNOWN", "UNKNOWN", diagnostic, id?.ToString("D"), configSha, null, buildSha, null, null, "REAL_AUDIOHOST");
+        new("UNKNOWN", "UNKNOWN", diagnostic, id?.ToString("D"), configSha, null, buildSha, null, null, "TEST_ONLY");
 }
