@@ -39,12 +39,26 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             if (usedOperations + 8 > prepared.Plan.MaximumOperations || usedActiveSeconds + 30 > prepared.Plan.MaximumActiveDuplexSeconds)
                 return await Stop("QA_FAILED", "CONSENTED_WORKER_BUDGET_EXHAUSTED", candidate.Index).ConfigureAwait(false);
 
-            var sessionConsent = prepared.Consent with { ConfirmationId = Guid.NewGuid() };
-            var scoped = prepared with { Consent = sessionConsent };
-            var scan = await scanner.RunAsync(scoped, evidenceRoot, cancellationToken, testScenario: testScenario, runRepeatability: true,
-                captureEndpoint: capture, renderEndpoint: render, progress: progress, onlyCandidateIndex: candidate.Index).ConfigureAwait(false);
+            var scopedCandidate = candidate with { Index = 0 };
+            var scopedBudget = WorkerScanV2ContractV4Fingerprint.Budget(1, 5);
+            var scopedPlan = prepared.Plan with
+            {
+                Candidates = [scopedCandidate], MaximumOperations = scopedBudget.MaximumOperations,
+                MaximumActiveDuplexSeconds = scopedBudget.MaximumActiveDuplexSeconds, SessionLifetimeSeconds = scopedBudget.SessionLifetimeSeconds
+            };
+            var scopedConsent = WorkerScanV2ContractV4Fingerprint.CreateConsent(prepared.CaptureEndpointId, prepared.RenderEndpointId,
+                scopedPlan, prepared.Consent.DiscoveryGeneration, true, Guid.NewGuid());
+            var scoped = prepared with { Plan = scopedPlan, Consent = scopedConsent };
+            var scan = await scanner.RunAsync(scoped, evidenceRoot, cancellationToken,
+                testScenario: (index, operation) => testScenario?.Invoke(candidate.Index, operation), runRepeatability: true,
+                captureEndpoint: capture, renderEndpoint: render, progress: progress).ConfigureAwait(false);
             usedOperations += scan.Evidence.UsedOperations; usedActiveSeconds += scan.Evidence.UsedActiveDuplexSeconds;
-            rows[candidate.Index] = scan.Evidence.Candidates[candidate.Index];
+            var scopedRow = scan.Evidence.Candidates[0];
+            rows[candidate.Index] = scopedRow with
+            {
+                Candidate = candidate,
+                RepeatabilityEvidence = scopedRow.RepeatabilityEvidence.Select(r => r with { CandidateIndex = candidate.Index }).ToArray()
+            };
             var scanPath = scan.EvidencePath;
             if (scanPath is null || scan.Evidence.SessionCleanup != "CLOSE_CONFIRMED" || scan.Evidence.Lifecycle != "COMPLETED")
                 return await Stop("UNKNOWN", "WORKER_SESSION_CLOSE_OR_EVIDENCE_UNKNOWN", candidate.Index).ConfigureAwait(false);
@@ -67,7 +81,7 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             var source = await SaveQualificationSource(candidate, scan, prepared, evidenceRoot, cancellationToken).ConfigureAwait(false);
             var audioClock = System.Diagnostics.Stopwatch.StartNew(); audioHostRuns++;
             var qualification = await audioHost.QualifyAsync(new(audioHostPackage, Path.Combine(evidenceRoot, "audiohost"),
-                source.ShortSummary, source.RepeatSummary, scanPath, scoped, candidate, authorization, testOnly,
+                source.ShortSummary, source.RepeatSummary, scanPath, prepared, candidate, authorization, testOnly,
                 testOnly ? "success" : null), cancellationToken).ConfigureAwait(false);
             audioClock.Stop(); audioHostSeconds += audioClock.Elapsed.TotalSeconds;
             var qualificationPath = await WriteQualificationEvidence(candidate, qualification, source, evidenceRoot, cancellationToken).ConfigureAwait(false);
@@ -96,7 +110,7 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
                         captureFormat, renderFormat, prepared.Plan.Route.Capture.SelectedIndicesZeroBased, prepared.Plan.Route.Render.SelectedIndicesZeroBased,
                         candidate.CaptureFrames, candidate.CapturePeriod100ns, candidate.CaptureFrames, candidate.CapturePeriod100ns,
                         candidate.RenderFrames, candidate.RenderPeriod100ns, candidate.RenderFrames, candidate.RenderPeriod100ns, prepared.Plan.MmcssModes[0], candidate.Index,
-                        prepared.Consent.PlanFingerprint, prepared.Consent.DiscoveryGeneration, "MINIMUM_SHORT_CLEAN_FOUND", 5, 5,
+                        prepared.Consent.PlanFingerprint, prepared.Consent.DiscoveryGeneration, "MINIMUM_QUALIFIED_IN_CONSENTED_DOMAIN", 5, 5,
                         combined.RepeatabilityRuns.Select(r => r.OperationId).ToArray(), "REAL_WASAPI_V4_DUPLEX", Path.GetFileName(combinedPath), HashFile(combinedPath), DateTimeOffset.UtcNow, capture.ContainerId);
                     var profile = DeviceConfigurationProfileFactory.CreateStableShortFromV4(prepared, combinedPath, selection, capture, render,
                         audioHostQualification: profileQualification);
@@ -137,14 +151,15 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
     private async Task<(string ShortSummary, string RepeatSummary)> SaveQualificationSource(WorkerScanV2Candidate c, V4AutomaticSearchResult scan,
         WorkerScanV2V4PreparedPlan prepared, string root, CancellationToken ct)
     {
-        var entry = scan.Evidence.Candidates[c.Index];
+        var entry = scan.Evidence.Candidates[0];
+        var scopedCandidate = c with { Index = 0 };
         var dir = Path.Combine(root, "qualification-source", Guid.NewGuid().ToString("N")); var shortDir = Path.Combine(dir, "short"); var repeatDir = Path.Combine(dir, "repeat");
         Directory.CreateDirectory(shortDir); Directory.CreateDirectory(repeatDir);
-        var shortCandidate = new { candidateIndex = 0, candidate = c, actualCaptureFrames = entry.ActualCaptureFrames, actualCapturePeriod100ns = entry.ActualCapturePeriod100ns, actualRenderFrames = entry.ActualRenderFrames, actualRenderPeriod100ns = entry.ActualRenderPeriod100ns, duplexDisposition = entry.DuplexDisposition, nativeDuplexDisposition = entry.NativeDuplexDisposition ?? "CLEAN", evaluatorReasonCode = entry.EvaluatorReasonCode ?? "CLEAN", captureInitializeEvidence = entry.CaptureInitializeEvidence, renderInitializeEvidence = entry.RenderInitializeEvidence, duplexEvidence = entry.DuplexEvidence, provenance = entry.Provenance };
+        var shortCandidate = new { candidateIndex = 0, candidate = scopedCandidate, actualCaptureFrames = entry.ActualCaptureFrames, actualCapturePeriod100ns = entry.ActualCapturePeriod100ns, actualRenderFrames = entry.ActualRenderFrames, actualRenderPeriod100ns = entry.ActualRenderPeriod100ns, duplexDisposition = entry.DuplexDisposition, nativeDuplexDisposition = entry.NativeDuplexDisposition ?? "CLEAN", evaluatorReasonCode = entry.EvaluatorReasonCode ?? "CLEAN", captureInitializeEvidence = entry.CaptureInitializeEvidence, renderInitializeEvidence = entry.RenderInitializeEvidence, duplexEvidence = entry.DuplexEvidence, provenance = entry.Provenance };
         var shortBytes = JsonSerializer.SerializeToUtf8Bytes(shortCandidate, Json); await WriteNewVerified(Path.Combine(shortDir, "candidate-00.json"), shortBytes, ct).ConfigureAwait(false);
         var shortSummary = new { provenance = entry.Provenance, mode = "SHORT_SEARCH", captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, route = prepared.Plan.Route.Mode, sampleRateHz = 48_000, encoding = "PCM16", candidateCount = 1, repeatabilityRequested = 0, repeatabilityCompleted = 0, sessionCleanup = "CLOSE_CONFIRMED", selectedCandidateIndex = 0, candidateFiles = new[] { new { path = "candidate-00.json", sha256 = Hash(shortBytes) } } };
         var shortSummaryPath = Path.Combine(shortDir, "short-search-summary.json"); var shortSummaryBytes = JsonSerializer.SerializeToUtf8Bytes(shortSummary, Json); await WriteNewVerified(shortSummaryPath, shortSummaryBytes, ct).ConfigureAwait(false);
-        var repeatCandidate = new { candidateIndex = 0, candidate = c, actualCaptureFrames = entry.ActualCaptureFrames, actualCapturePeriod100ns = entry.ActualCapturePeriod100ns, actualRenderFrames = entry.ActualRenderFrames, actualRenderPeriod100ns = entry.ActualRenderPeriod100ns, duplexDisposition = entry.DuplexDisposition, nativeDuplexDisposition = entry.NativeDuplexDisposition ?? "CLEAN", evaluatorReasonCode = entry.EvaluatorReasonCode ?? "CLEAN", captureInitializeEvidence = entry.CaptureInitializeEvidence, renderInitializeEvidence = entry.RenderInitializeEvidence, duplexEvidence = entry.DuplexEvidence, repeatability = entry.RepeatabilityEvidence, provenance = entry.Provenance };
+        var repeatCandidate = new { candidateIndex = 0, candidate = scopedCandidate, actualCaptureFrames = entry.ActualCaptureFrames, actualCapturePeriod100ns = entry.ActualCapturePeriod100ns, actualRenderFrames = entry.ActualRenderFrames, actualRenderPeriod100ns = entry.ActualRenderPeriod100ns, duplexDisposition = entry.DuplexDisposition, nativeDuplexDisposition = entry.NativeDuplexDisposition ?? "CLEAN", evaluatorReasonCode = entry.EvaluatorReasonCode ?? "CLEAN", captureInitializeEvidence = entry.CaptureInitializeEvidence, renderInitializeEvidence = entry.RenderInitializeEvidence, duplexEvidence = entry.DuplexEvidence, repeatability = entry.RepeatabilityEvidence, provenance = entry.Provenance };
         var repeatCandidateBytes = JsonSerializer.SerializeToUtf8Bytes(repeatCandidate, Json); await WriteNewVerified(Path.Combine(repeatDir, "candidate-00.json"), repeatCandidateBytes, ct).ConfigureAwait(false);
         var r5Summary = new { provenance = entry.Provenance, mode = "REPEAT_SELECTED", sourceEvidenceSha256 = Hash(shortSummaryBytes), captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, route = "MONO_TO_STEREO", sampleRateHz = 48_000, encoding = "PCM16", candidateCount = 1, repeatabilityRequested = 5, repeatabilityCompleted = 5, selectionState = "REPEATABILITY_CONFIRMED", sessionCleanup = "CLOSE_CONFIRMED", profileEligible = false, candidateMatrixSha256 = HashFile(scan.EvidencePath!), candidateMatrixPath = Path.GetFullPath(scan.EvidencePath!), selectedCandidateIndex = 0, candidateFiles = new[] { new { path = "candidate-00.json", sha256 = Hash(repeatCandidateBytes) } } };
         var repeatSummaryPath = Path.Combine(repeatDir, "repeatability-summary.json"); await WriteNewVerified(repeatSummaryPath, JsonSerializer.SerializeToUtf8Bytes(r5Summary, Json), ct).ConfigureAwait(false);
@@ -160,9 +175,9 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
         return new(1, p.Consent.PlanFingerprint, WorkerScanPlanV2Fingerprint.Route(p.CaptureEndpointId, p.RenderEndpointId, p.Plan.Route), "COMPLETED", p.Plan.CaptureBounds, p.Plan.RenderBounds, p.Plan.Candidates, rowSet,
             selected is null ? "MINIMUM_NOT_PROVEN" : "REPEATABILITY_CONFIRMED", rowSet.Any(e => e.Provenance.StartsWith("TEST_FAKE", StringComparison.Ordinal)) ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX")
         {
-            EvidenceVersion = 3, DiscoveryGeneration = p.Consent.DiscoveryGeneration, SelectedCandidateIndex = selected, GlobalMinimumProven = selected is not null,
+            EvidenceVersion = 3, DiscoveryGeneration = p.Consent.DiscoveryGeneration, SelectedCandidateIndex = selected, GlobalMinimumProven = false,
             BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA") ?? "UNKNOWN", UsedOperations = operations, MaximumOperations = p.Plan.MaximumOperations,
-            UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = p.Plan.MaximumActiveDuplexSeconds, StopReason = selected is null ? "NO_STABLE_BUFFER" : "AUDIOHOST_LOAD_CLEAN_MINIMUM_CANDIDATE",
+            UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = p.Plan.MaximumActiveDuplexSeconds, StopReason = selected is null ? "NO_STABLE_BUFFER" : "MINIMUM_QUALIFIED_IN_CONSENTED_CANDIDATE_DOMAIN",
             RepeatabilityRequested = selected is null ? 0 : 5, RepeatabilityCompleted = repeatRuns.Count, RepeatabilityRuns = repeatRuns,
             SessionCleanup = "CLOSE_CONFIRMED", ProfileEligible = false
         };

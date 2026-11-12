@@ -193,7 +193,7 @@
           "type": "string"
         },
         "searchQualification": {
-          "const": "MINIMUM_SHORT_CLEAN_FOUND"
+          "enum": ["MINIMUM_SHORT_CLEAN_FOUND", "MINIMUM_QUALIFIED_IN_CONSENTED_DOMAIN"]
         },
         "repeatOperationIds": {
           "items": {

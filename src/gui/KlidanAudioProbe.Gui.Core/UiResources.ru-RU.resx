@@ -1382,7 +1382,7 @@ Fallback: {1}
   <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Запланированные повторы:</value></data>
   <data name="V4PreparePlan" xml:space="preserve"><value>Подготовить пассивный план</value></data>
   <data name="V4ConsentHeading" xml:space="preserve"><value>Проверьте этот план</value></data>
-  <data name="V4ConsentCheck" xml:space="preserve"><value>Я проверил(а) и принимаю этот план</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>Я проверил(а) и разрешаю ограниченную проверку AudioHost для этих устройств и плана; подтверждаю, что открытые колонки не подключены</value></data>
   <data name="V4AcceptPlan" xml:space="preserve"><value>Принять план</value></data>
   <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>План v4 не подготовлен.</value></data>
   <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Подготовленный план и согласие сброшены из-за изменения параметров или обнаружения устройств.</value></data>
@@ -1427,6 +1427,7 @@ Fallback: {1}
   <data name="VmV4ScanError" xml:space="preserve"><value>Сканирование V4 остановлено: {0}: {1}</value></data>
   <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Ожидание очистки Worker и сохранения evidence…</value></data>
   <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Минимум в проверенном диапазоне кандидатов не доказан</value></data>
+  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} — минимальный квалифицированный кандидат в полном обнаруженном диапазоне</value></data>
   <data name="VmV4ScanResults" xml:space="preserve"><value>Результат: {0}
 Выбранный период: {1} · Capture frames: {2} · Render frames: {3}
 Минимальный подтверждённый кандидат: {4}

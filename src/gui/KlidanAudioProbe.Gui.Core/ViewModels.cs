@@ -204,6 +204,7 @@ public sealed class MainViewModel : ViewModel
     private CancellationTokenSource? _v4PreparationCancellation;
     private int _v4PreparationVersion, _v4RepeatabilityRuns = 5;
     private bool _v4Preparing, _v4ConsentPending, _v4ConsentChecked;
+    private string? _v4AudioHostConsentPlanFingerprint;
     private bool _v4ScanRunning;
     private WindowsEndpointDto? _v4CaptureEndpoint, _v4RenderEndpoint;
     private CancellationTokenSource? _v4ScanCancellation;
@@ -1959,6 +1960,7 @@ public sealed class MainViewModel : ViewModel
     {
         if (!(V4DiagnosticPlanMode ? CanAcceptV4DiagnosticPlan() : CanAcceptV4CustomPlan()) || _worker is null || _v4PreparedPlan is null || _v4CaptureEndpointId is null || _v4RenderEndpointId is null || _v4WorkerDiscoveryGeneration is null) return;
         _v4ConsentReceipt = WorkerScanV2ContractV4Fingerprint.CreateConsent(_v4CaptureEndpointId, _v4RenderEndpointId, _v4PreparedPlan, _v4WorkerDiscoveryGeneration.Value, true, Guid.NewGuid());
+        _v4AudioHostConsentPlanFingerprint = !_v4DiagnosticPlanMode && _v4ConsentChecked ? _v4PlanFingerprint : null;
         _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false;
         _v4PlanStatusKey = "VmV4ReceiptCreatedReady"; _v4PlanStatusArgument = null;
         Changed(nameof(V4ConsentPending)); Changed(nameof(V4ConsentChecked)); Changed(nameof(V4ConsentReceipt)); Changed(nameof(V4ReceiptCreated)); Changed(nameof(V4PlanStatus)); Changed(nameof(V4ConsentSummary));
@@ -2012,18 +2014,21 @@ public sealed class MainViewModel : ViewModel
             {
                 var auth = new AudioHostQualificationAuthorization(prepared.Consent.ConfirmationId, prepared.Consent.PlanFingerprint,
                     prepared.Consent.DiscoveryGeneration, prepared.CaptureEndpointId, prepared.RenderEndpointId, prepared.Consent.Accepted,
-                    OpenSpeakersConfirmedOff: true, prepared.Plan.Candidates.Count, checked(60 * prepared.Plan.Candidates.Count),
+                    OpenSpeakersConfirmedOff: prepared.Consent.Accepted && _v4AudioHostConsentPlanFingerprint == prepared.Consent.PlanFingerprint,
+                    prepared.Plan.Candidates.Count, checked(60 * prepared.Plan.Candidates.Count),
                     DateTimeOffset.UtcNow.AddSeconds(prepared.Plan.SessionLifetimeSeconds + 175 * prepared.Plan.Candidates.Count + 30));
                 var package = Environment.GetEnvironmentVariable("KLIDAN_AUDIOHOST_QA_PACKAGE") ?? string.Empty;
                 var qualified = await _v4ScanQualificationCoordinator.RunAsync(prepared, capture, render, auth, package, evidenceRoot,
                     profileDirectory, progress, cancellation.Token);
-                result = new(qualified.Evidence, qualified.EvidencePath) { QualificationStatus = qualified.Status, ProfilePath = qualified.ProfilePath };
+                result = new(qualified.Evidence, qualified.EvidencePath) { QualificationStatus = qualified.Status, QualificationDiagnostic = qualified.Diagnostic, ProfilePath = qualified.ProfilePath };
                 _v4ProgressText = qualified.Diagnostic is null ? qualified.Status : $"{qualified.Status}: {qualified.Diagnostic}";
             }
             else result = await _v4AutomaticSearchWorkflow.RunAsync(prepared, capture, render, evidenceRoot, profileDirectory,
                     prepared.Plan.RepeatabilityRuns == 5, progress, cancellation.Token);
             _v4SearchResult = result; _v4EvidencePath = result.EvidencePath ?? "";
-            _v4ProgressText = result.Evidence.StopReason;
+            _v4ProgressText = result.QualificationStatus == "NOT_QUALIFIED" && result.QualificationDiagnostic is null
+                ? result.Evidence.StopReason
+                : $"{result.QualificationStatus}{(string.IsNullOrWhiteSpace(result.QualificationDiagnostic) ? "" : $": {result.QualificationDiagnostic}")}";
         }
         catch (Exception ex)
         {
@@ -2059,10 +2064,11 @@ public sealed class MainViewModel : ViewModel
         var captureActual = selectedRow?.ActualCapturePeriod100ns is { } cp ? (cp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
         var renderActual = selectedRow?.ActualRenderPeriod100ns is { } rp ? (rp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
         var lowerProven = selected is { } si && evidence.Candidates.Take(si).All(c => c.LowerPeriodCoverage == "COMPLETE" && (c.DuplexDisposition is "FAILED" or "UNSUPPORTED" || c.DuplexDisposition == "CLEAN" && c.RepeatabilityStatus == "FAILED" || c.DuplexDisposition == "CLEAN" && c.AudioHostQualification is { Status: "LOAD_UNSTABLE", Cleanup: "CONFIRMED" }));
-        var minimum = lowerProven && candidate is not null ? period : Localization.Get("VmV4MinimumNotProven");
+        var minimum = lowerProven && candidate is not null ? string.Format(Localization.CurrentCulture, Localization.Get("VmV4MinimumWithinDomain"), period) : Localization.Get("VmV4MinimumNotProven");
         var reasons = string.Join("; ", evidence.Candidates.Where(c => c.DuplexDisposition is "FAILED" or "UNSUPPORTED" or "UNKNOWN").Select(c => $"{c.Candidate.Index + 1}: {c.DuplexDisposition} {string.Join(',', c.ReasonCodes)}"));
         var rows = string.Join(Environment.NewLine, evidence.Candidates.Select(c => $"{(c.Candidate.RequestedDuration100ns / 10_000m).ToString("0.###", Localization.CurrentCulture)} ms · {c.DuplexDisposition}{(c.NativeDuplexDisposition is { } native && native != c.DuplexDisposition ? $" (Native {native}; evaluator {c.EvaluatorReasonCode}; expected ≥{c.EvaluatorExpectedFrames?.ToString() ?? "?"}, actual {c.EvaluatorActualFrames?.ToString() ?? "?"} frames)" : "")} · Capture {c.ActualCaptureFrames?.ToString() ?? "?"}f / Render {c.ActualRenderFrames?.ToString() ?? "?"}f · {c.SkipReason ?? string.Join(',', c.ReasonCodes)}"));
-        var profile = _v4SearchResult?.ProfilePath is { } savedProfile ? $"PROFILE_SAVED: {savedProfile}" : _v4SearchResult?.QualificationStatus == "TEST_ONLY" ? "TEST_ONLY" : evidence.ProfileEligible ? $"PROFILE_SAVED: {evidence.ProfilePath}" : evidence.Provenance.Contains("TEST_FAKE", StringComparison.Ordinal) ? "TEST_ONLY" : evidence.StopReason.Contains("PROFILE_SAVE_OR_READBACK_FAILED", StringComparison.Ordinal) ? evidence.StopReason : $"PROFILE_NOT_CREATED: {_v4SearchResult?.QualificationStatus ?? "NOT_QUALIFIED"}";
+        var qualification = _v4SearchResult is { } search ? $"AudioHost: {search.QualificationStatus}{(string.IsNullOrWhiteSpace(search.QualificationDiagnostic) ? "" : $" · {search.QualificationDiagnostic}")}" : "AudioHost: NOT_QUALIFIED";
+        var profile = _v4SearchResult?.ProfilePath is { } savedProfile ? $"{qualification} · PROFILE_SAVED: {savedProfile}" : _v4SearchResult?.QualificationStatus == "TEST_ONLY" ? $"{qualification} · TEST_ONLY; no DEVICE profile" : evidence.ProfileEligible ? $"{qualification} · PROFILE_SAVED: {evidence.ProfilePath}" : evidence.Provenance.Contains("TEST_FAKE", StringComparison.Ordinal) ? "TEST_ONLY" : evidence.StopReason.Contains("PROFILE_SAVE_OR_READBACK_FAILED", StringComparison.Ordinal) ? $"{qualification} · {evidence.StopReason}" : $"{qualification} · PROFILE_NOT_CREATED";
         return string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanResults"), state, period, selectedRow?.ActualCaptureFrames?.ToString() ?? "UNKNOWN", selectedRow?.ActualRenderFrames?.ToString() ?? "UNKNOWN", minimum, selectedRow?.DuplexDisposition == "CLEAN" ? "SHORT_CLEAN" : "NO", captureActual, renderActual, evidence.RepeatabilityCompleted, profile, string.IsNullOrWhiteSpace(reasons) ? "NONE" : reasons, rows, _v4EvidencePath);
     }
 
@@ -2102,7 +2108,7 @@ public sealed class MainViewModel : ViewModel
         if (!hadState) { RefreshV4Commands(); return; }
         Interlocked.Increment(ref _v4PreparationVersion);
         _v4PreparationCancellation?.Cancel();
-        _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false; _v4DiagnosticPlanMode = false; _v4DiagnosticRunStarted = false;
+        _v4PreparedPlan = null; _v4ConsentReceipt = null; _v4AudioHostConsentPlanFingerprint = null; _v4ConsentPending = false; _v4ConsentChecked = false; _v4DiagnosticConsentChecked = false; _v4DiagnosticPlanMode = false; _v4DiagnosticRunStarted = false;
         _v4CaptureEndpointId = _v4RenderEndpointId = _v4CaptureFriendlyName = _v4RenderFriendlyName = _v4UiDiscoveryGeneration = null;
         _v4CaptureEndpoint = _v4RenderEndpoint = null;
         _v4WorkerDiscoveryGeneration = null; _v4PlanFingerprint = null; _v4Preparing = false; _v4PlanStatusKey = reasonKey; _v4PlanStatusArgument = null;

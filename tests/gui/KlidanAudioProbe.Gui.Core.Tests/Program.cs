@@ -496,6 +496,14 @@ var testQualification = new ProfileAudioHostQualification("TEST_FIXTURE_SUCCEEDE
 var testQualifiedProfile = stableShortProfile with { StableShortSelection = stableShort with { Mmcss = "PRO_AUDIO" }, AudioHostQualification = testQualification };
 var testQualifiedRoundTrip = DeviceConfigurationProfileJson.Parse(DeviceConfigurationProfileJson.SerializeLocal(testQualifiedProfile));
 Check(testQualifiedRoundTrip.AudioHostQualification?.Provenance == "TEST_ONLY" && testQualifiedRoundTrip.StableShortSelection?.Mmcss == "PRO_AUDIO" && testQualifiedRoundTrip.Recommendation.Preferred is null, "v5 permits a read-back TEST_ONLY PRO_AUDIO fixture without enabling a device recommendation");
+var testOnlyProfileDirectory = Path.Combine(Path.GetTempPath(), "klidan-v5-test-only-readback-" + Guid.NewGuid().ToString("N"));
+try
+{
+    var testOnlyProfilePath = DeviceConfigurationProfileStorage.SaveLocal(testQualifiedRoundTrip, testOnlyProfileDirectory);
+    var diskReadback = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(testOnlyProfilePath));
+    Check(diskReadback.StableShortSelection?.ProfileKind == "TEST_ONLY" && diskReadback.AudioHostQualification?.Provenance == "TEST_ONLY" && diskReadback.AudioHostQualification?.Result == "TEST_FIXTURE_SUCCEEDED" && diskReadback.Recommendation.Preferred is null, "synthetic qualified Profile v5 saves, validates and reads back from disk as TEST_ONLY without a DEVICE recommendation");
+}
+finally { if (Directory.Exists(testOnlyProfileDirectory)) Directory.Delete(testOnlyProfileDirectory, true); }
 Throws<InvalidDataException>(() => DeviceConfigurationProfileJson.Validate(testQualifiedProfile with { StableShortSelection = testQualifiedProfile.StableShortSelection! with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" } }), "synthetic AudioHost fixture cannot promote a DEVICE profile");
 Throws<InvalidDataException>(() => DeviceConfigurationProfileFactory.CreateStableShort(duplexProfile, stableShort with { ProfileKind = "DEVICE" }), "profile v5 rejects synthetic provenance for a physical device profile");
 var testOnlyBinding = DeviceProfileBindingRevalidation.Evaluate(stableShortProfile, new WindowsEndpointDiscoveryDto("REAL_WINDOWS_METADATA", "COMPLETE", 0, 0, [], [profileEndpoint, renderEndpoint]));
@@ -1040,9 +1048,11 @@ v4ConsentCheck.IsChecked = true; v2LayoutWindow.UpdateLayout();
 Check(v4AcceptButton.IsEnabled, "WPF enables v4 consent acceptance only after explicit plan review");
 v4AcceptButton.Command!.Execute(null);
 Check(v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt?.PlanFingerprint == v2RouteVm.V4PlanFingerprint && v2RouteVm.V4ConsentReceipt?.DiscoveryGeneration == v2RouteWorker.DiscoveryGeneration && v2RouteWorker.RealInitializeCalls == 0 && v2RouteWorker.DuplexCalls == 0, "v4 receipt binds the displayed plan fingerprint and Worker generation without opening audio transport");
+Check(Localization.Get("V4ConsentCheck", System.Globalization.CultureInfo.GetCultureInfo("en-US")).Contains("open speakers", StringComparison.OrdinalIgnoreCase) && typeof(MainViewModel).GetField("_v4AudioHostConsentPlanFingerprint", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm) as string == v2RouteVm.V4PlanFingerprint, "physical AudioHost permission is explicit and bound to the accepted endpoint plan");
 Check(Localization.Get("VmV4AudioGateClosed", ruCulture).Contains("профиля", StringComparison.Ordinal) && Localization.Get("V4PlanHeading", System.Globalization.CultureInfo.GetCultureInfo("en-US")).Contains("CUSTOM", StringComparison.Ordinal), "v4 consent gate is localized in Russian and English");
 v2RouteVm.V4RepeatabilityRuns = 4;
 Check(!v2RouteVm.V4PlanReady && !v2RouteVm.V4ReceiptCreated && v2RouteVm.V4ConsentReceipt is null, "changing repeatability budget invalidates the prepared v4 plan and receipt");
+Check(typeof(MainViewModel).GetField("_v4AudioHostConsentPlanFingerprint", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm) is null, "changing the plan also revokes its AudioHost physical-run permission");
 v2RouteVm.V4RepeatabilityRuns = 5;
 void PrepareFreshV4ForInvalidation(string label)
 {

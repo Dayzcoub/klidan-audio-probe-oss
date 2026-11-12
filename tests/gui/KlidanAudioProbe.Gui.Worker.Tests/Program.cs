@@ -952,6 +952,56 @@ try
     Check(repeatFallback.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatFallback.Result.Evidence.SelectedCandidateIndex == 2 && repeatFallback.Result.Evidence.Candidates[0].Candidate.RequestedDuration100ns == 30_000 && repeatFallback.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && repeatFallback.Result.Evidence.Candidates[2].Candidate.RequestedDuration100ns == 100_000 && repeatFallback.Result.Evidence.Candidates.Take(2).All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Single().Result == "FAILED") && repeatFallback.Result.Evidence.Candidates[2].RepeatabilityStatus == "CONFIRMED" && repeatFallback.Result.Evidence.RepeatabilityCompleted == 5, "repeatability fallback checks 3, 5, then 10 ms in order and retains each failure before confirming 10 ms");
     var stableFive = await RunV4Search("5 ms minimum stable synthetic", (index, operation) => index == 0 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
     Check(stableFive.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && stableFive.Result.Evidence.SelectedCandidateIndex == 1 && stableFive.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && stableFive.Result.Evidence.Candidates[2].DuplexDisposition == "SKIPPED", "5 ms is chosen over 10 ms when it passes all repeatability checks");
+    async Task<(V4ScanQualificationResult Result, string[] Operations, int[] AdapterCandidates, string Root)> RunQualificationCoordinator(
+        string name, Func<int, string, string?> scanScenario, Func<AudioHostCandidateQualificationRequest, AudioHostCandidateQualificationResult> loadResult,
+        IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null)
+    {
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
+        var captureEndpoint = endpoints.Single(e => e.Direction == "CAPTURE"); var renderEndpoint = endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!; var renderId = renderEndpoint.EndpointId!;
+        var domain = candidateOverride ?? threeCandidates; var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(domain.Count, 5);
+        var plan = new WorkerScanV2ContractV4(route, domain, ["PRO_AUDIO"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+        var prepared = new WorkerScanV2V4PreparedPlan(captureId, renderId, plan, consent);
+        var authorization = new AudioHostQualificationAuthorization(consent.ConfirmationId, consent.PlanFingerprint, consent.DiscoveryGeneration,
+            captureId, renderId, true, true, domain.Count, checked(60 * domain.Count), DateTimeOffset.UtcNow.AddSeconds(plan.SessionLifetimeSeconds + 175 * domain.Count + 30));
+        var adapterCandidates = new List<int>(); var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-v4-qualification-" + name + "-" + Guid.NewGuid().ToString("N"));
+        var adapter = new ControlledAudioHostQualificationAdapter(request => { adapterCandidates.Add(request.Candidate.Index); Check(File.Exists(request.RepeatabilityMatrixPath), $"{name}: AudioHost adapter receives persisted scanner evidence"); return loadResult(request); });
+        try
+        {
+            var coordinator = new WorkerV4ScanQualificationCoordinator(new WorkerV4AutomaticSearchWorkflow(client), adapter,
+                (index, operation) => { operations.Add($"{domain[index].RequestedDuration100ns / 10_000}:{operation}"); return scanScenario(index, operation); });
+            var result = await coordinator.RunAsync(prepared, captureEndpoint, renderEndpoint, authorization, "TEST_ONLY_PACKAGE", root,
+                cancellationToken: CancellationToken.None, testOnly: true);
+            return (result, operations.ToArray(), adapterCandidates.ToArray(), root);
+        }
+        finally { await client.DisposeAsync(); }
+    }
+    AudioHostCandidateQualificationResult TestLoad(string status, string cleanup = "CONFIRMED") => new(status, cleanup, null, null, null, null, null, null, null, "TEST_ONLY");
+    var coordinatorA = await RunQualificationCoordinator("A", (index, op) => index == 0 && op == "DUPLEX" || index == 1 && op == "REPEAT_1" ? "SERVICE_FAILURE" : null,
+        request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorA.Result.Status == "TEST_ONLY" && coordinatorA.Result.SelectedCandidateIndex == 2 && coordinatorA.AdapterCandidates.SequenceEqual([2]) && coordinatorA.Operations.Where(x => x.EndsWith(":DUPLEX", StringComparison.Ordinal) || x.Contains(":REPEAT_", StringComparison.Ordinal)).SequenceEqual(new[] { "3:DUPLEX", "5:DUPLEX", "5:REPEAT_1", "10:DUPLEX", "10:REPEAT_1", "10:REPEAT_2", "10:REPEAT_3", "10:REPEAT_4", "10:REPEAT_5" }),
+        $"Coordinator A executes 3 FAILED, 5 R5 FAILED, then 10 ms R5+AudioHost CLEAN and selects TEST_ONLY 10 ms [status={coordinatorA.Result.Status}; selected={coordinatorA.Result.SelectedCandidateIndex}; adapter={string.Join(',', coordinatorA.AdapterCandidates)}; operations={string.Join(',', coordinatorA.Operations)}; diagnostic={coordinatorA.Result.Diagnostic}]");
+    Check(coordinatorA.Result.Evidence.SelectedCandidateIndex == 2 && !coordinatorA.Result.Evidence.GlobalMinimumProven && !coordinatorA.Result.Evidence.ProfileEligible && coordinatorA.Result.ProfilePath is null && File.Exists(coordinatorA.Result.EvidencePath),
+        "Coordinator A preserves candidate-domain-only scope, read-back evidence, and never promotes synthetic DEVICE profile");
+    var coordinatorB = await RunQualificationCoordinator("B", (index, op) => index == 0 && op == "DUPLEX" ? "SERVICE_FAILURE" : null, request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorB.Result.Status == "TEST_ONLY" && coordinatorB.Result.SelectedCandidateIndex == 1 && coordinatorB.AdapterCandidates.SequenceEqual([1]) && coordinatorB.Operations.All(x => !x.StartsWith("10:", StringComparison.Ordinal)),
+        "Coordinator B selects stable 5 ms and never launches 10 ms");
+    var coordinatorC = await RunQualificationCoordinator("C", (index, op) => index == 0 && op == "DUPLEX" ? "SERVICE_FAILURE" : null,
+        request => request.Candidate.Index == 1 ? TestLoad("LOAD_UNSTABLE") : TestLoad("LOAD_CLEAN"));
+    Check(coordinatorC.Result.Status == "TEST_ONLY" && coordinatorC.Result.SelectedCandidateIndex == 2 && coordinatorC.AdapterCandidates.SequenceEqual([1, 2]) && coordinatorC.Result.Evidence.Candidates[1].AudioHostQualification is { Status: "LOAD_UNSTABLE", Cleanup: "CONFIRMED" },
+        "Coordinator C advances 5→10 only after LOAD_UNSTABLE and confirmed cleanup");
+    var coordinatorD = await RunQualificationCoordinator("D", (index, op) => null, request => TestLoad("QA_FAILED"));
+    Check(coordinatorD.Result.Status == "QA_FAILED" && coordinatorD.Result.SelectedCandidateIndex is null && coordinatorD.Result.ProfilePath is null && coordinatorD.AdapterCandidates.SequenceEqual([0]) && coordinatorD.Operations.All(x => !x.StartsWith("5:", StringComparison.Ordinal)),
+        "Coordinator D stops on QA_FAILED without fallback or qualified profile");
+    var coordinatorDUnknown = await RunQualificationCoordinator("D-UNKNOWN", (index, op) => null, request => TestLoad("UNKNOWN", "UNKNOWN"));
+    Check(coordinatorDUnknown.Result.Status == "UNKNOWN" && coordinatorDUnknown.Result.SelectedCandidateIndex is null && coordinatorDUnknown.Result.ProfilePath is null && coordinatorDUnknown.AdapterCandidates.SequenceEqual([0]),
+        "Coordinator D stops on UNKNOWN cleanup and does not retry the candidate");
+    var coordinatorDIpc = await RunQualificationCoordinator("D-IPC", (index, op) => index == 0 && op == "DUPLEX" ? "CLEANUP_UNKNOWN" : null, request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorDIpc.Result.Status == "UNKNOWN" && coordinatorDIpc.AdapterCandidates.Length == 0 && coordinatorDIpc.Operations.Where(x => x.EndsWith(":DUPLEX", StringComparison.Ordinal)).SequenceEqual(["3:DUPLEX"]) && coordinatorDIpc.Result.ProfilePath is null,
+        "Coordinator D treats Worker IPC/cleanup uncertainty as UNKNOWN and never invokes AudioHost or retries");
     var unknownRepeat = await RunV4Search("repeat cleanup UNKNOWN synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : operation == "REPEAT_2" ? "CLEANUP_UNKNOWN" : null, true);
     Check(unknownRepeat.Result.Evidence.SelectionState == "UNKNOWN" && unknownRepeat.Result.Evidence.RepeatabilityCompleted == 2 && unknownRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 2 && unknownRepeat.Result.Evidence.RepeatabilityRuns[1].Cleanup == "UNKNOWN", "UNKNOWN cleanup on a repeat preserves that run and stops every later operation");
     using (var cancelRepeat = new CancellationTokenSource())
@@ -1709,6 +1759,12 @@ static bool FirstInstanceIsExclusive(NativeWorkerClient worker)
     using var duplicate = NativeSecurity.CreateNamedPipeForTest($"\\\\.\\pipe\\{worker.PipeNameForTests}", worker.PipeOpenModeForTests, worker.PipeModeForTests, 1, 65536, 65536, 0, IntPtr.Zero);
     var error = Marshal.GetLastWin32Error();
     return duplicate.IsInvalid && error is 5 or 231;
+}
+
+sealed class ControlledAudioHostQualificationAdapter(Func<AudioHostCandidateQualificationRequest, AudioHostCandidateQualificationResult> resultFactory) : IAudioHostQualificationAdapter
+{
+    public Task<AudioHostCandidateQualificationResult> QualifyAsync(AudioHostCandidateQualificationRequest request, CancellationToken cancellationToken) =>
+        Task.FromResult(resultFactory(request));
 }
 
 static class NativeSecurity

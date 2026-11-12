@@ -3,6 +3,7 @@ namespace KlidanAudioProbe.Gui.Core;
 public sealed record V4AutomaticSearchResult(V2CandidateMatrixEvidence Evidence, string? EvidencePath)
 {
     public string QualificationStatus { get; init; } = "NOT_QUALIFIED";
+    public string? QualificationDiagnostic { get; init; }
     public string? ProfilePath { get; init; }
 }
 public sealed record V4AutomaticSearchProgress(string Stage, int CandidateIndex, int? CaptureFrames, int? RenderFrames, int RepeatabilityCompleted, int? ActualCaptureFrames = null, int? ActualRenderFrames = null);

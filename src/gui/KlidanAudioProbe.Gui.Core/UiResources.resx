@@ -1382,7 +1382,7 @@ Fallback: {1}
   <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Planned repeatability runs:</value></data>
   <data name="V4PreparePlan" xml:space="preserve"><value>Prepare passive plan</value></data>
   <data name="V4ConsentHeading" xml:space="preserve"><value>Review this exact plan</value></data>
-  <data name="V4ConsentCheck" xml:space="preserve"><value>I reviewed and accept this plan</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>I reviewed and authorize the bounded AudioHost load qualification for these endpoints and this plan; I confirm no open speakers are connected</value></data>
   <data name="V4AcceptPlan" xml:space="preserve"><value>Accept plan</value></data>
   <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>No v4 plan prepared.</value></data>
   <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Prepared plan and consent invalidated because the inputs or discovery changed.</value></data>
@@ -1427,6 +1427,7 @@ Fallback: {1}
   <data name="VmV4ScanError" xml:space="preserve"><value>V4 scan stopped: {0}: {1}</value></data>
   <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. Waiting for worker cleanup and evidence save…</value></data>
   <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Not proven in tested candidate domain</value></data>
+  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} is the minimum qualified candidate within the complete discovered candidate domain</value></data>
   <data name="VmV4ScanResults" xml:space="preserve"><value>Result: {0}
 Selected period: {1} · Capture frames: {2} · Render frames: {3}
 Minimum verified candidate: {4}
