@@ -9,6 +9,7 @@ using KlidanAudioProbe.Gui.Worker;
 using UiLocalization = KlidanAudioProbe.Gui.Core.Localization;
 using System.ComponentModel;
 using Microsoft.Win32;
+using System.IO;
 
 namespace KlidanAudioProbe.Gui.App;
 
@@ -34,7 +35,12 @@ public partial class MainWindow : Window
         Title = KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle");
         _ownsWorkerLifecycle = viewModel is null;
         _profileDirectory = profileDirectory;
-        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: new WorkerV4AutomaticSearchWorkflow(_worker), evidenceDirectory: evidenceDirectory);
+        var v4Search = new WorkerV4AutomaticSearchWorkflow(_worker);
+        var qualificationPackage = Environment.GetEnvironmentVariable("KLIDAN_AUDIOHOST_QA_PACKAGE");
+        IAudioHostQualificationAdapter? qualificationAdapter = !string.IsNullOrWhiteSpace(qualificationPackage) && File.Exists(Path.Combine(qualificationPackage, "manifest.json"))
+            ? new AudioHostPowerShellQualificationAdapter() : null;
+        var qualificationCoordinator = new WorkerV4ScanQualificationCoordinator(v4Search, qualificationAdapter);
+        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: v4Search, evidenceDirectory: evidenceDirectory, v4ScanQualificationCoordinator: qualificationCoordinator);
         DataContext = _vm;
         _vm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(MainViewModel.Screen) or nameof(MainViewModel.WorkflowStep) or nameof(MainViewModel.DeveloperToolsOpen)) { UpdateScreenVisibility(); UpdateResponsiveLayout(); } if (e.PropertyName == nameof(MainViewModel.SelectedWindowsEndpoint)) UpdateWindowsEndpointDetailsVisibility(); };
         DataContextChanged += (_, _) => UpdateWindowsEndpointDetailsVisibility();

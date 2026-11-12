@@ -121,11 +121,13 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
         string? evidenceRoot = null, CancellationToken cancellationToken = default,
         Func<int, string, string?>? testScenario = null, bool runRepeatability = false, DeviceConfigurationProfile? profileBase = null,
         WindowsEndpointDto? captureEndpoint = null, WindowsEndpointDto? renderEndpoint = null, string? profileDirectory = null,
-        IProgress<V4AutomaticSearchProgress>? progress = null, bool diagnosticOnly = false)
+        IProgress<V4AutomaticSearchProgress>? progress = null, bool diagnosticOnly = false, int? onlyCandidateIndex = null)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         var plan = prepared.Plan;
         var consent = prepared.Consent;
+        if (onlyCandidateIndex is { } target && (diagnosticOnly || plan.Candidates.All(c => c.Index != target)))
+            throw new InvalidOperationException("Candidate-scoped execution requires an index in the accepted full plan and is unavailable for point diagnostics.");
         if (diagnosticOnly && (plan.Candidates.Count != 1 || plan.RepeatabilityRuns != 0 || plan.MaximumOperations != 3 || plan.MaximumActiveDuplexSeconds != 5 || runRepeatability))
             throw new InvalidOperationException("Diagnostic execution cannot exceed one candidate, three operations, five active seconds, or R=0.");
         if (!consent.Accepted || consent.ConfirmationId == Guid.Empty || consent.DiscoveryGeneration != worker.DiscoveryGeneration ||
@@ -154,6 +156,11 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                 if (candidate.RejectionReason.Length != 0)
                 {
                     Update(candidate.Index, e => e with { CaptureInitializeDisposition = "REJECTED", RenderInitializeDisposition = "REJECTED", DuplexDisposition = "REJECTED", SkipReason = candidate.RejectionReason, ReasonCodes = ["CANDIDATE_CONSTRAINT_REJECTED"] });
+                    continue;
+                }
+                if (onlyCandidateIndex is { } scopedIndex && candidate.Index != scopedIndex)
+                {
+                    Update(candidate.Index, e => e with { CaptureInitializeDisposition = "SKIPPED", RenderInitializeDisposition = "SKIPPED", DuplexDisposition = "SKIPPED", DuplexNotRun = true, SkipReason = "DEFERRED_TO_SCAN_QUALIFICATION_COORDINATOR", ReasonCodes = ["DEFERRED_TO_SCAN_QUALIFICATION_COORDINATOR"] });
                     continue;
                 }
 

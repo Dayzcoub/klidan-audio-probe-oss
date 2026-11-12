@@ -90,7 +90,7 @@
       "maxItems": 0
     },
     "recommendation": {
-      "$ref": "#/$defs/v4Recommendation"
+      "$ref": "#/$defs/v5Recommendation"
     },
     "privacy": {
       "enum": [
@@ -328,6 +328,32 @@
             "SANITIZED_UNBOUND"
           ]
         }
+    },
+    "audioHostQualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "cleanup", "runId", "configSha256", "resultSha256", "audioHostBuildSha", "sourceEvidenceSha256", "shortSearchSha256", "repeatabilitySummarySha256", "repeatabilityMatrixSha256", "profileMatrixSha256", "provenance", "captureEndpointId", "renderEndpointId", "captureFrames", "renderFrames", "period100ns", "mmcss", "qualifiedAtUtc"],
+      "properties": {
+        "result": { "enum": ["LOAD_CLEAN", "TEST_FIXTURE_SUCCEEDED"] },
+        "cleanup": { "const": "CONFIRMED" },
+        "runId": { "$ref": "#/$defs/uuid" },
+        "configSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "resultSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "audioHostBuildSha": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
+        "sourceEvidenceSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "shortSearchSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "repeatabilitySummarySha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "repeatabilityMatrixSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "profileMatrixSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "provenance": { "enum": ["REAL_AUDIOHOST", "TEST_ONLY"] },
+        "captureEndpointId": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "renderEndpointId": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "captureFrames": { "type": "integer", "minimum": 1 },
+        "renderFrames": { "type": "integer", "minimum": 1 },
+        "period100ns": { "type": "integer", "minimum": 1 },
+        "mmcss": { "enum": ["OFF", "PRO_AUDIO"] },
+        "qualifiedAtUtc": { "type": "string", "format": "date-time" }
+      }
       }
     },
     "audioFormat": {
@@ -363,7 +389,7 @@
         }
       }
     },
-    "v4Recommendation": {
+    "v5Recommendation": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -375,10 +401,10 @@
       ],
       "properties": {
         "preferred": {
-          "type": "null"
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/recommendationChoice" }]
         },
         "fallback": {
-          "type": "null"
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/recommendationChoice" }]
         },
         "unavailableReasons": {
           "type": "array",
@@ -390,15 +416,22 @@
           }
         },
         "scope": {
-          "const": "NONE"
+          "enum": ["NONE", "KLIDAN_QUALIFIED"]
         },
         "confidence": {
-          "enum": [
-            "PROVISIONAL",
-            "LOW",
-            "NOT_AVAILABLE"
-          ]
+          "enum": ["PROVISIONAL", "LOW", "NOT_AVAILABLE", "VERIFIED"]
         }
+      }
+    },
+    "recommendationChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "format", "period", "evidence"],
+      "properties": {
+        "mode": { "const": "COORDINATED_EXCLUSIVE" },
+        "format": { "$ref": "#/$defs/v5AudioFormat" },
+        "period": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "evidence": { "$ref": "#/$defs/uuidList" }
       }
     },
     "sustainedSelection": {

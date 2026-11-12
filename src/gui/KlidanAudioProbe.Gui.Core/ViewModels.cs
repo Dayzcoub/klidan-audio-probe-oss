@@ -76,6 +76,7 @@ public sealed class MainViewModel : ViewModel
     private readonly IExclusivePeriodDiscoveryWorkflow? _exclusivePeriodDiscoveryWorkflow;
     private readonly ICustomPeriodDuplexWorkflow? _customPeriodDuplexWorkflow;
     private readonly IV4AutomaticSearchWorkflow? _v4AutomaticSearchWorkflow;
+    private readonly IV4ScanQualificationCoordinator? _v4ScanQualificationCoordinator;
     private readonly string? _profileDirectory;
     private readonly string? _v4EvidenceDirectory;
     private readonly ILaboratoryEvidenceBundleExportInteraction? _bundleExportInteraction;
@@ -269,7 +270,7 @@ public sealed class MainViewModel : ViewModel
     private long _workerTimelineSequence;
     private readonly List<WorkerEventDto> _earlyWorkerEvents = [];
     private TaskCompletionSource? _workerTerminal;
-    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null, bool developerToolsAvailable = true, IV4AutomaticSearchWorkflow? v4AutomaticSearchWorkflow = null, string? evidenceDirectory = null)
+    public MainViewModel(IProbeClient? client = null, IWorkerClient? worker = null, IAutomaticScanWorkflow? automaticScanWorkflow = null, IDuplexRepeatabilityWorkflow? duplexRepeatabilityWorkflow = null, IExclusivePeriodDiscoveryWorkflow? exclusivePeriodDiscoveryWorkflow = null, ICustomPeriodDuplexWorkflow? customPeriodDuplexWorkflow = null, string? profileDirectory = null, ILaboratoryEvidenceBundleExportInteraction? bundleExportInteraction = null, Func<string, LaboratoryEvidenceBundleDirectories>? bundleDirectoriesFactory = null, bool developerToolsAvailable = true, IV4AutomaticSearchWorkflow? v4AutomaticSearchWorkflow = null, string? evidenceDirectory = null, IV4ScanQualificationCoordinator? v4ScanQualificationCoordinator = null)
     {
         _client = client ?? new FakeProbeClient();
         _worker = worker;
@@ -278,6 +279,7 @@ public sealed class MainViewModel : ViewModel
         _exclusivePeriodDiscoveryWorkflow = exclusivePeriodDiscoveryWorkflow;
         _customPeriodDuplexWorkflow = customPeriodDuplexWorkflow;
         _v4AutomaticSearchWorkflow = v4AutomaticSearchWorkflow;
+        _v4ScanQualificationCoordinator = v4ScanQualificationCoordinator;
         _profileDirectory = profileDirectory;
         _v4EvidenceDirectory = evidenceDirectory;
         _bundleExportInteraction = bundleExportInteraction;
@@ -2003,9 +2005,22 @@ public sealed class MainViewModel : ViewModel
         });
         try
         {
-            var result = V4DiagnosticPlanMode
-                ? await _v4AutomaticSearchWorkflow.RunDiagnosticAsync(prepared, capture, render, evidenceRoot, progress, cancellation.Token)
-                : await _v4AutomaticSearchWorkflow.RunAsync(prepared, capture, render, evidenceRoot, profileDirectory,
+            V4AutomaticSearchResult result;
+            if (V4DiagnosticPlanMode)
+                result = await _v4AutomaticSearchWorkflow.RunDiagnosticAsync(prepared, capture, render, evidenceRoot, progress, cancellation.Token);
+            else if (_v4ScanQualificationCoordinator is not null && prepared.Plan.RepeatabilityRuns == 5)
+            {
+                var auth = new AudioHostQualificationAuthorization(prepared.Consent.ConfirmationId, prepared.Consent.PlanFingerprint,
+                    prepared.Consent.DiscoveryGeneration, prepared.CaptureEndpointId, prepared.RenderEndpointId, prepared.Consent.Accepted,
+                    OpenSpeakersConfirmedOff: true, prepared.Plan.Candidates.Count, checked(60 * prepared.Plan.Candidates.Count),
+                    DateTimeOffset.UtcNow.AddSeconds(prepared.Plan.SessionLifetimeSeconds + 175 * prepared.Plan.Candidates.Count + 30));
+                var package = Environment.GetEnvironmentVariable("KLIDAN_AUDIOHOST_QA_PACKAGE") ?? string.Empty;
+                var qualified = await _v4ScanQualificationCoordinator.RunAsync(prepared, capture, render, auth, package, evidenceRoot,
+                    profileDirectory, progress, cancellation.Token);
+                result = new(qualified.Evidence, qualified.EvidencePath) { QualificationStatus = qualified.Status, ProfilePath = qualified.ProfilePath };
+                _v4ProgressText = qualified.Diagnostic is null ? qualified.Status : $"{qualified.Status}: {qualified.Diagnostic}";
+            }
+            else result = await _v4AutomaticSearchWorkflow.RunAsync(prepared, capture, render, evidenceRoot, profileDirectory,
                     prepared.Plan.RepeatabilityRuns == 5, progress, cancellation.Token);
             _v4SearchResult = result; _v4EvidencePath = result.EvidencePath ?? "";
             _v4ProgressText = result.Evidence.StopReason;
@@ -2043,11 +2058,11 @@ public sealed class MainViewModel : ViewModel
         var period = candidate is null ? "UNKNOWN" : (candidate.RequestedDuration100ns / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms";
         var captureActual = selectedRow?.ActualCapturePeriod100ns is { } cp ? (cp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
         var renderActual = selectedRow?.ActualRenderPeriod100ns is { } rp ? (rp / 10_000m).ToString("0.###", Localization.CurrentCulture) + " ms" : "UNKNOWN";
-        var lowerProven = selected is { } si && evidence.Candidates.Take(si).All(c => c.LowerPeriodCoverage == "COMPLETE" && c.DuplexDisposition is "FAILED" or "UNSUPPORTED");
+        var lowerProven = selected is { } si && evidence.Candidates.Take(si).All(c => c.LowerPeriodCoverage == "COMPLETE" && (c.DuplexDisposition is "FAILED" or "UNSUPPORTED" || c.DuplexDisposition == "CLEAN" && c.RepeatabilityStatus == "FAILED" || c.DuplexDisposition == "CLEAN" && c.AudioHostQualification is { Status: "LOAD_UNSTABLE", Cleanup: "CONFIRMED" }));
         var minimum = lowerProven && candidate is not null ? period : Localization.Get("VmV4MinimumNotProven");
         var reasons = string.Join("; ", evidence.Candidates.Where(c => c.DuplexDisposition is "FAILED" or "UNSUPPORTED" or "UNKNOWN").Select(c => $"{c.Candidate.Index + 1}: {c.DuplexDisposition} {string.Join(',', c.ReasonCodes)}"));
         var rows = string.Join(Environment.NewLine, evidence.Candidates.Select(c => $"{(c.Candidate.RequestedDuration100ns / 10_000m).ToString("0.###", Localization.CurrentCulture)} ms · {c.DuplexDisposition}{(c.NativeDuplexDisposition is { } native && native != c.DuplexDisposition ? $" (Native {native}; evaluator {c.EvaluatorReasonCode}; expected ≥{c.EvaluatorExpectedFrames?.ToString() ?? "?"}, actual {c.EvaluatorActualFrames?.ToString() ?? "?"} frames)" : "")} · Capture {c.ActualCaptureFrames?.ToString() ?? "?"}f / Render {c.ActualRenderFrames?.ToString() ?? "?"}f · {c.SkipReason ?? string.Join(',', c.ReasonCodes)}"));
-        var profile = evidence.ProfileEligible ? $"PROFILE_SAVED: {evidence.ProfilePath}" : evidence.Provenance.Contains("TEST_FAKE", StringComparison.Ordinal) ? "TEST_ONLY" : evidence.StopReason.Contains("PROFILE_SAVE_OR_READBACK_FAILED", StringComparison.Ordinal) ? evidence.StopReason : "PROFILE_NOT_CREATED: short-run evidence is preliminary or unqualified";
+        var profile = _v4SearchResult?.ProfilePath is { } savedProfile ? $"PROFILE_SAVED: {savedProfile}" : _v4SearchResult?.QualificationStatus == "TEST_ONLY" ? "TEST_ONLY" : evidence.ProfileEligible ? $"PROFILE_SAVED: {evidence.ProfilePath}" : evidence.Provenance.Contains("TEST_FAKE", StringComparison.Ordinal) ? "TEST_ONLY" : evidence.StopReason.Contains("PROFILE_SAVE_OR_READBACK_FAILED", StringComparison.Ordinal) ? evidence.StopReason : $"PROFILE_NOT_CREATED: {_v4SearchResult?.QualificationStatus ?? "NOT_QUALIFIED"}";
         return string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanResults"), state, period, selectedRow?.ActualCaptureFrames?.ToString() ?? "UNKNOWN", selectedRow?.ActualRenderFrames?.ToString() ?? "UNKNOWN", minimum, selectedRow?.DuplexDisposition == "CLEAN" ? "SHORT_CLEAN" : "NO", captureActual, renderActual, evidence.RepeatabilityCompleted, profile, string.IsNullOrWhiteSpace(reasons) ? "NONE" : reasons, rows, _v4EvidencePath);
     }
 
@@ -2110,6 +2125,8 @@ public sealed class MainViewModel : ViewModel
             plan.CaptureBounds.AlignmentFrames is null ? "ALIGNMENT_UNKNOWN" : plan.CaptureBounds.AlignmentFrames.Value.ToString(CultureInfo.CurrentCulture),
             plan.RenderBounds.AlignmentFrames is null ? "ALIGNMENT_UNKNOWN" : plan.RenderBounds.AlignmentFrames.Value.ToString(CultureInfo.CurrentCulture),
             plan.RepeatabilityRuns, plan.MaximumOperations, plan.MaximumActiveDuplexSeconds, plan.SessionLifetimeSeconds, plan.InitializeTimeoutSeconds, plan.CleanupDeadlineSeconds, _v4PlanFingerprint);
+        if (!_v4DiagnosticPlanMode && plan.RepeatabilityRuns == 5)
+            consent += Environment.NewLine + string.Format(Localization.CurrentCulture, Localization.Get("VmV4AudioHostConsent"), plan.Candidates.Count, 60 * plan.Candidates.Count);
         if (_v4DiagnosticPlanMode) consent = string.Format(Localization.CurrentCulture, Localization.Get("V4DiagnosticConsentScope"), string.Join(",", plan.MmcssModes)) + Environment.NewLine + consent;
         return _v4ConsentReceipt is { } receipt ? consent + Environment.NewLine + string.Format(Localization.CurrentCulture, Localization.Get("VmV4ReceiptSummary"), receipt.ConfirmationId, receipt.DiscoveryGeneration) : consent;
 
