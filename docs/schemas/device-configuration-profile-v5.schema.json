@@ -98,6 +98,12 @@
         "SANITIZED_PORTABLE"
       ]
     },
+    "sustainedSelection": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/sustainedSelection" }
+      ]
+    },
     "stableShortSelection": {
       "properties": {
         "repeatabilityRequested": {
@@ -205,7 +211,7 @@
           "type": "array"
         },
         "mmcss": {
-          "const": "OFF"
+          "enum": ["OFF", "PRO_AUDIO"]
         },
         "actualRenderFrames": {
           "type": "integer",
@@ -271,6 +277,12 @@
       ],
       "additionalProperties": false,
       "type": "object"
+    },
+    "audioHostQualification": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/audioHostQualification" }
+      ]
     }
   },
   "$defs": {
@@ -328,6 +340,7 @@
             "SANITIZED_UNBOUND"
           ]
         }
+      }
     },
     "audioHostQualification": {
       "type": "object",
@@ -353,7 +366,6 @@
         "period100ns": { "type": "integer", "minimum": 1 },
         "mmcss": { "enum": ["OFF", "PRO_AUDIO"] },
         "qualifiedAtUtc": { "type": "string", "format": "date-time" }
-      }
       }
     },
     "audioFormat": {
