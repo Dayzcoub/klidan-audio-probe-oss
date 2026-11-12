@@ -110,7 +110,10 @@ int main() {
         capture["discontinuityPackets"][0]["eventOrdinal"].GetUint64() != 499 ||
         capture["discontinuityPackets"][0]["millisecondsSinceStart"].GetDouble() != 2'345.67 ||
         capture["discontinuityPackets"][0]["flags"].GetUint() != 1 ||
+        capture["discontinuityPackets"][0]["devicePosition"].GetUint64() != 240'000 ||
+        capture["discontinuityPackets"][0]["qpcPosition"].GetUint64() != 123'456 ||
         capture["discontinuityPackets"][0]["devicePositionDeltaFrames"].GetUint64() != 0 ||
+        std::string(capture["discontinuityPackets"][0]["devicePositionTransition"].GetString()) != "CONTIGUOUS" ||
         std::string(capture["discontinuityPackets"][0]["phase"].GetString()) != "STEADY") return 20;
 
     const auto cleanMustReject = [&](auto mutate) {
