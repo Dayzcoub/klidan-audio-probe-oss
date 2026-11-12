@@ -162,7 +162,7 @@ public static class DeviceConfigurationProfileFactory
         var expectedInitializeProvenance = selection.ProfileKind == "DEVICE" ? "REAL_WASAPI_V4_INITIALIZE" : "TEST_FAKE_WASAPI_V4_INITIALIZE";
         bool ExactInitialize(JsonElement? value, string endpointId, string direction, WorkerScanV2Side side, int frames, long period) => value is { ValueKind: JsonValueKind.Object } init &&
             init.GetProperty("contractVersion").GetInt32() == 4 && init.GetProperty("scanSessionId").GetGuid() == sessionId &&
-            init.GetProperty("candidateIndex").GetInt32() == candidate.Index && init.GetProperty("routeFingerprint").GetString() == session.RouteFingerprint &&
+            init.GetProperty("candidateIndex").GetInt32() == 0 && init.GetProperty("routeFingerprint").GetString() == session.RouteFingerprint &&
             init.GetProperty("endpointId").GetString() == endpointId && init.GetProperty("direction").GetString() == direction &&
             init.GetProperty("sampleRateHz").GetInt32() == side.SampleRateHz && init.GetProperty("channels").GetInt32() == side.Channels &&
             init.GetProperty("encoding").GetString() == side.Encoding && init.GetProperty("requestedFrames").GetInt32() == frames &&
@@ -172,9 +172,9 @@ public static class DeviceConfigurationProfileFactory
         if (!ExactInitialize(selected.CaptureInitializeEvidence, prepared.CaptureEndpointId, "CAPTURE", prepared.Plan.Route.Capture, candidate.CaptureFrames, candidate.CapturePeriod100ns) ||
             !ExactInitialize(selected.RenderInitializeEvidence, prepared.RenderEndpointId, "RENDER", prepared.Plan.Route.Render, candidate.RenderFrames, candidate.RenderPeriod100ns))
             throw new InvalidDataException("V4 Initialize reports do not prove the exact endpoints, formats and geometry.");
-        if (V4ShortCleanEvaluator.Classify(accepted, session, candidate.Index, Guid.Parse(selected.DuplexEvidence.Value.GetProperty("operationId").GetString()!), selected.DuplexEvidence.Value) != "CLEAN" ||
+        if (V4ShortCleanEvaluator.Classify(accepted, session, candidate.Index, Guid.Parse(selected.DuplexEvidence.Value.GetProperty("operationId").GetString()!), selected.DuplexEvidence.Value, evidenceCandidateIndex: 0) != "CLEAN" ||
             evidence.RepeatabilityRuns.Any(r => r.SessionId != sessionId || r.RouteFingerprint != session.RouteFingerprint || r.Evidence is not { ValueKind: JsonValueKind.Object } ||
-                V4ShortCleanEvaluator.Classify(accepted, session, candidate.Index, r.OperationId, r.Evidence.Value) != "CLEAN"))
+                V4ShortCleanEvaluator.Classify(accepted, session, candidate.Index, r.OperationId, r.Evidence.Value, evidenceCandidateIndex: 0) != "CLEAN"))
             throw new InvalidDataException("V4 native reports do not independently pass the strict SHORT_CLEAN evaluator.");
         var expectedProvenance = selection.ProfileKind == "DEVICE" ? "REAL_WASAPI_V4_DUPLEX" : "TEST_FAKE_WASAPI_V4_DUPLEX";
         if (selection.EvidenceProvenance != expectedProvenance || evidence.RepeatabilityRuns.Any(r => r.Provenance != expectedProvenance) ||

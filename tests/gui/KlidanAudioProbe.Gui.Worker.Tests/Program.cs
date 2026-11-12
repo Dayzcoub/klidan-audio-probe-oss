@@ -786,6 +786,20 @@ try
     Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("report").GetProperty("requested").GetProperty("mmcss").GetString()=="PRO_AUDIO"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport authorizes exact PRO_AUDIO endpoint geometry and preserves explicit test provenance");
     var preparedV4Evaluation=new WorkerScanV2V4PreparedPlan(v2Capture,v2Render,v4Plan,v4Consent);
     Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,v4Duplex)=="CLEAN","strict v4 evaluator accepts the complete exact synthetic CLEAN report");
+    var globalCandidates7 = Enumerable.Range(0, 8).Select(i => WorkerScanV2CandidatePlanning.Make(i, 30_000L + i * 10_000L, route, 144, 480, 144, 480)).ToArray();
+    var globalCandidate7 = globalCandidates7[7];
+    var globalPlan7 = v4Plan with { Candidates = globalCandidates7 };
+    var globalConsent7 = WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture, v2Render, globalPlan7, v4Consent.DiscoveryGeneration, true, Guid.NewGuid());
+    var globalPrepared7 = new WorkerScanV2V4PreparedPlan(v2Capture, v2Render, globalPlan7, globalConsent7);
+    var scoped10ms = System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();
+    scoped10ms["requestedCaptureFrames"] = 480; scoped10ms["requestedCapturePeriod100ns"] = 100_000; scoped10ms["requestedRenderFrames"] = 480; scoped10ms["requestedRenderPeriod100ns"] = 100_000;
+    scoped10ms["actualCaptureFrames"] = 480; scoped10ms["actualCapturePeriod100ns"] = 100_000; scoped10ms["actualRenderFrames"] = 480; scoped10ms["actualRenderPeriod100ns"] = 100_000;
+    scoped10ms["report"]!["requested"]!["period"] = "CUSTOM_V2:100000:480:100000:480";
+    scoped10ms["report"]!["capture"]!["actualBufferFrames"] = 480; scoped10ms["report"]!["render"]!["actualBufferFrames"] = 480;
+    using var scoped10msEvidence = JsonDocument.Parse(scoped10ms.ToJsonString());
+    Check(V4ShortCleanEvaluator.Classify(globalPrepared7, v4Session, 7, v4DuplexId, scoped10msEvidence.RootElement, evidenceCandidateIndex: 0) == "CLEAN" &&
+        V4ShortCleanEvaluator.Classify(globalPrepared7, v4Session, 7, v4DuplexId, scoped10msEvidence.RootElement) == "UNKNOWN",
+        "scoped native candidate 0 maps explicitly to global candidate 7 while an unmapped index mismatch remains UNKNOWN");
     var capSideRoute=route.Capture;var renSideRoute=route.Render;
     var nearCompleteV4=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();
     nearCompleteV4["report"]!["capture"]!["framesProcessed"]=239520;nearCompleteV4["report"]!["capture"]!["expectedFrames"]=240000;nearCompleteV4["report"]!["capture"]!["frameCoveragePercent"]=99.8;

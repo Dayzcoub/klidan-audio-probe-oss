@@ -154,7 +154,7 @@ public static class V4ShortCleanEvaluator
     }
 
     public static string Classify(WorkerScanV2V4PreparedPlan prepared, WorkerScanSessionToken session,
-        int candidateIndex, Guid operationId, JsonElement evidence)
+        int candidateIndex, Guid operationId, JsonElement evidence, int? evidenceCandidateIndex = null)
     {
         try
         {
@@ -166,7 +166,7 @@ public static class V4ShortCleanEvaluator
                 return "UNKNOWN";
             var candidate = prepared.Plan.Candidates.Single(c => c.Index == candidateIndex);
             if (evidence.GetProperty("contractVersion").GetInt32() != 4 || evidence.GetProperty("operationId").GetGuid() != operationId ||
-                evidence.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || evidence.GetProperty("candidateIndex").GetInt32() != candidateIndex ||
+                evidence.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || evidence.GetProperty("candidateIndex").GetInt32() != (evidenceCandidateIndex ?? candidateIndex) ||
                 evidence.GetProperty("captureEndpointId").GetString() != prepared.CaptureEndpointId || evidence.GetProperty("renderEndpointId").GetString() != prepared.RenderEndpointId ||
                 evidence.GetProperty("routeFingerprint").GetString() != session.RouteFingerprint ||
                 evidence.GetProperty("requestedCaptureFrames").GetInt32() != candidate.CaptureFrames || evidence.GetProperty("requestedCapturePeriod100ns").GetInt64() != candidate.CapturePeriod100ns ||
