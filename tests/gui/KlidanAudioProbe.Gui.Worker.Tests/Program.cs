@@ -996,12 +996,21 @@ try
     var coordinatorD = await RunQualificationCoordinator("D", (index, op) => null, request => TestLoad("QA_FAILED"));
     Check(coordinatorD.Result.Status == "QA_FAILED" && coordinatorD.Result.SelectedCandidateIndex is null && coordinatorD.Result.ProfilePath is null && coordinatorD.AdapterCandidates.SequenceEqual([0]) && coordinatorD.Operations.All(x => !x.StartsWith("5:", StringComparison.Ordinal)),
         "Coordinator D stops on QA_FAILED without fallback or qualified profile");
+    var terminalD = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorD.Root, "scan-qualification-*.json").Single()));
+    Check(terminalD.RootElement.GetProperty("status").GetString() == "QA_FAILED" && terminalD.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "COMPLETED" && terminalD.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && terminalD.RootElement.GetProperty("evidence").GetProperty("stopReason").GetString() != "NO_STABLE_BUFFER",
+        "QA_FAILED terminal JSON read-back preserves the completed Worker lifecycle and confirmed Worker cleanup without claiming NO_STABLE_BUFFER");
     var coordinatorDUnknown = await RunQualificationCoordinator("D-UNKNOWN", (index, op) => null, request => TestLoad("UNKNOWN", "UNKNOWN"));
     Check(coordinatorDUnknown.Result.Status == "UNKNOWN" && coordinatorDUnknown.Result.SelectedCandidateIndex is null && coordinatorDUnknown.Result.ProfilePath is null && coordinatorDUnknown.AdapterCandidates.SequenceEqual([0]),
         "Coordinator D stops on UNKNOWN cleanup and does not retry the candidate");
+    var terminalUnknown = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorDUnknown.Root, "scan-qualification-*.json").Single()));
+    Check(terminalUnknown.RootElement.GetProperty("status").GetString() == "UNKNOWN" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "COMPLETED" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("candidates")[0].GetProperty("audioHostQualification").GetProperty("cleanup").GetString() == "UNKNOWN",
+        "UNKNOWN terminal JSON read-back distinguishes confirmed Worker close from unknown AudioHost cleanup");
     var coordinatorDIpc = await RunQualificationCoordinator("D-IPC", (index, op) => index == 0 && op == "DUPLEX" ? "CLEANUP_UNKNOWN" : null, request => TestLoad("LOAD_CLEAN"));
     Check(coordinatorDIpc.Result.Status == "UNKNOWN" && coordinatorDIpc.AdapterCandidates.Length == 0 && coordinatorDIpc.Operations.Where(x => x.EndsWith(":DUPLEX", StringComparison.Ordinal)).SequenceEqual(["3:DUPLEX"]) && coordinatorDIpc.Result.ProfilePath is null,
         "Coordinator D treats Worker IPC/cleanup uncertainty as UNKNOWN and never invokes AudioHost or retries");
+    var terminalIpc = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorDIpc.Root, "scan-qualification-*.json").Single()));
+    Check(terminalIpc.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "UNKNOWN" && terminalIpc.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CANCEL_CONFIRMED" && terminalIpc.RootElement.GetProperty("evidence").GetProperty("stopReason").GetString() == "WORKER_SESSION_CLOSE_OR_EVIDENCE_UNKNOWN",
+        "Worker IPC failure terminal JSON records observed UNKNOWN lifecycle and confirmed cancellation cleanup");
     var unknownRepeat = await RunV4Search("repeat cleanup UNKNOWN synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : operation == "REPEAT_2" ? "CLEANUP_UNKNOWN" : null, true);
     Check(unknownRepeat.Result.Evidence.SelectionState == "UNKNOWN" && unknownRepeat.Result.Evidence.RepeatabilityCompleted == 2 && unknownRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 2 && unknownRepeat.Result.Evidence.RepeatabilityRuns[1].Cleanup == "UNKNOWN", "UNKNOWN cleanup on a repeat preserves that run and stops every later operation");
     using (var cancelRepeat = new CancellationTokenSource())

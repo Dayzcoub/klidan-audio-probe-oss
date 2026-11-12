@@ -28,9 +28,10 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
         var attempts = new List<V4CandidateQualificationAttempt>();
         var rows = prepared.Plan.Candidates.Select(c => NotTested(c, "NOT_ATTEMPTED")).ToArray();
         var usedOperations = 0; var usedActiveSeconds = 0; var audioHostRuns = 0; var audioHostSeconds = 0d;
+        var lastLifecycle = "UNKNOWN"; var lastWorkerCleanup = "NOT_ATTEMPTED";
         foreach (var candidate in prepared.Plan.Candidates.OrderBy(c => c.RequestedDuration100ns).ThenBy(c => c.CaptureFrames).ThenBy(c => c.Index))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested) return await Stop("CANCELLED", "OPERATOR_CANCELLED", candidate.Index, "CANCELLED").ConfigureAwait(false);
             if (candidate.RejectionReason.Length != 0)
             {
                 rows[candidate.Index] = new(candidate, "REJECTED", "REJECTED", "UNSUPPORTED", "NOT_ATTEMPTED", "NOT_ATTEMPTED", ["UNSUPPORTED_BY_DISCOVERED_GEOMETRY"], true, "UNSUPPORTED_BY_DISCOVERED_GEOMETRY", "COMPLETE", "NOT_RUN", "REAL_WASAPI_V4_DUPLEX");
@@ -49,10 +50,19 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             var scopedConsent = WorkerScanV2ContractV4Fingerprint.CreateConsent(prepared.CaptureEndpointId, prepared.RenderEndpointId,
                 scopedPlan, prepared.Consent.DiscoveryGeneration, true, Guid.NewGuid());
             var scoped = prepared with { Plan = scopedPlan, Consent = scopedConsent };
-            var scan = await scanner.RunAsync(scoped, evidenceRoot, cancellationToken,
-                testScenario: (index, operation) => testScenario?.Invoke(candidate.Index, operation), runRepeatability: true,
-                captureEndpoint: capture, renderEndpoint: render, progress: progress).ConfigureAwait(false);
+            V4AutomaticSearchResult scan;
+            try
+            {
+                scan = await scanner.RunAsync(scoped, evidenceRoot, cancellationToken,
+                    testScenario: (index, operation) => testScenario?.Invoke(candidate.Index, operation), runRepeatability: true,
+                    captureEndpoint: capture, renderEndpoint: render, progress: progress).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return await Stop("CANCELLED", "OPERATOR_CANCELLED_DURING_WORKER_SESSION", candidate.Index, "CANCELLED").ConfigureAwait(false);
+            }
             usedOperations += scan.Evidence.UsedOperations; usedActiveSeconds += scan.Evidence.UsedActiveDuplexSeconds;
+            lastLifecycle = scan.Evidence.Lifecycle; lastWorkerCleanup = scan.Evidence.SessionCleanup;
             var scopedRow = scan.Evidence.Candidates[0];
             rows[candidate.Index] = scopedRow with
             {
@@ -89,14 +99,14 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             if (testOnly && qualification.Status == "LOAD_CLEAN" && qualification.Cleanup == "CONFIRMED" && qualification.Provenance == "TEST_ONLY")
             {
                 attempts.Add(new(candidate.Index, candidate.CapturePeriod100ns, "TEST_ONLY_REPEATABILITY_CONFIRMED", scanPath, "TEST_ONLY_LOAD_CLEAN", "CONFIRMED", qualificationPath));
-                var testEvidence = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, diagnosticOnly: false);
+                var testEvidence = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, false, lastLifecycle, lastWorkerCleanup, "TEST_ONLY_SYNTHETIC");
                 var testPath = SaveEvidence(testEvidence, Path.Combine(evidenceRoot, $"v4-test-only-qualified-c{candidate.Index:D2}-{Guid.NewGuid():D}.json"));
                 return new("TEST_ONLY", candidate.Index, attempts, testEvidence, testPath, "Synthetic qualification; no DEVICE profile created.");
             }
             if (qualification.Status == "LOAD_CLEAN" && qualification.Cleanup == "CONFIRMED" && qualification.Provenance == "REAL_AUDIOHOST")
             {
                 attempts.Add(new(candidate.Index, candidate.CapturePeriod100ns, "REPEATABILITY_CONFIRMED", scanPath, qualification.Status, qualification.Cleanup, qualificationPath));
-                var combined = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, diagnosticOnly: false);
+                var combined = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, false, lastLifecycle, lastWorkerCleanup, "LOAD_CLEAN");
                 var combinedPath = SaveEvidence(combined, Path.Combine(evidenceRoot, $"v4-audiohost-qualified-{Guid.NewGuid():D}.json"));
                 string? profilePath = null;
                 if (!testOnly && capture.DeviceState == "ACTIVE" && render.DeviceState == "ACTIVE")
@@ -130,17 +140,22 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
                 qualification.Diagnostic ?? "AudioHost qualification result or cleanup was not acceptable.", candidate.Index).ConfigureAwait(false);
         }
 
-        var exhausted = BuildCombinedEvidence(prepared, rows, null, usedOperations, usedActiveSeconds, diagnosticOnly: false);
+        var exhausted = BuildCombinedEvidence(prepared, rows, null, usedOperations, usedActiveSeconds, false, lastLifecycle, lastWorkerCleanup,
+            rows.Any(r => r.AudioHostQualification?.Status == "LOAD_UNSTABLE") ? "ALL_CANDIDATES_TRANSPORT_UNSTABLE" : "ALL_CANDIDATES_FAILED_SHORT_OR_REPEATABILITY");
         var finalPath = SaveEvidence(exhausted, Path.Combine(evidenceRoot, $"v4-no-stable-buffer-{Guid.NewGuid():D}.json"));
         await SaveCoordinatorSummary(new("NO_STABLE_BUFFER", null, attempts, exhausted, finalPath, "All discovered candidates failed with confirmed cleanup."), evidenceRoot, cancellationToken).ConfigureAwait(false);
         return new("NO_STABLE_BUFFER", null, attempts, exhausted, finalPath, "All discovered candidates failed with confirmed cleanup.");
 
-        async Task<V4ScanQualificationResult> Stop(string status, string message, int candidateIndex)
+        async Task<V4ScanQualificationResult> Stop(string status, string message, int candidateIndex, string? lifecycle = null)
         {
-            var stopEvidence = BuildCombinedEvidence(prepared, rows, null, usedOperations, usedActiveSeconds, diagnosticOnly: false);
+            var stopEvidence = BuildCombinedEvidence(prepared, rows, null, usedOperations, usedActiveSeconds, false,
+                lifecycle ?? lastLifecycle, lastWorkerCleanup, message);
             var path = SaveEvidence(stopEvidence,
                 Path.Combine(evidenceRoot, $"v4-qualification-{status.ToLowerInvariant()}-{Guid.NewGuid():D}.json"));
-            attempts.Add(new(candidateIndex, prepared.Plan.Candidates[candidateIndex].CapturePeriod100ns, status, path, status, "UNKNOWN", null));
+            var observedCleanup = candidateIndex >= 0 && candidateIndex < rows.Length
+                ? rows[candidateIndex].AudioHostQualification?.Cleanup ?? lastWorkerCleanup
+                : lastWorkerCleanup;
+            attempts.Add(new(candidateIndex, prepared.Plan.Candidates[candidateIndex].CapturePeriod100ns, status, path, status, observedCleanup, null));
             await SaveCoordinatorSummary(new(status, null, attempts, stopEvidence, path, message), evidenceRoot, CancellationToken.None).ConfigureAwait(false);
             return new(status, null, attempts, stopEvidence, path, message);
         }
@@ -167,19 +182,19 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
     }
 
     private static V2CandidateMatrixEvidence BuildCombinedEvidence(WorkerScanV2V4PreparedPlan p, V2CandidateMatrixEntry[] entries, int? selected,
-        int operations, int activeSeconds, bool diagnosticOnly)
+        int operations, int activeSeconds, bool diagnosticOnly, string lifecycle, string workerCleanup, string stopReason)
     {
         var rowSet = entries;
         for (var i = 0; i < rowSet.Length; i++) rowSet[i] = rowSet[i] with { LowerPeriodCoverage = selected is { } s && i <= s ? "COMPLETE" : selected is null && rowSet[i].DuplexDisposition is ("FAILED" or "UNSUPPORTED") ? "COMPLETE" : "INCOMPLETE" };
         var repeatRuns = selected is { } idx ? rowSet[idx].RepeatabilityEvidence : [];
-        return new(1, p.Consent.PlanFingerprint, WorkerScanPlanV2Fingerprint.Route(p.CaptureEndpointId, p.RenderEndpointId, p.Plan.Route), "COMPLETED", p.Plan.CaptureBounds, p.Plan.RenderBounds, p.Plan.Candidates, rowSet,
+        return new(1, p.Consent.PlanFingerprint, WorkerScanPlanV2Fingerprint.Route(p.CaptureEndpointId, p.RenderEndpointId, p.Plan.Route), lifecycle, p.Plan.CaptureBounds, p.Plan.RenderBounds, p.Plan.Candidates, rowSet,
             selected is null ? "MINIMUM_NOT_PROVEN" : "REPEATABILITY_CONFIRMED", rowSet.Any(e => e.Provenance.StartsWith("TEST_FAKE", StringComparison.Ordinal)) ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX")
         {
             EvidenceVersion = 3, DiscoveryGeneration = p.Consent.DiscoveryGeneration, SelectedCandidateIndex = selected, GlobalMinimumProven = false,
             BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA") ?? "UNKNOWN", UsedOperations = operations, MaximumOperations = p.Plan.MaximumOperations,
-            UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = p.Plan.MaximumActiveDuplexSeconds, StopReason = selected is null ? "NO_STABLE_BUFFER" : "MINIMUM_QUALIFIED_IN_CONSENTED_CANDIDATE_DOMAIN",
+            UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = p.Plan.MaximumActiveDuplexSeconds, StopReason = selected is null ? stopReason : "MINIMUM_QUALIFIED_IN_CONSENTED_CANDIDATE_DOMAIN",
             RepeatabilityRequested = selected is null ? 0 : 5, RepeatabilityCompleted = repeatRuns.Count, RepeatabilityRuns = repeatRuns,
-            SessionCleanup = "CLOSE_CONFIRMED", ProfileEligible = false
+            SessionCleanup = workerCleanup, ProfileEligible = false
         };
     }
 
@@ -197,8 +212,18 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
         return path;
     }
     private static string SaveEvidence(V2CandidateMatrixEvidence evidence, string path) => V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(evidence, path);
-    private static async Task SaveCoordinatorSummary(V4ScanQualificationResult result, string root, CancellationToken ct) =>
-        await WriteNewVerified(Path.Combine(root, $"scan-qualification-{Guid.NewGuid():D}.json"), JsonSerializer.SerializeToUtf8Bytes(result, Json), ct).ConfigureAwait(false);
+    private static async Task SaveCoordinatorSummary(V4ScanQualificationResult result, string root, CancellationToken ct)
+    {
+        var path = Path.Combine(root, $"scan-qualification-{Guid.NewGuid():D}.json");
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(result, Json);
+        await WriteNewVerified(path, bytes, ct).ConfigureAwait(false);
+        var readBack = JsonSerializer.Deserialize<V4ScanQualificationResult>(await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false), Json)
+            ?? throw new InvalidDataException("Terminal qualification evidence could not be read back.");
+        if (readBack.Status != result.Status || readBack.Evidence.Lifecycle != result.Evidence.Lifecycle ||
+            readBack.Evidence.SessionCleanup != result.Evidence.SessionCleanup || readBack.Evidence.StopReason != result.Evidence.StopReason ||
+            readBack.Attempts.Count != result.Attempts.Count)
+            throw new InvalidDataException("Terminal qualification evidence read-back differs from actual run state.");
+    }
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     private static string HashFile(string path) => Hash(File.ReadAllBytes(path));
     private static async Task WriteNewVerified(string path, byte[] bytes, CancellationToken ct)
