@@ -22,12 +22,12 @@
     <Error Condition="!Exists('$(NativeWorkerPath)')" Text="Native worker is required. Build KlidanProbeWorker for $(Configuration) before building the GUI." />
     <Error Condition="!Exists('$(NativeProbePath)')" Text="Native CLI stream engine is required beside the worker. Build KlidanAudioProbe for $(Configuration) before building the GUI." />
   </Target>
-  <Target Name="EmbedSourceIdentity" BeforeTargets="CoreCompile">
+  <Target Name="EmbedSourceIdentity" BeforeTargets="GetAssemblyAttributes">
     <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)..\..\..&quot; rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="KlidanSourceCommit" />
       <Output TaskParameter="ExitCode" PropertyName="KlidanGitExitCode" />
     </Exec>
-    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)..\..\..&quot; status --porcelain --untracked-files=all" ConsoleToMSBuild="true" IgnoreExitCode="true">
+    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)..\..\..&quot; status --porcelain --untracked-files=all -- . &quot;:(exclude,glob)src/gui/KlidanAudioProbe.Gui.App/*_wpftmp.csproj&quot;" ConsoleToMSBuild="true" IgnoreExitCode="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="KlidanGitStatus" />
       <Output TaskParameter="ExitCode" PropertyName="KlidanGitStatusExitCode" />
     </Exec>
