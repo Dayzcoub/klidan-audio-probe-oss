@@ -5,6 +5,7 @@ public sealed record V4AutomaticSearchResult(V2CandidateMatrixEvidence Evidence,
     public string QualificationStatus { get; init; } = "NOT_QUALIFIED";
     public string? QualificationDiagnostic { get; init; }
     public string? ProfilePath { get; init; }
+    public DeviceConfigurationProfile? PendingProfile { get; init; }
 }
 public sealed record V4AutomaticSearchProgress(string Stage, int CandidateIndex, int? CaptureFrames, int? RenderFrames, int RepeatabilityCompleted, int? ActualCaptureFrames = null, int? ActualRenderFrames = null);
 
@@ -13,7 +14,13 @@ public sealed record V4CandidateQualificationAttempt(int CandidateIndex, long Pe
 
 public sealed record V4ScanQualificationResult(string Status, int? SelectedCandidateIndex,
     IReadOnlyList<V4CandidateQualificationAttempt> Attempts, V2CandidateMatrixEvidence Evidence,
-    string? EvidencePath, string? Diagnostic, string? ProfilePath = null);
+    string? EvidencePath, string? Diagnostic, string? ProfilePath = null)
+{
+    public DeviceConfigurationProfile? PendingProfile { get; init; }
+    public Guid? RunId { get; init; }
+    public string? CaptureEndpointId { get; init; }
+    public string? RenderEndpointId { get; init; }
+}
 
 public interface IV4ScanQualificationCoordinator
 {
@@ -25,6 +32,7 @@ public interface IV4ScanQualificationCoordinator
 
 public interface IV4AutomaticSearchWorkflow
 {
+    bool RequiresVerifiedBuildIdentity => false;
     Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture,
         WindowsEndpointDto render, string evidenceRoot, string profileDirectory, bool runRepeatability,
         IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken);

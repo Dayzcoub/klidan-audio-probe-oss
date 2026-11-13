@@ -25,6 +25,9 @@ public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFin
     string Lifecycle, WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, IReadOnlyList<WorkerScanV2Candidate> CandidateDomain,
     IReadOnlyList<V2CandidateMatrixEntry> Candidates, string SelectionState, string Provenance)
 {
+    public Guid? RunId { get; init; }
+    public string? CaptureEndpointId { get; init; }
+    public string? RenderEndpointId { get; init; }
     public int EvidenceVersion { get; init; } = 1;
     public bool DiagnosticOnly { get; init; }
     public string BuildSha { get; init; } = "UNKNOWN";
@@ -77,6 +80,8 @@ public static class V2CandidateMatrixEvidenceJson
         static bool State(string s) => s is "NOT_TESTED" or "SKIPPED" or "REJECTED" or "FAILED" or "UNSUPPORTED" or "UNKNOWN" or "CLEAN";
         if (value.SchemaVersion != 1 || value.EvidenceVersion is < 1 or > 4 || !Hash(value.PlanFingerprint, 64) || !Hash(value.RouteFingerprint, 16) || value.Lifecycle is not ("PLANNED" or "COMPLETED" or "UNKNOWN" or "CANCELLED") || value.CandidateDomain.Count is < 1 or > 8 || value.Candidates.Count != value.CandidateDomain.Count || string.IsNullOrWhiteSpace(value.Provenance))
             throw new InvalidDataException("Candidate matrix envelope is invalid.");
+        if ((value.CaptureEndpointId is null) != (value.RenderEndpointId is null) || value.CaptureEndpointId is { Length: 0 } || value.RenderEndpointId is { Length: 0 } || value.CaptureEndpointId is not null && value.CaptureEndpointId == value.RenderEndpointId)
+            throw new InvalidDataException("Candidate matrix endpoint pair is invalid.");
         if (value.CaptureBounds.MinimumPeriod100ns <= 0 || value.CaptureBounds.DefaultPeriod100ns < value.CaptureBounds.MinimumPeriod100ns || value.RenderBounds.MinimumPeriod100ns <= 0 || value.RenderBounds.DefaultPeriod100ns < value.RenderBounds.MinimumPeriod100ns ||
             value.EvidenceVersion == 1 && (value.CaptureBounds.AlignmentFrames is <= 0 || value.RenderBounds.AlignmentFrames is <= 0) ||
             value.EvidenceVersion >= 2 && (value.CaptureBounds.AlignmentFrames is < 0 || value.RenderBounds.AlignmentFrames is < 0))

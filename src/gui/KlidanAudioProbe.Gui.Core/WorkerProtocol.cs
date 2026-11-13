@@ -195,7 +195,10 @@ public sealed record WorkerScanV2ContractV4(WorkerScanV2Route Route, IReadOnlyLi
 public sealed record WorkerScanV2Budget(int MaximumOperations, int MaximumActiveDuplexSeconds, int SessionLifetimeSeconds);
 public sealed record WorkerScanV2V4Consent(bool Accepted, Guid ConfirmationId, string PlanFingerprint, ulong DiscoveryGeneration);
 public sealed record WorkerScanV2V4PreparedPlan(string CaptureEndpointId, string RenderEndpointId,
-    WorkerScanV2ContractV4 Plan, WorkerScanV2V4Consent Consent);
+    WorkerScanV2ContractV4 Plan, WorkerScanV2V4Consent Consent)
+{
+    public Guid? RunId { get; init; }
+}
 public static class WorkerScanV2CandidatePlanning
 {
     public static IReadOnlyList<WorkerScanV2Candidate> Generate(WorkerScanV2Route route, int captureMinFrames, int captureMaxFrames,

@@ -1,5 +1,6 @@
 using KlidanAudioProbe.Gui.Core;
 using KlidanAudioProbe.Gui.App;
+using KlidanAudioProbe.Gui.Worker;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -29,6 +30,60 @@ void Check(bool condition, string name)
     if (!condition) throw new InvalidOperationException($"FAIL: {name}");
     Console.WriteLine($"PASS: {name}");
 }
+var buildMetadataRoot = Path.Combine(Path.GetTempPath(), $"b5b19-build-metadata-{Guid.NewGuid():N}");
+Directory.CreateDirectory(buildMetadataRoot);
+try
+{
+    var syntheticExe = Path.Combine(buildMetadataRoot, "app.exe"); var syntheticManifest = Path.Combine(buildMetadataRoot, "package-manifest.json");
+    var exeBytes = Encoding.UTF8.GetBytes("synthetic verified executable"); File.WriteAllBytes(syntheticExe, exeBytes);
+    var exeSha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(exeBytes)); var sourceCommit = new string('a', 40);
+    File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit, files = new[] { new { path = "app.exe", sha256 = exeSha } } }));
+    var verified = VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest);
+    VerifiedBuildMetadataReader.ValidateDeclaredCommits(verified, sourceCommit, sourceCommit);
+    Check(verified.SourceCommit == sourceCommit, "verified build metadata accepts matching declared commits and binds them to executable SHA");
+    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.ValidateDeclaredCommits(verified, new string('b', 40), sourceCommit), "verified build metadata rejects a declared source commit mismatch");
+    File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit = new string('b', 40), files = new[] { new { path = "app.exe", sha256 = new string('0', 64) } } }));
+    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest), "build metadata rejects an executable SHA mismatch");
+}
+finally { Directory.Delete(buildMetadataRoot, true); }
+var manifestTestRoot = Path.Combine(Path.GetTempPath(), $"b5b19-run-manifest-{Guid.NewGuid():N}");
+Directory.CreateDirectory(manifestTestRoot);
+try
+{
+    var runId = Guid.NewGuid(); var runCaptureId = "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}"; var runRenderId = "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}";
+    var startPath = Path.Combine(manifestTestRoot, "run-start.json");
+    File.WriteAllText(startPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId }));
+    var itemPath = Path.Combine(manifestTestRoot, "candidate.json"); var itemBytes = JsonSerializer.SerializeToUtf8Bytes(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, evidence = "immutable" });
+    File.WriteAllBytes(itemPath, itemBytes);
+    var runManifestPath = Path.Combine(manifestTestRoot, "run-manifest.json");
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
+        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(itemBytes)) },
+        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId);
+    Check(true, "synthetic Bloody chain verifies exact endpoint pair, relative paths and SHA-256 read-back");
+    File.WriteAllText(itemPath, "{\"tampered\":true}");
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "run manifest rejects evidence modified after indexing");
+    File.WriteAllBytes(itemPath, JsonSerializer.SerializeToUtf8Bytes(new { runId = Guid.NewGuid(), captureEndpointId = runCaptureId, renderEndpointId = runRenderId, evidence = "valid JSON, wrong run" }));
+    var swappedBytes = File.ReadAllBytes(itemPath);
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
+        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) },
+        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "valid JSON and recomputed SHA cannot substitute another run's evidence");
+    File.WriteAllBytes(itemPath, JsonSerializer.SerializeToUtf8Bytes(new { runId, captureEndpointId = "cap", renderEndpointId = "ren", evidence = "valid JSON, wrong device" }));
+    swappedBytes = File.ReadAllBytes(itemPath);
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
+        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) },
+        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "valid SHA cannot substitute FLOW 8 endpoint evidence into Bloody run");
+    var ordered = File.ReadAllText(runManifestPath).Replace("candidate.json", "run-start.json").Replace("run-start.json\",\"sha256", "candidate.json\",\"sha256");
+    File.WriteAllText(runManifestPath, ordered);
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "manifest path/entry reassignment is rejected by its SHA bindings");
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] { new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "manifest rejects a missing qualification evidence file");
+    ThrowsTask<IOException>(RunEvidenceManifest.WriteAsync(manifestTestRoot, Guid.NewGuid(), writeNew: (_, _, _) => throw new IOException("injected manifest write fault")), "fault injection reaches terminal manifest write boundary");
+    Throws<IOException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId, _ => throw new IOException("injected manifest read-back fault")), "fault injection reaches terminal manifest read-back boundary");
+}
+finally { Directory.Delete(manifestTestRoot, true); }
 void CaptureUiScreenshot(Window window, string fileName, double scale = 1.0)
 {
     var directory = Environment.GetEnvironmentVariable("KLIDAN_UI_SCREENSHOT_DIR");
@@ -46,8 +101,8 @@ V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, 
 var autoCaptureId = "auto-capture"; var autoRenderId = "auto-render";
 var autoRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
 var autoRouteFingerprint = WorkerScanPlanV2Fingerprint.Route(autoCaptureId, autoRenderId, autoRoute);
-RealFormatCandidateDto PassiveCandidate(int channels, string period, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000) => new("PCM16", rate, channels, period, "UNKNOWN_NOT_ASSIGNED", support, support, "0x00000000", "0x00000000", "0x00000000", @default, min, "NOT_TESTED", false, null, null, null, null, null, "NOT_ACQUIRED") { QueryCleanupStatus = "RELEASE_ATTEMPTED", QueryClientReleaseAttempts = 1 };
-RealFormatMatrixDto PassiveMatrix(string endpoint, string direction, int channels, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000, bool omitBounds = false) => new("REAL_WASAPI_QUERY", "2026-11-10T00:00:00Z", endpoint, direction, "PASSIVE_QUERY", omitBounds ? [] : [PassiveCandidate(channels, "minimum", min, @default, support, rate), PassiveCandidate(channels, "default", min, @default, support, rate)]);
+RealFormatCandidateDto PassiveCandidate(int channels, string period, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000, string encoding = "PCM16") => new(encoding, rate, channels, period, "UNKNOWN_NOT_ASSIGNED", support, support, "0x00000000", "0x00000000", "0x00000000", @default, min, "NOT_TESTED", false, null, null, null, null, null, "NOT_ACQUIRED") { QueryCleanupStatus = "RELEASE_ATTEMPTED", QueryClientReleaseAttempts = 1 };
+RealFormatMatrixDto PassiveMatrix(string endpoint, string direction, int channels, long min = 30_000, long @default = 100_000, string support = "SUPPORTED_REPORTED", int rate = 48_000, bool omitBounds = false, string encoding = "PCM16") => new("REAL_WASAPI_QUERY", "2026-11-10T00:00:00Z", endpoint, direction, "PASSIVE_QUERY", omitBounds ? [] : [PassiveCandidate(channels, "minimum", min, @default, support, rate, encoding), PassiveCandidate(channels, "default", min, @default, support, rate, encoding)]);
 var passiveRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 8, "PCM16", 0, [7]), new(48000, 2, "PCM16", 0, [0, 1]));
 var preparedFromPassiveBounds = WorkerScanV2PlanPreparation.Prepare("cap", "ren", passiveRoute, PassiveMatrix("cap", "CAPTURE", 8), PassiveMatrix("ren", "RENDER", 2), 9, 5);
 Check(preparedFromPassiveBounds.Candidates.Select(c => c.CaptureFrames).SequenceEqual(new[] { 144, 192, 240, 288, 336, 384, 432, 480 }) && preparedFromPassiveBounds.CaptureBounds.AlignmentFrames is null && preparedFromPassiveBounds.RenderBounds.AlignmentFrames is null && preparedFromPassiveBounds.MmcssModes.SequenceEqual(["PRO_AUDIO"]), "automatic passive preparation uses discovered 3–10 ms bounds, independent geometry, unknown alignment, and PRO_AUDIO");
@@ -165,6 +220,12 @@ foreach (var (name, candidates, expectedPeriod) in autoAssessments)
 void Throws<T>(Action action, string name) where T : Exception
 {
     try { action(); }
+    catch (T) { Check(true, name); return; }
+    throw new InvalidOperationException($"FAIL: {name}");
+}
+void ThrowsTask<T>(Task task, string name) where T : Exception
+{
+    try { task.GetAwaiter().GetResult(); }
     catch (T) { Check(true, name); return; }
     throw new InvalidOperationException($"FAIL: {name}");
 }
@@ -377,6 +438,20 @@ void BeginStream(MainViewModel vm, string period)
 var app = new App();
 app.InitializeComponent();
 app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+var owningDispatcher = Dispatcher.CurrentDispatcher;
+var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var previousDispatcherContext = SynchronizationContext.Current;
+SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+var dispatcherCommand = new AsyncRelayCommand(() => completion.Task);
+SynchronizationContext.SetSynchronizationContext(previousDispatcherContext);
+var dispatcherNotifications = 0;
+dispatcherCommand.CanExecuteChanged += (_, _) => { owningDispatcher.VerifyAccess(); dispatcherNotifications++; };
+var invocationContext = SynchronizationContext.Current;
+SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+dispatcherCommand.Execute(null);
+SynchronizationContext.SetSynchronizationContext(invocationContext);
+Task.Run(() => completion.SetResult()).GetAwaiter().GetResult();
+Check(PumpUntil(() => dispatcherNotifications == 2, TimeSpan.FromSeconds(2)) && dispatcherCommand.CanExecute(null), "AsyncRelayCommand completion from a background thread raises terminal CanExecuteChanged on its owning Dispatcher");
 using (var payloadDoc = JsonDocument.Parse("{\"synthetic\":true}"))
 {
     var latestOnly = new WorkerUiEventBuffer();
@@ -792,6 +867,12 @@ var physicalPairFixture = windowsPairFixture with
         FormFactorEvidence = availableEvidence
     }).ToArray()
 };
+if (args.Contains("--b5b19c-focused", StringComparer.OrdinalIgnoreCase))
+{
+    RunB5B19CIntegrationTests();
+    Console.WriteLine($"B5B.19C focused integration checks passed ({checks}).");
+    return;
+}
 var physicalWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseRealFormatProbe = true };
 var physicalWorkflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
 var physicalVm = new MainViewModel(worker: physicalWorker, automaticScanWorkflow: physicalWorkflow);
@@ -982,7 +1063,7 @@ Check(bloodyPrepareButton.IsEnabled, "V4 Prepare reenables after the Worker oper
 bloodyEnablementWorker.DiscoveryGeneration++;
 bloodyEnablementWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Discovery generation changed."));
 bloodyEnablementWindow.UpdateLayout();
-Check(!bloodyPrepareButton.IsEnabled && bloodyPrepareReason.Text == Localization.Get("VmV4PrepareDiscoveryStale"), "Worker discovery-generation change stales the endpoint list and disables V4 Prepare");
+Check(PumpUntil(() => !bloodyPrepareButton.IsEnabled && bloodyPrepareReason.Text == Localization.Get("VmV4PrepareDiscoveryStale"), TimeSpan.FromSeconds(2)), "Worker discovery-generation change stales the endpoint list and disables V4 Prepare");
 bloodyEnablementVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(PumpUntil(() => bloodyEnablementVm.HasCurrentWindowsEndpoints && bloodyPrepareButton.IsEnabled, TimeSpan.FromSeconds(2)), "fresh rediscovery restores V4 Prepare for the same selected pair");
 bloodyEnablementWorker.SetState(new(WorkerConnectionState.Disconnected, "Disconnected during enablement regression."));
@@ -1001,7 +1082,10 @@ bloodyEnablementWindow.Close();
 var v2RouteWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 1,
     RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, direction == "CAPTURE" ? 8 : 2)) };
 var v2Workflow = new GuiAutomaticScanWorkflow(physicalPairFixture);
+var v2RouteContext = SynchronizationContext.Current;
+SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
 var v2RouteVm = new MainViewModel(worker: v2RouteWorker, automaticScanWorkflow: v2Workflow);
+SynchronizationContext.SetSynchronizationContext(v2RouteContext);
 v2RouteWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V2 route selection fixture."));
 v2RouteVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "V2 route discovery completes from deterministic endpoint fixtures");
@@ -1076,12 +1160,15 @@ var heldV4Workflow = new HeldV4SearchWorkflow();
 typeof(MainViewModel).GetField("_v4AutomaticSearchWorkflow", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, heldV4Workflow);
 v2RouteVm.StartV4ScanCommand.Refresh(); v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4SearchUiState == "READY" && v4RunPanel.Visibility == Visibility.Visible && v4StartButton.Visibility == Visibility.Visible && v4StartButton.IsEnabled && v4CancelScanButton.Visibility != Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, $"V4 READY exposes one-use start consent and hides progress/result controls [state={v2RouteVm.V4SearchUiState}; panel={v4RunPanel.Visibility}; start={v4StartButton.Visibility}/{v4StartButton.IsEnabled}; cancel={v4CancelScanButton.Visibility}; result={v4ResultsPanel.Visibility}]");
+var v4RunContext = SynchronizationContext.Current;
+SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
 v4StartButton.Command!.Execute(null);
+SynchronizationContext.SetSynchronizationContext(v4RunContext);
 Check(PumpUntil(() => heldV4Workflow.Started, TimeSpan.FromSeconds(2)), "V4 fake workflow enters RUNNING without starting native audio");
 v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4SearchUiState == "RUNNING" && v2RouteVm.V4ConsentReceipt is null && !v2RouteVm.StartV4ScanCommand.CanExecute(null) && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility == Visibility.Visible && v4ProgressText.Visibility == Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, "V4 RUNNING consumes the receipt, shows progress/cancel, and blocks replay");
 var unknownSearchEvidence = displayEvidence with { SelectionState = "UNKNOWN", SelectedCandidateIndex = null, ProfileEligible = false, ProfilePath = null, StopReason = "IPC_RESPONSE_UNKNOWN" };
-heldV4Workflow.Complete(new V4AutomaticSearchResult(unknownSearchEvidence, "unknown-evidence.json"));
+Task.Run(() => heldV4Workflow.Complete(new V4AutomaticSearchResult(unknownSearchEvidence, "unknown-evidence.json"))).GetAwaiter().GetResult();
 Check(PumpUntil(() => v2RouteVm.V4SearchUiState == "FINISHED", TimeSpan.FromSeconds(3)), "V4 UNKNOWN reaches terminal state");
 v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4ResultState == "UNKNOWN" && v2RouteVm.V4ResultSummary.Contains("UNKNOWN", StringComparison.Ordinal) && v2RouteVm.V4ResultSummary.Contains("unknown-evidence.json", StringComparison.Ordinal) && v2RouteVm.V4ConsentReceipt is null && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility != Visibility.Visible && v4ProgressText.Visibility != Visibility.Visible && v4ResultsPanel.Visibility == Visibility.Visible && ((TextBlock)v2LayoutWindow.FindName("V4EvidencePathText")).Text == "unknown-evidence.json", "V4 FINISHED keeps UNKNOWN result and evidence visible with no replay control");
@@ -1090,7 +1177,10 @@ v2RouteVm.PrepareV4CustomPlanCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.V4ConsentPending, TimeSpan.FromSeconds(3)), "V4 failure-path test prepares a fresh plan and receipt");
 v2RouteVm.V4ConsentChecked = true; v2RouteVm.AcceptV4CustomPlanCommand.Execute(null);
 heldV4Workflow.FailNext(new IOException("fixture workflow failure"));
+var v4PreviousContext = SynchronizationContext.Current;
+SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
 v2RouteVm.StartV4ScanCommand.Execute(null);
+SynchronizationContext.SetSynchronizationContext(v4PreviousContext);
 Check(PumpUntil(() => v2RouteVm.V4SearchUiState == "FINISHED", TimeSpan.FromSeconds(3)), "V4 workflow exception reaches terminal state");
 v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4ResultState == "FAILED" && v2RouteVm.V4ResultSummary.Contains("fixture workflow failure", StringComparison.Ordinal) && v4ResultsPanel.Visibility == Visibility.Visible && v2RouteVm.V4ConsentReceipt is null, "V4 FINISHED retains workflow failure summary after receipt consumption");
@@ -1206,6 +1296,8 @@ v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "a new V2 scan can prepare after the prior run completed");
 v2ConsentCheckBox.IsChecked = true; v2LayoutWindow.UpdateLayout(); confirmV2Button.Command!.Execute(confirmV2Button.CommandParameter);
 Check(PumpUntil(() => v2Workflow.RunV2Calls == 2 && v2RouteVm.HasAutomaticScanResult, TimeSpan.FromSeconds(2)) && !openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "starting and completing a new V2 scan clears the prior report-folder target");
+Check(PumpUntil(() => !v2RouteVm.AutomaticScanRunning, TimeSpan.FromSeconds(2)), "V2 async command reaches terminal state on the UI Dispatcher");
+Check(PumpUntil(() => ((ItemsControl)v2LayoutWindow.FindName("AutomaticScanProgressRowsControl")).Items.Count > 0, TimeSpan.FromSeconds(2)), "V2 progress callbacks drain on the UI Dispatcher before terminal rows are inspected");
 File.Delete(v2OpenEvidence); v2RouteVm.OpenAutomaticScanLocationCommand.Refresh(); v2LayoutWindow.UpdateLayout();
 Check(!openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationCommand.CanExecute(null), "V2 report-folder command disables when its evidence file is removed");
 Directory.Delete(v2OpenFolder);
@@ -1223,7 +1315,7 @@ var reportsHeadingTop = Top((FrameworkElement)v2LayoutWindow.FindName("ReportsSe
 var reportCardTop = Top((FrameworkElement)v2LayoutWindow.FindName("LatestAutomaticReportCard"));
 var progressCard = (Border)v2LayoutWindow.FindName("AutomaticScanProgressCard");
 Check(progressCard.Visibility == Visibility.Visible && ((Border)v2LayoutWindow.FindName("LatestAutomaticReportCard")).Visibility == Visibility.Visible && scanTop < launchTop && launchTop < consentTop && consentTop < progressHeadingTop && progressHeadingTop < progressCardTop && progressCardTop < profilesHeadingTop && profilesHeadingTop < profileActionTop && profileActionTop < historyTop && historyTop < reportsHeadingTop && reportsHeadingTop < reportCardTop, "WPF visual tree orders scan inputs, launch and consent, persistent progress, profile controls, recovery and report content");
-Check(((TextBlock)v2LayoutWindow.FindName("AutomaticScanProgressStatusText")).Visibility == Visibility.Visible && ((ItemsControl)v2LayoutWindow.FindName("AutomaticScanProgressRowsControl")).Items.Count > 0 && ((Button)v2LayoutWindow.FindName("CancelAutomaticScanProgressButton")).Visibility == Visibility.Collapsed && ((TextBlock)v2LayoutWindow.FindName("SustainedValidationHeading")).Visibility == Visibility.Collapsed, "completed V2 scan retains status and stage rows, hides cancel, and hides V1-only sustained heading");
+Check(((TextBlock)v2LayoutWindow.FindName("AutomaticScanProgressStatusText")).Visibility == Visibility.Visible && ((ItemsControl)v2LayoutWindow.FindName("AutomaticScanProgressRowsControl")).Items.Count > 0 && ((Button)v2LayoutWindow.FindName("CancelAutomaticScanProgressButton")).Visibility == Visibility.Collapsed && ((TextBlock)v2LayoutWindow.FindName("SustainedValidationHeading")).Visibility == Visibility.Collapsed, $"completed V2 scan retains status and stage rows, hides cancel, and hides V1-only sustained heading [status={((TextBlock)v2LayoutWindow.FindName("AutomaticScanProgressStatusText")).Visibility}; rows={((ItemsControl)v2LayoutWindow.FindName("AutomaticScanProgressRowsControl")).Items.Count}; cancel={((Button)v2LayoutWindow.FindName("CancelAutomaticScanProgressButton")).Visibility}; sustained={((TextBlock)v2LayoutWindow.FindName("SustainedValidationHeading")).Visibility}; running={v2RouteVm.AutomaticScanRunning}]");
 v2LayoutWindow.Close();
 v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "V2 plan can be prepared again after a completed run");
@@ -3550,7 +3642,10 @@ try
     var pointWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = pointDiscovery, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 21,
         RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, counts!.Single())) };
     var pointWorkflow = new PointDiagnosticWorkflowFake();
+    var pointContext = SynchronizationContext.Current;
+    SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
     var pointVm = new MainViewModel(worker: pointWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(pointDiscovery), v4AutomaticSearchWorkflow: pointWorkflow);
+    SynchronizationContext.SetSynchronizationContext(pointContext);
     pointWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for one-candidate point diagnostic."));
     pointVm.DiscoverWindowsEndpointsCommand.Execute(null);
     Check(PumpUntil(() => pointVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "point diagnostic discovers the exact Bloody Capture/Render fixture");
@@ -3584,7 +3679,10 @@ try
     pointWindow.UpdateLayout();
     var point5Consent = pointVm.V4ConsentReceipt;
     Check(point5Consent is { Accepted: true } && point5Consent.PlanFingerprint == pointVm.V4PlanFingerprint && pointConsentPanel.Visibility != Visibility.Visible && pointRunPanel.Visibility == Visibility.Visible && pointStartButton.Visibility == Visibility.Visible && pointStartButton.IsEnabled, "accept hides consent and reveals an active start button bound to the exact 5 ms receipt");
+    var pointPreviousContext = SynchronizationContext.Current;
+    SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
     pointStartButton.Command!.Execute(null);
+    SynchronizationContext.SetSynchronizationContext(pointPreviousContext);
     Check(PumpUntil(() => !pointVm.V4ScanRunning && pointVm.V4ResultState == "DIAGNOSTIC_ONLY", TimeSpan.FromSeconds(3)), "5 ms diagnostic reaches terminal result");
     pointWindow.UpdateLayout();
     Check(pointWorkflow.Runs.Count == 1 && pointWorkflow.Runs[0].Plan.Candidates.Count == 1 && pointVm.V4ResultSummary.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal) && pointVm.V4ResultSummary.Contains("998", StringComparison.Ordinal) && pointVm.V4ResultSummary.Contains("240f", StringComparison.Ordinal) && pointVm.V4ConsentReceipt is null && pointRunPanel.Visibility == Visibility.Visible && pointStartButton.Visibility != Visibility.Visible && pointResultsText.Visibility == Visibility.Visible && pointProgressText.Visibility == Visibility.Visible, "5 ms launch consumes its receipt while progress and result stay visible and no second start is offered");
@@ -3613,14 +3711,305 @@ try
     pointWorker.DiscoveryGeneration = 22;
     pointWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Discovery generation changed."));
     pointWindow.UpdateLayout();
-    Check(pointVm.V4ConsentReceipt is null && !pointVm.StartV4DiagnosticCommand.CanExecute(null) && pointRunPanel.Visibility != Visibility.Visible, "discovery-generation change invalidates the accepted point receipt before dispatch");
+    Check(PumpUntil(() => pointVm.V4ConsentReceipt is null && !pointVm.StartV4DiagnosticCommand.CanExecute(null) && pointRunPanel.Visibility != Visibility.Visible, TimeSpan.FromSeconds(2)), "discovery-generation change invalidates the accepted point receipt before dispatch");
     pointVm.AutomaticScanV2Mode = "STEREO_TO_STEREO";
     Check(!pointVm.V4DiagnosticConsentPending && pointVm.V4ConsentReceipt is null && !pointVm.StartV4DiagnosticCommand.CanExecute(null), "route change invalidates the diagnostic plan and receipt before dispatch");
     pointVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
     pointWindow.Close();
     Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", previousDiagnosticBuildSha);
 }
+
 finally { if (Directory.Exists(bundleUiRoot)) Directory.Delete(bundleUiRoot, true); }
+
+void RunB5B19CIntegrationTests()
+{
+    var bloodyChain = RunSyntheticCoordinatorWorkflow("Bloody G501 synthetic fixture", "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}", "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}", 2);
+    var flow8Chain = RunSyntheticCoordinatorWorkflow("Behringer FLOW 8 synthetic fixture", "cap", "ren", 1);
+    Check(bloodyChain.RunId != flow8Chain.RunId, "B1 MainViewModel coordinator chains assign distinct Run IDs");
+    Check(bloodyChain.CaptureId != flow8Chain.CaptureId && bloodyChain.RenderId != flow8Chain.RenderId && bloodyChain.RunDirectory != flow8Chain.RunDirectory && VerifySyntheticRunChain(bloodyChain) && VerifySyntheticRunChain(flow8Chain), "B2 each synthetic device run owns an isolated directory and complete relative-path/SHA manifest");
+    Check(bloodyChain.Result.QualificationStatus == "TEST_ONLY" && flow8Chain.Result.QualificationStatus == "TEST_ONLY" && bloodyChain.Result.ProfilePath is null && flow8Chain.Result.ProfilePath is null && !Directory.GetFiles(bloodyChain.ProfileDirectory, "profile-*.json").Any() && !Directory.GetFiles(flow8Chain.ProfileDirectory, "profile-*.json").Any(), $"B3 fake qualifications remain TEST_ONLY with no DEVICE profile [Bloody={bloodyChain.Result.QualificationStatus}/{bloodyChain.Result.Evidence.Provenance}/{bloodyChain.Result.Evidence.StopReason}/audio={bloodyChain.AudioHostCalls}; FLOW8={flow8Chain.Result.QualificationStatus}/{flow8Chain.Result.Evidence.Provenance}/{flow8Chain.Result.Evidence.StopReason}/audio={flow8Chain.AudioHostCalls}]");
+    Check(EveryCoordinatorJsonMatches(bloodyChain), "B3 Bloody coordinator outputs contain its Run ID and endpoint pair");
+    Check(EveryCoordinatorJsonMatches(flow8Chain), "B3 FLOW 8 coordinator outputs contain its Run ID and endpoint pair");
+    var flow8CoordinatorBytes = File.ReadAllBytes(Directory.GetFiles(flow8Chain.RunDirectory, "scan-qualification-*.json", SearchOption.AllDirectories).Single());
+    var bloodyCoordinatorBytes = File.ReadAllBytes(Directory.GetFiles(bloodyChain.RunDirectory, "scan-qualification-*.json", SearchOption.AllDirectories).Single());
+    var b4 = RunSyntheticCoordinatorWorkflow("B4 cross-device substitution", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "CROSS_DEVICE", flow8CoordinatorBytes));
+    Check(EvidenceFailureBlocksProfile(b4) && !ManifestAccepts(b4), "B4 recomputed valid FLOW 8 SHA cannot substitute coordinator evidence in Bloody workflow");
+    var b5Order = RunSyntheticCoordinatorWorkflow("B5 entry permutation", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "PERMUTE", null));
+    var b5RunId = RunSyntheticCoordinatorWorkflow("B5 Run ID substitution", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "RUN_ID", null));
+    var b5Path = RunSyntheticCoordinatorWorkflow("B5 relative path substitution", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "RELATIVE_PATH", null));
+    var b5Sha = RunSyntheticCoordinatorWorkflow("B5 path SHA rebind", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "WRONG_SHA", flow8CoordinatorBytes));
+    Check(new[] { b5Order, b5RunId, b5Path, b5Sha }.All(run => EvidenceFailureBlocksProfile(run) && !ManifestAccepts(run)), "B5 entry permutation, Run ID change, relative-path escape and incorrect path/SHA binding all fail closed in MainViewModel");
+    var b6 = RunSyntheticCoordinatorWorkflow("B6 missing indexed evidence", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "DELETE_FILE", null));
+    Check(EvidenceFailureBlocksProfile(b6) && !ManifestAccepts(b6), "B6 deleting an indexed coordinator output makes the terminal chain incomplete and blocks qualification/profile publication");
+    var sameEndpointNextSession = RunSyntheticCoordinatorWorkflow("B8 new session same endpoints", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "CROSS_DEVICE", bloodyCoordinatorBytes));
+    Check(sameEndpointNextSession.RunId != bloodyChain.RunId && sameEndpointNextSession.RunDirectory != bloodyChain.RunDirectory && EvidenceFailureBlocksProfile(sameEndpointNextSession) && !ManifestAccepts(sameEndpointNextSession) &&
+        !Directory.GetFiles(sameEndpointNextSession.RunDirectory, "*.json", SearchOption.AllDirectories).Any(path => Path.GetFullPath(path) != Path.GetFullPath(Path.Combine(sameEndpointNextSession.RunDirectory, "run-manifest.json")) && File.ReadAllText(path).Contains(bloodyChain.RunId.ToString("D"), StringComparison.Ordinal)),
+        "B8 a second session with the same endpoints rejects the prior session coordinator evidence and publishes no profile");
+    Check(new[] { bloodyChain, flow8Chain, b4, b5Order, b5RunId, b5Path, b5Sha, b6, sameEndpointNextSession }.All(run => run.WorkerOperationCount == 8 && run.AudioHostCalls == 1), "B7 all clean synthetic chains exercised two fake Worker initializations, six CLEAN operations and one fake AudioHost qualification");
+    var a1 = RunV4FailureCase("A1-start-write", (vm, _) => SetRunWrite(vm, (path, bytes, ct) => Path.GetFileName(path) == "run-start.json" ? Task.FromException(new IOException("injected run-start write fault")) : WriteNewForTest(path, bytes, ct)));
+    Check(a1.Workflow.RunCalls == 0 && a1.ViewModel.V4ResultState == "FAILED" && a1.ViewModel.V4ProgressText.Contains("injected run-start write fault", StringComparison.Ordinal) && !Directory.GetFiles(a1.ProfileDirectory, "profile-*.json").Any(), "A1 StartV4ScanCommand preserves run-start write failure, starts no scanner Worker and publishes no profile");
+    var a2 = RunV4FailureCase("A2-start-readback", (vm, _) => SetRunRead(vm, path =>
+    {
+        if (Path.GetFileName(path) != "run-start.json") return File.ReadAllBytes(path);
+        var start = JsonNode.Parse(File.ReadAllBytes(path))!; start["captureEndpointId"] = "wrong-endpoint";
+        return JsonSerializer.SerializeToUtf8Bytes(start);
+    }));
+    Check(a2.Workflow.RunCalls == 0 && a2.ViewModel.V4ResultState == "FAILED" && a2.ViewModel.V4ProgressText.Contains("Run start evidence read-back identity mismatch", StringComparison.Ordinal) && !Directory.GetFiles(a2.ProfileDirectory, "profile-*.json").Any(), $"A2 StartV4ScanCommand stops on unverified run-start read-back before Worker or profile [state={a2.ViewModel.V4ResultState}; calls={a2.Workflow.RunCalls}; progress={a2.ViewModel.V4ProgressText}]");
+    var a3 = RunV4FailureCase("A3-failure-write", (vm, workflow) => { workflow.Failure = new InvalidOperationException("injected original workflow fault"); SetRunWrite(vm, (path, bytes, ct) => Path.GetFileName(path) == "run-failure.json" ? Task.FromException(new IOException("injected failure journal fault")) : WriteNewForTest(path, bytes, ct)); });
+    Check(a3.Workflow.RunCalls == 1 && a3.Workflow.CleanupCalls == 1 && a3.ViewModel.V4ProgressText.Contains("injected original workflow fault", StringComparison.Ordinal) && a3.ViewModel.V4ProgressText.Contains("injected failure journal fault", StringComparison.Ordinal) && !Directory.GetFiles(a3.ProfileDirectory, "profile-*.json").Any(), "A3 run-failure write error is reported separately while original workflow failure and fake Worker cleanup remain observable");
+    var a4 = RunV4FailureCase("A4-manifest-write", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetRunWrite(vm, (path, bytes, ct) => Path.GetFileName(path) == "run-manifest.json" ? Task.FromException(new IOException("injected terminal manifest write fault")) : WriteNewForTest(path, bytes, ct)); });
+    Check(a4.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a4.ViewModel.V4ProgressText.Contains("injected terminal manifest write fault", StringComparison.Ordinal) && !Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Any(), $"A4 terminal manifest write fault blocks LOAD_CLEAN publication and DEVICE profile creation [state={a4.ViewModel.V4ResultState}; progress={a4.ViewModel.V4ProgressText}; profiles={Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Length}]");
+    var a5 = RunV4FailureCase("A5-manifest-readback", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetRunRead(vm, path => Path.GetFileName(path) == "run-manifest.json" ? throw new IOException("injected terminal manifest read-back fault") : File.ReadAllBytes(path)); });
+    Check(a5.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a5.ViewModel.V4ProgressText.Contains("injected terminal manifest read-back fault", StringComparison.Ordinal) && !Directory.GetFiles(a5.ProfileDirectory, "profile-*.json").Any(), "A5 terminal manifest read-back fault blocks LOAD_CLEAN publication and DEVICE profile creation");
+    var profileSaveFailure = RunV4FailureCase("profile-publication-failure", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetProfilePublisher(vm, (_, _) => throw new IOException("injected atomic profile publication fault")); });
+    var publishedRun = Directory.GetDirectories(profileSaveFailure.EvidenceDirectory).Single(directory => File.Exists(Path.Combine(directory, "run-start.json")));
+    var runId = Guid.Parse(Path.GetFileName(publishedRun));
+    RunEvidenceManifest.Verify(publishedRun, Path.Combine(publishedRun, "run-manifest.json"), runId);
+    Check(profileSaveFailure.ViewModel.V4ResultState == "PROFILE_SAVE_FAILED" && profileSaveFailure.ViewModel.V4ProgressText.Contains("injected atomic profile publication fault", StringComparison.Ordinal) && !Directory.GetFiles(profileSaveFailure.ProfileDirectory, "profile-*.json").Any(), "post-manifest atomic profile publication failure is explicit, leaves terminal manifest valid and exposes no unavailable profile");
+    var devicePublicationSelection = stableShort with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" };
+    var devicePublicationSha = devicePublicationSelection.SourceEvidenceSha256;
+    var devicePublicationQualification = new ProfileAudioHostQualification("LOAD_CLEAN", "CONFIRMED", Guid.NewGuid().ToString("D"), new string('c', 64), new string('d', 64), new string('e', 40), devicePublicationSha,
+        "REAL_AUDIOHOST", devicePublicationSelection.CaptureEndpointId, devicePublicationSelection.RenderEndpointId, 240, 240, 50_000, "OFF", devicePublicationSelection.QualifiedAtUtc,
+        new string('1', 64), new string('2', 64), devicePublicationSha, devicePublicationSha);
+    var devicePublicationProfile = DeviceConfigurationProfileJson.Validate(stableShortProfile with
+    {
+        StableShortSelection = devicePublicationSelection, AudioHostQualification = devicePublicationQualification,
+        Recommendation = new(new("COORDINATED_EXCLUSIVE", devicePublicationSelection.CaptureFormat, "5 ms", []), null, []) { Scope = "KLIDAN_QUALIFIED", Confidence = "VERIFIED" },
+        AudioHostAssessments = [new("COORDINATED_EXCLUSIVE", devicePublicationSelection.CaptureFormat with { Period = null }, devicePublicationSelection.RenderFormat with { Period = null }, [], true, [], [])]
+    });
+    var profilePublication = RunV4FailureCase("profile-publication-order", (vm, workflow) =>
+    {
+        workflow.PendingProfile = devicePublicationProfile;
+        SetProfilePublisher(vm, (profile, directory) =>
+        {
+            var runDirectory = Directory.GetDirectories(Path.GetDirectoryName(directory)!).Single(path => File.Exists(Path.Combine(path, "run-start.json")));
+            RunEvidenceManifest.Verify(runDirectory, Path.Combine(runDirectory, "run-manifest.json"), Guid.Parse(Path.GetFileName(runDirectory)));
+            Check(!Directory.GetFiles(directory, "profile-*.json").Any(), "DEVICE profile is not discoverable before verified terminal-manifest publication");
+            return DeviceConfigurationProfileStorage.SaveLocal(profile, directory);
+        });
+    });
+    var savedV5Path = Directory.GetFiles(profilePublication.ProfileDirectory, "profile-*.json").Single();
+    var publishedV4Result = (V4AutomaticSearchResult)typeof(MainViewModel).GetField("_v4SearchResult", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(profilePublication.ViewModel)!;
+    Check(profilePublication.ViewModel.V4ProgressText.StartsWith("LOAD_CLEAN", StringComparison.Ordinal) && publishedV4Result.ProfilePath == savedV5Path &&
+        DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(savedV5Path)).SchemaVersion == 5 && DeviceConfigurationProfileStorage.DiscoverLocal(profilePublication.ProfileDirectory).Single().IsAvailable,
+        "verified terminal manifest precedes atomic Profile v5 save, read-back and AVAILABLE discovery");
+}
+RunB5B19CIntegrationTests();
+
+(MainViewModel ViewModel, PointDiagnosticWorkflowFake Workflow, string EvidenceDirectory, string ProfileDirectory) RunV4FailureCase(
+    string name, Action<MainViewModel, PointDiagnosticWorkflowFake> configure)
+{
+    var evidenceDirectory = Path.Combine(Path.GetTempPath(), "klidan-v4-fault-" + Guid.NewGuid().ToString("N"));
+    var profileDirectory = Path.Combine(evidenceDirectory, "device-profiles");
+    Directory.CreateDirectory(evidenceDirectory);
+    Directory.CreateDirectory(profileDirectory);
+    var discovery = physicalPairFixture with { Endpoints = physicalPairFixture.Endpoints.Select(e => e with
+    {
+        EndpointId = e.Direction == "CAPTURE" ? profileEndpoint.EndpointId : renderEndpoint.EndpointId,
+        FriendlyName = e.Direction == "CAPTURE" ? "Fixture Capture" : "Fixture Render"
+    }).ToArray() };
+    var worker = new GuiStateWorkerClient([]) { WindowsDiscovery = discovery, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 30,
+        RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, counts!.Single())) };
+    var workflow = new PointDiagnosticWorkflowFake();
+    var previousContext = SynchronizationContext.Current;
+    SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+    var vm = new MainViewModel(worker: worker, v4AutomaticSearchWorkflow: workflow, evidenceDirectory: evidenceDirectory, profileDirectory: profileDirectory) { AutomaticScanEngine = "V2_ADAPTIVE" };
+    SynchronizationContext.SetSynchronizationContext(previousContext);
+    configure(vm, workflow);
+    worker.SetState(new(WorkerConnectionState.ConnectedFake, $"Connected for {name} synthetic run."));
+    vm.DiscoverWindowsEndpointsCommand.Execute(null);
+    if (!PumpUntil(() => vm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(2))) throw new InvalidOperationException($"{name}: fake discovery did not complete.");
+    vm.SelectedPhysicalDeviceGroup = vm.PhysicalDeviceGroups.Single();
+    vm.AutomaticScanV2CaptureChannels = 2; vm.AutomaticScanV2CaptureChannel1 = 1;
+    vm.AutomaticScanV2RenderChannels = 2; vm.AutomaticScanV2RenderChannel1 = 1; vm.AutomaticScanV2RenderChannel2 = 2;
+    vm.V4RepeatabilityRuns = 0;
+    var window = new MainWindow(vm) { Width = 1280, Height = 800, ShowActivated = false };
+    window.Show(); window.UpdateLayout();
+    var oldBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
+    Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('d', 40));
+    vm.PrepareV4CustomPlanCommand.Execute(null);
+    if (!PumpUntil(() => vm.V4SearchConsentPending, TimeSpan.FromSeconds(3))) { Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", oldBuildSha); throw new InvalidOperationException($"{name}: fake plan preparation did not complete: {vm.V4PlanStatus}"); }
+    vm.V4ConsentChecked = true; vm.AcceptV4CustomPlanCommand.Execute(null);
+    if (!vm.StartV4ScanCommand.CanExecute(null)) throw new InvalidOperationException($"{name}: StartV4ScanCommand remained disabled.");
+    var ownerContext = SynchronizationContext.Current;
+    SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+    vm.StartV4ScanCommand.Execute(null);
+    SynchronizationContext.SetSynchronizationContext(ownerContext);
+    if (!PumpUntil(() => !vm.V4ScanRunning, TimeSpan.FromSeconds(3))) throw new InvalidOperationException($"{name}: V4 run did not reach a terminal state.");
+    Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", oldBuildSha);
+    window.Close();
+    return (vm, workflow, evidenceDirectory, profileDirectory);
+}
+
+(string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
+    MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) RunSyntheticCoordinatorWorkflow(
+    string name, string captureId, string renderId, int captureChannels, Action<MainViewModel>? configure = null)
+{
+    var root = Path.Combine(Path.GetTempPath(), "klidan-b5b19c-" + Guid.NewGuid().ToString("N"));
+    var evidenceRoot = Path.Combine(root, "runs"); var profileDirectory = Path.Combine(root, "profiles");
+    Directory.CreateDirectory(evidenceRoot); Directory.CreateDirectory(profileDirectory);
+    var repository = new DirectoryInfo(AppContext.BaseDirectory);
+    while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "CMakeLists.txt"))) repository = repository.Parent;
+    if (repository is null) throw new InvalidOperationException("Repository root is unavailable for the synthetic Worker fixture.");
+    var fakeWorkerPath = Path.Combine(repository.FullName, "build", "worker-tests", "Release", "probe_worker_format_fixture.exe");
+    if (!File.Exists(fakeWorkerPath)) throw new FileNotFoundException("Synthetic V4 Worker fixture is required for B1-B8.", fakeWorkerPath);
+    var previousFixtureEndpoints = Environment.GetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS");
+    NativeWorkerClient? nativeWorker = null;
+    try
+    {
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", $"{captureId}|{renderId}");
+        nativeWorker = new NativeWorkerClient(fakeWorkerPath);
+        nativeWorker.ConnectAsync().GetAwaiter().GetResult();
+        var fakeDiscovery = nativeWorker.ListWindowsEndpointsAsync().GetAwaiter().GetResult();
+        if (!fakeDiscovery.Endpoints.Any(e => e.EndpointId == captureId && e.Direction == "CAPTURE") || !fakeDiscovery.Endpoints.Any(e => e.EndpointId == renderId && e.Direction == "RENDER"))
+            throw new InvalidOperationException($"{name}: configured fake Worker did not discover the exact fixture pair.");
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", previousFixtureEndpoints);
+
+        var container = "{" + Guid.NewGuid().ToString("D") + "}";
+        var discovery = physicalPairFixture with { Endpoints =
+        [
+            physicalPairFixture.Endpoints.Single(e => e.Direction == "CAPTURE") with { EndpointId = captureId, FriendlyName = $"{name} Capture", ContainerId = container },
+            physicalPairFixture.Endpoints.Single(e => e.Direction == "RENDER") with { EndpointId = renderId, FriendlyName = $"{name} Render", ContainerId = container }
+        ] };
+        var guiWorker = new GuiStateWorkerClient([])
+        {
+            WindowsDiscovery = discovery, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true,
+            DiscoveryGeneration = nativeWorker.DiscoveryGeneration,
+            RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, counts!.Single(), encoding: direction == "RENDER" ? "FLOAT32" : "PCM16"))
+        };
+        var audioHost = new SyntheticAudioHostQualificationAdapter(); var workerOperations = new List<string>();
+        var coordinator = new WorkerV4ScanQualificationCoordinator(new WorkerV4AutomaticSearchWorkflow(nativeWorker), audioHost,
+            (index, operation) => { workerOperations.Add($"{index}:{operation}"); return operation.EndsWith("_INITIALIZE", StringComparison.Ordinal) ? null : "CLEAN"; });
+        var previousContext = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+        var vm = new MainViewModel(worker: guiWorker, v4AutomaticSearchWorkflow: new PointDiagnosticWorkflowFake(),
+            evidenceDirectory: evidenceRoot, profileDirectory: profileDirectory,
+            v4ScanQualificationCoordinator: new SyntheticOnlyV4ScanQualificationCoordinator(coordinator)) { AutomaticScanEngine = "V2_ADAPTIVE" };
+        SynchronizationContext.SetSynchronizationContext(previousContext);
+        configure?.Invoke(vm);
+        guiWorker.SetState(new(WorkerConnectionState.ConnectedFake, $"Connected to synthetic Worker for {name}."));
+        vm.DiscoverWindowsEndpointsCommand.Execute(null);
+        if (!PumpUntil(() => vm.HasCurrentWindowsEndpoints, TimeSpan.FromSeconds(3))) throw new InvalidOperationException($"{name}: synthetic MainViewModel discovery did not complete.");
+        vm.SelectedPhysicalDeviceGroup = vm.PhysicalDeviceGroups.Single();
+        vm.AutomaticScanV2Mode = "MONO_TO_STEREO";
+        vm.AutomaticScanV2CaptureChannels = captureChannels; vm.AutomaticScanV2CaptureChannel1 = 1;
+        vm.AutomaticScanV2RenderChannels = 2; vm.AutomaticScanV2RenderChannel1 = 1; vm.AutomaticScanV2RenderChannel2 = 2;
+        vm.AutomaticScanV2CaptureFormat = "48000|PCM16"; vm.AutomaticScanV2RenderFormat = "48000|FLOAT32"; vm.V4RepeatabilityRuns = 5;
+        var window = new MainWindow(vm) { Width = 1280, Height = 800, ShowActivated = false };
+        window.Show(); window.UpdateLayout();
+        var previousBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
+        Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('f', 40));
+        try
+        {
+            vm.PrepareV4CustomPlanCommand.Execute(null);
+            if (!PumpUntil(() => vm.V4SearchConsentPending, TimeSpan.FromSeconds(5))) throw new InvalidOperationException($"{name}: plan preparation failed: {vm.V4PlanStatus}");
+            vm.V4ConsentChecked = true; vm.AcceptV4CustomPlanCommand.Execute(null);
+            if (!vm.StartV4ScanCommand.CanExecute(null)) throw new InvalidOperationException($"{name}: StartV4ScanCommand is not enabled after consent.");
+            var ownerContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+            vm.StartV4ScanCommand.Execute(null);
+            SynchronizationContext.SetSynchronizationContext(ownerContext);
+            if (!PumpUntil(() => !vm.V4ScanRunning, TimeSpan.FromSeconds(45))) throw new TimeoutException($"{name}: MainViewModel coordinator workflow did not terminate.");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", previousBuildSha);
+            Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", previousFixtureEndpoints);
+            window.Close();
+        }
+        var result = (V4AutomaticSearchResult)typeof(MainViewModel).GetField("_v4SearchResult", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(vm)!;
+        var runDirectory = Directory.GetDirectories(evidenceRoot).Single(path => File.Exists(Path.Combine(path, "run-start.json")));
+        var runStart = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(runDirectory, "run-start.json")));
+        var runId = runStart.RootElement.GetProperty("runId").GetGuid();
+        return (name, evidenceRoot, runDirectory, profileDirectory, captureId, renderId, runId, vm, result, workerOperations.Count, audioHost.CallCount);
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", previousFixtureEndpoints);
+        if (nativeWorker is not null) nativeWorker.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+}
+
+bool VerifySyntheticRunChain((string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
+    MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) run)
+{
+    try
+    {
+        var manifestPath = Path.Combine(run.RunDirectory, "run-manifest.json");
+        RunEvidenceManifest.Verify(run.RunDirectory, manifestPath, run.RunId);
+        using var manifest = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
+        return manifest.RootElement.GetProperty("captureEndpointId").GetString() == run.CaptureId && manifest.RootElement.GetProperty("renderEndpointId").GetString() == run.RenderId &&
+            manifest.RootElement.GetProperty("files").EnumerateArray().All(entry =>
+            {
+                var relative = entry.GetProperty("path").GetString()!;
+                return !Path.IsPathRooted(relative) && !relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Contains("..") && File.Exists(Path.Combine(run.RunDirectory, relative));
+            });
+    }
+    catch { return false; }
+}
+
+bool EveryCoordinatorJsonMatches((string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
+    MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) run) =>
+    Directory.GetFiles(run.RunDirectory, "*.json", SearchOption.AllDirectories).All(path =>
+    {
+        using var document = JsonDocument.Parse(File.ReadAllBytes(path)); var json = document.RootElement;
+        return json.TryGetProperty("runId", out var id) && id.ValueKind == JsonValueKind.String && Guid.TryParse(id.GetString(), out var parsed) && parsed == run.RunId &&
+            json.TryGetProperty("captureEndpointId", out var capture) && capture.GetString() == run.CaptureId &&
+            json.TryGetProperty("renderEndpointId", out var render) && render.GetString() == run.RenderId;
+    });
+
+bool EvidenceFailureBlocksProfile((string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
+    MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) run) =>
+    run.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && run.Result.QualificationStatus == "EVIDENCE_INCOMPLETE" && run.Result.ProfilePath is null &&
+    !Directory.GetFiles(run.ProfileDirectory, "profile-*.json").Any();
+
+bool ManifestAccepts((string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
+    MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) run)
+{
+    try { RunEvidenceManifest.Verify(run.RunDirectory, Path.Combine(run.RunDirectory, "run-manifest.json"), run.RunId); return true; }
+    catch { return false; }
+}
+
+void InjectManifestTamper(MainViewModel vm, string mode, byte[]? sourceEvidence)
+{
+    string? substitutedPath = null;
+    SetRunRead(vm, path =>
+    {
+        if (substitutedPath is not null && string.Equals(Path.GetFullPath(path), substitutedPath, StringComparison.OrdinalIgnoreCase) && sourceEvidence is not null) return sourceEvidence;
+        if (!Path.GetFileName(path).Equals("run-manifest.json", StringComparison.OrdinalIgnoreCase)) return File.ReadAllBytes(path);
+        var document = JsonNode.Parse(File.ReadAllBytes(path))!.AsObject(); var files = document["files"]!.AsArray();
+        switch (mode)
+        {
+            case "CROSS_DEVICE":
+                var summary = files.Single(entry => entry!["path"]!.GetValue<string>().StartsWith("scan-qualification-", StringComparison.Ordinal));
+                substitutedPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, summary!["path"]!.GetValue<string>()));
+                summary["sha256"] = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(sourceEvidence!));
+                break;
+            case "PERMUTE":
+                var reversed = files.Select(entry => entry!.DeepClone()).Reverse().ToArray(); files.Clear(); foreach (var entry in reversed) files.Add(entry);
+                break;
+            case "RUN_ID": document["runId"] = Guid.NewGuid().ToString("D"); break;
+            case "RELATIVE_PATH": files[0]!["path"] = "../escape.json"; break;
+            case "WRONG_SHA": files[0]!["sha256"] = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(sourceEvidence!)); break;
+            case "DELETE_FILE":
+                var deleteEntry = files.Single(entry => entry!["path"]!.GetValue<string>().StartsWith("scan-qualification-", StringComparison.Ordinal));
+                File.Delete(Path.Combine(Path.GetDirectoryName(path)!, deleteEntry!["path"]!.GetValue<string>()));
+                break;
+            default: throw new InvalidOperationException($"Unknown manifest fault injection: {mode}");
+        }
+        return JsonSerializer.SerializeToUtf8Bytes(document);
+    });
+}
+
+void SetRunRead(MainViewModel vm, Func<string, byte[]> read) => typeof(MainViewModel).GetProperty("RunEvidenceReadOverride", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(vm, read);
+void SetRunWrite(MainViewModel vm, Func<string, byte[], CancellationToken, Task> write) => typeof(MainViewModel).GetProperty("RunEvidenceWriteOverride", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(vm, write);
+void SetProfilePublisher(MainViewModel vm, Func<DeviceConfigurationProfile, string, string> publish) => typeof(MainViewModel).GetProperty("RunProfilePublishOverride", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(vm, publish);
+async Task WriteNewForTest(string path, byte[] bytes, CancellationToken ct)
+{
+    await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+    await stream.WriteAsync(bytes, ct); await stream.FlushAsync(ct);
+}
+
 Console.WriteLine($"All GUI Core checks passed ({checks}).");
 }
 
@@ -3889,17 +4278,71 @@ sealed class HeldV4SearchWorkflow : IV4AutomaticSearchWorkflow
     private static TaskCompletionSource<V4AutomaticSearchResult> NewCompletion() => new();
 }
 
+sealed class SyntheticOnlyV4ScanQualificationCoordinator(IV4ScanQualificationCoordinator inner) : IV4ScanQualificationCoordinator
+{
+    public Task<V4ScanQualificationResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
+        AudioHostQualificationAuthorization authorization, string audioHostPackage, string evidenceRoot, string? profileDirectory,
+        IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken, bool testOnly = false) =>
+        inner.RunAsync(prepared, capture, render, authorization, audioHostPackage, evidenceRoot, profileDirectory, progress, cancellationToken, testOnly: true);
+}
+
+sealed class SyntheticAudioHostQualificationAdapter : IAudioHostQualificationAdapter
+{
+    public int CallCount { get; private set; }
+    public Task<AudioHostCandidateQualificationResult> QualifyAsync(AudioHostCandidateQualificationRequest request, CancellationToken cancellationToken)
+    {
+        CallCount++;
+        var sourceSha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(request.RepeatabilityMatrixPath)));
+        return Task.FromResult(new AudioHostCandidateQualificationResult("TEST_ONLY", "CONFIRMED", "Synthetic fake AudioHost; no physical process started.",
+            Guid.NewGuid().ToString("D"), new string('a', 64), new string('b', 64), new string('c', 40), sourceSha, null, "TEST_ONLY"));
+    }
+}
+
 sealed class PointDiagnosticWorkflowFake : IV4AutomaticSearchWorkflow
 {
     public List<WorkerScanV2V4PreparedPlan> Runs { get; } = [];
+    public Exception? Failure { get; set; }
+    public int CleanupCalls { get; private set; }
+    public int RunCalls => Runs.Count;
+    public DeviceConfigurationProfile? PendingProfile { get; set; }
     public Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
-        string evidenceRoot, string profileDirectory, bool runRepeatability, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken) =>
-        throw new InvalidOperationException("Point diagnostic fixture must not dispatch full search.");
+        string evidenceRoot, string profileDirectory, bool runRepeatability, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
+    {
+        Runs.Add(prepared);
+        if (Failure is { } failure) { CleanupCalls++; return Task.FromException<V4AutomaticSearchResult>(failure); }
+        var candidate = prepared.Plan.Candidates[0] with { Index = 0 };
+        using var report = JsonDocument.Parse($"{{\"report\":{{\"duplex\":{{\"status\":\"DUPLEX_CLEAN\"}}}}}}");
+        var row = new V2CandidateMatrixEntry(candidate, "INITIALIZED", "INITIALIZED", "CLEAN", "RELEASE_ATTEMPTED", "RELEASE_ATTEMPTED",
+            ["CLEAN"], false, null, "COMPLETE", "NOT_RUN", "TEST_FAKE_WASAPI_V4_DUPLEX")
+        {
+            ActualCaptureFrames = candidate.CaptureFrames, ActualCapturePeriod100ns = candidate.CapturePeriod100ns,
+            ActualRenderFrames = candidate.RenderFrames, ActualRenderPeriod100ns = candidate.RenderPeriod100ns,
+            DuplexEvidence = report.RootElement.Clone(), NativeDuplexDisposition = "CLEAN", EvaluatorReasonCode = "CLEAN"
+        };
+        var evidence = new V2CandidateMatrixEvidence(1, prepared.Consent.PlanFingerprint,
+            WorkerScanPlanV2Fingerprint.Route(prepared.CaptureEndpointId, prepared.RenderEndpointId, prepared.Plan.Route), "COMPLETED",
+            prepared.Plan.CaptureBounds, prepared.Plan.RenderBounds, [candidate], [row], "MINIMUM_SHORT_CLEAN_FOUND", "TEST_FAKE_WASAPI_V4_DUPLEX")
+        {
+            EvidenceVersion = 4, DiagnosticOnly = false, BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA")!, DiagnosticTimestampUtc = DateTimeOffset.UtcNow,
+            DiscoveryGeneration = prepared.Consent.DiscoveryGeneration, SelectedCandidateIndex = 0, GlobalMinimumProven = false,
+            UsedOperations = 3, MaximumOperations = prepared.Plan.MaximumOperations, UsedActiveDuplexSeconds = 5,
+            MaximumActiveDuplexSeconds = prepared.Plan.MaximumActiveDuplexSeconds, StopReason = "SYNTHETIC_TEST_COMPLETE",
+            RepeatabilityPending = false, RepeatabilityRequested = 0, RepeatabilityCompleted = 0, SessionCleanup = "CLOSE_CONFIRMED"
+        };
+        CleanupCalls++;
+        var evidencePath = Path.Combine(evidenceRoot, "synthetic-full-search.json");
+        File.WriteAllBytes(evidencePath, JsonSerializer.SerializeToUtf8Bytes(new { runId = prepared.RunId, captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, evidence }));
+        return Task.FromResult(new V4AutomaticSearchResult(evidence, evidencePath)
+        {
+            QualificationStatus = PendingProfile is null ? "TEST_ONLY" : "LOAD_CLEAN", PendingProfile = PendingProfile
+        });
+    }
 
     public Task<V4AutomaticSearchResult> RunDiagnosticAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
         string evidenceRoot, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
     {
         Runs.Add(prepared);
+        if (Failure is { } failure) { CleanupCalls++; return Task.FromException<V4AutomaticSearchResult>(failure); }
         var candidate = prepared.Plan.Candidates.Single();
         var frames = candidate.CaptureFrames;
         var captureEvents = candidate.RequestedDuration100ns == 50_000 ? 998 : 500;
@@ -3923,7 +4366,14 @@ sealed class PointDiagnosticWorkflowFake : IV4AutomaticSearchWorkflow
             RepeatabilityCompleted = 0, SessionCleanup = "CLOSE_CONFIRMED"
         };
         V2CandidateMatrixEvidenceJson.Validate(evidence);
-        return Task.FromResult(new V4AutomaticSearchResult(evidence, Path.Combine(evidenceRoot, $"diagnostic-{frames}.json")));
+        CleanupCalls++;
+        var evidencePath = Path.Combine(evidenceRoot, $"diagnostic-{frames}.json");
+        File.WriteAllBytes(evidencePath, JsonSerializer.SerializeToUtf8Bytes(new { runId = prepared.RunId, captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, evidence }));
+        return Task.FromResult(new V4AutomaticSearchResult(evidence, evidencePath)
+        {
+            QualificationStatus = PendingProfile is null ? "DIAGNOSTIC_ONLY" : "LOAD_CLEAN",
+            PendingProfile = PendingProfile
+        });
     }
 }
 

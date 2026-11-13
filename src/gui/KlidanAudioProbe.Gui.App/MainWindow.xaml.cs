@@ -40,7 +40,14 @@ public partial class MainWindow : Window
         IAudioHostQualificationAdapter? qualificationAdapter = !string.IsNullOrWhiteSpace(qualificationPackage) && File.Exists(Path.Combine(qualificationPackage, "manifest.json"))
             ? new AudioHostPowerShellQualificationAdapter() : null;
         var qualificationCoordinator = new WorkerV4ScanQualificationCoordinator(v4Search, qualificationAdapter);
-        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: v4Search, evidenceDirectory: evidenceDirectory, v4ScanQualificationCoordinator: qualificationCoordinator);
+        if (viewModel is null)
+        {
+            var previousContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(Dispatcher));
+            try { _vm = new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: v4Search, evidenceDirectory: evidenceDirectory, v4ScanQualificationCoordinator: qualificationCoordinator); }
+            finally { SynchronizationContext.SetSynchronizationContext(previousContext); }
+        }
+        else _vm = viewModel;
         DataContext = _vm;
         _vm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(MainViewModel.Screen) or nameof(MainViewModel.WorkflowStep) or nameof(MainViewModel.DeveloperToolsOpen)) { UpdateScreenVisibility(); UpdateResponsiveLayout(); } if (e.PropertyName == nameof(MainViewModel.SelectedWindowsEndpoint)) UpdateWindowsEndpointDetailsVisibility(); };
         DataContextChanged += (_, _) => UpdateWindowsEndpointDetailsVisibility();

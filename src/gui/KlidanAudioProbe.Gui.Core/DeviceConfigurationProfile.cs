@@ -188,7 +188,7 @@ public static class DeviceConfigurationProfileFactory
             ? new ProfileRecommendation(null, null, ["Five-second V4 repeatability does not establish sustained AudioHost or physical KLIDAN qualification."]) { Scope = "NONE", Confidence = "NOT_AVAILABLE" }
             : new ProfileRecommendation(new("COORDINATED_EXCLUSIVE", selection.CaptureFormat, PeriodText(selection.ActualCapturePeriod100ns), []), null, []) { Scope = "KLIDAN_QUALIFIED", Confidence = "VERIFIED" };
         var audioHostAssessments = audioHostQualification is null ? Array.Empty<ProfileAudioHostAssessment>() :
-            [new ProfileAudioHostAssessment("COORDINATED_EXCLUSIVE", selection.CaptureFormat, selection.RenderFormat, [], true, [], [])];
+            [new ProfileAudioHostAssessment("COORDINATED_EXCLUSIVE", selection.CaptureFormat with { Period = null }, selection.RenderFormat with { Period = null }, [], true, [], [])];
         var profile = new DeviceConfigurationProfile(5, Guid.NewGuid(), selection.QualifiedAtUtc, probeVersion ?? Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown", "WINDOWS", "WASAPI",
             new(System.Runtime.InteropServices.RuntimeInformation.OSDescription, System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString()),
             new(null, null, null, null, null, null, null),

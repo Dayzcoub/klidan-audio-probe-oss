@@ -34,22 +34,36 @@ public sealed class ParameterCommand(Action<object?> execute, Func<bool>? canExe
 public sealed class AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null) : ICommand
 {
     private bool _running;
+    private readonly SynchronizationContext? _context = SynchronizationContext.Current;
+    private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
     public event EventHandler? CanExecuteChanged;
     public event Action<Exception>? ExecutionFailed;
     public bool CanExecute(object? parameter) => !_running && (canExecute?.Invoke() ?? true);
     public async void Execute(object? parameter)
     {
         if (!CanExecute(parameter)) return;
-        _running = true; CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        var context = _context ?? SynchronizationContext.Current;
+        _running = true; RaiseCanExecuteChanged();
         try { await execute(); }
         catch (Exception ex)
         {
-            if (ExecutionFailed is { } handlers)
-                foreach (Action<Exception> handler in handlers.GetInvocationList()) try { handler(ex); } catch { }
+            Dispatch(context, () =>
+            {
+                if (ExecutionFailed is { } handlers)
+                    foreach (Action<Exception> handler in handlers.GetInvocationList()) try { handler(ex); } catch { }
+            });
         }
-        finally { _running = false; CanExecuteChanged?.Invoke(this, EventArgs.Empty); }
+        finally { _running = false; Dispatch(context, () => CanExecuteChanged?.Invoke(this, EventArgs.Empty)); }
     }
-    public void Refresh() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    public void Refresh() => Dispatch(() => CanExecuteChanged?.Invoke(this, EventArgs.Empty));
+    private void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    private void Dispatch(Action action) => Dispatch(_context, action);
+    private void Dispatch(SynchronizationContext? context, Action action)
+    {
+        if (Environment.CurrentManagedThreadId == _ownerThreadId) action();
+        else if (context is not null) context.Post(_ => action(), null);
+        else action();
+    }
 }
 
 public abstract class ViewModel : INotifyPropertyChanged
@@ -79,6 +93,9 @@ public sealed class MainViewModel : ViewModel
     private readonly IV4ScanQualificationCoordinator? _v4ScanQualificationCoordinator;
     private readonly string? _profileDirectory;
     private readonly string? _v4EvidenceDirectory;
+    internal Func<string, byte[]>? RunEvidenceReadOverride { get; set; }
+    internal Func<string, byte[], CancellationToken, Task>? RunEvidenceWriteOverride { get; set; }
+    internal Func<DeviceConfigurationProfile, string, string>? RunProfilePublishOverride { get; set; }
     private readonly ILaboratoryEvidenceBundleExportInteraction? _bundleExportInteraction;
     private readonly Func<string, LaboratoryEvidenceBundleDirectories>? _bundleDirectoriesFactory;
     private readonly DeviceProfileBindingRevalidationState _savedProfileBindingState = new();
@@ -570,7 +587,7 @@ public sealed class MainViewModel : ViewModel
     public string V4PrepareDisabledReason => GetV4PrepareDisabledReason();
     public bool V4ScanRunning { get => _v4ScanRunning; private set { if (Set(ref _v4ScanRunning, value)) { Changed(nameof(V4SearchUiState)); Changed(nameof(V4SearchRunVisible)); Changed(nameof(V4SearchReady)); Changed(nameof(V4SearchRunning)); Changed(nameof(V4SearchFinished)); Changed(nameof(AutomaticScanBusy)); Changed(nameof(V4ProgressText)); RefreshV4Commands(); PrepareAutomaticScanCommand.Refresh(); ConfirmAutomaticScanCommand.Refresh(); RequestDeviceScanCommand.Refresh(); QueryRealFormatsCommand.Refresh(); RequestStreamValidationCommand.Refresh(); } } }
     public string V4ProgressText => _v4ProgressText;
-    public string V4ResultState => _v4SearchResult is null && _v4ScanFinished ? "FAILED" : _v4SearchResult?.Evidence.DiagnosticOnly == true ? "DIAGNOSTIC_ONLY" : _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
+    public string V4ResultState => _v4SearchResult?.QualificationStatus is "EVIDENCE_INCOMPLETE" or "PROFILE_SAVE_FAILED" ? _v4SearchResult.QualificationStatus : _v4SearchResult is null && _v4ScanFinished ? "FAILED" : _v4SearchResult?.Evidence.DiagnosticOnly == true ? "DIAGNOSTIC_ONLY" : _v4SearchResult?.Evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
     public string V4ResultSummary => BuildV4ResultSummary();
     public string V4EvidencePath => _v4EvidencePath;
     public string V4PlanFingerprint => _v4PlanFingerprint ?? Localization.Get("VmV4NoFingerprint");
@@ -2005,6 +2022,9 @@ public sealed class MainViewModel : ViewModel
         V4ScanRunning = true;
         var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KlidanAudioProbe");
         var evidenceRoot = _v4EvidenceDirectory ?? Path.Combine(localRoot, "Scans", "V4");
+        var runId = Guid.NewGuid();
+        evidenceRoot = Path.Combine(evidenceRoot, runId.ToString("D"));
+        prepared = prepared with { RunId = runId };
         var profileDirectory = _profileDirectory ?? Path.Combine(localRoot, "Profiles");
         var progress = new Progress<V4AutomaticSearchProgress>(p =>
         {
@@ -2013,8 +2033,39 @@ public sealed class MainViewModel : ViewModel
                 p.ActualCaptureFrames?.ToString(CultureInfo.CurrentCulture) ?? "?", p.ActualRenderFrames?.ToString(CultureInfo.CurrentCulture) ?? "?");
             Changed(nameof(V4ProgressText));
         });
+        V4AutomaticSearchResult? completedResult = null;
         try
         {
+            Directory.CreateDirectory(evidenceRoot);
+            VerifiedBuildMetadata? verifiedBuild = null;
+            if (_v4AutomaticSearchWorkflow.RequiresVerifiedBuildIdentity)
+            {
+                var executable = Environment.ProcessPath ?? throw new InvalidDataException("Running executable path is unavailable.");
+                verifiedBuild = VerifiedBuildMetadataReader.Read(executable, Path.Combine(Path.GetDirectoryName(executable)!, "package-manifest.json"));
+                VerifiedBuildMetadataReader.ValidateDeclaredCommits(verifiedBuild,
+                    Environment.GetEnvironmentVariable("KLIDAN_SOURCE_COMMIT"), Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA"));
+            }
+            var runStartPath = Path.Combine(evidenceRoot, "run-start.json");
+            var runStart = new
+            {
+                schemaVersion = 1, runId, timestampUtc = DateTimeOffset.UtcNow,
+                captureFriendlyName = capture.FriendlyName, captureEndpointId = prepared.CaptureEndpointId,
+                renderFriendlyName = render.FriendlyName, renderEndpointId = prepared.RenderEndpointId,
+                discoveryGeneration = prepared.Consent.DiscoveryGeneration, planFingerprint = prepared.Consent.PlanFingerprint,
+                periods = prepared.Plan.Candidates, sourceCommit = verifiedBuild?.SourceCommit ?? "UNKNOWN",
+                buildSha = verifiedBuild?.ExecutableSha256 ?? "UNKNOWN"
+            };
+            var runStartBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(runStart);
+            await WriteRunEvidenceAsync(runStartPath, runStartBytes, cancellation.Token);
+            using (var readBack = System.Text.Json.JsonDocument.Parse(ReadRunEvidenceBytes(runStartPath)))
+                if (readBack.RootElement.GetProperty("runId").GetGuid() != runId ||
+                    readBack.RootElement.GetProperty("captureEndpointId").GetString() != prepared.CaptureEndpointId ||
+                    readBack.RootElement.GetProperty("renderEndpointId").GetString() != prepared.RenderEndpointId ||
+                    readBack.RootElement.GetProperty("planFingerprint").GetString() != prepared.Consent.PlanFingerprint)
+                    throw new InvalidDataException("Run start evidence read-back identity mismatch.");
+            if (!IsCurrentV4Plan() || capture.EndpointId != prepared.CaptureEndpointId || render.EndpointId != prepared.RenderEndpointId ||
+                prepared.Consent.DiscoveryGeneration != _worker?.DiscoveryGeneration)
+                throw new InvalidOperationException("Selected endpoints or discovery generation changed after plan confirmation.");
             V4AutomaticSearchResult result;
             if (V4DiagnosticPlanMode)
                 result = await _v4AutomaticSearchWorkflow.RunDiagnosticAsync(prepared, capture, render, evidenceRoot, progress, cancellation.Token);
@@ -2028,19 +2079,80 @@ public sealed class MainViewModel : ViewModel
                 var package = Environment.GetEnvironmentVariable("KLIDAN_AUDIOHOST_QA_PACKAGE") ?? string.Empty;
                 var qualified = await _v4ScanQualificationCoordinator.RunAsync(prepared, capture, render, auth, package, evidenceRoot,
                     profileDirectory, progress, cancellation.Token);
-                result = new(qualified.Evidence, qualified.EvidencePath) { QualificationStatus = qualified.Status, QualificationDiagnostic = qualified.Diagnostic, ProfilePath = qualified.ProfilePath };
+                result = new(qualified.Evidence, qualified.EvidencePath) { QualificationStatus = qualified.Status, QualificationDiagnostic = qualified.Diagnostic, ProfilePath = qualified.ProfilePath, PendingProfile = qualified.PendingProfile };
                 _v4ProgressText = qualified.Diagnostic is null ? qualified.Status : $"{qualified.Status}: {qualified.Diagnostic}";
             }
             else result = await _v4AutomaticSearchWorkflow.RunAsync(prepared, capture, render, evidenceRoot, profileDirectory,
                     prepared.Plan.RepeatabilityRuns == 5, progress, cancellation.Token);
-            _v4SearchResult = result; _v4EvidencePath = result.EvidencePath ?? "";
+            result = result with { Evidence = result.Evidence with { RunId = runId } };
+            completedResult = result;
+            if (result.PendingProfile is { } pendingProfile)
+            {
+                var stagedProfile = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
+                {
+                    runId, captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, profile = pendingProfile
+                }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true });
+                await WriteRunEvidenceAsync(Path.Combine(evidenceRoot, "pending-profile-v5.json"), stagedProfile, cancellation.Token);
+            }
+            await RunEvidenceManifest.WriteAsync(evidenceRoot, runId, cancellation.Token, ReadRunEvidenceBytes, WriteRunEvidenceAsync);
+            if (result.PendingProfile is { } publishProfile)
+            {
+                try
+                {
+                    var publishedPath = (RunProfilePublishOverride ?? DeviceConfigurationProfileStorage.SaveLocal)(publishProfile, profileDirectory);
+                    var profileReadback = DeviceConfigurationProfileJson.Parse(ReadRunEvidenceBytes(publishedPath));
+                    if (profileReadback.ProfileId != publishProfile.ProfileId || profileReadback.StableShortSelection?.SourceEvidenceSha256 != publishProfile.StableShortSelection?.SourceEvidenceSha256 ||
+                        profileReadback.AudioHostQualification?.ResultSha256 != publishProfile.AudioHostQualification?.ResultSha256 || profileReadback.Recommendation.Scope != "KLIDAN_QUALIFIED")
+                        throw new InvalidDataException("Published Profile v5 read-back differs from its staged identity or qualification.");
+                    result = result with { ProfilePath = publishedPath, PendingProfile = null };
+                    completedResult = result;
+                }
+                catch (Exception profileError) when (profileError is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+                {
+                    result = result with { QualificationStatus = "PROFILE_SAVE_FAILED", QualificationDiagnostic = profileError.Message, ProfilePath = null, PendingProfile = null };
+                    completedResult = result;
+                }
+            }
+            _v4SearchResult = result; _v4EvidencePath = result.EvidencePath ?? runStartPath;
             _v4ProgressText = result.QualificationStatus == "NOT_QUALIFIED" && result.QualificationDiagnostic is null
                 ? result.Evidence.StopReason
                 : $"{result.QualificationStatus}{(string.IsNullOrWhiteSpace(result.QualificationDiagnostic) ? "" : $": {result.QualificationDiagnostic}")}";
         }
         catch (Exception ex)
         {
-            _v4ProgressText = string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanError"), ex.GetType().Name, ex.Message);
+            Exception? evidenceError = null;
+            var evidenceErrorStage = "run-failure.json write";
+            try
+            {
+                Directory.CreateDirectory(evidenceRoot);
+                var evidenceFiles = Directory.EnumerateFiles(evidenceRoot, "*.json", SearchOption.AllDirectories)
+                    .Where(path => Path.GetFileName(path) != "run-failure.json")
+                    .Select(path => new { path = Path.GetRelativePath(evidenceRoot, path), sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(ReadRunEvidenceBytes(path))) }).ToArray();
+                var failureBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
+                {
+                    schemaVersion = 1, runId, stage = _v4ProgressText, exceptionType = ex.GetType().FullName, message = ex.Message,
+                    captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId, evidenceFiles,
+                    workerStatus = WorkerState.State.ToString(), audioHostStatus = completedResult?.QualificationStatus ?? _v4SearchResult?.QualificationStatus ?? "UNKNOWN",
+                    profilePath = completedResult?.ProfilePath, profileExists = completedResult?.ProfilePath is { } profilePath && File.Exists(profilePath)
+                });
+                await WriteRunEvidenceAsync(Path.Combine(evidenceRoot, "run-failure.json"), failureBytes, CancellationToken.None);
+            }
+            catch (Exception writeError) { evidenceError = writeError; }
+            if (evidenceError is null)
+            {
+                evidenceErrorStage = "terminal run-manifest write/read-back";
+                try { await RunEvidenceManifest.WriteAsync(evidenceRoot, runId, CancellationToken.None, ReadRunEvidenceBytes, WriteRunEvidenceAsync); }
+                catch (Exception writeError) { evidenceError = writeError; }
+            }
+            if (evidenceError is not null)
+                _v4ProgressText = $"{ex.GetType().Name}: {ex.Message}; {evidenceErrorStage} failed: {evidenceError.GetType().Name}: {evidenceError.Message}";
+            if (completedResult is not null)
+            {
+                _v4SearchResult = completedResult with { QualificationStatus = "EVIDENCE_INCOMPLETE", QualificationDiagnostic = _v4ProgressText };
+                _v4EvidencePath = completedResult.EvidencePath ?? "";
+                _v4ProgressText = $"EVIDENCE_INCOMPLETE · {_v4ProgressText}";
+            }
+            else if (evidenceError is null) _v4ProgressText = string.Format(Localization.CurrentCulture, Localization.Get("VmV4ScanError"), ex.GetType().Name, ex.Message);
         }
         finally
         {
@@ -2060,9 +2172,23 @@ public sealed class MainViewModel : ViewModel
         _v4ProgressText = Localization.Get("VmV4ScanCancellationRequested"); Changed(nameof(V4ProgressText));
     }
 
+    private byte[] ReadRunEvidenceBytes(string path) => (RunEvidenceReadOverride ?? File.ReadAllBytes)(path);
+
+    private Task WriteRunEvidenceAsync(string path, byte[] bytes, CancellationToken cancellationToken) =>
+        RunEvidenceWriteOverride is { } write ? write(path, bytes, cancellationToken) : WriteNewRunEvidenceAsync(path, bytes, cancellationToken);
+
+    private static async Task WriteNewRunEvidenceAsync(string path, byte[] bytes, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough);
+        await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        stream.Flush(true);
+    }
+
     private string BuildV4ResultSummary()
     {
         if (_v4SearchResult is not { } result) return _v4ProgressText;
+        if (result.QualificationStatus is "EVIDENCE_INCOMPLETE" or "PROFILE_SAVE_FAILED") return $"{result.QualificationStatus}: {result.QualificationDiagnostic ?? result.Evidence.StopReason}{Environment.NewLine}{_v4EvidencePath}";
         if (result.Evidence.DiagnosticOnly) return BuildV4DiagnosticResultSummary(result.Evidence);
         var evidence = result.Evidence;
         var state = evidence.SelectionState switch { "MINIMUM_SHORT_CLEAN_FOUND" => "PRELIMINARY", "REPEATABILITY_CONFIRMED" => "REPEATABILITY_CONFIRMED", "REPEATABILITY_FAILED" => "REPEATABILITY_FAILED", "UNKNOWN" => "UNKNOWN", _ => "MINIMUM_NOT_PROVEN" };
@@ -2380,7 +2506,7 @@ public sealed class MainViewModel : ViewModel
             Changed(nameof(AutomaticScanProgressRows));
             SetAutomaticScanStatus(string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanProgressDetail"), row.Stage, row.State, row.Action));
         }
-        if (_uiContext is null) Apply(); else _uiContext.Post(_ => { try { Apply(); } catch { } }, null);
+        if (_uiContext is null) Apply(); else _uiContext.Send(_ => { try { Apply(); } catch { } }, null);
     }
 
     private static string V2ProgressMessageLabel(string code) => Localization.Get(code switch

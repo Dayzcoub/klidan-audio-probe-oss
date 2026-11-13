@@ -6,6 +6,7 @@ namespace KlidanAudioProbe.Gui.Worker;
 /// <summary>Runs the explicitly consented V4 search through one worker session.</summary>
 public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) : IV4AutomaticSearchWorkflow
 {
+    public bool RequiresVerifiedBuildIdentity => true;
     public async Task<V4AutomaticSearchResult> RepeatSelectedAsync(WorkerScanV2V4PreparedPlan prepared, string sourceEvidenceSha256, int sourceCandidateIndex,
         string? evidenceRoot, CancellationToken cancellationToken = default, Func<int, string?>? testScenario = null, bool testOnlyAllowFake = false)
     {
@@ -54,7 +55,8 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
                         var repeatPath = Path.Combine(evidenceRoot, $"repeat-{i + 1:D2}.json");
                         var repeatJson = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
                         {
-                            schemaVersion = 1, runNumber = i + 1, sourceEvidenceSha256, sourceCandidateIndex, candidateIndex = candidate.Index,
+                            schemaVersion = 1, runId = prepared.RunId, captureEndpointId = prepared.CaptureEndpointId, renderEndpointId = prepared.RenderEndpointId,
+                            runNumber = i + 1, sourceEvidenceSha256, sourceCandidateIndex, candidateIndex = candidate.Index,
                             operationId, sessionId = session.ScanSessionId, classification, evidence = duplex
                         }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true });
                         using (var stream = new FileStream(repeatPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
@@ -80,6 +82,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
         var evidence = new V2CandidateMatrixEvidence(1, prepared.Consent.PlanFingerprint, routeFingerprint, cleanup == "UNKNOWN" ? "UNKNOWN" : "COMPLETED",
             plan.CaptureBounds, plan.RenderBounds, plan.Candidates, [entry], state, testOnlyAllowFake ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX")
         {
+            RunId = prepared.RunId, CaptureEndpointId = prepared.CaptureEndpointId, RenderEndpointId = prepared.RenderEndpointId,
             EvidenceVersion = 3, DiscoveryGeneration = prepared.Consent.DiscoveryGeneration, SelectedCandidateIndex = candidate.Index, BuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA") ?? "UNKNOWN",
             GlobalMinimumProven = false, UsedOperations = used, MaximumOperations = 7, UsedActiveDuplexSeconds = 5 * runs.Count, MaximumActiveDuplexSeconds = 25,
             StopReason = stop, RepeatabilityRequested = 5, RepeatabilityCompleted = runs.Count, RepeatabilityRuns = runs, SessionCleanup = cleanup,
@@ -260,6 +263,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker) :
         V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries,
             diagnosticOnly ? "DIAGNOSTIC_ONLY" : state, evidenceProvenance)
         {
+            RunId = prepared.RunId, CaptureEndpointId = prepared.CaptureEndpointId, RenderEndpointId = prepared.RenderEndpointId,
             EvidenceVersion = diagnosticOnly ? 4 : 3, DiagnosticOnly = diagnosticOnly, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
             BuildSha = diagnosticBuildSha, DiagnosticTimestampUtc = diagnosticTimestamp,
             GlobalMinimumProven = false, UsedOperations = operations,
