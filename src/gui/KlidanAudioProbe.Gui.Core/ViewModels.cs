@@ -2041,7 +2041,11 @@ public sealed class MainViewModel : ViewModel
             if (_v4AutomaticSearchWorkflow.RequiresVerifiedBuildIdentity)
             {
                 var executable = Environment.ProcessPath ?? throw new InvalidDataException("Running executable path is unavailable.");
-                verifiedBuild = VerifiedBuildMetadataReader.Read(executable, Path.Combine(Path.GetDirectoryName(executable)!, "package-manifest.json"));
+                var entryAssembly = System.Reflection.Assembly.GetEntryAssembly() ?? throw new InvalidDataException("Executing package has no entry assembly identity.");
+                var metadata = entryAssembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false).Cast<System.Reflection.AssemblyMetadataAttribute>();
+                var embeddedCommit = metadata.SingleOrDefault(attribute => attribute.Key == "KlidanSourceCommit")?.Value ?? string.Empty;
+                var embeddedClean = metadata.SingleOrDefault(attribute => attribute.Key == "KlidanSourceTreeClean")?.Value == "true";
+                verifiedBuild = VerifiedBuildMetadataReader.Read(executable, Path.Combine(Path.GetDirectoryName(executable)!, "package-manifest.json"), embeddedCommit, embeddedClean);
                 VerifiedBuildMetadataReader.ValidateDeclaredCommits(verifiedBuild,
                     Environment.GetEnvironmentVariable("KLIDAN_SOURCE_COMMIT"), Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA"));
             }
@@ -2049,6 +2053,7 @@ public sealed class MainViewModel : ViewModel
             var runStart = new
             {
                 schemaVersion = 1, runId, timestampUtc = DateTimeOffset.UtcNow,
+                workflowType = V4DiagnosticPlanMode ? "V4_DIAGNOSTIC" : _v4ScanQualificationCoordinator is not null && prepared.Plan.RepeatabilityRuns == 5 ? "V4_SCAN_QUALIFICATION" : "V4_SEARCH",
                 captureFriendlyName = capture.FriendlyName, captureEndpointId = prepared.CaptureEndpointId,
                 renderFriendlyName = render.FriendlyName, renderEndpointId = prepared.RenderEndpointId,
                 discoveryGeneration = prepared.Consent.DiscoveryGeneration, planFingerprint = prepared.Consent.PlanFingerprint,
@@ -2057,7 +2062,11 @@ public sealed class MainViewModel : ViewModel
             };
             var runStartBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(runStart);
             await WriteRunEvidenceAsync(runStartPath, runStartBytes, cancellation.Token);
-            using (var readBack = System.Text.Json.JsonDocument.Parse(ReadRunEvidenceBytes(runStartPath)))
+            var runStartReadBack = ReadRunEvidenceBytes(runStartPath);
+            if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                    System.Security.Cryptography.SHA256.HashData(runStartBytes), System.Security.Cryptography.SHA256.HashData(runStartReadBack)))
+                throw new InvalidDataException("Run start evidence read-back SHA-256 mismatch.");
+            using (var readBack = System.Text.Json.JsonDocument.Parse(runStartReadBack))
                 if (readBack.RootElement.GetProperty("runId").GetGuid() != runId ||
                     readBack.RootElement.GetProperty("captureEndpointId").GetString() != prepared.CaptureEndpointId ||
                     readBack.RootElement.GetProperty("renderEndpointId").GetString() != prepared.RenderEndpointId ||
@@ -2097,10 +2106,16 @@ public sealed class MainViewModel : ViewModel
             await RunEvidenceManifest.WriteAsync(evidenceRoot, runId, cancellation.Token, ReadRunEvidenceBytes, WriteRunEvidenceAsync);
             if (result.PendingProfile is { } publishProfile)
             {
+                string? publishedPath = null;
                 try
                 {
-                    var publishedPath = (RunProfilePublishOverride ?? DeviceConfigurationProfileStorage.SaveLocal)(publishProfile, profileDirectory);
-                    var profileReadback = DeviceConfigurationProfileJson.Parse(ReadRunEvidenceBytes(publishedPath));
+                    publishedPath = (RunProfilePublishOverride ?? DeviceConfigurationProfileStorage.SaveLocal)(publishProfile, profileDirectory);
+                    var profileBytes = ReadRunEvidenceBytes(publishedPath);
+                    var expectedProfileBytes = DeviceConfigurationProfileJson.SerializeLocal(publishProfile);
+                    if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                            System.Security.Cryptography.SHA256.HashData(expectedProfileBytes), System.Security.Cryptography.SHA256.HashData(profileBytes)))
+                        throw new InvalidDataException("Published Profile v5 read-back SHA-256 differs from the staged profile.");
+                    var profileReadback = DeviceConfigurationProfileJson.Parse(profileBytes);
                     if (profileReadback.ProfileId != publishProfile.ProfileId || profileReadback.StableShortSelection?.SourceEvidenceSha256 != publishProfile.StableShortSelection?.SourceEvidenceSha256 ||
                         profileReadback.AudioHostQualification?.ResultSha256 != publishProfile.AudioHostQualification?.ResultSha256 || profileReadback.Recommendation.Scope != "KLIDAN_QUALIFIED")
                         throw new InvalidDataException("Published Profile v5 read-back differs from its staged identity or qualification.");
@@ -2109,7 +2124,20 @@ public sealed class MainViewModel : ViewModel
                 }
                 catch (Exception profileError) when (profileError is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
                 {
-                    result = result with { QualificationStatus = "PROFILE_SAVE_FAILED", QualificationDiagnostic = profileError.Message, ProfilePath = null, PendingProfile = null };
+                    var diagnostic = profileError.Message;
+                    if (publishedPath is not null)
+                    {
+                        try
+                        {
+                            var expectedPath = Path.GetFullPath(Path.Combine(profileDirectory, $"profile-{publishProfile.ProfileId:D}.json"));
+                            if (!string.Equals(Path.GetFullPath(publishedPath), expectedPath, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidDataException("Published profile rollback refused a path not owned by this run.");
+                            File.Delete(expectedPath);
+                            if (File.Exists(expectedPath)) throw new IOException("Published profile rollback did not remove the run-owned file.");
+                        }
+                        catch (Exception rollbackError) { diagnostic += $"; profile rollback failed: {rollbackError.GetType().Name}: {rollbackError.Message}"; }
+                    }
+                    result = result with { QualificationStatus = "PROFILE_SAVE_FAILED", QualificationDiagnostic = diagnostic, ProfilePath = null, PendingProfile = null };
                     completedResult = result;
                 }
             }
@@ -2179,10 +2207,19 @@ public sealed class MainViewModel : ViewModel
 
     private static async Task WriteNewRunEvidenceAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
-        await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough);
-        await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        stream.Flush(true);
+        var directory = Path.GetDirectoryName(path) ?? throw new InvalidDataException("Evidence destination has no directory.");
+        var temporary = Path.Combine(directory, $".{Path.GetFileName(path)}-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+            {
+                await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                stream.Flush(true);
+            }
+            File.Move(temporary, path, overwrite: false);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
     private string BuildV4ResultSummary()

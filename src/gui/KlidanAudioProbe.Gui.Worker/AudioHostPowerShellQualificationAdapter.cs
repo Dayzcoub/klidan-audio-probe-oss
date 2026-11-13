@@ -60,7 +60,7 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
                 psi.ArgumentList.Add("-TestOnlyPeerScenario"); psi.ArgumentList.Add(Environment.GetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO") == "unknown" ? "unknown" : "success");
             }
             using var process = new Process { StartInfo = psi };
-            if (!process.Start()) return Unknown(runId, configSha, buildSha, "Could not start AudioHost QA adapter process.");
+            if (!process.Start()) return Unknown(runId, configSha, buildSha, "Could not start AudioHost QA adapter process.", request.TestOnly);
             var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
             var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -70,15 +70,15 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
             {
                 try { process.Kill(entireProcessTree: true); } catch { }
                 try { await process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); } catch { }
-                return Unknown(runId, configSha, buildSha, cancellationToken.IsCancellationRequested ? "Operator cancellation." : "AudioHost QA adapter deadline exceeded.");
+                return Unknown(runId, configSha, buildSha, cancellationToken.IsCancellationRequested ? "Operator cancellation." : "AudioHost QA adapter deadline exceeded.", request.TestOnly);
             }
             _ = await stdout.ConfigureAwait(false); _ = await stderr.ConfigureAwait(false);
             var resultFiles = Directory.Exists(runEvidence) ? Directory.GetFiles(runEvidence, "controlled-run-result.json", SearchOption.AllDirectories) : [];
-            if (resultFiles.Length != 1) return Unknown(runId, configSha, buildSha, "AudioHost QA result is missing or ambiguous.");
+            if (resultFiles.Length != 1) return Unknown(runId, configSha, buildSha, "AudioHost QA result is missing or ambiguous.", request.TestOnly);
             var resultBytes = await File.ReadAllBytesAsync(resultFiles[0], cancellationToken).ConfigureAwait(false);
             var result = JsonNode.Parse(resultBytes)!.AsObject();
             var actualConfigSha = result["qualificationConfigSha256"]?.GetValue<string>();
-            if (actualConfigSha != configSha) return Unknown(runId, configSha, buildSha, "AudioHost QA result is not bound to the exact request SHA.");
+            if (actualConfigSha != configSha) return Unknown(runId, configSha, buildSha, "AudioHost QA result is not bound to the exact request SHA.", request.TestOnly);
             var status = result["result"]?.GetValue<string>() ?? "UNKNOWN";
             var cleanup = status switch
             {
@@ -95,7 +95,7 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
             return new(status, cleanup, status is "LOAD_CLEAN" or "LOAD_UNSTABLE" or "TEST_FIXTURE_SUCCEEDED" or "TEST_ONLY" ? null : "AudioHost qualification did not produce a clean transport result.",
                 runId.ToString("D"), configSha, resultSha, buildSha, HashFile(request.RepeatabilityMatrixPath), resultFiles[0], request.TestOnly ? "TEST_ONLY" : "REAL_AUDIOHOST");
         }
-        catch (OperationCanceledException) { return Unknown(null, null, null, "Operator cancellation."); }
+        catch (OperationCanceledException) { return Unknown(null, null, null, "Operator cancellation.", request.TestOnly); }
         catch (Exception ex) { return new("QA_FAILED", "UNKNOWN", ex.Message, null, null, null, null, null, null, request.TestOnly ? "TEST_ONLY" : "REAL_AUDIOHOST"); }
     }
 
@@ -156,10 +156,16 @@ public sealed class AudioHostPowerShellQualificationAdapter(string powerShell = 
     private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
     private static async Task WriteNewVerifiedAsync(string path, byte[] bytes, CancellationToken ct)
     {
-        await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { await stream.WriteAsync(bytes, ct).ConfigureAwait(false); await stream.FlushAsync(ct).ConfigureAwait(false); stream.Flush(true); }
-        var readBack = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
-        if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), SHA256.HashData(readBack))) throw new InvalidDataException("Qualification request read-back SHA mismatch.");
+        var temporary = Path.Combine(Path.GetDirectoryName(path)!, $".{Path.GetFileName(path)}-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { await stream.WriteAsync(bytes, ct).ConfigureAwait(false); await stream.FlushAsync(ct).ConfigureAwait(false); stream.Flush(true); }
+            File.Move(temporary, path, overwrite: false);
+            var readBack = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), SHA256.HashData(readBack))) throw new InvalidDataException("Qualification request read-back SHA mismatch.");
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
-    private static AudioHostCandidateQualificationResult Unknown(Guid? id, string? configSha, string? buildSha, string diagnostic) =>
-        new("UNKNOWN", "UNKNOWN", diagnostic, id?.ToString("D"), configSha, null, buildSha, null, null, "TEST_ONLY");
+    private static AudioHostCandidateQualificationResult Unknown(Guid? id, string? configSha, string? buildSha, string diagnostic, bool testOnly) =>
+        new("UNKNOWN", "UNKNOWN", diagnostic, id?.ToString("D"), configSha, null, buildSha, null, null, testOnly ? "TEST_ONLY" : "REAL_AUDIOHOST");
 }

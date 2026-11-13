@@ -14,12 +14,15 @@ public static class VerifiedBuildMetadataReader
             throw new InvalidDataException("Declared source/build commit does not match verified executable metadata.");
     }
 
-    public static VerifiedBuildMetadata Read(string executablePath, string manifestPath)
+    public static VerifiedBuildMetadata Read(string executablePath, string manifestPath, string embeddedSourceCommit, bool embeddedSourceTreeClean)
     {
         using var manifest = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
         var root = manifest.RootElement;
         var commit = root.GetProperty("sourceCommit").GetString();
         if (commit is null || commit.Length != 40 || !commit.All(Uri.IsHexDigit)) throw new InvalidDataException("Build manifest source commit is invalid.");
+        if (!embeddedSourceTreeClean || embeddedSourceCommit.Length != 40 || !embeddedSourceCommit.All(Uri.IsHexDigit) ||
+            !string.Equals(commit, embeddedSourceCommit, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Package source commit does not match the clean source identity embedded in this executable.");
         var relative = Path.GetRelativePath(Path.GetDirectoryName(manifestPath)!, executablePath);
         var entry = root.GetProperty("files").EnumerateArray().SingleOrDefault(item =>
             string.Equals(item.GetProperty("path").GetString()?.Replace('\\', '/'), relative.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase));

@@ -962,6 +962,29 @@ try
         Check(failedRepeat.Result.Evidence.SelectionState == "MINIMUM_NOT_PROVEN" && failedRepeat.Result.Evidence.StopReason == "NO_CANDIDATE_PASSED_REPEATABILITY" && failedRepeat.Result.Evidence.Candidates.All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Count == failAt) && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 8 * failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED is retained per candidate and search exhausts safely without a profile");
     }
     var threeCandidates = new[] { 30_000L, 50_000L, 100_000L }.Select((period, index) => WorkerScanV2CandidatePlanning.Make(index, period, route, 144, 480, 144, 480)).ToArray();
+    var adapterFaultRoot = Path.Combine(Path.GetTempPath(), "klidan-audiohost-cancel-provenance-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(adapterFaultRoot);
+    try
+    {
+        var shortPath = Path.Combine(adapterFaultRoot, "short.json"); var repeatPath = Path.Combine(adapterFaultRoot, "repeat.json"); var matrixPath = Path.Combine(adapterFaultRoot, "matrix.json");
+        File.WriteAllText(shortPath, "{}"); File.WriteAllText(repeatPath, "{}"); File.WriteAllText(matrixPath, "{}");
+        var adapterCapture = "synthetic-capture"; var adapterRender = "synthetic-render";
+        var adapterBudget = WorkerScanV2ContractV4Fingerprint.Budget(threeCandidates.Length, 5);
+        var adapterPlan = new WorkerScanV2ContractV4(route, threeCandidates, ["PRO_AUDIO"], 5, adapterBudget.MaximumOperations, adapterBudget.MaximumActiveDuplexSeconds, 30, adapterBudget.SessionLifetimeSeconds, 8, new(30_000, 100_000), new(30_000, 100_000));
+        var adapterConsent = WorkerScanV2ContractV4Fingerprint.CreateConsent(adapterCapture, adapterRender, adapterPlan, 7, true, Guid.NewGuid());
+        var adapterPrepared = new WorkerScanV2V4PreparedPlan(adapterCapture, adapterRender, adapterPlan, adapterConsent);
+        var adapterAuthorization = new AudioHostQualificationAuthorization(adapterConsent.ConfirmationId, adapterConsent.PlanFingerprint, adapterConsent.DiscoveryGeneration,
+            adapterCapture, adapterRender, true, true, threeCandidates.Length, 60 * threeCandidates.Length, DateTimeOffset.UtcNow.AddMinutes(10));
+        foreach (var testOnly in new[] { false, true })
+        {
+            using var adapterCancellation = new CancellationTokenSource(); adapterCancellation.Cancel();
+            var adapterResult = await new AudioHostPowerShellQualificationAdapter().QualifyAsync(new("unopened-package", adapterFaultRoot, shortPath, repeatPath, matrixPath,
+                adapterPrepared, threeCandidates[0], adapterAuthorization, testOnly), adapterCancellation.Token);
+            Check(adapterResult is { Status: "UNKNOWN", Cleanup: "UNKNOWN" } && adapterResult.Provenance == (testOnly ? "TEST_ONLY" : "REAL_AUDIOHOST"),
+                $"pre-cancelled AudioHost adapter reports UNKNOWN with request-bound {(testOnly ? "TEST_ONLY" : "REAL_AUDIOHOST")} provenance without launching a process");
+        }
+    }
+    finally { Directory.Delete(adapterFaultRoot, true); }
     var repeatFallback = await RunV4Search("3-to-5-to-10 repeatability fallback synthetic", (index, operation) => index < 2 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
     Check(repeatFallback.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatFallback.Result.Evidence.SelectedCandidateIndex == 2 && repeatFallback.Result.Evidence.Candidates[0].Candidate.RequestedDuration100ns == 30_000 && repeatFallback.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && repeatFallback.Result.Evidence.Candidates[2].Candidate.RequestedDuration100ns == 100_000 && repeatFallback.Result.Evidence.Candidates.Take(2).All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Single().Result == "FAILED") && repeatFallback.Result.Evidence.Candidates[2].RepeatabilityStatus == "CONFIRMED" && repeatFallback.Result.Evidence.RepeatabilityCompleted == 5, "repeatability fallback checks 3, 5, then 10 ms in order and retains each failure before confirming 10 ms");
     var stableFive = await RunV4Search("5 ms minimum stable synthetic", (index, operation) => index == 0 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);

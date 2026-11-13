@@ -22,4 +22,21 @@
     <Error Condition="!Exists('$(NativeWorkerPath)')" Text="Native worker is required. Build KlidanProbeWorker for $(Configuration) before building the GUI." />
     <Error Condition="!Exists('$(NativeProbePath)')" Text="Native CLI stream engine is required beside the worker. Build KlidanAudioProbe for $(Configuration) before building the GUI." />
   </Target>
+  <Target Name="EmbedSourceIdentity" BeforeTargets="CoreCompile">
+    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)..\..\..&quot; rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="KlidanSourceCommit" />
+      <Output TaskParameter="ExitCode" PropertyName="KlidanGitExitCode" />
+    </Exec>
+    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)..\..\..&quot; status --porcelain --untracked-files=all" ConsoleToMSBuild="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="KlidanGitStatus" />
+      <Output TaskParameter="ExitCode" PropertyName="KlidanGitStatusExitCode" />
+    </Exec>
+    <Error Condition="'$(KlidanGitExitCode)' != '0' or '$(KlidanGitStatusExitCode)' != '0'" Text="Cannot embed verified Git source identity in GUI build." />
+    <PropertyGroup>
+      <KlidanSourceTreeClean Condition="'$(KlidanGitStatus)' == ''">true</KlidanSourceTreeClean>
+      <KlidanSourceTreeClean Condition="'$(KlidanGitStatus)' != ''">false</KlidanSourceTreeClean>
+      <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    </PropertyGroup>
+    <ItemGroup><AssemblyMetadata Include="KlidanSourceCommit" Value="$(KlidanSourceCommit)" /><AssemblyMetadata Include="KlidanSourceTreeClean" Value="$(KlidanSourceTreeClean)" /></ItemGroup>
+  </Target>
 </Project>

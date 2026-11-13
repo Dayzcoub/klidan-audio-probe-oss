@@ -15,6 +15,16 @@ foreach ($required in @('KlidanAudioProbe.Gui.App.exe', 'KlidanAudioProbe.V4.Hea
 if (-not (Test-Path -LiteralPath $FakeWorkerPath -PathType Leaf)) { throw "Test-only Worker fixture is missing: $FakeWorkerPath" }
 $head = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not read source revision.' }
+$sourceStatus = @(& git -C $root status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $sourceStatus.Count -ne 0) { throw 'Refusing to package a build from a dirty or unverified source tree.' }
+$identityPath = Join-Path ([IO.Path]::GetTempPath()) ("klidan-build-identity-{0}.json" -f [Guid]::NewGuid().ToString('N'))
+try {
+    & (Join-Path $publish 'KlidanAudioProbe.Gui.App.exe') --write-build-identity $identityPath
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $identityPath -PathType Leaf)) { throw 'Published GUI cannot report its embedded source identity.' }
+    $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
+    $guiSha = (Get-FileHash -LiteralPath (Join-Path $publish 'KlidanAudioProbe.Gui.App.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($identity.sourceCommit -ne $head -or $identity.sourceTreeClean -ne $true -or $identity.executableSha256 -ne $guiSha) { throw 'Published GUI source identity does not match current clean HEAD and executable SHA; refusing stale binaries.' }
+} finally { Remove-Item -LiteralPath $identityPath -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Path $output | Out-Null
 Get-ChildItem -LiteralPath $publish -Force | Copy-Item -Destination $output -Recurse
 New-Item -ItemType Directory -Path (Join-Path $output 'logs'), (Join-Path $output 'evidence'), (Join-Path $output 'profiles') | Out-Null
@@ -44,6 +54,6 @@ Run Release, not a Debug build. Package manifest verification is mandatory. The 
 $files = Get-ChildItem -LiteralPath $output -File -Recurse | ForEach-Object {
     [pscustomobject]@{ path = [IO.Path]::GetRelativePath($output, $_.FullName); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); bytes = $_.Length }
 }
-[pscustomobject]@{ schemaVersion = 1; sourceCommit = $head; configuration = 'Release'; runtime = 'win-x64-self-contained'; files = @($files) } |
+[pscustomobject]@{ schemaVersion = 1; sourceCommit = $identity.sourceCommit; configuration = 'Release'; runtime = 'win-x64-self-contained'; files = @($files) } |
     ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'package-manifest.json') -Encoding UTF8
 Write-Output "QA package created: $output"

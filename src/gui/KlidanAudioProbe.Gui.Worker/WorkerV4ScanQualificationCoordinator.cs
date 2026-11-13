@@ -136,7 +136,13 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             attempts.Add(new(candidate.Index, candidate.CapturePeriod100ns, "REPEATABILITY_CONFIRMED", scanPath, qualification.Status, qualification.Cleanup, qualificationPath));
             if (qualification.Status == "LOAD_UNSTABLE" && qualification.Cleanup == "CONFIRMED") continue;
             if (qualification.Status == "TEST_FIXTURE_SUCCEEDED" && testOnly && qualification.Cleanup == "CONFIRMED")
-                return new("TEST_ONLY", candidate.Index, attempts, scan.Evidence, scanPath, "Synthetic AudioHost fixture did not qualify a DEVICE profile.");
+            {
+                var testEvidence = BuildCombinedEvidence(prepared, rows, candidate.Index, usedOperations, usedActiveSeconds, false, lastLifecycle, lastWorkerCleanup, "TEST_ONLY_SYNTHETIC");
+                var testPath = SaveEvidence(testEvidence, Path.Combine(evidenceRoot, $"v4-test-only-qualified-c{candidate.Index:D2}-{Guid.NewGuid():D}.json"));
+                var testResult = new V4ScanQualificationResult("TEST_ONLY", candidate.Index, attempts, testEvidence, testPath, "Synthetic AudioHost fixture did not qualify a DEVICE profile.");
+                await SaveCoordinatorSummary(testResult, prepared, evidenceRoot, cancellationToken).ConfigureAwait(false);
+                return testResult;
+            }
             return await Stop(qualification.Status is "QA_FAILED" or "UNKNOWN" or "NOT_QUALIFIED" ? qualification.Status : "UNKNOWN",
                 qualification.Diagnostic ?? "AudioHost qualification result or cleanup was not acceptable.", candidate.Index).ConfigureAwait(false);
         }
@@ -231,8 +237,14 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
     private static string HashFile(string path) => Hash(File.ReadAllBytes(path));
     private static async Task WriteNewVerified(string path, byte[] bytes, CancellationToken ct)
     {
-        await using (var f = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { await f.WriteAsync(bytes, ct).ConfigureAwait(false); await f.FlushAsync(ct).ConfigureAwait(false); f.Flush(true); }
-        var readback = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
-        if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), SHA256.HashData(readback))) throw new InvalidDataException("Qualification source evidence failed SHA-256 read-back.");
+        var temporary = Path.Combine(Path.GetDirectoryName(path)!, $".{Path.GetFileName(path)}-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await using (var f = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { await f.WriteAsync(bytes, ct).ConfigureAwait(false); await f.FlushAsync(ct).ConfigureAwait(false); f.Flush(true); }
+            File.Move(temporary, path, overwrite: false);
+            var readback = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), SHA256.HashData(readback))) throw new InvalidDataException("Qualification source evidence failed SHA-256 read-back.");
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 }

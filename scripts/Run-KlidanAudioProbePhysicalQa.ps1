@@ -30,9 +30,11 @@ $startInfo.WorkingDirectory = $package
 $startInfo.ArgumentList.Add('--qa-root')
 $startInfo.ArgumentList.Add($package)
 $previousBuildSha = $env:KLIDAN_BUILD_SHA
+$previousSourceCommit = $env:KLIDAN_SOURCE_COMMIT
 $env:KLIDAN_BUILD_SHA = $manifest.sourceCommit.ToLowerInvariant()
+$env:KLIDAN_SOURCE_COMMIT = $manifest.sourceCommit.ToLowerInvariant()
 try { $process = [Diagnostics.Process]::Start($startInfo) }
-finally { $env:KLIDAN_BUILD_SHA = $previousBuildSha }
+finally { $env:KLIDAN_BUILD_SHA = $previousBuildSha; $env:KLIDAN_SOURCE_COMMIT = $previousSourceCommit }
 $process.WaitForExit()
 $record.endedUtc = [DateTimeOffset]::UtcNow.ToString('O')
 $record.exitCode = $process.ExitCode

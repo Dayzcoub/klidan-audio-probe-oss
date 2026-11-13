@@ -38,12 +38,16 @@ try
     var exeBytes = Encoding.UTF8.GetBytes("synthetic verified executable"); File.WriteAllBytes(syntheticExe, exeBytes);
     var exeSha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(exeBytes)); var sourceCommit = new string('a', 40);
     File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit, files = new[] { new { path = "app.exe", sha256 = exeSha } } }));
-    var verified = VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest);
+    var verified = VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest, sourceCommit, true);
     VerifiedBuildMetadataReader.ValidateDeclaredCommits(verified, sourceCommit, sourceCommit);
     Check(verified.SourceCommit == sourceCommit, "verified build metadata accepts matching declared commits and binds them to executable SHA");
     Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.ValidateDeclaredCommits(verified, new string('b', 40), sourceCommit), "verified build metadata rejects a declared source commit mismatch");
     File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit = new string('b', 40), files = new[] { new { path = "app.exe", sha256 = new string('0', 64) } } }));
-    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest), "build metadata rejects an executable SHA mismatch");
+    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest, sourceCommit, true), "build metadata rejects an executable SHA mismatch");
+    File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit = new string('b', 40), files = new[] { new { path = "app.exe", sha256 = exeSha } } }));
+    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest, sourceCommit, true), "stale binary embedded commit cannot be relabeled with a newer HEAD and recomputed package manifest");
+    File.WriteAllText(syntheticManifest, JsonSerializer.Serialize(new { sourceCommit, files = new[] { new { path = "app.exe", sha256 = exeSha } } }));
+    Throws<InvalidDataException>(() => VerifiedBuildMetadataReader.Read(syntheticExe, syntheticManifest, sourceCommit, false), "dirty-source executable cannot be used as a physical QA package");
 }
 finally { Directory.Delete(buildMetadataRoot, true); }
 var manifestTestRoot = Path.Combine(Path.GetTempPath(), $"b5b19-run-manifest-{Guid.NewGuid():N}");
@@ -52,34 +56,43 @@ try
 {
     var runId = Guid.NewGuid(); var runCaptureId = "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}"; var runRenderId = "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}";
     var startPath = Path.Combine(manifestTestRoot, "run-start.json");
-    File.WriteAllText(startPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId }));
-    var itemPath = Path.Combine(manifestTestRoot, "candidate.json"); var itemBytes = JsonSerializer.SerializeToUtf8Bytes(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, evidence = "immutable" });
+    File.WriteAllText(startPath, JsonSerializer.Serialize(new { runId, workflowType = "V4_SEARCH", captureEndpointId = runCaptureId, renderEndpointId = runRenderId }));
+    var itemPath = Path.Combine(manifestTestRoot, "synthetic-full-search.json"); var itemBytes = JsonSerializer.SerializeToUtf8Bytes(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, evidence = "immutable" });
     File.WriteAllBytes(itemPath, itemBytes);
     var runManifestPath = Path.Combine(manifestTestRoot, "run-manifest.json");
-    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
-        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(itemBytes)) },
-        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    RunEvidenceManifest.WriteAsync(manifestTestRoot, runId).GetAwaiter().GetResult();
     RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId);
     Check(true, "synthetic Bloody chain verifies exact endpoint pair, relative paths and SHA-256 read-back");
+    Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId, path =>
+    {
+        var manifest = JsonNode.Parse(File.ReadAllBytes(path))!;
+        if (Path.GetFileName(path) == "run-manifest.json") manifest["workflowType"] = "V4_DIAGNOSTIC";
+        return JsonSerializer.SerializeToUtf8Bytes(manifest);
+    }), "terminal manifest workflow type cannot be changed independently of run-start");
     File.WriteAllText(itemPath, "{\"tampered\":true}");
     Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "run manifest rejects evidence modified after indexing");
+    File.Delete(itemPath);
+    File.Delete(runManifestPath);
+    ThrowsTask<InvalidDataException>(RunEvidenceManifest.WriteAsync(manifestTestRoot, runId, writeNew: (_, _, _) => throw new InvalidOperationException("must not write incomplete manifest")), "missing required evidence is rejected before terminal manifest creation");
+    File.WriteAllBytes(itemPath, itemBytes);
     File.WriteAllBytes(itemPath, JsonSerializer.SerializeToUtf8Bytes(new { runId = Guid.NewGuid(), captureEndpointId = runCaptureId, renderEndpointId = runRenderId, evidence = "valid JSON, wrong run" }));
     var swappedBytes = File.ReadAllBytes(itemPath);
-    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
-        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) },
-        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, workflowType = "V4_SEARCH", captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
+        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) },
+        new { path = "synthetic-full-search.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) } } }));
     Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "valid JSON and recomputed SHA cannot substitute another run's evidence");
     File.WriteAllBytes(itemPath, JsonSerializer.SerializeToUtf8Bytes(new { runId, captureEndpointId = "cap", renderEndpointId = "ren", evidence = "valid JSON, wrong device" }));
     swappedBytes = File.ReadAllBytes(itemPath);
-    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
-        new { path = "candidate.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) },
-        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
+    File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, workflowType = "V4_SEARCH", captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] {
+        new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) },
+        new { path = "synthetic-full-search.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(swappedBytes)) } } }));
     Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "valid SHA cannot substitute FLOW 8 endpoint evidence into Bloody run");
-    var ordered = File.ReadAllText(runManifestPath).Replace("candidate.json", "run-start.json").Replace("run-start.json\",\"sha256", "candidate.json\",\"sha256");
+    var ordered = File.ReadAllText(runManifestPath).Replace("synthetic-full-search.json", "run-start.json").Replace("run-start.json\",\"sha256", "synthetic-full-search.json\",\"sha256");
     File.WriteAllText(runManifestPath, ordered);
     Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "manifest path/entry reassignment is rejected by its SHA bindings");
     File.WriteAllText(runManifestPath, JsonSerializer.Serialize(new { runId, captureEndpointId = runCaptureId, renderEndpointId = runRenderId, files = new[] { new { path = "run-start.json", sha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(startPath))) } } }));
     Throws<InvalidDataException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId), "manifest rejects a missing qualification evidence file");
+    File.WriteAllBytes(itemPath, itemBytes);
     ThrowsTask<IOException>(RunEvidenceManifest.WriteAsync(manifestTestRoot, Guid.NewGuid(), writeNew: (_, _, _) => throw new IOException("injected manifest write fault")), "fault injection reaches terminal manifest write boundary");
     Throws<IOException>(() => RunEvidenceManifest.Verify(manifestTestRoot, runManifestPath, runId, _ => throw new IOException("injected manifest read-back fault")), "fault injection reaches terminal manifest read-back boundary");
 }
@@ -1157,6 +1170,9 @@ var v4CancelScanButton = (Button)v2LayoutWindow.FindName("V4CancelScanButton");
 var v4ProgressText = (TextBlock)v2LayoutWindow.FindName("V4ScanProgressText");
 var v4ResultsPanel = (Border)v2LayoutWindow.FindName("V4SearchResultsPanel");
 var heldV4Workflow = new HeldV4SearchWorkflow();
+var heldV4EvidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-held-v4-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(heldV4EvidenceRoot);
+typeof(MainViewModel).GetField("_v4EvidenceDirectory", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, heldV4EvidenceRoot);
 typeof(MainViewModel).GetField("_v4AutomaticSearchWorkflow", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, heldV4Workflow);
 v2RouteVm.StartV4ScanCommand.Refresh(); v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4SearchUiState == "READY" && v4RunPanel.Visibility == Visibility.Visible && v4StartButton.Visibility == Visibility.Visible && v4StartButton.IsEnabled && v4CancelScanButton.Visibility != Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, $"V4 READY exposes one-use start consent and hides progress/result controls [state={v2RouteVm.V4SearchUiState}; panel={v4RunPanel.Visibility}; start={v4StartButton.Visibility}/{v4StartButton.IsEnabled}; cancel={v4CancelScanButton.Visibility}; result={v4ResultsPanel.Visibility}]");
@@ -1168,10 +1184,12 @@ Check(PumpUntil(() => heldV4Workflow.Started, TimeSpan.FromSeconds(2)), "V4 fake
 v2LayoutWindow.UpdateLayout();
 Check(v2RouteVm.V4SearchUiState == "RUNNING" && v2RouteVm.V4ConsentReceipt is null && !v2RouteVm.StartV4ScanCommand.CanExecute(null) && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility == Visibility.Visible && v4ProgressText.Visibility == Visibility.Visible && v4ResultsPanel.Visibility != Visibility.Visible, "V4 RUNNING consumes the receipt, shows progress/cancel, and blocks replay");
 var unknownSearchEvidence = displayEvidence with { SelectionState = "UNKNOWN", SelectedCandidateIndex = null, ProfileEligible = false, ProfilePath = null, StopReason = "IPC_RESPONSE_UNKNOWN" };
-Task.Run(() => heldV4Workflow.Complete(new V4AutomaticSearchResult(unknownSearchEvidence, "unknown-evidence.json"))).GetAwaiter().GetResult();
+var heldRunRoot = heldV4Workflow.EvidenceRoot ?? throw new InvalidOperationException("Held workflow did not receive its persistent run directory.");
+File.WriteAllBytes(Path.Combine(heldRunRoot, "synthetic-full-search.json"), JsonSerializer.SerializeToUtf8Bytes(new { runId = heldV4Workflow.Prepared!.RunId, captureEndpointId = heldV4Workflow.Prepared.CaptureEndpointId, renderEndpointId = heldV4Workflow.Prepared.RenderEndpointId, evidence = unknownSearchEvidence }));
+Task.Run(() => heldV4Workflow.Complete(new V4AutomaticSearchResult(unknownSearchEvidence, Path.Combine(heldRunRoot, "synthetic-full-search.json")))).GetAwaiter().GetResult();
 Check(PumpUntil(() => v2RouteVm.V4SearchUiState == "FINISHED", TimeSpan.FromSeconds(3)), "V4 UNKNOWN reaches terminal state");
 v2LayoutWindow.UpdateLayout();
-Check(v2RouteVm.V4ResultState == "UNKNOWN" && v2RouteVm.V4ResultSummary.Contains("UNKNOWN", StringComparison.Ordinal) && v2RouteVm.V4ResultSummary.Contains("unknown-evidence.json", StringComparison.Ordinal) && v2RouteVm.V4ConsentReceipt is null && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility != Visibility.Visible && v4ProgressText.Visibility != Visibility.Visible && v4ResultsPanel.Visibility == Visibility.Visible && ((TextBlock)v2LayoutWindow.FindName("V4EvidencePathText")).Text == "unknown-evidence.json", "V4 FINISHED keeps UNKNOWN result and evidence visible with no replay control");
+Check(v2RouteVm.V4ResultState == "UNKNOWN" && v2RouteVm.V4ResultSummary.Contains("UNKNOWN", StringComparison.Ordinal) && v2RouteVm.V4ResultSummary.Contains("synthetic-full-search.json", StringComparison.Ordinal) && v2RouteVm.V4ConsentReceipt is null && v4StartButton.Visibility != Visibility.Visible && v4CancelScanButton.Visibility != Visibility.Visible && v4ProgressText.Visibility != Visibility.Visible && v4ResultsPanel.Visibility == Visibility.Visible && ((TextBlock)v2LayoutWindow.FindName("V4EvidencePathText")).Text == Path.Combine(heldRunRoot, "synthetic-full-search.json"), "V4 FINISHED keeps UNKNOWN result and persisted evidence visible with no replay control");
 v2RouteVm.V4RepeatabilityRuns = 0;
 v2RouteVm.PrepareV4CustomPlanCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.V4ConsentPending, TimeSpan.FromSeconds(3)), "V4 failure-path test prepares a fresh plan and receipt");
@@ -3741,6 +3759,16 @@ void RunB5B19CIntegrationTests()
     Check(new[] { b5Order, b5RunId, b5Path, b5Sha }.All(run => EvidenceFailureBlocksProfile(run) && !ManifestAccepts(run)), "B5 entry permutation, Run ID change, relative-path escape and incorrect path/SHA binding all fail closed in MainViewModel");
     var b6 = RunSyntheticCoordinatorWorkflow("B6 missing indexed evidence", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "DELETE_FILE", null));
     Check(EvidenceFailureBlocksProfile(b6) && !ManifestAccepts(b6), "B6 deleting an indexed coordinator output makes the terminal chain incomplete and blocks qualification/profile publication");
+    var b6Required = RunSyntheticCoordinatorWorkflow("B6 missing required coordinator before manifest", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => SetRunWrite(vm, (path, bytes, ct) =>
+    {
+        if (Path.GetFileName(path) == "run-manifest.json")
+        {
+            var required = Directory.GetFiles(Path.GetDirectoryName(path)!, "scan-qualification-*.json").Single();
+            File.Delete(required);
+        }
+        return WriteNewForTest(path, bytes, ct);
+    }));
+    Check(EvidenceFailureBlocksProfile(b6Required) && !ManifestAccepts(b6Required), "B6 missing mandatory qualification coordinator output before manifest creation is rejected in MainViewModel");
     var sameEndpointNextSession = RunSyntheticCoordinatorWorkflow("B8 new session same endpoints", bloodyChain.CaptureId, bloodyChain.RenderId, 2, vm => InjectManifestTamper(vm, "CROSS_DEVICE", bloodyCoordinatorBytes));
     Check(sameEndpointNextSession.RunId != bloodyChain.RunId && sameEndpointNextSession.RunDirectory != bloodyChain.RunDirectory && EvidenceFailureBlocksProfile(sameEndpointNextSession) && !ManifestAccepts(sameEndpointNextSession) &&
         !Directory.GetFiles(sameEndpointNextSession.RunDirectory, "*.json", SearchOption.AllDirectories).Any(path => Path.GetFullPath(path) != Path.GetFullPath(Path.Combine(sameEndpointNextSession.RunDirectory, "run-manifest.json")) && File.ReadAllText(path).Contains(bloodyChain.RunId.ToString("D"), StringComparison.Ordinal)),
@@ -3754,18 +3782,27 @@ void RunB5B19CIntegrationTests()
         var start = JsonNode.Parse(File.ReadAllBytes(path))!; start["captureEndpointId"] = "wrong-endpoint";
         return JsonSerializer.SerializeToUtf8Bytes(start);
     }));
-    Check(a2.Workflow.RunCalls == 0 && a2.ViewModel.V4ResultState == "FAILED" && a2.ViewModel.V4ProgressText.Contains("Run start evidence read-back identity mismatch", StringComparison.Ordinal) && !Directory.GetFiles(a2.ProfileDirectory, "profile-*.json").Any(), $"A2 StartV4ScanCommand stops on unverified run-start read-back before Worker or profile [state={a2.ViewModel.V4ResultState}; calls={a2.Workflow.RunCalls}; progress={a2.ViewModel.V4ProgressText}]");
+    Check(a2.Workflow.RunCalls == 0 && a2.ViewModel.V4ResultState == "FAILED" && a2.ViewModel.V4ProgressText.Contains("Run start evidence read-back SHA-256 mismatch", StringComparison.Ordinal) && !Directory.GetFiles(a2.ProfileDirectory, "profile-*.json").Any(), $"A2 StartV4ScanCommand stops on unverified run-start read-back before Worker or profile [state={a2.ViewModel.V4ResultState}; calls={a2.Workflow.RunCalls}; progress={a2.ViewModel.V4ProgressText}]");
     var a3 = RunV4FailureCase("A3-failure-write", (vm, workflow) => { workflow.Failure = new InvalidOperationException("injected original workflow fault"); SetRunWrite(vm, (path, bytes, ct) => Path.GetFileName(path) == "run-failure.json" ? Task.FromException(new IOException("injected failure journal fault")) : WriteNewForTest(path, bytes, ct)); });
     Check(a3.Workflow.RunCalls == 1 && a3.Workflow.CleanupCalls == 1 && a3.ViewModel.V4ProgressText.Contains("injected original workflow fault", StringComparison.Ordinal) && a3.ViewModel.V4ProgressText.Contains("injected failure journal fault", StringComparison.Ordinal) && !Directory.GetFiles(a3.ProfileDirectory, "profile-*.json").Any(), "A3 run-failure write error is reported separately while original workflow failure and fake Worker cleanup remain observable");
     var a4 = RunV4FailureCase("A4-manifest-write", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetRunWrite(vm, (path, bytes, ct) => Path.GetFileName(path) == "run-manifest.json" ? Task.FromException(new IOException("injected terminal manifest write fault")) : WriteNewForTest(path, bytes, ct)); });
     Check(a4.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a4.ViewModel.V4ProgressText.Contains("injected terminal manifest write fault", StringComparison.Ordinal) && !Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Any(), $"A4 terminal manifest write fault blocks LOAD_CLEAN publication and DEVICE profile creation [state={a4.ViewModel.V4ResultState}; progress={a4.ViewModel.V4ProgressText}; profiles={Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Length}]");
     var a5 = RunV4FailureCase("A5-manifest-readback", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetRunRead(vm, path => Path.GetFileName(path) == "run-manifest.json" ? throw new IOException("injected terminal manifest read-back fault") : File.ReadAllBytes(path)); });
     Check(a5.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a5.ViewModel.V4ProgressText.Contains("injected terminal manifest read-back fault", StringComparison.Ordinal) && !Directory.GetFiles(a5.ProfileDirectory, "profile-*.json").Any(), "A5 terminal manifest read-back fault blocks LOAD_CLEAN publication and DEVICE profile creation");
-    var profileSaveFailure = RunV4FailureCase("profile-publication-failure", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetProfilePublisher(vm, (_, _) => throw new IOException("injected atomic profile publication fault")); });
+    var profileSaveFailure = RunV4FailureCase("profile-publication-failure", (vm, workflow) =>
+    {
+        workflow.PendingProfile = captureProfile;
+        SetProfilePublisher(vm, (profile, directory) =>
+        {
+            var path = DeviceConfigurationProfileStorage.SaveLocal(profile, directory);
+            SetRunRead(vm, readPath => Path.GetFullPath(readPath) == Path.GetFullPath(path) ? throw new IOException("injected post-move profile read-back fault") : File.ReadAllBytes(readPath));
+            return path;
+        });
+    });
     var publishedRun = Directory.GetDirectories(profileSaveFailure.EvidenceDirectory).Single(directory => File.Exists(Path.Combine(directory, "run-start.json")));
     var runId = Guid.Parse(Path.GetFileName(publishedRun));
     RunEvidenceManifest.Verify(publishedRun, Path.Combine(publishedRun, "run-manifest.json"), runId);
-    Check(profileSaveFailure.ViewModel.V4ResultState == "PROFILE_SAVE_FAILED" && profileSaveFailure.ViewModel.V4ProgressText.Contains("injected atomic profile publication fault", StringComparison.Ordinal) && !Directory.GetFiles(profileSaveFailure.ProfileDirectory, "profile-*.json").Any(), "post-manifest atomic profile publication failure is explicit, leaves terminal manifest valid and exposes no unavailable profile");
+    Check(profileSaveFailure.ViewModel.V4ResultState == "PROFILE_SAVE_FAILED" && profileSaveFailure.ViewModel.V4ProgressText.Contains("injected post-move profile read-back fault", StringComparison.Ordinal) && !Directory.GetFiles(profileSaveFailure.ProfileDirectory, "profile-*.json").Any() && !DeviceConfigurationProfileStorage.DiscoverLocal(profileSaveFailure.ProfileDirectory).Any(profile => profile.IsAvailable), "post-move Profile v5 read-back failure rolls back only the run-owned file and exposes no AVAILABLE profile");
     var devicePublicationSelection = stableShort with { ProfileKind = "DEVICE", EvidenceProvenance = "REAL_WASAPI_V4_DUPLEX" };
     var devicePublicationSha = devicePublicationSelection.SourceEvidenceSha256;
     var devicePublicationQualification = new ProfileAudioHostQualification("LOAD_CLEAN", "CONFIRMED", Guid.NewGuid().ToString("D"), new string('c', 64), new string('d', 64), new string('e', 40), devicePublicationSha,
@@ -4263,10 +4300,14 @@ sealed class HeldV4SearchWorkflow : IV4AutomaticSearchWorkflow
 {
     private TaskCompletionSource<V4AutomaticSearchResult> _next = NewCompletion();
     public bool Started { get; private set; }
+    public WorkerScanV2V4PreparedPlan? Prepared { get; private set; }
+    public string? EvidenceRoot { get; private set; }
     public Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared, WindowsEndpointDto capture, WindowsEndpointDto render,
         string evidenceRoot, string profileDirectory, bool runRepeatability, IProgress<V4AutomaticSearchProgress>? progress, CancellationToken cancellationToken)
     {
         Started = true;
+        Prepared = prepared;
+        EvidenceRoot = evidenceRoot;
         return _next.Task;
     }
     public void Complete(V4AutomaticSearchResult result) => _next.TrySetResult(result);
