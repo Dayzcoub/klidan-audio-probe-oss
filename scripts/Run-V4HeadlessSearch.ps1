@@ -24,7 +24,7 @@ if ($Mode -eq 'ShortSearch' -and ([string]::IsNullOrWhiteSpace($CaptureId) -or [
 if ($Mode -eq 'RepeatSelected' -and (!$AuthorizeR5 -or $AuthorizeShortSearch -or !$SourceEvidence)) { throw 'RepeatSelected requires -AuthorizeR5 and -SourceEvidence; ShortSearch authorization is not applicable.' }
 if ($AuthorizeR5 -and $Mode -ne 'RepeatSelected') { throw '-AuthorizeR5 is valid only for RepeatSelected.' }
 if ($Mode -eq 'RepeatSelected' -and !(Test-Path -LiteralPath $SourceEvidence -PathType Leaf)) { throw 'Source evidence summary does not exist.' }
-$runner = Join-Path $package 'KlidanAudioProbe.V4.Headless.exe'
+$runner = Join-Path $package 'headless\KlidanAudioProbe.V4.Headless.exe'
 $worker = if ($Mode -eq 'DryRun') { Join-Path $package 'KlidanProbeWorker.FakeTest.exe' } else { Join-Path $package 'KlidanProbeWorker.exe' }
 foreach ($required in @($runner, $worker, (Join-Path $package 'KlidanAudioProbe.exe'))) {
     if (!(Test-Path -LiteralPath $required -PathType Leaf)) { throw "Release package is incomplete: $required" }

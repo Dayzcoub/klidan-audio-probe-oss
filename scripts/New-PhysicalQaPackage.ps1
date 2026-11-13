@@ -2,15 +2,20 @@
 param(
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [string]$PublishDirectory = (Join-Path $PSScriptRoot '..\build\physical-qa-publish'),
+    [string]$HeadlessPublishDirectory = (Join-Path $PSScriptRoot '..\build\v4-headless-publish'),
     [string]$FakeWorkerPath = (Join-Path $PSScriptRoot '..\build\worker-tests\Release\probe_worker_format_fixture.exe')
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publish = (Resolve-Path $PublishDirectory).Path
+$headlessPublish = (Resolve-Path $HeadlessPublishDirectory).Path
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw "Refusing to overwrite QA package: $output" }
-foreach ($required in @('KlidanAudioProbe.Gui.App.exe', 'KlidanAudioProbe.V4.Headless.exe', 'KlidanProbeWorker.exe', 'KlidanAudioProbe.exe')) {
+foreach ($required in @('KlidanAudioProbe.Gui.App.exe', 'KlidanProbeWorker.exe', 'KlidanAudioProbe.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $publish $required) -PathType Leaf)) { throw "Release publish output is missing $required" }
+}
+foreach ($required in @('KlidanAudioProbe.V4.Headless.exe', 'KlidanAudioProbe.V4.Headless.dll', 'KlidanAudioProbe.V4.Headless.deps.json', 'KlidanAudioProbe.V4.Headless.runtimeconfig.json')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $headlessPublish $required) -PathType Leaf)) { throw "Headless Release publish output is missing $required" }
 }
 if (-not (Test-Path -LiteralPath $FakeWorkerPath -PathType Leaf)) { throw "Test-only Worker fixture is missing: $FakeWorkerPath" }
 $head = (& git -C $root rev-parse HEAD).Trim()
@@ -19,14 +24,16 @@ $sourceStatus = @(& git -C $root status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0 -or $sourceStatus.Count -ne 0) { throw 'Refusing to package a build from a dirty or unverified source tree.' }
 $identityPath = Join-Path ([IO.Path]::GetTempPath()) ("klidan-build-identity-{0}.json" -f [Guid]::NewGuid().ToString('N'))
 try {
-    & (Join-Path $publish 'KlidanAudioProbe.Gui.App.exe') --write-build-identity $identityPath
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $identityPath -PathType Leaf)) { throw 'Published GUI cannot report its embedded source identity.' }
+    $identityProcess = Start-Process -FilePath (Join-Path $publish 'KlidanAudioProbe.Gui.App.exe') -ArgumentList @('--write-build-identity', ('"{0}"' -f $identityPath)) -PassThru -Wait -WindowStyle Hidden
+    if ($identityProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $identityPath -PathType Leaf)) { throw "Published GUI identity command failed (exit $($identityProcess.ExitCode))." }
     $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
     $guiSha = (Get-FileHash -LiteralPath (Join-Path $publish 'KlidanAudioProbe.Gui.App.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($identity.sourceCommit -ne $head -or $identity.sourceTreeClean -ne $true -or $identity.executableSha256 -ne $guiSha) { throw 'Published GUI source identity does not match current clean HEAD and executable SHA; refusing stale binaries.' }
 } finally { Remove-Item -LiteralPath $identityPath -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Path $output | Out-Null
 Get-ChildItem -LiteralPath $publish -Force | Copy-Item -Destination $output -Recurse
+New-Item -ItemType Directory -Path (Join-Path $output 'headless') | Out-Null
+Get-ChildItem -LiteralPath $headlessPublish -Force | Copy-Item -Destination (Join-Path $output 'headless') -Recurse
 New-Item -ItemType Directory -Path (Join-Path $output 'logs'), (Join-Path $output 'evidence'), (Join-Path $output 'profiles') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Run-KlidanAudioProbePhysicalQa.ps1') -Destination $output
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Run-V4HeadlessSearch.ps1') -Destination $output
@@ -40,7 +47,7 @@ Native host dependency check: KlidanAudioProbe.exe and KlidanProbeWorker.exe use
 
 ## Headless V4 workflow
 
-- `Run-V4HeadlessSearch.ps1 -Mode DryRun -Scenario BLOODY` uses only the separately marked Fake Worker; it exercises the production V4 plan/workflow/evaluator and never creates a DEVICE profile.
+- `Run-V4HeadlessSearch.ps1 -Mode DryRun -Scenario BLOODY` uses only the separately marked Fake Worker; the self-contained runner and dependencies are isolated in `headless` and it never creates a DEVICE profile.
 - `-Mode ShortSearch -AuthorizeShortSearch -CaptureId <discovered-id> -RenderId <discovered-id>` is the explicit operator consent for the bounded physical short-search scope. It uses the explicitly selected endpoint identities and performs current Windows discovery and passive format/period queries before Worker session registration.
 - Add `-AuthorizeR5` only after separate operator approval. This is a distinct authorization flag and fingerprints R=5 into the authorized budget. Without it the plan has R=0 and no repeatability operation can run. The launcher and runner require no interactive terminal input.
 - `-Mode RepeatSelected -AuthorizeR5 -SourceEvidence <verified headless-summary.json>` verifies all source candidate and matrix SHA-256 values, real provenance, the selected CLEAN C480/R480 candidate, route, endpoints, and closed-session cleanup before fresh device discovery. It then builds a new one-candidate plan and requires a fresh R=5 confirmation. It never reuses the prior token or consent and performs only two Initialize operations plus up to five sequential 5-second Duplex operations (max seven operations / 25 active Duplex seconds), stopping on FAILED or UNKNOWN. Each repeat and the combined result are written as new evidence. No profile is created; KLIDAN AudioHost load qualification remains required.
