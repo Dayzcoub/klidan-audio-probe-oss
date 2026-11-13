@@ -7,12 +7,39 @@
 #include <cstdint>
 #include <cmath>
 #include <charconv>
+#include <array>
+#include <cstddef>
+#include <vector>
 #include <optional>
 #include <string>
 #include <string_view>
 #include "channel_routing.h"
 
 namespace DuplexValidationReport {
+
+struct DiscontinuityPacket {
+    std::uint64_t packetOrdinal = 0;
+    std::uint64_t eventOrdinal = 0;
+    double millisecondsSinceStart = 0;
+    std::uint32_t flags = 0;
+    std::uint64_t devicePosition = 0;
+    std::uint64_t qpcPosition = 0;
+    std::optional<std::uint64_t> devicePositionDeltaFrames;
+    const char* devicePositionTransition = "UNAVAILABLE";
+    const char* phase = "UNKNOWN";
+};
+
+struct DiscontinuityPacketBuffer {
+    static constexpr std::size_t Capacity = 16;
+    std::array<DiscontinuityPacket, Capacity> packets{};
+    std::size_t count = 0;
+    std::uint64_t omitted = 0;
+
+    void Record(const DiscontinuityPacket& packet) noexcept {
+        if (count < packets.size()) packets[count++] = packet;
+        else ++omitted;
+    }
+};
 
 struct Side {
     std::string endpointId;
@@ -38,11 +65,20 @@ struct Side {
     std::uint64_t events = 0;
     std::uint64_t packets = 0;
     std::uint64_t discontinuities = 0;
+    std::uint64_t startupDiscontinuities = 0, steadyDiscontinuities = 0;
+    std::uint64_t positionAnomaliesWithDiscontinuity = 0;
+    std::uint64_t discontinuitiesWithoutPositionAnomaly = 0;
+    std::uint64_t discontinuitiesWithoutPositionComparison = 0;
+    std::uint64_t discontinuityPacketDetailsOmitted = 0;
+    std::vector<DiscontinuityPacket> discontinuityPackets;
     std::uint64_t timestampErrors = 0;
     std::uint64_t serviceFaults = 0;
     std::uint64_t packetDrainLimitHits = 0;
     std::uint64_t intermediateWaitTimeouts = 0;
     std::uint64_t longEventIntervals = 0;
+    std::optional<double> eventIntervalMaximumMilliseconds;
+    std::optional<double> eventIntervalMaximumEndOffsetMilliseconds;
+    std::optional<double> longEventIntervalThresholdMilliseconds;
     std::optional<std::uint64_t> devicePositionAnomalies;
     std::optional<std::uint64_t> unavailableCaptureBuffers;
     std::optional<std::uint64_t> silentBuffersServiced;
@@ -53,6 +89,15 @@ struct Side {
     std::optional<double> eventIntervalP99Milliseconds;
     double elapsedMilliseconds = 0;
     std::optional<double> startOffsetMilliseconds;
+    std::optional<std::uint64_t> requestedPeriod100ns, deviceDefaultPeriod100ns, deviceMinimumPeriod100ns, actualBufferPeriod100ns;
+    std::optional<double> firstEventDelayMilliseconds, framesPerEventMean;
+    std::optional<std::uint64_t> framesPerEventMinimum, framesPerEventMaximum;
+    std::uint64_t eventWaitCount = 0, eventSignalCount = 0, eventTimeoutCount = 0, eventFailureCount = 0;
+    std::uint64_t cancelSignalCount = 0, peerStopSignalCount = 0, unexpectedWaitCount = 0, lastWaitResult = 0;
+    std::string lastWaitReason = "NOT_OBSERVED";
+    std::string cadenceAssessment = "NOT_ASSESSABLE";
+    std::string captureReleaseBufferHresult, renderReleaseBufferHresult;
+    std::uint64_t releaseBufferFailures = 0;
     bool ready = false;
     bool startSucceeded = false;
     bool stopSucceeded = false;
@@ -158,11 +203,35 @@ inline std::string ToJson(const Report& report) {
         w.Key("events"); w.Uint64(s.events);
         w.Key("packets"); w.Uint64(s.packets);
         w.Key("discontinuities"); w.Uint64(s.discontinuities);
+        w.Key("startupDiscontinuities"); w.Uint64(s.startupDiscontinuities);
+        w.Key("steadyDiscontinuities"); w.Uint64(s.steadyDiscontinuities);
+        w.Key("positionAnomaliesWithDiscontinuity"); w.Uint64(s.positionAnomaliesWithDiscontinuity);
+        w.Key("discontinuitiesWithoutPositionAnomaly"); w.Uint64(s.discontinuitiesWithoutPositionAnomaly);
+        w.Key("discontinuitiesWithoutPositionComparison"); w.Uint64(s.discontinuitiesWithoutPositionComparison);
+        w.Key("discontinuityPacketDetailsOmitted"); w.Uint64(s.discontinuityPacketDetailsOmitted);
+        w.Key("discontinuityPackets"); w.StartArray();
+        for (const auto& packet : s.discontinuityPackets) {
+            w.StartObject();
+            w.Key("packetOrdinal"); w.Uint64(packet.packetOrdinal);
+            w.Key("eventOrdinal"); w.Uint64(packet.eventOrdinal);
+            w.Key("millisecondsSinceStart"); w.Double(packet.millisecondsSinceStart);
+            w.Key("flags"); w.Uint(packet.flags);
+            w.Key("devicePosition"); w.Uint64(packet.devicePosition);
+            w.Key("qpcPosition"); w.Uint64(packet.qpcPosition);
+            w.Key("devicePositionDeltaFrames"); if (packet.devicePositionDeltaFrames) w.Uint64(*packet.devicePositionDeltaFrames); else w.Null();
+            w.Key("devicePositionTransition"); w.String(packet.devicePositionTransition);
+            w.Key("phase"); w.String(packet.phase);
+            w.EndObject();
+        }
+        w.EndArray();
         w.Key("timestampErrors"); w.Uint64(s.timestampErrors);
         w.Key("serviceFaults"); w.Uint64(s.serviceFaults);
         w.Key("packetDrainLimitHits"); w.Uint64(s.packetDrainLimitHits);
         w.Key("intermediateWaitTimeouts"); w.Uint64(s.intermediateWaitTimeouts);
         w.Key("longEventIntervals"); w.Uint64(s.longEventIntervals);
+        w.Key("eventIntervalMaximumMilliseconds"); if (s.eventIntervalMaximumMilliseconds) w.Double(*s.eventIntervalMaximumMilliseconds); else w.Null();
+        w.Key("eventIntervalMaximumEndOffsetMilliseconds"); if (s.eventIntervalMaximumEndOffsetMilliseconds) w.Double(*s.eventIntervalMaximumEndOffsetMilliseconds); else w.Null();
+        w.Key("longEventIntervalThresholdMilliseconds"); if (s.longEventIntervalThresholdMilliseconds) w.Double(*s.longEventIntervalThresholdMilliseconds); else w.Null();
         w.Key("devicePositionAnomalies"); if (s.devicePositionAnomalies) w.Uint64(*s.devicePositionAnomalies); else w.Null();
         w.Key("unavailableCaptureBuffers"); if (s.unavailableCaptureBuffers) w.Uint64(*s.unavailableCaptureBuffers); else w.Null();
         w.Key("silentBuffersServiced"); if (s.silentBuffersServiced) w.Uint64(*s.silentBuffersServiced); else w.Null();
@@ -173,6 +242,27 @@ inline std::string ToJson(const Report& report) {
         w.Key("eventIntervalP99Milliseconds"); if (s.eventIntervalP99Milliseconds) w.Double(*s.eventIntervalP99Milliseconds); else w.Null();
         w.Key("elapsedMilliseconds"); w.Double(s.elapsedMilliseconds);
         w.Key("startOffsetMilliseconds"); if (s.startOffsetMilliseconds) w.Double(*s.startOffsetMilliseconds); else w.Null();
+        w.Key("requestedPeriod100ns"); if (s.requestedPeriod100ns) w.Uint64(*s.requestedPeriod100ns); else w.Null();
+        w.Key("deviceDefaultPeriod100ns"); if (s.deviceDefaultPeriod100ns) w.Uint64(*s.deviceDefaultPeriod100ns); else w.Null();
+        w.Key("deviceMinimumPeriod100ns"); if (s.deviceMinimumPeriod100ns) w.Uint64(*s.deviceMinimumPeriod100ns); else w.Null();
+        w.Key("actualBufferPeriod100ns"); if (s.actualBufferPeriod100ns) w.Uint64(*s.actualBufferPeriod100ns); else w.Null();
+        w.Key("firstEventDelayMilliseconds"); if (s.firstEventDelayMilliseconds) w.Double(*s.firstEventDelayMilliseconds); else w.Null();
+        w.Key("framesPerEventMinimum"); if (s.framesPerEventMinimum) w.Uint64(*s.framesPerEventMinimum); else w.Null();
+        w.Key("framesPerEventMaximum"); if (s.framesPerEventMaximum) w.Uint64(*s.framesPerEventMaximum); else w.Null();
+        w.Key("framesPerEventMean"); if (s.framesPerEventMean) w.Double(*s.framesPerEventMean); else w.Null();
+        w.Key("eventWaitCount"); w.Uint64(s.eventWaitCount);
+        w.Key("eventSignalCount"); w.Uint64(s.eventSignalCount);
+        w.Key("eventTimeoutCount"); w.Uint64(s.eventTimeoutCount);
+        w.Key("eventFailureCount"); w.Uint64(s.eventFailureCount);
+        w.Key("cancelSignalCount"); w.Uint64(s.cancelSignalCount);
+        w.Key("peerStopSignalCount"); w.Uint64(s.peerStopSignalCount);
+        w.Key("unexpectedWaitCount"); w.Uint64(s.unexpectedWaitCount);
+        w.Key("lastWaitResult"); w.Uint64(s.lastWaitResult);
+        w.Key("lastWaitReason"); w.String(s.lastWaitReason.c_str());
+        w.Key("cadenceAssessment"); w.String(s.cadenceAssessment.c_str());
+        w.Key("captureReleaseBufferHresult"); if (s.captureReleaseBufferHresult.empty()) w.Null(); else w.String(s.captureReleaseBufferHresult.c_str());
+        w.Key("renderReleaseBufferHresult"); if (s.renderReleaseBufferHresult.empty()) w.Null(); else w.String(s.renderReleaseBufferHresult.c_str());
+        w.Key("releaseBufferFailures"); w.Uint64(s.releaseBufferFailures);
         w.Key("ready"); w.Bool(s.ready);
         w.Key("startSucceeded"); w.Bool(s.startSucceeded);
         w.Key("stopSucceeded"); w.Bool(s.stopSucceeded);
@@ -279,6 +369,8 @@ inline bool Validate(const rapidjson::Value& root, std::string_view captureId,
             if (!side.HasMember(name) || !(side[name].IsNull() || (side[name].IsNumber() && std::isfinite(side[name].GetDouble()) && side[name].GetDouble() >= 0))) return false;
         if (!side.HasMember("startOffsetMilliseconds") || !(side["startOffsetMilliseconds"].IsNull() ||
             (side["startOffsetMilliseconds"].IsNumber() && std::isfinite(side["startOffsetMilliseconds"].GetDouble())))) return false;
+        for (const auto name : {"eventIntervalMaximumMilliseconds", "eventIntervalMaximumEndOffsetMilliseconds", "longEventIntervalThresholdMilliseconds"})
+            if (side.HasMember(name) && !(side[name].IsNull() || (side[name].IsNumber() && std::isfinite(side[name].GetDouble()) && side[name].GetDouble() >= 0))) return false;
         const auto quality = std::string_view(side["quality"].GetString(), side["quality"].GetStringLength());
         const auto cleanup = std::string_view(side["cleanup"].GetString(), side["cleanup"].GetStringLength());
         if (quality != "CLEAN" && quality != "ANOMALIES_PRESENT" && quality != "SEVERE_ANOMALIES" && quality != "UNKNOWN") return false;

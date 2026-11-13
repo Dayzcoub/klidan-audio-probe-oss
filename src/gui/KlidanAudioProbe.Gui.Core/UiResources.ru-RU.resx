@@ -1059,6 +1059,7 @@ Fallback: {1}
   <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · исторические короткие результаты
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>Краткосрочная проверка V4 · {0} · {1} · {2} Гц · каналов {3} · повторяемость {4}/{5}. Длительная стабильность AudioHost и физическая проверка KLIDAN не подтверждены.</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>Технических данных нет.</value></data>
@@ -1381,7 +1382,7 @@ Fallback: {1}
   <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Запланированные повторы:</value></data>
   <data name="V4PreparePlan" xml:space="preserve"><value>Подготовить пассивный план</value></data>
   <data name="V4ConsentHeading" xml:space="preserve"><value>Проверьте этот план</value></data>
-  <data name="V4ConsentCheck" xml:space="preserve"><value>Я проверил(а) и принимаю этот план</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>Я проверил(а) и разрешаю ограниченную проверку AudioHost для этих устройств и плана; подтверждаю, что открытые колонки не подключены</value></data>
   <data name="V4AcceptPlan" xml:space="preserve"><value>Принять план</value></data>
   <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>План v4 не подготовлен.</value></data>
   <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Подготовленный план и согласие сброшены из-за изменения параметров или обнаружения устройств.</value></data>
@@ -1390,8 +1391,53 @@ Fallback: {1}
   <data name="VmV4PlanAwaitingConsent" xml:space="preserve"><value>План готов. Проверьте его и подтвердите создание квитанции согласия.</value></data>
   <data name="VmV4PlanCancelled" xml:space="preserve"><value>Подготовка плана или согласие отменены.</value></data>
   <data name="VmV4PlanBlocked" xml:space="preserve"><value>Подготовка заблокирована: {0}</value></data>
+  <data name="V4DiagnosticHeading" xml:space="preserve"><value>V4 CUSTOM — Точечная диагностика (только один кандидат)</value></data>
+  <data name="V4DiagnosticPeriod" xml:space="preserve"><value>Запрошенный период</value></data>
+  <data name="V4PrepareDiagnostic" xml:space="preserve"><value>Подготовить диагностический план</value></data>
+  <data name="V4DiagnosticConsentHeading" xml:space="preserve"><value>Согласие на точечную диагностику</value></data>
+  <data name="V4DiagnosticConsentCheck" xml:space="preserve"><value>Разрешаю только этот точный 5-секундный Duplex-кандидат</value></data>
+  <data name="V4StartDiagnostic" xml:space="preserve"><value>Запустить точечную диагностику</value></data>
+  <data name="V4DiagnosticConsentScope" xml:space="preserve"><value>ТОЛЬКО ДИАГНОСТИКА · один кандидат · Capture Initialize + Render Initialize + один Duplex на 5 секунд · MMCSS {0} · только тишина · R=0 · без доказательства минимума и без профиля.</value></data>
+  <data name="VmV4DiagnosticUnavailable" xml:space="preserve"><value>Режим точечной диагностики недоступен в этой сборке.</value></data>
+  <data name="VmV4DiagnosticNeedsBloodyFormat" xml:space="preserve"><value>Для этого проверенного режима выберите MONO_TO_STEREO и 48 kHz PCM16 для обоих endpoints.</value></data>
+  <data name="VmV4DiagnosticPlanPending" xml:space="preserve"><value>Завершите текущий V4-план или согласие перед подготовкой другой точечной диагностики.</value></data>
+  <data name="VmV4DiagnosticBuildShaMissing" xml:space="preserve"><value>Запустите пакет через PowerShell launcher, чтобы в evidence записывался проверенный build SHA.</value></data>
+  <data name="VmV4DiagnosticResultHeader" xml:space="preserve"><value>ТОЛЬКО ДИАГНОСТИКА · запрошено {0} ms, C{1}/R{2} кадров · Native {3}; evaluator {4}; причина {5}; очистка C={6}, R={7}</value></data>
+  <data name="VmV4DiagnosticSideSummary" xml:space="preserve"><value>{0}: факт {1} · событий {2} · медиана/P95/P99 {3}/{4}/{5} ms · задержка первого события {6} ms · таймауты/ошибки ожидания {7}/{8} · кадров/событие {9} · покрытие {10}% · discontinuities {11} · максимум интервала {12} ms, конец на +{13} ms от Start · порог &gt;{14} ms превышен {15} раз</value></data>
+  <data name="VmV4DiagnosticOnlyNoProfile" xml:space="preserve"><value>Только диагностическое evidence. Минимум устройства не доказан; профиль устройства или тестовый профиль не создан.</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Аудиосканирование v4 пока недоступно.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Доступны только просмотр и согласие. Initialize v4, CUSTOM Duplex, сканирование и создание стабильного профиля будут закрыты до следующих этапов.</value></data>
+  <data name="VmV4AudioGateOpen" xml:space="preserve"><value>Сканирование V4 начинается только после подтверждения этого плана. Поиск без повторов использует R=0; повторы запускаются только при R=5. Пять секунд проверки не подтверждают длительную стабильность.</value></data>
+  <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Запустите сканирование, когда будете готовы.</value></data>
+  <data name="VmV4SearchOnly" xml:space="preserve"><value>Только поиск (R=0)</value></data>
+  <data name="VmV4PrepareWorkerDisconnected" xml:space="preserve"><value>Сначала подключите Worker.</value></data>
+  <data name="VmV4PrepareDiscoveryLoading" xml:space="preserve"><value>Обнаружение устройств Windows ещё выполняется.</value></data>
+  <data name="VmV4PrepareDiscoveryStale" xml:space="preserve"><value>Обновите список устройств Windows: текущий список отсутствует или устарел.</value></data>
+  <data name="VmV4PrepareCapabilityMissing" xml:space="preserve"><value>Подключённый Worker не поддерживает пассивный запрос форматов.</value></data>
+  <data name="VmV4PrepareSelectPair" xml:space="preserve"><value>Выберите активные Capture и Render из текущего списка устройств.</value></data>
+  <data name="VmV4PrepareInvalidRoute" xml:space="preserve"><value>Исправьте маршрут: каналы каждой стороны должны быть допустимыми и различаться.</value></data>
+  <data name="VmV4PrepareOperationActive" xml:space="preserve"><value>Дождитесь завершения текущей операции перед подготовкой плана.</value></data>
+  <data name="VmV4PrepareOtherConsentPending" xml:space="preserve"><value>Завершите или отмените другое ожидающее согласие.</value></data>
+  <data name="VmV4PrepareOutcomeUnknown" xml:space="preserve"><value>Результат предыдущей операции неизвестен. Переподключите Worker и обновите список устройств.</value></data>
+  <data name="VmV4PrepareBusy" xml:space="preserve"><value>Подготовка плана уже выполняется.</value></data>
+  <data name="V4StartScan" xml:space="preserve"><value>Запустить сканирование V4</value></data>
+  <data name="V4ResultsHeading" xml:space="preserve"><value>Результаты V4</value></data>
+  <data name="VmV4ScanStarting" xml:space="preserve"><value>Запуск по подтверждённому плану и квитанции согласия…</value></data>
+  <data name="VmV4ScanProgress" xml:space="preserve"><value>{0} · кандидат {1} · запрошено Capture/Render {2}/{3} кадров · фактически Capture/Render {5}/{6} кадров · повторы {4}/5</value></data>
+  <data name="VmV4ScanError" xml:space="preserve"><value>Сканирование V4 остановлено: {0}: {1}</value></data>
+  <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Ожидание очистки Worker и сохранения evidence…</value></data>
+  <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Минимум в проверенном диапазоне кандидатов не доказан</value></data>
+  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} — минимальный стабильный SHORT-кандидат в полностью проверенном диапазоне</value></data>
+  <data name="VmV4ScanResults" xml:space="preserve"><value>Результат: {0}
+Выбранный период: {1} · Capture frames: {2} · Render frames: {3}
+Минимальный подтверждённый кандидат: {4}
+SHORT_CLEAN: {5} · Фактические периоды: Capture {6}, Render {7}
+Повторяемость: {8}
+Профиль: {9}
+Причины: {10}
+Матрица кандидатов:
+{11}
+Evidence JSON: {12}</value></data>
   <data name="VmV4NoFingerprint" xml:space="preserve"><value>Нет fingerprint плана</value></data>
   <data name="VmV4BoundsSummary" xml:space="preserve"><value>Заявленные границы (Default — верхняя граница поиска, не аппаратный максимум): Capture {0}–{1} мс; Render {2}–{3} мс; пересечение {4}–{5} мс.</value></data>
   <data name="VmV4CandidateSummary" xml:space="preserve"><value>Запрошено {0} мс · Capture {1} кадров ({2} мс) / Render {3} кадров ({4} мс){5}</value></data>

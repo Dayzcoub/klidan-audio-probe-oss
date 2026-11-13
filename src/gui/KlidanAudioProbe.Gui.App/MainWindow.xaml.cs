@@ -9,6 +9,7 @@ using KlidanAudioProbe.Gui.Worker;
 using UiLocalization = KlidanAudioProbe.Gui.Core.Localization;
 using System.ComponentModel;
 using Microsoft.Win32;
+using System.IO;
 
 namespace KlidanAudioProbe.Gui.App;
 
@@ -28,13 +29,25 @@ public partial class MainWindow : Window
 
     public MainWindow() : this(null) { }
 
-    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null, bool developerToolsAvailable = true)
+    public MainWindow(MainViewModel? viewModel, string? profileDirectory = null, bool developerToolsAvailable = true, string? evidenceDirectory = null)
     {
         InitializeComponent();
         Title = KlidanAudioProbe.Gui.Core.Localization.Get("AppTitle");
         _ownsWorkerLifecycle = viewModel is null;
         _profileDirectory = profileDirectory;
-        _vm = viewModel ?? new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable);
+        var v4Search = new WorkerV4AutomaticSearchWorkflow(_worker);
+        var qualificationPackage = Environment.GetEnvironmentVariable("KLIDAN_AUDIOHOST_QA_PACKAGE");
+        IAudioHostQualificationAdapter? qualificationAdapter = !string.IsNullOrWhiteSpace(qualificationPackage) && File.Exists(Path.Combine(qualificationPackage, "manifest.json"))
+            ? new AudioHostPowerShellQualificationAdapter() : null;
+        var qualificationCoordinator = new WorkerV4ScanQualificationCoordinator(v4Search, qualificationAdapter);
+        if (viewModel is null)
+        {
+            var previousContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(Dispatcher));
+            try { _vm = new MainViewModel(worker: _worker, automaticScanWorkflow: new WorkerAutomaticScanWorkflow(_worker), duplexRepeatabilityWorkflow: new DuplexRepeatabilityWorkerWorkflow(_worker), exclusivePeriodDiscoveryWorkflow: new ExclusivePeriodDiscoveryWorkerWorkflow(_worker), customPeriodDuplexWorkflow: new CustomPeriodDuplexWorkerWorkflow(_worker), profileDirectory: profileDirectory, bundleExportInteraction: new WpfLaboratoryEvidenceBundleExportInteraction(this), developerToolsAvailable: developerToolsAvailable, v4AutomaticSearchWorkflow: v4Search, evidenceDirectory: evidenceDirectory, v4ScanQualificationCoordinator: qualificationCoordinator); }
+            finally { SynchronizationContext.SetSynchronizationContext(previousContext); }
+        }
+        else _vm = viewModel;
         DataContext = _vm;
         _vm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(MainViewModel.Screen) or nameof(MainViewModel.WorkflowStep) or nameof(MainViewModel.DeveloperToolsOpen)) { UpdateScreenVisibility(); UpdateResponsiveLayout(); } if (e.PropertyName == nameof(MainViewModel.SelectedWindowsEndpoint)) UpdateWindowsEndpointDetailsVisibility(); };
         DataContextChanged += (_, _) => UpdateWindowsEndpointDetailsVisibility();
@@ -85,6 +98,7 @@ public partial class MainWindow : Window
         _closeRequested = true;
         _meterTimer.Stop(); _stopTimer.Stop(); _durationTimer.Stop();
         _vm.CancelAutomaticScanCommand.Execute(null);
+        _vm.CancelV4ScanCommand.Execute(null);
         _vm.CancelDeviceScanCommand.Execute(null);
         await _vm.ShutdownWorkerAsync();
         await Dispatcher.InvokeAsync(() => { _closeAfterWorker = true; Close(); }, DispatcherPriority.ApplicationIdle).Task;

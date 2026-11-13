@@ -26,12 +26,14 @@ struct Budget { unsigned operations{}, activeSeconds{}, sessionSeconds{}; };
 
 inline Budget ComputeBudget(unsigned n, unsigned r) {
     if (n < 1 || n > 8 || r > 5) throw std::invalid_argument("V4 candidate/repeatability count out of range");
-    const auto operations = 3U * n + r;
-    const auto active = 5U * (n + r);
-    const auto session = 111U * n + 51U * r + 28U;
-    if (operations > 29 || active > 65 || session > 1171) throw std::invalid_argument("V4 budget exceeds hard ceiling");
+    const auto operations = n * (3U + r);
+    const auto active = 5U * n * (1U + r);
+    const auto session = 111U * n + 51U * n * r + 28U;
+    if (operations > 64 || active > 240 || session > 3600) throw std::invalid_argument("V4 budget exceeds hard ceiling");
     return {operations, active, session};
 }
+
+inline Budget ComputeRepeatSelectedBudget() { return {7U, 25U, 600U}; }
 
 inline std::int64_t Duration(std::uint32_t frames, std::uint32_t rate) {
     if (frames == 0 || rate == 0) throw std::invalid_argument("zero frame/rate geometry");
@@ -53,18 +55,21 @@ inline std::string Canonical(std::string_view captureId, std::string_view render
                              const ChannelRouting::Configuration& route,
                              const PeriodBounds& captureBounds, const PeriodBounds& renderBounds,
                              const std::vector<Candidate>& candidates, unsigned repeatability,
+                             std::string_view mmcssMode,
                              unsigned maximumOperations, unsigned maximumActiveSeconds,
                              unsigned initializeTimeoutSeconds, unsigned sessionLifetimeSeconds,
                              unsigned cleanupDeadlineSeconds, std::uint64_t generation,
-                             std::string_view routeFingerprint) {
-    if (captureId.empty() || renderId.empty() || captureId == renderId || captureId != route.captureEndpointId || renderId != route.renderEndpointId || candidates.empty() || candidates.size() > 8 || repeatability > 5)
+                             std::string_view routeFingerprint, bool repeatSelected = false) {
+    if (captureId.empty() || renderId.empty() || captureId == renderId || captureId != route.captureEndpointId || renderId != route.renderEndpointId || candidates.empty() || candidates.size() > 8 || repeatability > 5 || (mmcssMode != "OFF" && mmcssMode != "PRO_AUDIO"))
         throw std::invalid_argument("invalid V4 identity or scope");
-    const auto budget = ComputeBudget(static_cast<unsigned>(candidates.size()), repeatability);
+    if (repeatSelected && (candidates.size() != 1 || repeatability != 5))
+        throw std::invalid_argument("invalid RepeatSelected candidate scope");
+    const auto budget = repeatSelected ? ComputeRepeatSelectedBudget() : ComputeBudget(static_cast<unsigned>(candidates.size()), repeatability);
     ValidateBounds(captureBounds); ValidateBounds(renderBounds);
     if (maximumOperations != budget.operations || maximumActiveSeconds != budget.activeSeconds || sessionLifetimeSeconds != budget.sessionSeconds || initializeTimeoutSeconds != 30 || cleanupDeadlineSeconds != 8)
         throw std::invalid_argument("V4 budget mismatch");
     if (routeFingerprint != ChannelRouting::Fingerprint(route)) throw std::invalid_argument("V4 route fingerprint mismatch");
-    std::string result = "SCAN_PLAN_V2|4|" + std::to_string(generation) + "|" + std::string(captureId) + "|" + std::string(renderId) + "|" + std::string(routeFingerprint) + "|" + std::to_string(repeatability) + "|" + std::to_string(budget.operations) + "|" + std::to_string(budget.activeSeconds) + "|" + std::to_string(initializeTimeoutSeconds) + "|" + std::to_string(sessionLifetimeSeconds) + "|" + std::to_string(cleanupDeadlineSeconds) + "|\n";
+    std::string result = "SCAN_PLAN_V2|4|" + std::to_string(generation) + "|" + std::string(captureId) + "|" + std::string(renderId) + "|" + std::string(routeFingerprint) + "|" + (repeatSelected ? "REPEAT_SELECTED|" : "") + std::to_string(repeatability) + "|" + std::to_string(budget.operations) + "|" + std::to_string(budget.activeSeconds) + "|" + std::to_string(initializeTimeoutSeconds) + "|" + std::to_string(sessionLifetimeSeconds) + "|" + std::to_string(cleanupDeadlineSeconds) + "|\n";
     result += "B|" + std::to_string(captureBounds.minimum) + "|" + std::to_string(captureBounds.defaultPeriod) + "|" + (captureBounds.alignmentKnown ? std::to_string(captureBounds.alignmentFrames) : "ALIGNMENT_UNKNOWN") + "|" + std::to_string(renderBounds.minimum) + "|" + std::to_string(renderBounds.defaultPeriod) + "|" + (renderBounds.alignmentKnown ? std::to_string(renderBounds.alignmentFrames) : "ALIGNMENT_UNKNOWN") + "\n";
     std::int64_t previous = 0;
     std::set<std::pair<std::int64_t, std::int64_t>> seenGeometry;
@@ -87,7 +92,7 @@ inline std::string Canonical(std::string_view captureId, std::string_view render
         previous = c.duration100ns;
         result += "C|" + std::to_string(c.index) + "|" + std::to_string(c.duration100ns) + "|" + std::to_string(c.captureFrames) + "|" + std::to_string(c.renderFrames) + "|" + std::to_string(c.capturePeriod100ns) + "|" + std::to_string(c.renderPeriod100ns) + "|" + std::to_string(c.captureAlignmentFrames) + "|" + (c.captureAlignmentKnown ? "true" : "false") + "|" + std::to_string(c.renderAlignmentFrames) + "|" + (c.renderAlignmentKnown ? "true" : "false") + "|" + std::to_string(c.captureMin) + "|" + std::to_string(c.captureMax) + "|" + std::to_string(c.renderMin) + "|" + std::to_string(c.renderMax) + "|" + c.rejectionReason + "\n";
     }
-    result += "M|OFF\n";
+    result += "M|" + std::string(mmcssMode) + "\n";
     return result;
 }
 } // namespace ScanPlanV2V4

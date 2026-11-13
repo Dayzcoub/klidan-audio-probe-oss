@@ -1059,6 +1059,7 @@ Fallback: {1}
   <data name="VmSavedProfileShortHistory" xml:space="preserve"><value>v{0} · historical short results
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
+  <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>V4 short-run qualification · {0} · {1} · {2} Hz · {3} channels · repeatability {4}/{5}. Long-term AudioHost stability and physical KLIDAN QA are not established.</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Only exact endpoint IDs matched in the fresh list. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not revalidated.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>This check does not authorize applying Primary/Fallback or turn historical results into fresh measurements.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>No technical data.</value></data>
@@ -1381,7 +1382,7 @@ Fallback: {1}
   <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Planned repeatability runs:</value></data>
   <data name="V4PreparePlan" xml:space="preserve"><value>Prepare passive plan</value></data>
   <data name="V4ConsentHeading" xml:space="preserve"><value>Review this exact plan</value></data>
-  <data name="V4ConsentCheck" xml:space="preserve"><value>I reviewed and accept this plan</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>I reviewed and authorize the bounded AudioHost load qualification for these endpoints and this plan; I confirm no open speakers are connected</value></data>
   <data name="V4AcceptPlan" xml:space="preserve"><value>Accept plan</value></data>
   <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>No v4 plan prepared.</value></data>
   <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Prepared plan and consent invalidated because the inputs or discovery changed.</value></data>
@@ -1390,8 +1391,53 @@ Fallback: {1}
   <data name="VmV4PlanAwaitingConsent" xml:space="preserve"><value>Plan prepared. Review it and accept to create a consent receipt.</value></data>
   <data name="VmV4PlanCancelled" xml:space="preserve"><value>Plan preparation or consent cancelled.</value></data>
   <data name="VmV4PlanBlocked" xml:space="preserve"><value>Plan blocked: {0}</value></data>
+  <data name="V4DiagnosticHeading" xml:space="preserve"><value>V4 CUSTOM — Point diagnostic (one candidate only)</value></data>
+  <data name="V4DiagnosticPeriod" xml:space="preserve"><value>Requested period</value></data>
+  <data name="V4PrepareDiagnostic" xml:space="preserve"><value>Prepare diagnostic plan</value></data>
+  <data name="V4DiagnosticConsentHeading" xml:space="preserve"><value>Point diagnostic consent</value></data>
+  <data name="V4DiagnosticConsentCheck" xml:space="preserve"><value>I authorize only this exact 5-second Duplex candidate</value></data>
+  <data name="V4StartDiagnostic" xml:space="preserve"><value>Run point diagnostic</value></data>
+  <data name="V4DiagnosticConsentScope" xml:space="preserve"><value>DIAGNOSTIC ONLY · one candidate · Capture Initialize + Render Initialize + one 5-second Duplex · MMCSS {0} · silence only · R=0 · no minimum claim or profile.</value></data>
+  <data name="VmV4DiagnosticUnavailable" xml:space="preserve"><value>Point diagnostic workflow is unavailable in this build.</value></data>
+  <data name="VmV4DiagnosticNeedsBloodyFormat" xml:space="preserve"><value>Select MONO_TO_STEREO, 48 kHz PCM16 on both endpoints to prepare this reviewed point diagnostic.</value></data>
+  <data name="VmV4DiagnosticPlanPending" xml:space="preserve"><value>Resolve the current V4 plan or consent before preparing another point diagnostic.</value></data>
+  <data name="VmV4DiagnosticBuildShaMissing" xml:space="preserve"><value>Launch this package with its PowerShell launcher so evidence can record the verified build SHA.</value></data>
+  <data name="VmV4DiagnosticResultHeader" xml:space="preserve"><value>DIAGNOSTIC_ONLY · requested {0} ms C{1}/R{2} frames · Native {3}; evaluator {4}; reason {5}; cleanup C={6}, R={7}</value></data>
+  <data name="VmV4DiagnosticSideSummary" xml:space="preserve"><value>{0} actual {1} · events {2} · median/P95/P99 {3}/{4}/{5} ms · first event {6} ms · wait timeouts/errors {7}/{8} · frames/event {9} · coverage {10}% · discontinuities {11} · max interval {12} ms ending +{13} ms from Start · threshold &gt;{14} ms exceeded {15} times</value></data>
+  <data name="VmV4DiagnosticOnlyNoProfile" xml:space="preserve"><value>Diagnostic evidence only. Global minimum is unproven; no device or test profile was created.</value></data>
   <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Consent receipt created for this plan. v4 audio scanning is not available yet.</value></data>
   <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Preview and consent only. v4 Initialize, CUSTOM Duplex, scanning, and stable profile creation remain unavailable until later implementation stages.</value></data>
+  <data name="VmV4AudioGateOpen" xml:space="preserve"><value>V4 scanning starts only after you accept this exact plan. Search-only uses R=0; repeatability runs only with R=5. A five-second qualification does not prove long-term stability.</value></data>
+  <data name="VmV4ReceiptCreatedReady" xml:space="preserve"><value>Consent receipt created for this exact plan. Start the scan when ready.</value></data>
+  <data name="VmV4SearchOnly" xml:space="preserve"><value>Search only (R=0)</value></data>
+  <data name="VmV4PrepareWorkerDisconnected" xml:space="preserve"><value>Connect the Worker before preparing a plan.</value></data>
+  <data name="VmV4PrepareDiscoveryLoading" xml:space="preserve"><value>Windows device discovery is still running.</value></data>
+  <data name="VmV4PrepareDiscoveryStale" xml:space="preserve"><value>Refresh Windows devices; the current list is missing or stale.</value></data>
+  <data name="VmV4PrepareCapabilityMissing" xml:space="preserve"><value>The connected Worker does not support passive format queries.</value></data>
+  <data name="VmV4PrepareSelectPair" xml:space="preserve"><value>Select an active Capture and Render endpoint from the current device list.</value></data>
+  <data name="VmV4PrepareInvalidRoute" xml:space="preserve"><value>Fix the route: selected channels must be valid and distinct for each side.</value></data>
+  <data name="VmV4PrepareOperationActive" xml:space="preserve"><value>Wait for the active operation to finish before preparing a plan.</value></data>
+  <data name="VmV4PrepareOtherConsentPending" xml:space="preserve"><value>Finish or cancel the other pending consent before preparing a plan.</value></data>
+  <data name="VmV4PrepareOutcomeUnknown" xml:space="preserve"><value>A prior operation has an unknown outcome. Reconnect and refresh devices before continuing.</value></data>
+  <data name="VmV4PrepareBusy" xml:space="preserve"><value>Plan preparation is already running.</value></data>
+  <data name="V4StartScan" xml:space="preserve"><value>Start V4 scan</value></data>
+  <data name="V4ResultsHeading" xml:space="preserve"><value>V4 results</value></data>
+  <data name="VmV4ScanStarting" xml:space="preserve"><value>Starting scan with the accepted plan and consent receipt…</value></data>
+  <data name="VmV4ScanProgress" xml:space="preserve"><value>{0} · candidate {1} · requested Capture/Render {2}/{3} frames · actual Capture/Render {5}/{6} frames · repeats {4}/5</value></data>
+  <data name="VmV4ScanError" xml:space="preserve"><value>V4 scan stopped: {0}: {1}</value></data>
+  <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. Waiting for worker cleanup and evidence save…</value></data>
+  <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Not proven in tested candidate domain</value></data>
+  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} is the minimum stable SHORT candidate within the fully tested candidate domain</value></data>
+  <data name="VmV4ScanResults" xml:space="preserve"><value>Result: {0}
+Selected period: {1} · Capture frames: {2} · Render frames: {3}
+Minimum verified candidate: {4}
+SHORT_CLEAN: {5} · Actual periods: Capture {6}, Render {7}
+Repeatability: {8}
+Profile: {9}
+Reasons: {10}
+Candidate matrix:
+{11}
+Evidence JSON: {12}</value></data>
   <data name="VmV4NoFingerprint" xml:space="preserve"><value>No plan fingerprint</value></data>
   <data name="VmV4BoundsSummary" xml:space="preserve"><value>Reported bounds (Default is search upper bound, not hardware maximum): Capture {0}–{1} ms; Render {2}–{3} ms; overlap {4}–{5} ms.</value></data>
   <data name="VmV4CandidateSummary" xml:space="preserve"><value>Requested {0} ms · Capture {1} frames ({2} ms) / Render {3} frames ({4} ms){5}</value></data>

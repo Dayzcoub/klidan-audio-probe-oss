@@ -27,10 +27,16 @@ int main() {
     report.framesProcessed = 240000;
     report.expectedFrames = 240000;
     report.frameCoveragePercent = 100.0;
+    report.longEventIntervals = 0;
+    report.eventIntervalMaximumMilliseconds = 10.2;
+    report.eventIntervalMaximumEndOffsetMilliseconds = 123.4;
+    report.longEventIntervalThresholdMilliseconds = 15.0;
     report.cleanup = "STOP_SUCCEEDED;CLIENT_RELEASE_ATTEMPTED";
     const auto json = StreamValidationReport::ToJson(report, "2026-10-31T00:00:00.000Z", "20000000-0000-4000-8000-000000000001");
     for (const std::string_view required : {"\"schemaVersion\":1", "\"provenance\":\"REAL_WASAPI_STREAM_VALIDATION\"", "\"direction\":\"CAPTURE\"", "\"period\":\"MINIMUM\"", "\"actualBufferFrames\":144", "\"startSucceeded\":true", "\"framesProcessed\":240000", "\"streamQuality\":\"INCOMPLETE\"", "\"cleanup\":\"STOP_SUCCEEDED;CLIENT_RELEASE_ATTEMPTED\"", "\"physicalPlayback\":\"NOT_MEASURED\"", "\"physicalRouting\":\"UNKNOWN\""})
         if (json.find(required) == std::string::npos) return EXIT_FAILURE;
+    for (const std::string_view diagnostic : {"\"longEventIntervals\":0", "\"eventIntervalMaximumMilliseconds\":10.2", "\"eventIntervalMaximumEndOffsetMilliseconds\":123.4", "\"longEventIntervalThresholdMilliseconds\":15"})
+        if (json.find(diagnostic) == std::string::npos) return EXIT_FAILURE;
     if (json.find("\"stopSucceeded\":null") == std::string::npos || json.find("\"stopHresult\":null") == std::string::npos || json.find("\"queryHresult\":null") == std::string::npos || json.find("NaN") != std::string::npos || json.find("Infinity") != std::string::npos) return EXIT_FAILURE;
     report.frameCoveragePercent.reset();
     const auto incomplete = StreamValidationReport::ToJson(report, "2026-10-31T00:00:00.000Z", "20000000-0000-4000-8000-000000000002");

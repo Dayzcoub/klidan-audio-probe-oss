@@ -98,9 +98,57 @@ var testWorker = Path.Combine(AppContext.BaseDirectory, "KlidanAudioProbe.Gui.Wo
 var stallWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_stall_fixture.exe");
 var mismatchWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_mismatch_fixture.exe");
 var formatFixtureWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_format_fixture.exe");
-foreach (var binary in new[] { buildWorker, nativeWorker, testWorker, stallWorker, mismatchWorker, formatFixtureWorker }) if (!File.Exists(binary)) throw new FileNotFoundException("Build the native worker and worker fixtures before running these tests.", binary);
+var headlessRunner = Path.Combine(root.FullName, "src", "tools", "KlidanAudioProbe.V4.Headless", "bin", "Release", "net10.0-windows", "KlidanAudioProbe.V4.Headless.exe");
+foreach (var binary in new[] { buildWorker, nativeWorker, testWorker, stallWorker, mismatchWorker, formatFixtureWorker, headlessRunner }) if (!File.Exists(binary)) throw new FileNotFoundException("Build the GUI, headless runner, native worker, and worker fixtures before running these tests.", binary);
 var productionWorkerBinaryText = Encoding.ASCII.GetString(File.ReadAllBytes(nativeWorker));
 Check(!productionWorkerBinaryText.Contains("KLIDAN_TEST_PERIOD_SCENARIO", StringComparison.Ordinal) && !productionWorkerBinaryText.Contains("REJECT_FIRST_FOUR", StringComparison.Ordinal), "production Release Worker contains no period-discovery Fake Worker scenario mechanism");
+
+var headlessAuthorizationRoot = Path.Combine(Path.GetTempPath(), "klidan-headless-auth-test-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(headlessAuthorizationRoot);
+var headlessFakeWorker = Path.Combine(headlessAuthorizationRoot, "KlidanProbeWorker.exe");
+File.Copy(formatFixtureWorker, headlessFakeWorker);
+async Task<(int ExitCode, string Output)> RunHeadlessWithoutTerminalInput(params string[] arguments)
+{
+    var start = new ProcessStartInfo(headlessRunner) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(headlessRunner)! };
+    foreach (var argument in arguments) start.ArgumentList.Add(argument);
+    start.Environment["KLIDAN_BUILD_SHA"] = new string('a', 40);
+    start.Environment["KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS"] = Environment.GetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS");
+    using var process = Process.Start(start) ?? throw new InvalidOperationException("Headless runner test process did not start.");
+    process.StandardInput.Close();
+    var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
+    try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15)); }
+    catch { if (!process.HasExited) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(); } throw; }
+    return (process.ExitCode, (await stdout) + (await stderr));
+}
+var noAuthorization = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "unauthorized"));
+Check(noAuthorization.ExitCode == 64 && noAuthorization.Output.Contains("requires --authorize-short-search", StringComparison.Ordinal) && !noAuthorization.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "headless physical search without explicit authorization exits before Worker startup without stdin");
+var authorizedNoTty = await RunHeadlessWithoutTerminalInput("--mode", "SHORT_SEARCH", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "authorized"), "--authorize-short-search");
+Check(authorizedNoTty.ExitCode == 64 && authorizedNoTty.Output.Contains("--capture-id and --render-id", StringComparison.Ordinal) && !authorizedNoTty.Output.Contains("AUTHORIZE V4", StringComparison.Ordinal), "authorized headless search requires explicit discovered endpoint IDs before Worker startup");
+var originalSummary = Path.Combine(root.FullName, "..", "..", "..", "artifacts", "AS-N4B.2.2B5B.8A.1-headless-a22939757964-20261111-204406", "evidence", "v4-headless-a1623be774314a62a10043ff057fe237", "headless-summary.json");
+originalSummary = Path.GetFullPath(originalSummary);
+var staleEndpointRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "stale-endpoint"), "--authorize-r5", "--source-evidence", originalSummary);
+Check(staleEndpointRepeat.ExitCode == 3 && staleEndpointRepeat.Output.Contains("Exact CAPTURE endpoint", StringComparison.Ordinal) && !staleEndpointRepeat.Output.Contains("MODE=REPEAT_SELECTED", StringComparison.Ordinal), "RepeatSelected blocks a changed or absent current endpoint before Worker session registration");
+var damagedSource = Path.Combine(headlessAuthorizationRoot, "damaged-summary.json"); File.Copy(originalSummary, damagedSource);
+var damagedBytes = File.ReadAllBytes(damagedSource); damagedBytes[^3] ^= 1; File.WriteAllBytes(damagedSource, damagedBytes);
+var damagedRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", Path.Combine(headlessAuthorizationRoot, "damaged"), "--authorize-r5", "--source-evidence", damagedSource);
+Check(damagedRepeat.ExitCode == 65 && damagedRepeat.Output.Contains("Original evidence verification failed", StringComparison.Ordinal), "RepeatSelected rejects corrupted source evidence before Worker startup");
+var repeatedRunRoot = Path.Combine(headlessAuthorizationRoot, "full-repeat-selected");
+var originalCaptureId = "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}";
+var originalRenderId = "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}";
+Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", $"{originalCaptureId}|{originalRenderId}");
+var fullRepeat = await RunHeadlessWithoutTerminalInput("--mode", "REPEAT_SELECTED", "--worker-path", headlessFakeWorker, "--evidence-root", repeatedRunRoot, "--authorize-r5", "--source-evidence", originalSummary);
+Environment.SetEnvironmentVariable("KLIDAN_TEST_REPEAT_SELECTED_ENDPOINTS", null);
+Check(fullRepeat.ExitCode == 0 && fullRepeat.Output.Contains("RESULT=REPEATABILITY_CONFIRMED", StringComparison.Ordinal), $"production headless RepeatSelected integration: {fullRepeat.Output}");
+if (fullRepeat.ExitCode == 0)
+{
+    var summaryPath = Directory.GetFiles(repeatedRunRoot, "headless-summary.json", SearchOption.AllDirectories).Single();
+    using var summary = JsonDocument.Parse(File.ReadAllBytes(summaryPath));
+    var runDirectory = Path.GetDirectoryName(summaryPath)!;
+    var repeatFiles = Directory.GetFiles(runDirectory, "repeat-*.json").Order(StringComparer.Ordinal).ToArray();
+    var matrixPath = Path.Combine(runDirectory, summary.RootElement.GetProperty("candidateMatrixPath").GetString()!);
+    using var matrix = JsonDocument.Parse(File.ReadAllBytes(matrixPath));
+    Check(repeatFiles.Length == 5 && repeatFiles.All(p => JsonDocument.Parse(File.ReadAllBytes(p)).RootElement.GetProperty("classification").GetString() == "CLEAN") && summary.RootElement.GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && matrix.RootElement.GetProperty("usedOperations").GetInt32() == 7 && summary.RootElement.GetProperty("sourceEvidenceSha256").GetString() == Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(originalSummary))), "headless integration read-back confirms five clean repeats, seven-operation budget, source SHA and session cleanup");
+}
 
 var handshakeId = Guid.NewGuid();
 var incompatibleHandshakes = new[]
@@ -720,7 +768,7 @@ try
     var v4Candidates=WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
     var v4Budget=WorkerScanV2ContractV4Fingerprint.Budget(v4Candidates.Count,5);
     var v4Bounds=new WorkerScanV2PeriodBounds(30000,100000);
-    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["OFF"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8,v4Bounds,v4Bounds);
+    var v4Plan=new WorkerScanV2ContractV4(route,v4Candidates,["PRO_AUDIO"],5,v4Budget.MaximumOperations,v4Budget.MaximumActiveDuplexSeconds,30,v4Budget.SessionLifetimeSeconds,8,v4Bounds,v4Bounds);
     var v4Confirmation=Guid.NewGuid();var v4Consent=WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture,v2Render,v4Plan,1,true,v4Confirmation);
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { PlanFingerprint = new string('0',64) }),"V4 consent bound to a different plan is rejected before IPC");
     await ThrowsAsync<ArgumentException>(()=>v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,v4Plan,v4Consent with { DiscoveryGeneration = 2 }),"V4 consent from an older discovery generation is rejected before IPC");
@@ -735,9 +783,54 @@ try
     var v4RenderInitId=Guid.NewGuid();var v4RenderInit=await v2SessionClient.InitializeCustomPeriodV2InScanAsync(v4Session,v4RenderInitId,v2Capture,v2Render,v4Plan,0,"RENDER");
     Check(v4RenderInit.GetProperty("initializeDisposition").GetString()=="INITIALIZED_EXACT"&&v4RenderInit.GetProperty("actualFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4RenderInit.GetProperty("actualPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns,"V4 Render Initialize independently preserves exact candidate geometry");
     var v4DuplexId=Guid.NewGuid();var v4Duplex=await v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,v4DuplexId,route,v2Capture,v2Render,v4Plan,0);
-    Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport returns exact endpoint identity, per-side geometry and explicit test provenance");
+    Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("report").GetProperty("requested").GetProperty("mmcss").GetString()=="PRO_AUDIO"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport authorizes exact PRO_AUDIO endpoint geometry and preserves explicit test provenance");
     var preparedV4Evaluation=new WorkerScanV2V4PreparedPlan(v2Capture,v2Render,v4Plan,v4Consent);
     Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,v4Duplex)=="CLEAN","strict v4 evaluator accepts the complete exact synthetic CLEAN report");
+    var globalCandidates7 = Enumerable.Range(0, 8).Select(i => WorkerScanV2CandidatePlanning.Make(i, 30_000L + i * 10_000L, route, 144, 480, 144, 480)).ToArray();
+    var globalCandidate7 = globalCandidates7[7];
+    var globalPlan7 = v4Plan with { Candidates = globalCandidates7 };
+    var globalConsent7 = WorkerScanV2ContractV4Fingerprint.CreateConsent(v2Capture, v2Render, globalPlan7, v4Consent.DiscoveryGeneration, true, Guid.NewGuid());
+    var globalPrepared7 = new WorkerScanV2V4PreparedPlan(v2Capture, v2Render, globalPlan7, globalConsent7);
+    var scoped10ms = System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();
+    scoped10ms["requestedCaptureFrames"] = 480; scoped10ms["requestedCapturePeriod100ns"] = 100_000; scoped10ms["requestedRenderFrames"] = 480; scoped10ms["requestedRenderPeriod100ns"] = 100_000;
+    scoped10ms["actualCaptureFrames"] = 480; scoped10ms["actualCapturePeriod100ns"] = 100_000; scoped10ms["actualRenderFrames"] = 480; scoped10ms["actualRenderPeriod100ns"] = 100_000;
+    scoped10ms["report"]!["requested"]!["period"] = "CUSTOM_V2:100000:480:100000:480";
+    scoped10ms["report"]!["capture"]!["actualBufferFrames"] = 480; scoped10ms["report"]!["render"]!["actualBufferFrames"] = 480;
+    using var scoped10msEvidence = JsonDocument.Parse(scoped10ms.ToJsonString());
+    Check(V4ShortCleanEvaluator.Classify(globalPrepared7, v4Session, 7, v4DuplexId, scoped10msEvidence.RootElement, evidenceCandidateIndex: 0) == "CLEAN" &&
+        V4ShortCleanEvaluator.Classify(globalPrepared7, v4Session, 7, v4DuplexId, scoped10msEvidence.RootElement) == "UNKNOWN",
+        "scoped native candidate 0 maps explicitly to global candidate 7 while an unmapped index mismatch remains UNKNOWN");
+    var capSideRoute=route.Capture;var renSideRoute=route.Render;
+    var nearCompleteV4=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();
+    nearCompleteV4["report"]!["capture"]!["framesProcessed"]=239520;nearCompleteV4["report"]!["capture"]!["expectedFrames"]=240000;nearCompleteV4["report"]!["capture"]!["frameCoveragePercent"]=99.8;
+    nearCompleteV4["report"]!["render"]!["framesProcessed"]=240000;nearCompleteV4["report"]!["render"]!["expectedFrames"]=240000;nearCompleteV4["report"]!["render"]!["frameCoveragePercent"]=100.0;
+    using(var nearCompleteDoc=JsonDocument.Parse(nearCompleteV4.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,nearCompleteDoc.RootElement)=="CLEAN","V4 evaluator accepts Native CLEAN 239520/240000 (99.8%) alongside complete Render coverage");
+    var lowCoverageV4=System.Text.Json.Nodes.JsonNode.Parse(nearCompleteV4.ToJsonString())!.AsObject();lowCoverageV4["report"]!["capture"]!["framesProcessed"]=237360;lowCoverageV4["report"]!["capture"]!["frameCoveragePercent"]=98.9;
+    using(var lowCoverageDoc=JsonDocument.Parse(lowCoverageV4.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,lowCoverageDoc.RootElement)=="UNKNOWN"&&V4ShortCleanEvaluator.ExplainClassification(lowCoverageDoc.RootElement,"UNKNOWN")=="CAPTURE_FRAME_COUNT_BELOW_99_PERCENT"&&V4ShortCleanEvaluator.CoverageMismatch(lowCoverageDoc.RootElement)==(237600L,237360L),"98.9% remains UNKNOWN with reason and exact expected/actual frame diagnostics");
+    var eventOutlierV4=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();
+    eventOutlierV4["duplexDisposition"]="FAILED";eventOutlierV4["report"]!["duplex"]!["status"]="DUPLEX_WARNINGS";
+    eventOutlierV4["report"]!["capture"]!["quality"]="ANOMALIES_PRESENT";eventOutlierV4["report"]!["capture"]!["longEventIntervals"]=1;
+    eventOutlierV4["report"]!["capture"]!["eventIntervalMaximumMilliseconds"]=22.5;eventOutlierV4["report"]!["capture"]!["eventIntervalMaximumEndOffsetMilliseconds"]=231.4;eventOutlierV4["report"]!["capture"]!["longEventIntervalThresholdMilliseconds"]=15.0;
+    using(var eventOutlierDoc=JsonDocument.Parse(eventOutlierV4.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,eventOutlierDoc.RootElement)=="FAILED"&&V4ShortCleanEvaluator.ExplainClassification(eventOutlierDoc.RootElement,"FAILED").Contains("CAPTURE:QUALITY=ANOMALIES_PRESENT,LONGEVENTINTERVALS=1 (MAX=22.5ms;END_OFFSET_FROM_START=231.4ms;THRESHOLD=15ms)",StringComparison.Ordinal)&&V4ShortCleanEvaluator.ExplainClassification(eventOutlierDoc.RootElement,"FAILED").Contains("RENDER:CLEAN",StringComparison.Ordinal),"failed Duplex diagnostics identify the Capture long-interval outlier and preserve the independent clean Render result");
+    var discontinuousV4=System.Text.Json.Nodes.JsonNode.Parse(nearCompleteV4.ToJsonString())!.AsObject();discontinuousV4["report"]!["capture"]!["discontinuities"]=1;
+    using(var discontinuousDoc=JsonDocument.Parse(discontinuousV4.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,discontinuousDoc.RootElement)!="CLEAN","frame-count correction does not forgive a real discontinuity");
+    var physicalEvidencePath=Environment.GetEnvironmentVariable("KLIDAN_BLOODY_V4_EVIDENCE");
+    if(!string.IsNullOrWhiteSpace(physicalEvidencePath))
+    {
+        using var physicalEvidence=JsonDocument.Parse(await File.ReadAllTextAsync(physicalEvidencePath));var physicalJson=physicalEvidence.RootElement;
+        var physicalCandidates=System.Text.Json.JsonSerializer.Deserialize<WorkerScanV2Candidate[]>(physicalJson.GetProperty("candidateDomain").GetRawText(),new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+        var physicalBounds=new WorkerScanV2PeriodBounds(30000,100000);var physicalRouteElement=physicalJson.GetProperty("candidates")[7].GetProperty("duplexEvidence").GetProperty("report").GetProperty("route");
+        WorkerScanV2Side PhysicalSide(string name){var side=physicalRouteElement.GetProperty(name);return new(side.GetProperty("sampleRateHz").GetInt32(),side.GetProperty("channels").GetInt32(),side.GetProperty("encoding").GetString()!,side.GetProperty("channelMask").GetUInt32(),side.GetProperty("selectedIndicesZeroBased").EnumerateArray().Select(x=>x.GetInt32()).ToArray());}
+        var physicalRoute=new WorkerScanV2Route(physicalRouteElement.GetProperty("mode").GetString()!,PhysicalSide("capture"),PhysicalSide("render"));var physicalBudget=WorkerScanV2ContractV4Fingerprint.Budget(physicalCandidates.Length,0);
+        var physicalPlan=new WorkerScanV2ContractV4(physicalRoute,physicalCandidates,["OFF"],0,physicalBudget.MaximumOperations,physicalBudget.MaximumActiveDuplexSeconds,30,physicalBudget.SessionLifetimeSeconds,8,physicalBounds,physicalBounds);
+        var physicalCapture=physicalJson.GetProperty("candidates")[7].GetProperty("duplexEvidence").GetProperty("captureEndpointId").GetString()!;var physicalRender=physicalJson.GetProperty("candidates")[7].GetProperty("duplexEvidence").GetProperty("renderEndpointId").GetString()!;
+        var physicalConsent=new WorkerScanV2V4Consent(true,Guid.NewGuid(),physicalJson.GetProperty("planFingerprint").GetString()!,physicalJson.GetProperty("discoveryGeneration").GetUInt64());
+        var physicalPrepared=new WorkerScanV2V4PreparedPlan(physicalCapture,physicalRender,physicalPlan,physicalConsent);var physicalSession=new WorkerScanSessionToken(physicalJson.GetProperty("candidates")[7].GetProperty("duplexEvidence").GetProperty("scanSessionId").GetGuid(),4,physicalJson.GetProperty("routeFingerprint").GetString());
+        var tenMsCandidate=physicalJson.GetProperty("candidates").EnumerateArray().Single(c=>c.GetProperty("candidate").GetProperty("requestedDuration100ns").GetInt64()==100000);var tenMsEvidence=tenMsCandidate.GetProperty("duplexEvidence");var tenMs=tenMsEvidence.GetProperty("report");
+        Check(WorkerScanV2ContractV4Fingerprint.Compute(physicalCapture,physicalRender,physicalPlan,physicalConsent.DiscoveryGeneration)==physicalConsent.PlanFingerprint&&tenMs.GetProperty("duplex").GetProperty("status").GetString()=="DUPLEX_CLEAN"&&V4ShortCleanEvaluator.Classify(physicalPrepared,physicalSession,7,tenMsEvidence.GetProperty("operationId").GetGuid(),tenMsEvidence)=="CLEAN","full offline replay of original Bloody 10 ms V4 evidence accepts Native CLEAN 239520/240000 and 240000/240000 with exact plan/session identities");
+        Check(V4ShortCleanEvaluator.SideCoverageClean(tenMs.GetProperty("capture"),capSideRoute,480)&&V4ShortCleanEvaluator.SideCoverageClean(tenMs.GetProperty("render"),renSideRoute,480),"Bloody 10 ms read-only side replay independently accepts exact per-side geometry and coverage");
+        var fiveMs=physicalJson.GetProperty("candidates").EnumerateArray().Single(c=>c.GetProperty("candidate").GetProperty("requestedDuration100ns").GetInt64()==50000);Check(fiveMs.GetProperty("duplexDisposition").GetString()=="FAILED"&&fiveMs.GetProperty("duplexEvidence").GetProperty("report").GetProperty("capture").GetProperty("discontinuities").GetInt64()>0&&fiveMs.GetProperty("duplexEvidence").GetProperty("report").GetProperty("render").GetProperty("frameCoveragePercent").GetDouble()<99,"offline Bloody 5 ms replay preserves its discontinuities and low Render coverage as non-clean");
+    }
     var missingReportField=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();missingReportField["report"]!["capture"]!.AsObject().Remove("stopSucceeded");
     using(var incompleteV4=JsonDocument.Parse(missingReportField.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,incompleteV4.RootElement)=="UNKNOWN","strict v4 evaluator classifies a missing required native report field as UNKNOWN");
     var wrongV4Geometry=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();wrongV4Geometry["actualCaptureFrames"]=(int)v4Candidates[0].CaptureFrames+1;
@@ -786,44 +879,200 @@ try
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
     await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
-    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default)
+    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default, bool createV4Profile = false, IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null)
     {
         var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
         var found = await client.ListWindowsEndpointsAsync();
-        var captureId = found.Endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!;
-        var renderId = found.Endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
+        var captureEndpoint = found.Endpoints.Single(e => e.Direction == "CAPTURE");
+        var renderEndpoint = found.Endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!;
+        var renderId = renderEndpoint.EndpointId!;
         var searchRoute = routeOverride ?? route;
-        var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
+        var candidates = candidateOverride ?? WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
         var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeats);
-        var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["OFF"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["PRO_AUDIO"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
         var accepted = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, searchPlan, client.DiscoveryGeneration, true, Guid.NewGuid());
         var seen = new List<string>();
         var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-search-" + Guid.NewGuid().ToString("N"));
         try
         {
             var result = await new WorkerV4AutomaticSearchWorkflow(client).RunAsync(new(captureId, renderId, searchPlan, accepted), evidenceRoot,
-                cancellationToken, testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); }, runRepeatability: qualify);
+                cancellationToken, testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); }, runRepeatability: qualify,
+                captureEndpoint: createV4Profile ? captureEndpoint : null, renderEndpoint: createV4Profile ? renderEndpoint : null,
+                profileDirectory: createV4Profile ? Path.Combine(evidenceRoot, "profiles") : null);
             var serializedEvidence = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
-            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && serializedEvidence.Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal), $"{name} full candidate matrix persists and reads back synthetic provenance [path={result.EvidencePath ?? "null"}; exists={result.EvidencePath is not null && File.Exists(result.EvidencePath)}; lifecycle={result.Evidence.Lifecycle}; state={result.Evidence.SelectionState}; stop={result.Evidence.StopReason}; matrix={result.Evidence.Candidates.FirstOrDefault()?.DuplexDisposition}; repeats={result.Evidence.RepeatabilityCompleted}; ops={string.Join(',', seen)}; provenance={result.Evidence.Provenance}]");
+            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && serializedEvidence.Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal) && result.Evidence.Provenance=="TEST_FAKE_WASAPI_V4_DUPLEX", $"{name} full candidate matrix persists and reads back source-consistent synthetic provenance without falsely marking Initialize plus Duplex as mixed [path={result.EvidencePath ?? "null"}; exists={result.EvidencePath is not null && File.Exists(result.EvidencePath)}; lifecycle={result.Evidence.Lifecycle}; state={result.Evidence.SelectionState}; stop={result.Evidence.StopReason}; matrix={result.Evidence.Candidates.FirstOrDefault()?.DuplexDisposition}; repeats={result.Evidence.RepeatabilityCompleted}; ops={string.Join(',', seen)}; provenance={result.Evidence.Provenance}]");
+            if (createV4Profile) Check(result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && !result.Evidence.ProfileEligible && result.Evidence.ProfilePath is null && !Directory.Exists(Path.Combine(evidenceRoot, "profiles")), $"{name} 5/5 short qualification remains profile-ineligible until KLIDAN AudioHost load qualification");
             return (result, seen.ToArray());
         }
         finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
-    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true);
+    async Task<V4AutomaticSearchResult> RunV4PointDiagnostic(int milliseconds, string mmcss = "OFF")
+    {
+        var oldBuildSha = Environment.GetEnvironmentVariable("KLIDAN_BUILD_SHA");
+        Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", new string('e', 40));
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        var found = await client.ListWindowsEndpointsAsync();
+        var captureEndpoint = found.Endpoints.Single(e => e.Direction == "CAPTURE");
+        var renderEndpoint = found.Endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!; var renderId = renderEndpoint.EndpointId!;
+        var candidate = WorkerScanV2CandidatePlanning.Make(0, milliseconds * 10_000L, route, 144, 480, 144, 480);
+        var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(1, 0);
+        var plan = new WorkerScanV2ContractV4(route, [candidate], [mmcss], 0, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+        var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-point-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var workflow = (IV4AutomaticSearchWorkflow)new WorkerV4AutomaticSearchWorkflow(client);
+            var result = await workflow.RunDiagnosticAsync(new(captureId, renderId, plan, consent), captureEndpoint, renderEndpoint, evidenceRoot, null, CancellationToken.None);
+            var json = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
+            var row = result.Evidence.Candidates.Single();
+            var captureOperation = row.CaptureInitializeEvidence!.Value.GetProperty("operationId").GetString();
+            var renderOperation = row.RenderInitializeEvidence!.Value.GetProperty("operationId").GetString();
+            var duplexOperation = row.DuplexEvidence!.Value.GetProperty("operationId").GetString();
+            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && result.Evidence.DiagnosticOnly && result.Evidence.SelectionState == "DIAGNOSTIC_ONLY" && !result.Evidence.GlobalMinimumProven && result.Evidence.ProfilePath is null && !result.Evidence.ProfileEligible && result.Evidence.SessionCleanup == "CLOSE_CONFIRMED" && result.Evidence.CandidateDomain.Count == 1 && result.Evidence.UsedOperations == 3 && result.Evidence.MaximumOperations == 3 && result.Evidence.UsedActiveDuplexSeconds <= 5 && result.Evidence.RepeatabilityCompleted == 0 && result.Evidence.BuildSha == new string('e', 40) && json.Contains("DIAGNOSTIC_ONLY", StringComparison.Ordinal), $"{milliseconds} ms V4 point diagnostic persists only one candidate, exact build SHA and closed no-profile evidence");
+            Check(candidate.CaptureFrames == (milliseconds == 5 ? 240 : 480) && candidate.RenderFrames == candidate.CaptureFrames && row.DuplexDisposition == "CLEAN" && new[] { captureOperation, renderOperation, duplexOperation }.All(id => Guid.TryParse(id, out _)) && new[] { captureOperation, renderOperation, duplexOperation }.Distinct().Count() == 3, $"{milliseconds} ms point diagnostic executes exact frames through two Initializes and one distinct Duplex operation ID");
+            Check(row.DuplexEvidence!.Value.GetProperty("report").GetProperty("requested").GetProperty("mmcss").GetString() == mmcss && result.Evidence.ProfilePath is null && !result.Evidence.ProfileEligible, $"{milliseconds} ms point diagnostic preserves its consented {mmcss} mode and never creates a profile");
+            return result;
+        }
+        finally { Environment.SetEnvironmentVariable("KLIDAN_BUILD_SHA", oldBuildSha); await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
+    }
+    _ = await RunV4PointDiagnostic(5);
+    _ = await RunV4PointDiagnostic(10);
+    _ = await RunV4PointDiagnostic(10, "PRO_AUDIO");
+    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true, createV4Profile: true);
     Check(bloodySearch.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.RepeatabilityCompleted == 5 && bloodySearch.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody confirms 5 ms only after five additional CLEAN repeats; larger candidates remain skipped");
     Check(bloodySearch.Operations.Where(x => x.Contains("REPEAT", StringComparison.Ordinal)).SequenceEqual(Enumerable.Range(1, 5).Select(i => $"5:REPEAT_{i}")) && bloodySearch.Operations.All(x => !x.StartsWith("6:", StringComparison.Ordinal)), "Bloody repeats only the selected 5 ms candidate and never falls back");
     Check(bloodySearch.Result.Evidence.UsedOperations == 14 && bloodySearch.Result.Evidence.UsedActiveDuplexSeconds == 40 && bloodySearch.Result.Evidence.SessionCleanup == "CLOSE_CONFIRMED", "B4 records repeat operations, active duration, and confirmed same-session close");
     var flow8Route = route with { Capture = route.Capture with { Channels = 1, ChannelMask = 0, SelectedIndicesZeroBased = [0] } };
-    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: flow8Route);
+    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: flow8Route, createV4Profile: true);
     Check(flow8Search.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && flow8Search.Result.Evidence.SelectedCandidateIndex == 0 && flow8Search.Result.Evidence.RepeatabilityCompleted == 5 && flow8Search.Result.Evidence.RepeatabilityRuns.All(r => r.ActualCaptureFrames == flow8Route.Capture.SampleRateHz * 3 / 1000 && r.ActualRenderFrames == flow8Route.Render.SampleRateHz * 3 / 1000), "FLOW 8 mono Capture/stereo Render retains exact 3 ms geometry across five CLEAN repeats");
+    foreach (var encoding in new[] { "PCM24_IN_32", "FLOAT32" })
+    {
+        var encodingRoute = route with { Capture = route.Capture with { Encoding = encoding }, Render = route.Render with { Encoding = encoding } };
+        _ = await RunV4Search($"{encoding} V4 profile synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: encodingRoute, createV4Profile: true);
+    }
     var unknownSearch = await RunV4Search("UNKNOWN stop synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEANUP_UNKNOWN" : null);
     Check(unknownSearch.Result.Evidence.SelectionState == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates[0].DuplexDisposition == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "NOT_TESTED" && e.LowerPeriodCoverage == "UNKNOWN") && unknownSearch.Operations.Length == 3, "UNKNOWN immediately stops the search and leaves later candidates explicitly untested");
     foreach (var failAt in new[] { 1, 3, 5 })
     {
         var failedRepeat = await RunV4Search($"repeat {failAt} FAILED synthetic", (index, operation) => operation == $"REPEAT_{failAt}" ? "SERVICE_FAILURE" : null, true);
-        Check(failedRepeat.Result.Evidence.SelectionState == "REPEATABILITY_FAILED" && failedRepeat.Result.Evidence.RepeatabilityCompleted == failAt && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED stops without extra repeats or stable profile");
+        Check(failedRepeat.Result.Evidence.SelectionState == "MINIMUM_NOT_PROVEN" && failedRepeat.Result.Evidence.StopReason == "NO_CANDIDATE_PASSED_REPEATABILITY" && failedRepeat.Result.Evidence.Candidates.All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Count == failAt) && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 8 * failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED is retained per candidate and search exhausts safely without a profile");
     }
+    var threeCandidates = new[] { 30_000L, 50_000L, 100_000L }.Select((period, index) => WorkerScanV2CandidatePlanning.Make(index, period, route, 144, 480, 144, 480)).ToArray();
+    var adapterFaultRoot = Path.Combine(Path.GetTempPath(), "klidan-audiohost-cancel-provenance-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(adapterFaultRoot);
+    try
+    {
+        var shortPath = Path.Combine(adapterFaultRoot, "short.json"); var repeatPath = Path.Combine(adapterFaultRoot, "repeat.json"); var matrixPath = Path.Combine(adapterFaultRoot, "matrix.json");
+        File.WriteAllText(shortPath, "{}"); File.WriteAllText(repeatPath, "{}"); File.WriteAllText(matrixPath, "{}");
+        var adapterCapture = "synthetic-capture"; var adapterRender = "synthetic-render";
+        var adapterBudget = WorkerScanV2ContractV4Fingerprint.Budget(threeCandidates.Length, 5);
+        var adapterPlan = new WorkerScanV2ContractV4(route, threeCandidates, ["PRO_AUDIO"], 5, adapterBudget.MaximumOperations, adapterBudget.MaximumActiveDuplexSeconds, 30, adapterBudget.SessionLifetimeSeconds, 8, new(30_000, 100_000), new(30_000, 100_000));
+        var adapterConsent = WorkerScanV2ContractV4Fingerprint.CreateConsent(adapterCapture, adapterRender, adapterPlan, 7, true, Guid.NewGuid());
+        var adapterPrepared = new WorkerScanV2V4PreparedPlan(adapterCapture, adapterRender, adapterPlan, adapterConsent);
+        var adapterAuthorization = new AudioHostQualificationAuthorization(adapterConsent.ConfirmationId, adapterConsent.PlanFingerprint, adapterConsent.DiscoveryGeneration,
+            adapterCapture, adapterRender, true, true, threeCandidates.Length, 60 * threeCandidates.Length, DateTimeOffset.UtcNow.AddMinutes(10));
+        foreach (var testOnly in new[] { false, true })
+        {
+            using var adapterCancellation = new CancellationTokenSource(); adapterCancellation.Cancel();
+            var adapterResult = await new AudioHostPowerShellQualificationAdapter().QualifyAsync(new("unopened-package", adapterFaultRoot, shortPath, repeatPath, matrixPath,
+                adapterPrepared, threeCandidates[0], adapterAuthorization, testOnly), adapterCancellation.Token);
+            Check(adapterResult is { Status: "UNKNOWN", Cleanup: "UNKNOWN" } && adapterResult.Provenance == (testOnly ? "TEST_ONLY" : "REAL_AUDIOHOST"),
+                $"pre-cancelled AudioHost adapter reports UNKNOWN with request-bound {(testOnly ? "TEST_ONLY" : "REAL_AUDIOHOST")} provenance without launching a process");
+        }
+    }
+    finally { Directory.Delete(adapterFaultRoot, true); }
+    var repeatFallback = await RunV4Search("3-to-5-to-10 repeatability fallback synthetic", (index, operation) => index < 2 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
+    Check(repeatFallback.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatFallback.Result.Evidence.SelectedCandidateIndex == 2 && repeatFallback.Result.Evidence.Candidates[0].Candidate.RequestedDuration100ns == 30_000 && repeatFallback.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && repeatFallback.Result.Evidence.Candidates[2].Candidate.RequestedDuration100ns == 100_000 && repeatFallback.Result.Evidence.Candidates.Take(2).All(e => e.RepeatabilityStatus == "FAILED" && e.RepeatabilityEvidence.Single().Result == "FAILED") && repeatFallback.Result.Evidence.Candidates[2].RepeatabilityStatus == "CONFIRMED" && repeatFallback.Result.Evidence.RepeatabilityCompleted == 5, "repeatability fallback checks 3, 5, then 10 ms in order and retains each failure before confirming 10 ms");
+    var stableFive = await RunV4Search("5 ms minimum stable synthetic", (index, operation) => index == 0 && operation == "REPEAT_1" ? "SERVICE_FAILURE" : null, true, candidateOverride: threeCandidates);
+    Check(stableFive.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && stableFive.Result.Evidence.SelectedCandidateIndex == 1 && stableFive.Result.Evidence.Candidates[1].Candidate.RequestedDuration100ns == 50_000 && stableFive.Result.Evidence.Candidates[2].DuplexDisposition == "SKIPPED", "5 ms is chosen over 10 ms when it passes all repeatability checks");
+    async Task<(V4ScanQualificationResult Result, string[] Operations, int[] AdapterCandidates, string Root)> RunQualificationCoordinator(
+        string name, Func<int, string, string?> scanScenario, Func<AudioHostCandidateQualificationRequest, AudioHostCandidateQualificationResult> loadResult,
+        IReadOnlyList<WorkerScanV2Candidate>? candidateOverride = null, string? realPackage = null)
+    {
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
+        var captureEndpoint = endpoints.Single(e => e.Direction == "CAPTURE"); var renderEndpoint = endpoints.Single(e => e.Direction == "RENDER");
+        var captureId = captureEndpoint.EndpointId!; var renderId = renderEndpoint.EndpointId!;
+        var domain = candidateOverride ?? threeCandidates; var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(domain.Count, 5);
+        var plan = new WorkerScanV2ContractV4(route, domain, ["PRO_AUDIO"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+        var prepared = new WorkerScanV2V4PreparedPlan(captureId, renderId, plan, consent);
+        var authorization = new AudioHostQualificationAuthorization(consent.ConfirmationId, consent.PlanFingerprint, consent.DiscoveryGeneration,
+            captureId, renderId, true, true, domain.Count, checked(60 * domain.Count), DateTimeOffset.UtcNow.AddSeconds(plan.SessionLifetimeSeconds + 175 * domain.Count + 30));
+        var adapterCandidates = new List<int>(); var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-v4-qualification-" + name + "-" + Guid.NewGuid().ToString("N"));
+        IAudioHostQualificationAdapter adapter = realPackage is null
+            ? new ControlledAudioHostQualificationAdapter(request => { adapterCandidates.Add(request.Candidate.Index); Check(File.Exists(request.RepeatabilityMatrixPath), $"{name}: AudioHost adapter receives persisted scanner evidence"); return loadResult(request); })
+            : new AudioHostPowerShellQualificationAdapter();
+        try
+        {
+            var coordinator = new WorkerV4ScanQualificationCoordinator(new WorkerV4AutomaticSearchWorkflow(client), adapter,
+                (index, operation) => { operations.Add($"{domain[index].RequestedDuration100ns / 10_000}:{operation}"); return scanScenario(index, operation); });
+            var result = await coordinator.RunAsync(prepared, captureEndpoint, renderEndpoint, authorization, realPackage ?? "TEST_ONLY_PACKAGE", root,
+                cancellationToken: CancellationToken.None, testOnly: true);
+            return (result, operations.ToArray(), adapterCandidates.ToArray(), root);
+        }
+        finally { await client.DisposeAsync(); }
+    }
+    if (args.Length == 2 && args[0] == "--joined-e2e")
+    {
+        var candidate = threeCandidates[0];
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", "success");
+        var success = await RunQualificationCoordinator("joined-success", (_, _) => null, _ => throw new InvalidOperationException("Real PowerShell adapter was bypassed."), null, args[1]);
+        var qualified = success.Result.Evidence.Candidates[0].AudioHostQualification ?? throw new InvalidOperationException("Coordinator did not persist AudioHost qualification evidence.");
+        if (success.Result.Status != "TEST_ONLY" || success.Result.ProfilePath is not null || qualified is not { Status: "TEST_ONLY", Cleanup: "CONFIRMED", Provenance: "TEST_ONLY", ResultPath: not null }) throw new InvalidOperationException("JOINED_E2E_SUCCESS failed coordinator status, cleanup, provenance or no-profile read-back.");
+        using (var controlled = JsonDocument.Parse(await File.ReadAllBytesAsync(qualified.ResultPath!)))
+        {
+            var run = controlled.RootElement;
+            if (run.GetProperty("controlledPeerMode").GetBoolean() != true || run.GetProperty("profileCreated").GetBoolean() || run.GetProperty("qualificationConfigSha256").GetString() is not { Length: 64 } || run.GetProperty("watchdogOutcome").GetString() != "RUNNER_SUCCEEDED") throw new InvalidOperationException("JOINED_E2E_SUCCESS entrypoint read-back did not confirm controlled peer, config SHA, watchdog or profile isolation.");
+            var summary = JsonDocument.Parse(await File.ReadAllBytesAsync(run.GetProperty("runnerSummary").GetString()!));
+            using var requestConfig = JsonDocument.Parse(await File.ReadAllBytesAsync(run.GetProperty("qualificationConfigPath").GetString()!));
+            var requested = requestConfig.RootElement;
+            if (summary.RootElement.GetProperty("result").GetString() != "LOAD_CLEAN" || summary.RootElement.GetProperty("cleanup").GetProperty("confirmed").GetBoolean() != true || summary.RootElement.GetProperty("sourceEvidence").GetProperty("shortSearchSha256").GetString() is not { Length: 64 } || summary.RootElement.GetProperty("transport").GetProperty("period100ns").GetInt64() != candidate.RequestedDuration100ns || summary.RootElement.GetProperty("transport").GetProperty("captureFrames").GetUInt32() != candidate.CaptureFrames || summary.RootElement.GetProperty("endpoints").GetProperty("captureId").GetString() != requested.GetProperty("endpoints").GetProperty("captureId").GetString() || summary.RootElement.GetProperty("endpoints").GetProperty("renderId").GetString() != requested.GetProperty("endpoints").GetProperty("renderId").GetString()) throw new InvalidOperationException("JOINED_E2E_SUCCESS runner read-back does not match exact candidate/source endpoints or cleanup.");
+        }
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", "unknown");
+        var unknown = await RunQualificationCoordinator("joined-unknown", (_, _) => null, _ => throw new InvalidOperationException("Real PowerShell adapter was bypassed."), null, args[1]);
+        if (unknown.Result.Status != "UNKNOWN" || unknown.Result.ProfilePath is not null || unknown.Result.SelectedCandidateIndex is not null || unknown.Operations.Any(x => x.Contains("5:", StringComparison.Ordinal)) || unknown.Result.Evidence.Candidates[0].AudioHostQualification?.Cleanup is not ("UNKNOWN" or "CONFIRMED")) throw new InvalidOperationException("JOINED_E2E_UNKNOWN failed stop/no-fallback/no-profile read-back.");
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_ONLY_PEER_SCENARIO", null);
+        Console.WriteLine($"JOINED_E2E_SUCCESS=PASS evidence={success.Root}; JOINED_E2E_UNKNOWN=PASS evidence={unknown.Root}; WASAPI_OPENED=NO; DEVICE_PROFILE_CREATED=NO");
+        return 0;
+    }
+    AudioHostCandidateQualificationResult TestLoad(string status, string cleanup = "CONFIRMED") => new(status, cleanup, null, null, null, null, null, null, null, "TEST_ONLY");
+    var coordinatorA = await RunQualificationCoordinator("A", (index, op) => index == 0 && op == "DUPLEX" || index == 1 && op == "REPEAT_1" ? "SERVICE_FAILURE" : null,
+        request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorA.Result.Status == "TEST_ONLY" && coordinatorA.Result.SelectedCandidateIndex == 2 && coordinatorA.AdapterCandidates.SequenceEqual([2]) && coordinatorA.Operations.Where(x => x.EndsWith(":DUPLEX", StringComparison.Ordinal) || x.Contains(":REPEAT_", StringComparison.Ordinal)).SequenceEqual(new[] { "3:DUPLEX", "5:DUPLEX", "5:REPEAT_1", "10:DUPLEX", "10:REPEAT_1", "10:REPEAT_2", "10:REPEAT_3", "10:REPEAT_4", "10:REPEAT_5" }),
+        $"Coordinator A executes 3 FAILED, 5 R5 FAILED, then 10 ms R5+AudioHost CLEAN and selects TEST_ONLY 10 ms [status={coordinatorA.Result.Status}; selected={coordinatorA.Result.SelectedCandidateIndex}; adapter={string.Join(',', coordinatorA.AdapterCandidates)}; operations={string.Join(',', coordinatorA.Operations)}; diagnostic={coordinatorA.Result.Diagnostic}]");
+    Check(coordinatorA.Result.Evidence.SelectedCandidateIndex == 2 && !coordinatorA.Result.Evidence.GlobalMinimumProven && !coordinatorA.Result.Evidence.ProfileEligible && coordinatorA.Result.ProfilePath is null && File.Exists(coordinatorA.Result.EvidencePath),
+        "Coordinator A preserves candidate-domain-only scope, read-back evidence, and never promotes synthetic DEVICE profile");
+    var coordinatorB = await RunQualificationCoordinator("B", (index, op) => index == 0 && op == "DUPLEX" ? "SERVICE_FAILURE" : null, request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorB.Result.Status == "TEST_ONLY" && coordinatorB.Result.SelectedCandidateIndex == 1 && coordinatorB.AdapterCandidates.SequenceEqual([1]) && coordinatorB.Operations.All(x => !x.StartsWith("10:", StringComparison.Ordinal)),
+        "Coordinator B selects stable 5 ms and never launches 10 ms");
+    var coordinatorC = await RunQualificationCoordinator("C", (index, op) => index == 0 && op == "DUPLEX" ? "SERVICE_FAILURE" : null,
+        request => request.Candidate.Index == 1 ? TestLoad("LOAD_UNSTABLE") : TestLoad("LOAD_CLEAN"));
+    Check(coordinatorC.Result.Status == "TEST_ONLY" && coordinatorC.Result.SelectedCandidateIndex == 2 && coordinatorC.AdapterCandidates.SequenceEqual([1, 2]) && coordinatorC.Result.Evidence.Candidates[1].AudioHostQualification is { Status: "LOAD_UNSTABLE", Cleanup: "CONFIRMED" },
+        "Coordinator C advances 5→10 only after LOAD_UNSTABLE and confirmed cleanup");
+    var coordinatorD = await RunQualificationCoordinator("D", (index, op) => null, request => TestLoad("QA_FAILED"));
+    Check(coordinatorD.Result.Status == "QA_FAILED" && coordinatorD.Result.SelectedCandidateIndex is null && coordinatorD.Result.ProfilePath is null && coordinatorD.AdapterCandidates.SequenceEqual([0]) && coordinatorD.Operations.All(x => !x.StartsWith("5:", StringComparison.Ordinal)),
+        "Coordinator D stops on QA_FAILED without fallback or qualified profile");
+    var terminalD = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorD.Root, "scan-qualification-*.json").Single()));
+    Check(terminalD.RootElement.GetProperty("status").GetString() == "QA_FAILED" && terminalD.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "COMPLETED" && terminalD.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && terminalD.RootElement.GetProperty("evidence").GetProperty("stopReason").GetString() != "NO_STABLE_BUFFER",
+        "QA_FAILED terminal JSON read-back preserves the completed Worker lifecycle and confirmed Worker cleanup without claiming NO_STABLE_BUFFER");
+    var coordinatorDUnknown = await RunQualificationCoordinator("D-UNKNOWN", (index, op) => null, request => TestLoad("UNKNOWN", "UNKNOWN"));
+    Check(coordinatorDUnknown.Result.Status == "UNKNOWN" && coordinatorDUnknown.Result.SelectedCandidateIndex is null && coordinatorDUnknown.Result.ProfilePath is null && coordinatorDUnknown.AdapterCandidates.SequenceEqual([0]),
+        "Coordinator D stops on UNKNOWN cleanup and does not retry the candidate");
+    var terminalUnknown = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorDUnknown.Root, "scan-qualification-*.json").Single()));
+    Check(terminalUnknown.RootElement.GetProperty("status").GetString() == "UNKNOWN" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "COMPLETED" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CLOSE_CONFIRMED" && terminalUnknown.RootElement.GetProperty("evidence").GetProperty("candidates")[0].GetProperty("audioHostQualification").GetProperty("cleanup").GetString() == "UNKNOWN",
+        "UNKNOWN terminal JSON read-back distinguishes confirmed Worker close from unknown AudioHost cleanup");
+    var coordinatorDIpc = await RunQualificationCoordinator("D-IPC", (index, op) => index == 0 && op == "DUPLEX" ? "CLEANUP_UNKNOWN" : null, request => TestLoad("LOAD_CLEAN"));
+    Check(coordinatorDIpc.Result.Status == "UNKNOWN" && coordinatorDIpc.AdapterCandidates.Length == 0 && coordinatorDIpc.Operations.Where(x => x.EndsWith(":DUPLEX", StringComparison.Ordinal)).SequenceEqual(["3:DUPLEX"]) && coordinatorDIpc.Result.ProfilePath is null,
+        "Coordinator D treats Worker IPC/cleanup uncertainty as UNKNOWN and never invokes AudioHost or retries");
+    var terminalIpc = JsonDocument.Parse(await File.ReadAllBytesAsync(Directory.GetFiles(coordinatorDIpc.Root, "scan-qualification-*.json").Single()));
+    Check(terminalIpc.RootElement.GetProperty("evidence").GetProperty("lifecycle").GetString() == "UNKNOWN" && terminalIpc.RootElement.GetProperty("evidence").GetProperty("sessionCleanup").GetString() == "CANCEL_CONFIRMED" && terminalIpc.RootElement.GetProperty("evidence").GetProperty("stopReason").GetString() == "WORKER_SESSION_CLOSE_OR_EVIDENCE_UNKNOWN",
+        "Worker IPC failure terminal JSON records observed UNKNOWN lifecycle and confirmed cancellation cleanup");
     var unknownRepeat = await RunV4Search("repeat cleanup UNKNOWN synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : operation == "REPEAT_2" ? "CLEANUP_UNKNOWN" : null, true);
     Check(unknownRepeat.Result.Evidence.SelectionState == "UNKNOWN" && unknownRepeat.Result.Evidence.RepeatabilityCompleted == 2 && unknownRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 2 && unknownRepeat.Result.Evidence.RepeatabilityRuns[1].Cleanup == "UNKNOWN", "UNKNOWN cleanup on a repeat preserves that run and stops every later operation");
     using (var cancelRepeat = new CancellationTokenSource())
@@ -840,6 +1089,35 @@ try
     Check(preliminary.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && preliminary.Result.Evidence.RepeatabilityRequested == 2 && preliminary.Result.Evidence.RepeatabilityCompleted == 2 && !preliminary.Result.Evidence.ProfileEligible, "R less than five stays preliminary and cannot create a stable profile");
     var noRepeats = await RunV4Search("R=0 search-only synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, 0);
     Check(noRepeats.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && noRepeats.Result.Evidence.RepeatabilityCompleted == 0 && noRepeats.Operations.All(x => !x.Contains("REPEAT_", StringComparison.Ordinal)), "R=0 preserves search-only behavior without invoking repeatability");
+    var lastCandidateClean = await RunV4Search("last candidate CLEAN", (index, operation) => operation == "DUPLEX" && index == 7 ? "CLEAN" : operation == "DUPLEX" ? "SERVICE_FAILURE" : null, repeats: 0);
+    Check(lastCandidateClean.Result.Evidence.SelectedCandidateIndex == 7 && lastCandidateClean.Result.Evidence.StopReason == "CANDIDATE_DOMAIN_EXHAUSTED", "the last candidate CLEAN does not claim that a smaller candidate was found");
+    async Task<(V4AutomaticSearchResult Result, string[] Operations, string Root)> RunRepeatSelected(string? stopAt = null)
+    {
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        try
+        {
+            var endpoints = (await client.ListWindowsEndpointsAsync()).Endpoints;
+            var captureId = endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!; var renderId = endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
+            var candidate = WorkerScanV2CandidatePlanning.Make(0, 50_000, route, 144, 480, 144, 480); var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+            var budget = new WorkerScanV2Budget(7, 25, 600);
+            var plan = new WorkerScanV2ContractV4(route, [candidate], ["PRO_AUDIO"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds, true);
+            var consent = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, plan, client.DiscoveryGeneration, true, Guid.NewGuid());
+            var operations = new List<string>(); var root = Path.Combine(Path.GetTempPath(), "klidan-repeat-selected-" + Guid.NewGuid().ToString("N"));
+            var result = await new WorkerV4AutomaticSearchWorkflow(client).RepeatSelectedAsync(new(captureId, renderId, plan, consent), new string('b', 64), 4, root,
+                testScenario: i => { operations.Add($"REPEAT_{i + 1}"); return stopAt == $"REPEAT_{i + 1}" ? "SERVICE_FAILURE" : stopAt == "UNKNOWN" && i == 0 ? "CLEANUP_UNKNOWN" : "CLEAN"; }, testOnlyAllowFake: true);
+            return (result, operations.ToArray(), root);
+        }
+        finally { await client.DisposeAsync(); }
+    }
+    var repeatSelectedClean = await RunRepeatSelected();
+    Check(repeatSelectedClean.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && repeatSelectedClean.Result.Evidence.RepeatabilityCompleted == 5 && repeatSelectedClean.Operations.Length == 5 && repeatSelectedClean.Result.Evidence.UsedOperations == 7 && repeatSelectedClean.Result.Evidence.MaximumActiveDuplexSeconds == 25 && Enumerable.Range(1, 5).All(i => File.Exists(Path.Combine(repeatSelectedClean.Root, $"repeat-{i:D2}.json"))), "RepeatSelected writes five sequential single-run evidence files and remains within the 7-op/25-second authorization budget");
+    Directory.Delete(repeatSelectedClean.Root, true);
+    var repeatSelectedFailed = await RunRepeatSelected("REPEAT_3");
+    Check(repeatSelectedFailed.Result.Evidence.SelectionState == "REPEATABILITY_FAILED" && repeatSelectedFailed.Result.Evidence.RepeatabilityCompleted == 3 && repeatSelectedFailed.Operations.Length == 3, "RepeatSelected stops after first FAILED result");
+    Directory.Delete(repeatSelectedFailed.Root, true);
+    var repeatSelectedUnknown = await RunRepeatSelected("UNKNOWN");
+    Check(repeatSelectedUnknown.Result.Evidence.SelectionState == "UNKNOWN" && repeatSelectedUnknown.Result.Evidence.RepeatabilityCompleted == 1 && repeatSelectedUnknown.Operations.Length == 1, "RepeatSelected stops after first UNKNOWN result");
+    Directory.Delete(repeatSelectedUnknown.Root, true);
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);
@@ -1552,6 +1830,12 @@ static bool FirstInstanceIsExclusive(NativeWorkerClient worker)
     using var duplicate = NativeSecurity.CreateNamedPipeForTest($"\\\\.\\pipe\\{worker.PipeNameForTests}", worker.PipeOpenModeForTests, worker.PipeModeForTests, 1, 65536, 65536, 0, IntPtr.Zero);
     var error = Marshal.GetLastWin32Error();
     return duplicate.IsInvalid && error is 5 or 231;
+}
+
+sealed class ControlledAudioHostQualificationAdapter(Func<AudioHostCandidateQualificationRequest, AudioHostCandidateQualificationResult> resultFactory) : IAudioHostQualificationAdapter
+{
+    public Task<AudioHostCandidateQualificationResult> QualifyAsync(AudioHostCandidateQualificationRequest request, CancellationToken cancellationToken) =>
+        Task.FromResult(resultFactory(request));
 }
 
 static class NativeSecurity

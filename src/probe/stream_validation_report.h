@@ -21,6 +21,8 @@ struct Report {
     std::optional<double> elapsedMilliseconds, frameCoveragePercent;
     std::optional<std::uint64_t> discontinuities, timestampErrors, unavailableCaptureBuffers;
     std::optional<std::uint64_t> bufferServiceFaults, eventWaitTimeouts;
+    std::optional<std::uint64_t> longEventIntervals;
+    std::optional<double> eventIntervalMaximumMilliseconds, eventIntervalMaximumEndOffsetMilliseconds, longEventIntervalThresholdMilliseconds;
     std::optional<bool> formatSupported, initialized, eventReady, startSucceeded, durationReached;
     std::optional<bool> cancelled, watchdogTimedOut, deviceInvalidated, stopSucceeded;
 };
@@ -59,6 +61,8 @@ inline std::string ToJson(const Report& r, std::string_view timestampUtc, std::s
         << ",\"durationReached\":" << Optional(r.durationReached) << ",\"discontinuities\":" << Optional(r.discontinuities)
         << ",\"timestampErrors\":" << Optional(r.timestampErrors) << ",\"unavailableCaptureBuffers\":" << Optional(r.unavailableCaptureBuffers)
         << ",\"bufferServiceFaults\":" << Optional(r.bufferServiceFaults) << ",\"eventWaitTimeouts\":" << Optional(r.eventWaitTimeouts)
+        << ",\"longEventIntervals\":" << Optional(r.longEventIntervals) << ",\"eventIntervalMaximumMilliseconds\":" << Optional(r.eventIntervalMaximumMilliseconds)
+        << ",\"eventIntervalMaximumEndOffsetMilliseconds\":" << Optional(r.eventIntervalMaximumEndOffsetMilliseconds) << ",\"longEventIntervalThresholdMilliseconds\":" << Optional(r.longEventIntervalThresholdMilliseconds)
         << ",\"watchdogTimedOut\":" << Optional(r.watchdogTimedOut) << ",\"cancelled\":" << Optional(r.cancelled)
         << ",\"deviceInvalidated\":" << Optional(r.deviceInvalidated) << ",\"streamQuality\":" << Escape(r.streamQuality)
         << ",\"stopSucceeded\":" << Optional(r.stopSucceeded) << ",\"stopHresult\":" << OptionalString(r.stopHresult)

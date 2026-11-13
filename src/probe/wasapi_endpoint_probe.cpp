@@ -333,6 +333,7 @@ struct StreamExecution {
     UINT64 positionAnomaliesWithoutDiscontinuity = 0;
     UINT64 discontinuitiesWithoutPositionAnomaly = 0;
     UINT64 discontinuitiesWithoutPositionComparison = 0;
+    DuplexValidationReport::DiscontinuityPacketBuffer discontinuityPacketDetails;
     UINT64 timestampErrors = 0;
     UINT64 qpcValidPackets = 0;
     UINT64 firstDevicePosition = 0;
@@ -345,6 +346,12 @@ struct StreamExecution {
     UINT64 packetDrainLimitHits = 0;
     UINT64 longEventIntervals = 0;
     UINT64 eventIntervalsObserved = 0;
+    UINT64 eventWaitCount = 0, eventSignalCount = 0, eventTimeoutCount = 0, eventFailureCount = 0;
+    UINT64 cancelSignalCount = 0, peerStopSignalCount = 0, unexpectedWaitCount = 0, lastWaitResult = 0;
+    const char* lastWaitReason = "NOT_OBSERVED";
+    UINT64 framesPerEventMinimum = 0, framesPerEventMaximum = 0, framesPerEventTotal = 0, framesPerEventObserved = 0;
+    UINT64 releaseBufferFailures = 0;
+    HRESULT lastCaptureReleaseBufferResult = E_PENDING, lastRenderReleaseBufferResult = E_PENDING;
     UINT64 omittedEventIntervals = 0;
     UINT64 criticalErrors = 0;
     bool warning = false;
@@ -365,6 +372,8 @@ struct StreamExecution {
     std::chrono::steady_clock::time_point endedAt{};
     double eventIntervalSumMilliseconds = 0;
     double maximumEventIntervalMilliseconds = 0;
+    double maximumEventIntervalEndOffsetMilliseconds = 0;
+    double expectedEventIntervalMilliseconds = 0;
     double firstDiscontinuitySeconds = 0;
     double lastDiscontinuitySeconds = 0;
     double discontinuitySpacingSumSeconds = 0;
@@ -387,6 +396,7 @@ struct DuplexSideSummary {
     UINT64 invalidSelectedCaptureSamples = 0;
     UINT32 bufferFrames = 0;
     REFERENCE_TIME requestedPeriod = 0;
+    REFERENCE_TIME deviceDefaultPeriod = 0, deviceMinimumPeriod = 0, actualBufferPeriod = 0;
     ProbeMath::StreamStatus status = ProbeMath::StreamStatus::InitializeFailed;
     ProbeMath::StreamQuality quality = ProbeMath::StreamQuality::SevereAnomalies;
     SignalLevels::Metrics signalLevels{};
@@ -411,10 +421,25 @@ struct DuplexSideSummary {
     UINT64 devicePositionAnomalies = 0;
     UINT64 unavailableCaptureBuffers = 0;
     UINT64 silentBuffersServiced = 0;
+    UINT64 startupDiscontinuities = 0, steadyDiscontinuities = 0;
+    UINT64 positionAnomaliesWithDiscontinuity = 0;
+    UINT64 discontinuitiesWithoutPositionAnomaly = 0;
+    UINT64 discontinuitiesWithoutPositionComparison = 0;
+    DuplexValidationReport::DiscontinuityPacketBuffer discontinuityPacketDetails;
     bool peerStopped = false;
     bool watchdogTimedOut = false;
     bool deviceInvalidated = false;
     std::uint64_t eventIntervalsObserved = 0;
+    UINT64 eventWaitCount = 0, eventSignalCount = 0, eventTimeoutCount = 0, eventFailureCount = 0;
+    UINT64 cancelSignalCount = 0, peerStopSignalCount = 0, unexpectedWaitCount = 0, lastWaitResult = 0;
+    const char* lastWaitReason = "NOT_OBSERVED";
+    UINT64 framesPerEventMinimum = 0, framesPerEventMaximum = 0, framesPerEventTotal = 0, framesPerEventObserved = 0;
+    UINT64 releaseBufferFailures = 0;
+    HRESULT lastCaptureReleaseBufferResult = E_PENDING, lastRenderReleaseBufferResult = E_PENDING;
+    double firstEventDelayMilliseconds = 0;
+    double maximumEventIntervalMilliseconds = 0;
+    double maximumEventIntervalEndOffsetMilliseconds = 0;
+    double expectedEventIntervalMilliseconds = 0;
     std::optional<double> eventIntervalMedianMilliseconds;
     std::optional<double> eventIntervalP95Milliseconds;
     std::optional<double> eventIntervalP99Milliseconds;
@@ -536,9 +561,11 @@ public:
         sides_[side].activationResult = result;
     }
 
-    void RecordDevicePeriod(int side, HRESULT result) {
+    void RecordDevicePeriod(int side, HRESULT result, REFERENCE_TIME defaultPeriod, REFERENCE_TIME minimumPeriod) {
         std::lock_guard lock(mutex_);
         sides_[side].devicePeriodResult = result;
+        sides_[side].deviceDefaultPeriod = defaultPeriod;
+        sides_[side].deviceMinimumPeriod = minimumPeriod;
     }
 
     void RecordInitialize(int side, HRESULT first, HRESULT final, bool succeeded) {
@@ -568,6 +595,12 @@ public:
         summary.selectedCaptureSamples = execution.selectedCaptureSamples;
         summary.invalidSelectedCaptureSamples = execution.invalidSelectedCaptureSamples;
         summary.discontinuities = execution.discontinuities;
+        summary.startupDiscontinuities = execution.startupDiscontinuities;
+        summary.steadyDiscontinuities = execution.steadyDiscontinuities;
+        summary.positionAnomaliesWithDiscontinuity = execution.positionAnomaliesWithDiscontinuity;
+        summary.discontinuitiesWithoutPositionAnomaly = execution.discontinuitiesWithoutPositionAnomaly;
+        summary.discontinuitiesWithoutPositionComparison = execution.discontinuitiesWithoutPositionComparison;
+        summary.discontinuityPacketDetails = execution.discontinuityPacketDetails;
         summary.timestampErrors = execution.timestampErrors;
         summary.elapsedMilliseconds = elapsedMilliseconds;
         summary.durationReached = execution.durationReached;
@@ -585,6 +618,26 @@ public:
         summary.watchdogTimedOut = execution.watchdogTimedOut;
         summary.deviceInvalidated = execution.deviceInvalidated;
         summary.eventIntervalsObserved = execution.eventIntervalsObserved;
+        summary.maximumEventIntervalMilliseconds = execution.maximumEventIntervalMilliseconds;
+        summary.maximumEventIntervalEndOffsetMilliseconds = execution.maximumEventIntervalEndOffsetMilliseconds;
+        summary.expectedEventIntervalMilliseconds = execution.expectedEventIntervalMilliseconds;
+        summary.eventWaitCount = execution.eventWaitCount;
+        summary.eventSignalCount = execution.eventSignalCount;
+        summary.eventTimeoutCount = execution.eventTimeoutCount;
+        summary.eventFailureCount = execution.eventFailureCount;
+        summary.cancelSignalCount = execution.cancelSignalCount;
+        summary.peerStopSignalCount = execution.peerStopSignalCount;
+        summary.unexpectedWaitCount = execution.unexpectedWaitCount;
+        summary.lastWaitResult = execution.lastWaitResult;
+        summary.lastWaitReason = execution.lastWaitReason;
+        summary.framesPerEventMinimum = execution.framesPerEventMinimum;
+        summary.framesPerEventMaximum = execution.framesPerEventMaximum;
+        summary.framesPerEventTotal = execution.framesPerEventTotal;
+        summary.framesPerEventObserved = execution.framesPerEventObserved;
+        summary.releaseBufferFailures = execution.releaseBufferFailures;
+        summary.lastCaptureReleaseBufferResult = execution.lastCaptureReleaseBufferResult;
+        summary.lastRenderReleaseBufferResult = execution.lastRenderReleaseBufferResult;
+        summary.firstEventDelayMilliseconds = execution.firstEventSeconds * 1'000.0;
         if (!execution.eventIntervalsMilliseconds.empty()) {
             summary.eventIntervalMedianMilliseconds = ProbeMath::Percentile(execution.eventIntervalsMilliseconds, 50);
             summary.eventIntervalP95Milliseconds = ProbeMath::Percentile(execution.eventIntervalsMilliseconds, 95);
@@ -618,10 +671,11 @@ public:
         sides_[side].frames = frames;
     }
 
-    void RecordBufferInfo(int side, REFERENCE_TIME period, UINT32 frames) {
+    void RecordBufferInfo(int side, REFERENCE_TIME period, UINT32 frames, unsigned rate) {
         std::lock_guard lock(mutex_);
         sides_[side].requestedPeriod = period;
         sides_[side].bufferFrames = frames;
+        sides_[side].actualBufferPeriod = ProbeMath::DurationForFrames(frames, rate);
     }
 
     void RecordClassification(int side, ProbeMath::StreamStatus status, ProbeMath::StreamQuality quality,
@@ -827,6 +881,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
     std::vector<std::uint64_t> sourceFrameTags;
     MonitorLatency::RenderTracker renderMarkerTracker;
     const double expectedInterval = ProbeMath::ExpectedIntervalMilliseconds(bufferFrames, rate);
+    result.expectedEventIntervalMilliseconds = expectedInterval;
     const auto expectedIntervals = expectedInterval > 0
         ? static_cast<std::size_t>(durationSeconds * 1'000.0 / expectedInterval) + 64
         : 64;
@@ -1065,10 +1120,21 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
             waitHandles[waitCount++] = eventHandle;
             const DWORD waitResult = WaitForMultipleObjects(waitCount, waitHandles, FALSE, waitMilliseconds);
             const DWORD waitError = waitResult == WAIT_FAILED ? GetLastError() : ERROR_SUCCESS;
+            ++result.eventWaitCount;
+            result.lastWaitResult = waitResult;
             const auto afterWait = Clock::now();
             const bool externalCancelSignaled = cancelIndex != MAXDWORD && waitResult == WAIT_OBJECT_0 + cancelIndex;
             const bool stopSignaled = duplexStopIndex != MAXDWORD && waitResult == WAIT_OBJECT_0 + duplexStopIndex;
             const bool eventSignaled = waitResult == WAIT_OBJECT_0 + audioEventIndex;
+            if (eventSignaled) ++result.eventSignalCount;
+            else if (externalCancelSignaled) ++result.cancelSignalCount;
+            else if (stopSignaled) ++result.peerStopSignalCount;
+            else if (waitResult == WAIT_TIMEOUT) ++result.eventTimeoutCount;
+            else if (waitResult == WAIT_FAILED) ++result.eventFailureCount;
+            else ++result.unexpectedWaitCount;
+            result.lastWaitReason = eventSignaled ? "AUDIO_EVENT" : externalCancelSignaled ? "CANCEL_EVENT" :
+                stopSignaled ? "DUPLEX_STOP_EVENT" : waitResult == WAIT_TIMEOUT ? "WAIT_TIMEOUT" :
+                waitResult == WAIT_FAILED ? "WAIT_FAILED" : "UNEXPECTED_WAIT_RESULT";
             if (externalCancelSignaled) { result.cancelled = true; break; }
             if (stopSignaled) {
                 result.cancelled = duplex->OperatorCancelled();
@@ -1112,11 +1178,15 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                 fail("render event protocol", E_UNEXPECTED);
                 break;
             }
+            UINT64 framesThisEvent = 0;
             if (previousEventAt != Clock::time_point{}) {
                 const double interval = std::chrono::duration<double, std::milli>(eventAt - previousEventAt).count();
                 ++result.eventIntervalsObserved;
                 result.eventIntervalSumMilliseconds += interval;
-                result.maximumEventIntervalMilliseconds = std::max(result.maximumEventIntervalMilliseconds, interval);
+                if (interval > result.maximumEventIntervalMilliseconds) {
+                    result.maximumEventIntervalMilliseconds = interval;
+                    result.maximumEventIntervalEndOffsetMilliseconds = std::chrono::duration<double, std::milli>(eventAt - startedAt).count();
+                }
                 if (result.eventIntervalsMilliseconds.size() < result.eventIntervalsMilliseconds.capacity()) {
                     result.eventIntervalsMilliseconds.push_back(interval);
                 } else {
@@ -1236,6 +1306,8 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                 const bool hasRenderSubmitBegin = monitorLatencyData != nullptr &&
                     QueryPerformanceCounter(&renderSubmitBegin) != FALSE;
                 hr = render->ReleaseBuffer(bufferFrames, releaseFlags);
+                result.lastRenderReleaseBufferResult = hr;
+                if (hr != S_OK) ++result.releaseBufferFailures;
                 if (renderChannelSignal != nullptr) {
                     if (!renderChannelProtocol.ReleaseResult(hr == S_OK)) {
                         renderChannelProtocol.EndEvent();
@@ -1256,6 +1328,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                 }
                 ++result.packets;
                 result.frames += bufferFrames;
+                framesThisEvent += bufferFrames;
                 if (releaseFlags == AUDCLNT_BUFFERFLAGS_SILENT) ++result.silentBuffersServiced;
                 if (monitorLatencyData != nullptr && flow == eRender) {
                     const auto to100ns = [&](LONGLONG ticks) {
@@ -1304,6 +1377,8 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                     bool positionAnomaly = false;
                     bool positionValueValid = timestampValid;
                     bool positionTransitionChecked = false;
+                    std::uint64_t positionDeltaFrames = 0;
+                    const char* positionTransition = timestampValid ? "INITIAL" : "TIMESTAMP_INVALID";
                     if (timestampValid) {
                         ++result.qpcValidPackets;
                         if (result.qpcValidPackets == 1) {
@@ -1319,6 +1394,9 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                             ++result.positionTransitionsChecked;
                             const auto delta = ProbeMath::CompareDevicePosition(
                                 true, result.previousDeviceEnd, devicePosition, true);
+                            positionDeltaFrames = delta.frames;
+                            positionTransition = delta.transition == ProbeMath::PositionTransition::Jump ? "JUMP"
+                                : delta.transition == ProbeMath::PositionTransition::Overlap ? "OVERLAP" : "CONTIGUOUS";
                             if (delta.transition == ProbeMath::PositionTransition::Jump) {
                                 ++result.positionJumps;
                                 result.jumpFramesTotal += delta.frames;
@@ -1332,6 +1410,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                             }
                         } else if (result.capturePacketsObserved > 1) {
                             ++result.positionRebases;
+                            positionTransition = "REBASE";
                         }
                         if (devicePosition > std::numeric_limits<UINT64>::max() - frames) {
                             ++result.invalidDevicePositions;
@@ -1363,6 +1442,17 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                         } else {
                             ++result.discontinuitiesWithoutPositionAnomaly;
                         }
+                        DuplexValidationReport::DiscontinuityPacket detail;
+                        detail.packetOrdinal = result.capturePacketsObserved;
+                        detail.eventOrdinal = result.events;
+                        detail.millisecondsSinceStart = secondsSinceStart * 1'000.0;
+                        detail.flags = flags;
+                        detail.devicePosition = devicePosition;
+                        detail.qpcPosition = qpcPosition;
+                        if (positionTransitionChecked) detail.devicePositionDeltaFrames = positionDeltaFrames;
+                        detail.devicePositionTransition = positionTransition;
+                        detail.phase = secondsSinceStart <= 1.0 ? "STARTUP" : "STEADY";
+                        result.discontinuityPacketDetails.Record(detail);
                     }
                     if (positionAnomaly && !dataDiscontinuity) {
                         ++result.positionAnomaliesWithoutDiscontinuity;
@@ -1461,6 +1551,8 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                         channelMeter->Process(reinterpret_cast<const std::int16_t*>(data), frames,
                             (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
                     hr = capture->ReleaseBuffer(frames);
+                    result.lastCaptureReleaseBufferResult = hr;
+                    if (hr != S_OK) ++result.releaseBufferFailures;
                     if (hr != S_OK) {
                         fail("capture ReleaseBuffer", hr);
                         break;
@@ -1491,6 +1583,7 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                         duplex->RequestStop(false);
                     ++result.packets;
                     result.frames += frames;
+                    framesThisEvent += frames;
                     if (monitorLatencyData != nullptr && duplex != nullptr && duplex->StopRequested()) break;
                 }
                 if (packetsThisEvent == 64) {
@@ -1498,6 +1591,11 @@ StreamExecution RunStream(IAudioClient* client, HANDLE eventHandle, EDataFlow fl
                     result.warning = true;
                 }
             }
+            ++result.framesPerEventObserved;
+            result.framesPerEventTotal += framesThisEvent;
+            if (result.framesPerEventObserved == 1) result.framesPerEventMinimum = framesThisEvent;
+            else result.framesPerEventMinimum = std::min(result.framesPerEventMinimum, framesThisEvent);
+            result.framesPerEventMaximum = std::max(result.framesPerEventMaximum, framesThisEvent);
             const auto afterService = Clock::now();
             if (!result.criticalError && clockSeries != nullptr && audioClock != nullptr &&
                 clockSeries->storageReady && clockSeries->frequencyHresult == ClockAnalysis::kSOk &&
@@ -1935,7 +2033,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
     REFERENCE_TIME defaultPeriod = 0;
     REFERENCE_TIME minimumPeriod = 0;
     hr = client->GetDevicePeriod(&defaultPeriod, &minimumPeriod);
-    if (duplex != nullptr) duplex->RecordDevicePeriod(duplexSide, hr);
+    if (duplex != nullptr) duplex->RecordDevicePeriod(duplexSide, hr, defaultPeriod, minimumPeriod);
     if (streamReport != nullptr) {
         streamReport->devicePeriodHresult = Hresult(hr);
     }
@@ -2273,7 +2371,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
             MonitorRtlPreflight::kExpectedFrames);
     }
     if (duplex != nullptr && bufferReady && eventReady && loopbackReady)
-        duplex->RecordBufferInfo(duplexSide, requestedPeriod, actualFrames);
+        duplex->RecordBufferInfo(duplexSide, requestedPeriod, actualFrames, rate);
     if (streamDuration != 0 && bufferReady && eventReady) {
         if (!preflightReady) {
             std::puts("PREFLIGHT_STATUS: FAILED");
@@ -2359,6 +2457,13 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
             streamReport->unavailableCaptureBuffers = execution.unavailableCaptureBuffers;
             streamReport->bufferServiceFaults = execution.criticalErrors + execution.packetDrainLimitHits;
             streamReport->eventWaitTimeouts = execution.intermediateWaitTimeouts;
+            streamReport->longEventIntervals = execution.longEventIntervals;
+            if (execution.eventIntervalsObserved != 0) {
+                streamReport->eventIntervalMaximumMilliseconds = execution.maximumEventIntervalMilliseconds;
+                streamReport->eventIntervalMaximumEndOffsetMilliseconds = execution.maximumEventIntervalEndOffsetMilliseconds;
+            }
+            if (execution.expectedEventIntervalMilliseconds > 0)
+                streamReport->longEventIntervalThresholdMilliseconds = execution.expectedEventIntervalMilliseconds * 1.5;
             streamReport->durationReached = execution.durationReached;
             streamReport->cancelled = execution.cancelled;
             streamReport->watchdogTimedOut = execution.watchdogTimedOut;
@@ -2367,7 +2472,7 @@ int TestInitialize(IMMDevice* device, EDataFlow flow, const std::wstring& endpoi
             streamReport->errorStage = execution.errorStage;
             if (execution.criticalError || execution.cancelled || execution.watchdogTimedOut)
                 streamReport->errorHresult = Hresult(execution.errorResult);
-            streamReport->streamQuality = execution.criticalError || execution.discontinuities || execution.timestampErrors || execution.packetDrainLimitHits || !execution.sufficientFrames
+            streamReport->streamQuality = execution.criticalError || execution.discontinuities || execution.timestampErrors || execution.packetDrainLimitHits || execution.longEventIntervals || !execution.sufficientFrames
                 ? "ANOMALIES_PRESENT" : execution.started && execution.durationReached && execution.sufficientFrames && execution.stopped ? "CLEAN" : "INCOMPLETE";
         }
         if (channelMeter != nullptr) {
@@ -3959,11 +4064,25 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.events = source.events;
             side.packets = source.packets;
             side.discontinuities = source.discontinuities;
+            side.startupDiscontinuities = source.startupDiscontinuities;
+            side.steadyDiscontinuities = source.steadyDiscontinuities;
+            side.positionAnomaliesWithDiscontinuity = source.positionAnomaliesWithDiscontinuity;
+            side.discontinuitiesWithoutPositionAnomaly = source.discontinuitiesWithoutPositionAnomaly;
+            side.discontinuitiesWithoutPositionComparison = source.discontinuitiesWithoutPositionComparison;
+            side.discontinuityPacketDetailsOmitted = source.discontinuityPacketDetails.omitted;
+            side.discontinuityPackets.assign(source.discontinuityPacketDetails.packets.begin(),
+                source.discontinuityPacketDetails.packets.begin() + source.discontinuityPacketDetails.count);
             side.timestampErrors = source.timestampErrors;
             side.serviceFaults = source.serviceFaults;
             side.packetDrainLimitHits = source.packetDrainLimitHits;
             side.intermediateWaitTimeouts = source.intermediateWaitTimeouts;
             side.longEventIntervals = source.longEventIntervals;
+            if (source.eventIntervalsObserved != 0) {
+                side.eventIntervalMaximumMilliseconds = source.maximumEventIntervalMilliseconds;
+                side.eventIntervalMaximumEndOffsetMilliseconds = source.maximumEventIntervalEndOffsetMilliseconds;
+            }
+            if (source.expectedEventIntervalMilliseconds > 0)
+                side.longEventIntervalThresholdMilliseconds = source.expectedEventIntervalMilliseconds * 1.5;
             side.devicePositionAnomalies = direction == "CAPTURE"
                 ? std::optional<std::uint64_t>(source.devicePositionAnomalies) : std::nullopt;
             side.silentBuffersServiced = direction == "RENDER"
@@ -3978,6 +4097,39 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
             side.eventIntervalMedianMilliseconds = source.eventIntervalMedianMilliseconds;
             side.eventIntervalP95Milliseconds = source.eventIntervalP95Milliseconds;
             side.eventIntervalP99Milliseconds = source.eventIntervalP99Milliseconds;
+            if (source.requestedPeriod > 0) side.requestedPeriod100ns = static_cast<std::uint64_t>(source.requestedPeriod);
+            if (source.devicePeriodResult == S_OK) {
+                side.deviceDefaultPeriod100ns = static_cast<std::uint64_t>(source.deviceDefaultPeriod);
+                side.deviceMinimumPeriod100ns = static_cast<std::uint64_t>(source.deviceMinimumPeriod);
+            }
+            if (source.actualBufferPeriod > 0) side.actualBufferPeriod100ns = static_cast<std::uint64_t>(source.actualBufferPeriod);
+            if (source.firstEventDelayMilliseconds > 0) side.firstEventDelayMilliseconds = source.firstEventDelayMilliseconds;
+            if (source.framesPerEventObserved != 0) {
+                side.framesPerEventMinimum = source.framesPerEventMinimum;
+                side.framesPerEventMaximum = source.framesPerEventMaximum;
+                side.framesPerEventMean = static_cast<double>(source.framesPerEventTotal) / static_cast<double>(source.framesPerEventObserved);
+            }
+            side.eventWaitCount = source.eventWaitCount;
+            side.eventSignalCount = source.eventSignalCount;
+            side.eventTimeoutCount = source.eventTimeoutCount;
+            side.eventFailureCount = source.eventFailureCount;
+            side.cancelSignalCount = source.cancelSignalCount;
+            side.peerStopSignalCount = source.peerStopSignalCount;
+            side.unexpectedWaitCount = source.unexpectedWaitCount;
+            side.lastWaitResult = source.lastWaitResult;
+            side.lastWaitReason = source.lastWaitReason;
+            if (source.requestedPeriod <= 0 || source.actualBufferPeriod <= 0) side.cadenceAssessment = "NOT_ASSESSABLE";
+            else if (source.actualBufferPeriod != source.requestedPeriod) side.cadenceAssessment = "ACTUAL_BUFFER_PERIOD_DIFFERS_FROM_REQUESTED";
+            else if (!source.eventIntervalMedianMilliseconds) side.cadenceAssessment = "INSUFFICIENT_EVENT_INTERVALS";
+            else {
+                const double actualMs = static_cast<double>(source.actualBufferPeriod) / 10'000.0;
+                const double medianMs = *source.eventIntervalMedianMilliseconds;
+                side.cadenceAssessment = medianMs >= actualMs * 0.75 && medianMs <= actualMs * 1.5
+                    ? "OBSERVED_CADENCE_MATCHES_BUFFER_PERIOD" : "OBSERVED_CADENCE_DIFFERS_FROM_BUFFER_PERIOD";
+            }
+            side.captureReleaseBufferHresult = hrText(source.lastCaptureReleaseBufferResult);
+            side.renderReleaseBufferHresult = hrText(source.lastRenderReleaseBufferResult);
+            side.releaseBufferFailures = source.releaseBufferFailures;
             const auto expected = static_cast<std::uint64_t>(sideRate) * duration;
             if (expected != 0) side.frameCoveragePercent = 100.0 * static_cast<double>(source.frames) / static_cast<double>(expected);
             side.elapsedMilliseconds = source.elapsedMilliseconds;
