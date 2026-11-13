@@ -3789,6 +3789,41 @@ void RunB5B19CIntegrationTests()
     Check(a4.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a4.ViewModel.V4ProgressText.Contains("injected terminal manifest write fault", StringComparison.Ordinal) && !Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Any(), $"A4 terminal manifest write fault blocks LOAD_CLEAN publication and DEVICE profile creation [state={a4.ViewModel.V4ResultState}; progress={a4.ViewModel.V4ProgressText}; profiles={Directory.GetFiles(a4.ProfileDirectory, "profile-*.json").Length}]");
     var a5 = RunV4FailureCase("A5-manifest-readback", (vm, workflow) => { workflow.PendingProfile = captureProfile; SetRunRead(vm, path => Path.GetFileName(path) == "run-manifest.json" ? throw new IOException("injected terminal manifest read-back fault") : File.ReadAllBytes(path)); });
     Check(a5.ViewModel.V4ResultState == "EVIDENCE_INCOMPLETE" && a5.ViewModel.V4ProgressText.Contains("injected terminal manifest read-back fault", StringComparison.Ordinal) && !Directory.GetFiles(a5.ProfileDirectory, "profile-*.json").Any(), "A5 terminal manifest read-back fault blocks LOAD_CLEAN publication and DEVICE profile creation");
+    string? BloodyQualificationScenario(int index, string operation)
+    {
+        if (operation.EndsWith("_INITIALIZE", StringComparison.Ordinal)) return null;
+        if (index < 7) return "SERVICE_FAILURE";
+        return "CLEAN";
+    }
+    var noAudioHost = RunSyntheticCoordinatorWorkflow("B5B.21 Bloody R5 without AudioHost", "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}", "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}", 2,
+        scenario: BloodyQualificationScenario, audioHostUnavailable: true);
+    var selectedWithoutAudioHost = noAudioHost.Result.Evidence.Candidates[7];
+    var resultRunManifest = Path.Combine(noAudioHost.RunDirectory, "run-manifest.json");
+    RunEvidenceManifest.Verify(noAudioHost.RunDirectory, resultRunManifest, noAudioHost.RunId);
+    var qualificationSource = Path.Combine(noAudioHost.RunDirectory, "qualification-source");
+    Check(noAudioHost.Result.QualificationStatus == "NOT_QUALIFIED" && noAudioHost.Result.Evidence.SelectedCandidateIndex == 7 && noAudioHost.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" &&
+        noAudioHost.Result.Evidence.RepeatabilityRequested == 5 && noAudioHost.Result.Evidence.RepeatabilityCompleted == 5 && noAudioHost.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") &&
+        noAudioHost.Result.Evidence.Candidates.Take(7).All(c => c.DuplexDisposition == "FAILED" && c.LowerPeriodCoverage == "COMPLETE") &&
+        selectedWithoutAudioHost.Candidate.RequestedDuration100ns == 100_000 && selectedWithoutAudioHost.ActualCaptureFrames == 480 && selectedWithoutAudioHost.ActualRenderFrames == 480 &&
+        selectedWithoutAudioHost.ActualCapturePeriod100ns == 100_000 && selectedWithoutAudioHost.ActualRenderPeriod100ns == 100_000 && selectedWithoutAudioHost.LowerPeriodCoverage == "COMPLETE" &&
+        noAudioHost.Result.QualificationDiagnostic == "AUDIOHOST_ADAPTER_UNAVAILABLE" && noAudioHost.AudioHostCalls == 0 && noAudioHost.Result.ProfilePath is null &&
+        !Directory.GetFiles(noAudioHost.ProfileDirectory, "profile-*.json").Any() && noAudioHost.ViewModel.V4ResultState == "REPEATABILITY_CONFIRMED" &&
+        noAudioHost.ViewModel.V4ResultSummary.Contains("10 ms", StringComparison.Ordinal) && noAudioHost.ViewModel.V4ResultSummary.Contains("480", StringComparison.Ordinal) &&
+        noAudioHost.ViewModel.V4ResultSummary.Contains("minimum stable SHORT candidate", StringComparison.Ordinal) && noAudioHost.ViewModel.V4ResultSummary.Contains("R5 CLEAN (5/5)", StringComparison.Ordinal) &&
+        noAudioHost.ViewModel.V4ResultSummary.Contains("AudioHost: NOT_QUALIFIED", StringComparison.Ordinal) && noAudioHost.ViewModel.V4ResultSummary.Contains("AUDIOHOST_ADAPTER_UNAVAILABLE", StringComparison.Ordinal) &&
+        Directory.GetFiles(qualificationSource, "short-search-summary.json", SearchOption.AllDirectories).Length == 1 && Directory.GetFiles(qualificationSource, "repeatability-summary.json", SearchOption.AllDirectories).Length == 1,
+        $"B5B.21 missing AudioHost retains the 3–9 ms failed coverage, 10 ms C480/R480, R5=5/5 CLEAN, run evidence, and separate NOT_QUALIFIED state [state={noAudioHost.ViewModel.V4ResultState}; selected={noAudioHost.Result.Evidence.SelectedCandidateIndex}; summary={noAudioHost.ViewModel.V4ResultSummary.Replace(Environment.NewLine, " | ")}] ");
+    Check(noAudioHost.Result.Evidence.RunId == noAudioHost.RunId && noAudioHost.Result.Evidence.CaptureEndpointId == noAudioHost.CaptureId && noAudioHost.Result.Evidence.RenderEndpointId == noAudioHost.RenderId &&
+        noAudioHost.WorkerOperationCount == 29 && noAudioHost.AudioHostCalls == 0 && VerifySyntheticRunChain(noAudioHost) && EveryCoordinatorJsonMatches(noAudioHost) &&
+        !Directory.GetFiles(noAudioHost.ProfileDirectory, "profile-*.json").Any(), "B5B.21 persisted immutable run chain keeps the exact Bloody endpoint identity and does not publish a profile without AudioHost");
+    var failedRepeat = RunSyntheticCoordinatorWorkflow("B5B.21 failed R5 blocks selection", "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}", "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}", 2,
+        scenario: (index, operation) => operation.EndsWith("_INITIALIZE", StringComparison.Ordinal) ? null : index < 7 ? "SERVICE_FAILURE" : operation == "REPEAT_1" ? "SERVICE_FAILURE" : "CLEAN", audioHostUnavailable: true);
+    var unknownRepeat = RunSyntheticCoordinatorWorkflow("B5B.21 unknown R5 blocks selection", "{0.0.1.00000000}.{afe1b68b-8f76-4815-aa2e-1e544322465d}", "{0.0.0.00000000}.{ba4ca4cc-35d7-437a-b53b-99ffedc7e5b8}", 2,
+        scenario: (index, operation) => operation.EndsWith("_INITIALIZE", StringComparison.Ordinal) ? null : index < 7 ? "SERVICE_FAILURE" : operation == "REPEAT_1" ? "CLEANUP_UNKNOWN" : "CLEAN", audioHostUnavailable: true);
+    Check(failedRepeat.Result.Evidence.SelectedCandidateIndex is null && failedRepeat.Result.Evidence.SelectionState == "MINIMUM_NOT_PROVEN" && failedRepeat.Result.Evidence.Candidates[7].RepeatabilityStatus == "FAILED" && failedRepeat.AudioHostCalls == 0 && failedRepeat.Result.ProfilePath is null,
+        "B5B.21 failed repeatability blocks selection and AudioHost qualification");
+    Check(unknownRepeat.Result.Evidence.SelectedCandidateIndex is null && unknownRepeat.Result.Evidence.Lifecycle == "UNKNOWN" && unknownRepeat.Result.Evidence.Candidates[7].RepeatabilityStatus == "UNKNOWN" && unknownRepeat.AudioHostCalls == 0 && unknownRepeat.Result.ProfilePath is null,
+        "B5B.21 unknown repeatability blocks selection and AudioHost qualification");
     var profileSaveFailure = RunV4FailureCase("profile-publication-failure", (vm, workflow) =>
     {
         workflow.PendingProfile = captureProfile;
@@ -3880,7 +3915,8 @@ RunB5B19CIntegrationTests();
 
 (string Name, string EvidenceRoot, string RunDirectory, string ProfileDirectory, string CaptureId, string RenderId, Guid RunId,
     MainViewModel ViewModel, V4AutomaticSearchResult Result, int WorkerOperationCount, int AudioHostCalls) RunSyntheticCoordinatorWorkflow(
-    string name, string captureId, string renderId, int captureChannels, Action<MainViewModel>? configure = null)
+    string name, string captureId, string renderId, int captureChannels, Action<MainViewModel>? configure = null,
+    Func<int, string, string?>? scenario = null, bool audioHostUnavailable = false)
 {
     var root = Path.Combine(Path.GetTempPath(), "klidan-b5b19c-" + Guid.NewGuid().ToString("N"));
     var evidenceRoot = Path.Combine(root, "runs"); var profileDirectory = Path.Combine(root, "profiles");
@@ -3914,9 +3950,13 @@ RunB5B19CIntegrationTests();
             DiscoveryGeneration = nativeWorker.DiscoveryGeneration,
             RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, counts!.Single(), encoding: direction == "RENDER" ? "FLOAT32" : "PCM16"))
         };
-        var audioHost = new SyntheticAudioHostQualificationAdapter(); var workerOperations = new List<string>();
+        var audioHost = audioHostUnavailable ? null : new SyntheticAudioHostQualificationAdapter(); var workerOperations = new List<string>();
         var coordinator = new WorkerV4ScanQualificationCoordinator(new WorkerV4AutomaticSearchWorkflow(nativeWorker), audioHost,
-            (index, operation) => { workerOperations.Add($"{index}:{operation}"); return operation.EndsWith("_INITIALIZE", StringComparison.Ordinal) ? null : "CLEAN"; });
+            (index, operation) =>
+            {
+                workerOperations.Add($"{index}:{operation}");
+                return scenario is not null ? scenario(index, operation) : operation.EndsWith("_INITIALIZE", StringComparison.Ordinal) ? null : "CLEAN";
+            });
         var previousContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
         var vm = new MainViewModel(worker: guiWorker, v4AutomaticSearchWorkflow: new PointDiagnosticWorkflowFake(),
@@ -3958,7 +3998,7 @@ RunB5B19CIntegrationTests();
         var runDirectory = Directory.GetDirectories(evidenceRoot).Single(path => File.Exists(Path.Combine(path, "run-start.json")));
         var runStart = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(runDirectory, "run-start.json")));
         var runId = runStart.RootElement.GetProperty("runId").GetGuid();
-        return (name, evidenceRoot, runDirectory, profileDirectory, captureId, renderId, runId, vm, result, workerOperations.Count, audioHost.CallCount);
+        return (name, evidenceRoot, runDirectory, profileDirectory, captureId, renderId, runId, vm, result, workerOperations.Count, audioHost?.CallCount ?? 0);
     }
     finally
     {

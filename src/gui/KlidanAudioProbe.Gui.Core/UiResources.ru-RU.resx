@@ -1427,12 +1427,12 @@ Fallback: {1}
   <data name="VmV4ScanError" xml:space="preserve"><value>Сканирование V4 остановлено: {0}: {1}</value></data>
   <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Запрошена отмена. Ожидание очистки Worker и сохранения evidence…</value></data>
   <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Минимум в проверенном диапазоне кандидатов не доказан</value></data>
-  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} — минимальный квалифицированный кандидат в полном обнаруженном диапазоне</value></data>
+  <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} — минимальный стабильный SHORT-кандидат в полностью проверенном диапазоне</value></data>
   <data name="VmV4ScanResults" xml:space="preserve"><value>Результат: {0}
 Выбранный период: {1} · Capture frames: {2} · Render frames: {3}
 Минимальный подтверждённый кандидат: {4}
 SHORT_CLEAN: {5} · Фактические периоды: Capture {6}, Render {7}
-Повторяемость: {8}/5
+Повторяемость: {8}
 Профиль: {9}
 Причины: {10}
 Матрица кандидатов:

@@ -84,7 +84,11 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             }
             if (row.DuplexDisposition != "CLEAN" || row.RepeatabilityStatus != "CONFIRMED" || scan.Evidence.RepeatabilityCompleted != 5 || scan.Evidence.RepeatabilityRuns.Any(r => r.Result != "CLEAN"))
                 return await Stop("UNKNOWN", "SHORT_OR_REPEATABILITY_RESULT_INCOMPLETE", candidate.Index).ConfigureAwait(false);
-            if (audioHost is null) return await Stop("NOT_QUALIFIED", "AUDIOHOST_ADAPTER_UNAVAILABLE", candidate.Index).ConfigureAwait(false);
+            if (audioHost is null)
+            {
+                await SaveQualificationSource(candidate, scan, prepared, evidenceRoot, cancellationToken).ConfigureAwait(false);
+                return await Stop("NOT_QUALIFIED", "AUDIOHOST_ADAPTER_UNAVAILABLE", candidate.Index, selectedCandidateIndex: candidate.Index).ConfigureAwait(false);
+            }
             if (audioHostRuns >= authorization.MaximumRuns || audioHostSeconds + 60 > authorization.MaximumDurationSeconds)
                 return await Stop("QA_FAILED", "CONSENTED_AUDIOHOST_BUDGET_EXHAUSTED", candidate.Index).ConfigureAwait(false);
 
@@ -153,9 +157,9 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
         await SaveCoordinatorSummary(new("NO_STABLE_BUFFER", null, attempts, exhausted, finalPath, "All discovered candidates failed with confirmed cleanup."), prepared, evidenceRoot, cancellationToken).ConfigureAwait(false);
         return new("NO_STABLE_BUFFER", null, attempts, exhausted, finalPath, "All discovered candidates failed with confirmed cleanup.");
 
-        async Task<V4ScanQualificationResult> Stop(string status, string message, int candidateIndex, string? lifecycle = null)
+        async Task<V4ScanQualificationResult> Stop(string status, string message, int candidateIndex, string? lifecycle = null, int? selectedCandidateIndex = null)
         {
-            var stopEvidence = BuildCombinedEvidence(prepared, rows, null, usedOperations, usedActiveSeconds, false,
+            var stopEvidence = BuildCombinedEvidence(prepared, rows, selectedCandidateIndex, usedOperations, usedActiveSeconds, false,
                 lifecycle ?? lastLifecycle, lastWorkerCleanup, message);
             var path = SaveEvidence(stopEvidence,
                 Path.Combine(evidenceRoot, $"v4-qualification-{status.ToLowerInvariant()}-{Guid.NewGuid():D}.json"));
@@ -163,8 +167,8 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
                 ? rows[candidateIndex].AudioHostQualification?.Cleanup ?? lastWorkerCleanup
                 : lastWorkerCleanup;
             attempts.Add(new(candidateIndex, prepared.Plan.Candidates[candidateIndex].CapturePeriod100ns, status, path, status, observedCleanup, null));
-            await SaveCoordinatorSummary(new(status, null, attempts, stopEvidence, path, message), prepared, evidenceRoot, CancellationToken.None).ConfigureAwait(false);
-            return new(status, null, attempts, stopEvidence, path, message);
+            await SaveCoordinatorSummary(new(status, selectedCandidateIndex, attempts, stopEvidence, path, message), prepared, evidenceRoot, CancellationToken.None).ConfigureAwait(false);
+            return new(status, selectedCandidateIndex, attempts, stopEvidence, path, message);
         }
     }
 
@@ -230,6 +234,8 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
             ?? throw new InvalidDataException("Terminal qualification evidence could not be read back.");
         if (readBack.RunId != prepared.RunId || readBack.CaptureEndpointId != prepared.CaptureEndpointId || readBack.RenderEndpointId != prepared.RenderEndpointId || readBack.Status != result.Status || readBack.Evidence.Lifecycle != result.Evidence.Lifecycle ||
             readBack.Evidence.SessionCleanup != result.Evidence.SessionCleanup || readBack.Evidence.StopReason != result.Evidence.StopReason ||
+            readBack.SelectedCandidateIndex != result.SelectedCandidateIndex || readBack.Evidence.SelectedCandidateIndex != result.Evidence.SelectedCandidateIndex ||
+            readBack.Evidence.RepeatabilityCompleted != result.Evidence.RepeatabilityCompleted ||
             readBack.Attempts.Count != result.Attempts.Count)
             throw new InvalidDataException("Terminal qualification evidence read-back differs from actual run state.");
     }
