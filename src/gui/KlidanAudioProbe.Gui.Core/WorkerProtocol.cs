@@ -194,6 +194,8 @@ public sealed record WorkerScanV2ContractV4(WorkerScanV2Route Route, IReadOnlyLi
     WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds);
 public sealed record WorkerScanV2Budget(int MaximumOperations, int MaximumActiveDuplexSeconds, int SessionLifetimeSeconds);
 public sealed record WorkerScanV2V4Consent(bool Accepted, Guid ConfirmationId, string PlanFingerprint, ulong DiscoveryGeneration);
+public sealed record WorkerScanV2V4PreparedPlan(string CaptureEndpointId, string RenderEndpointId,
+    WorkerScanV2ContractV4 Plan, WorkerScanV2V4Consent Consent);
 public static class WorkerScanV2CandidatePlanning
 {
     public static IReadOnlyList<WorkerScanV2Candidate> Generate(WorkerScanV2Route route, int captureMinFrames, int captureMaxFrames,
@@ -228,11 +230,12 @@ public static class WorkerScanV2CandidatePlanning
         var renderMin = Frames(renderBounds.MinimumPeriod100ns, route.Render.SampleRateHz);
         var renderMax = Frames(renderBounds.DefaultPeriod100ns, route.Render.SampleRateHz);
         if (captureMin <= 0 || renderMin <= 0 || captureMax < captureMin || renderMax < renderMin) return [];
-        var periods = new SortedSet<long>();
-        for (var i = 0; i < 8; i++) periods.Add(checked(lower + (long)(((decimal)(upper - lower) * i) / 7m)));
+        var periods = new SortedSet<long> { lower };
+        for (var i = 1; i < 8 && checked(lower + i * 10_000L) < upper; i++) periods.Add(checked(lower + i * 10_000L));
+        if (periods.Count < 8) periods.Add(upper);
         return periods.Select((duration, index) => Make(index, duration, route, captureMin, captureMax, renderMin, renderMax,
                 captureBounds.AlignmentFrames ?? 0, renderBounds.AlignmentFrames ?? 0, captureBounds.AlignmentFrames.HasValue, renderBounds.AlignmentFrames.HasValue))
-            .GroupBy(c => (c.CapturePeriod100ns, c.RenderPeriod100ns)).Select(g => g.First()).Take(8)
+            .GroupBy(c => (c.CapturePeriod100ns, c.RenderPeriod100ns)).Select(g => g.First())
             .Select((candidate, index) => candidate with { Index = index }).ToArray();
     }
 

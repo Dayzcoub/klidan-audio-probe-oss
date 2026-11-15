@@ -778,6 +778,36 @@ try
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
     await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
+    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario)
+    {
+        var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
+        var found = await client.ListWindowsEndpointsAsync();
+        var captureId = found.Endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!;
+        var renderId = found.Endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
+        var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
+        var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, 5);
+        var searchPlan = new WorkerScanV2ContractV4(route, candidates, ["OFF"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var accepted = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, searchPlan, client.DiscoveryGeneration, true, Guid.NewGuid());
+        var seen = new List<string>();
+        var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-search-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = await new WorkerV4AutomaticSearchWorkflow(client).RunAsync(new(captureId, renderId, searchPlan, accepted), evidenceRoot,
+                testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); });
+            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence).Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal), $"{name} full candidate matrix persists and reads back synthetic provenance");
+            return (result, seen.ToArray());
+        }
+        finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
+    }
+    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null);
+    Check(bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.Candidates.Take(3).Select(e => e.DuplexDisposition).SequenceEqual(new[] { "FAILED", "FAILED", "CLEAN" }) && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody selects 5 ms after FAILED 3/4 ms and skips every larger candidate");
+    Check(bloodySearch.Operations.SequenceEqual(new[] { "3:CAPTURE_INITIALIZE", "3:RENDER_INITIALIZE", "3:DUPLEX", "4:CAPTURE_INITIALIZE", "4:RENDER_INITIALIZE", "4:DUPLEX", "5:CAPTURE_INITIALIZE", "5:RENDER_INITIALIZE", "5:DUPLEX" }), "Bloody search serializes Capture Initialize, Render Initialize, then Short Duplex for each candidate");
+    Check(bloodySearch.Result.Evidence.UsedOperations == 9 && bloodySearch.Result.Evidence.UsedActiveDuplexSeconds == 15 && bloodySearch.Result.Evidence.RepeatabilityPending && !bloodySearch.Result.Evidence.GlobalMinimumProven, "B3 records bounded operations and leaves repeatability pending for B4");
+    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null);
+    Check(flow8Search.Result.Evidence.SelectedCandidateIndex == 0 && flow8Search.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "SKIPPED"), "FLOW 8 selects its first confirmed SHORT_CLEAN and skips later candidates");
+    var unknownSearch = await RunV4Search("UNKNOWN stop synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEANUP_UNKNOWN" : null);
+    Check(unknownSearch.Result.Evidence.SelectionState == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates[0].DuplexDisposition == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "NOT_TESTED" && e.LowerPeriodCoverage == "UNKNOWN") && unknownSearch.Operations.Length == 3, "UNKNOWN immediately stops the search and leaves later candidates explicitly untested");
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);

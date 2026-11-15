@@ -66,6 +66,8 @@ Check(v4Grid.Select(c => c.CaptureFrames).SequenceEqual(new[] { 144, 192, 240, 2
 var asymmetricRoute = autoRoute with { Capture = autoRoute.Capture with { SampleRateHz = 44100, Channels = 1, ChannelMask = 0 }, Render = autoRoute.Render with { SampleRateHz = 48000 } };
 var asymmetricCandidates = WorkerScanV2CandidatePlanning.Generate(asymmetricRoute, 132, 441, 144, 480);
 Check(asymmetricCandidates.Count is > 0 and <= 8 && asymmetricCandidates.All(c => c.CaptureFrames == (int)(((decimal)c.RequestedDuration100ns * 44100 + 5_000_000m) / 10_000_000m) && c.RenderFrames == (int)(((decimal)c.RequestedDuration100ns * 48000 + 5_000_000m) / 10_000_000m)) && asymmetricCandidates.Zip(asymmetricCandidates.Skip(1)).All(p => p.First.CapturePeriod100ns < p.Second.CapturePeriod100ns), "V4 computes independently rounded asymmetric 44.1/48 kHz geometry in ascending unique actual periods");
+var prioritizedCandidates = WorkerScanV2CandidatePlanning.GenerateFromBounds(autoRoute, new(30_000, 100_000), new(30_000, 100_000));
+Check(prioritizedCandidates.Select(c => c.RequestedDuration100ns).SequenceEqual(new long[] { 30_000, 40_000, 50_000, 60_000, 70_000, 80_000, 90_000, 100_000 }), "V4 candidate planning orders all 1 ms buffers from the reported minimum before the default boundary");
 Check(v4Budget == new WorkerScanV2Budget(29, 65, 1171) && WorkerScanV2ContractV4Fingerprint.Budget(1, 0) == new WorkerScanV2Budget(3, 5, 139), "V4 budget is checked at maximum and minimum operation scopes");
 var v4Bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
 var v4Plan = new WorkerScanV2ContractV4(autoRoute, v4Grid, ["OFF"], 5, 29, 65, 30, 1171, 8, v4Bounds, v4Bounds);
