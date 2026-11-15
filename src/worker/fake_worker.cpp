@@ -657,7 +657,7 @@ std::optional<std::string> RunDuplexCli(std::string_view operationId, std::strin
     CloseHandle(job); CloseHandle(process.hThread); CloseHandle(process.hProcess);
     std::ifstream input(std::filesystem::path(reportPath), std::ios::binary | std::ios::ate);
     const bool reportCreated = input.good();
-    failureDetail = "nativeExitCode=" + std::to_string(exitCode) + ";reportCreated=" + std::string(reportCreated ? "true" : "false") + ";termination=NORMAL;argumentParsingFailure=" + std::string(exitCode == 2 ? "true" : "false");
+    failureDetail = "nativeExitCode=" + std::to_string(exitCode) + ";reportCreated=" + std::string(reportCreated ? "true" : "false") + ";termination=NORMAL;argumentParsingFailure=UNKNOWN";
     if (!input) { failureCode = "DUPLEX_REPORT_MISSING"; return std::nullopt; }
     const auto length = input.tellg();
     if (length <= 0 || length > 65536) { failureCode = "DUPLEX_REPORT_INVALID_SIZE"; return std::nullopt; }

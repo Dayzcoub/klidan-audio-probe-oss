@@ -4346,13 +4346,14 @@ int wmain(int argc, wchar_t** argv) {
                 return 2;
             }
         }
-    } else if (confirmExclusiveInitSpecified || (outputJsonSpecified && !meterCapture && !testOutputChannel && !testStream && !testDuplex)) {
-        std::fwprintf(stderr, L"--confirm-exclusive-init requires a format matrix; --output-json requires a format matrix, --meter-capture, --test-output-channel, --test-stream, or --test-duplex.\n");
+    } else if (confirmExclusiveInitSpecified || (outputJsonSpecified && !meterCapture && !testOutputChannel && !testStream && !testDuplex && !testDuplexV2)) {
+        std::fwprintf(stderr, L"--confirm-exclusive-init requires a format matrix; --output-json requires a format matrix, --meter-capture, --test-output-channel, or a stream/duplex mode.\n");
         return 2;
     }
-    if (!operationIdText.empty() && !testDuplex) { std::fwprintf(stderr, L"--operation-id is an internal --test-duplex correlation option.\n"); return 2; }
+    const bool duplexMode = testDuplex || testDuplexV2;
+    if (!operationIdText.empty() && !duplexMode) { std::fwprintf(stderr, L"--operation-id is an internal duplex correlation option.\n"); return 2; }
     if (!operationIdText.empty() && !IsGuidText(operationIdText)) { std::fwprintf(stderr, L"--operation-id must be a UUID.\n"); return 2; }
-    if (cancelEventHandleSpecified && !testStream && !testDuplex) { std::fwprintf(stderr, L"--cancel-event-handle is an internal stream/duplex cancellation option.\n"); return 2; }
+    if (cancelEventHandleSpecified && !testStream && !duplexMode) { std::fwprintf(stderr, L"--cancel-event-handle is an internal stream/duplex cancellation option.\n"); return 2; }
     HANDLE externalCancelEvent = nullptr;
     if (cancelEventHandleSpecified) {
         wchar_t* end = nullptr;
@@ -4433,7 +4434,7 @@ int wmain(int argc, wchar_t** argv) {
     if (testMonitorRtlPreflight && testSignalText != L"klidan-prbs511-v1") {
         std::fwprintf(stderr, L"--test-monitor-rtl-preflight requires --test-signal klidan-prbs511-v1.\n"); return 2;
     }
-    if ((meterCapture || testOutputChannel || testStream || testDuplex) && outputJsonSpecified) {
+    if ((meterCapture || testOutputChannel || testStream || duplexMode) && outputJsonSpecified) {
         if (outputJson.empty()) {
             std::fwprintf(stderr, L"--output-json requires a non-empty file path.\n");
             return 2;
@@ -4457,7 +4458,7 @@ int wmain(int argc, wchar_t** argv) {
     if (meterCapture && !confirmLiveCapture) {
         std::fwprintf(stderr, L"--meter-capture requires explicit --confirm-live-capture.\n"); return 2;
     }
-    if (mmcssSpecified && !testStream && !testDuplex && !testMonitor && !testMonitorLatency && !testAnalogLoopback && !testMonitorRtlPreflight && !meterCapture && !testOutputChannel) {
+    if (mmcssSpecified && !testStream && !duplexMode && !testMonitor && !testMonitorLatency && !testAnalogLoopback && !testMonitorRtlPreflight && !meterCapture && !testOutputChannel) {
         std::fwprintf(stderr, L"--mmcss requires --test-stream or --test-duplex.\n");
         return 2;
     }
@@ -4507,7 +4508,7 @@ int wmain(int argc, wchar_t** argv) {
             (!testDuplexV2 && !meterCapture && !testOutputChannel && rateText != L"44100" && rateText != L"48000") || !meterArgsValid ||
             (!testDuplexV2 && !testOutputChannel && channelsText != L"1" && channelsText != L"2") ||
             (!testDuplexV2 && !meterCapture && !testOutputChannel && formatText != L"pcm16" && formatText != L"pcm24-in-32" && formatText != L"float32") ||
-            (periodSpecified && periodText != L"default" && periodText != L"minimum" && !(testDuplex && customPeriod))) {
+            (periodSpecified && periodText != L"default" && periodText != L"minimum" && !(duplexMode && customPeriod))) {
             const wchar_t* message = meterCapture
                 ? L"--meter-capture requires one explicit Capture endpoint, --channels 1|2, 48000 Hz PCM16, and optional --period default|minimum.\n"
             : testOutputChannel ? L"--test-output-channel requires both confirmations, --render-channel 1|2 and --duration 1..10; format is fixed at 48000 Hz stereo PCM16.\n"
@@ -4544,7 +4545,7 @@ int wmain(int argc, wchar_t** argv) {
                 : sustainedDuplex ? L"--test-sustained-duplex requires --duration 60, 300, or 600 seconds.\n" : L"--test-stream and --test-duplex require --duration from 1 to 30 seconds.\n");
             return 2;
         }
-        if (sustainedDuplex && streamDuration != 60U && streamDuration != 300U && streamDuration != 600U) {
+        if ((testDuplex || testDuplexV2) && sustainedDuplex && streamDuration != 60U && streamDuration != 300U && streamDuration != 600U) {
             std::fwprintf(stderr, L"--test-sustained-duplex supports only --duration 60, 300, or 600.\n");
             return 2;
         }
