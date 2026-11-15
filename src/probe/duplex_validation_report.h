@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include "channel_routing.h"
 
 namespace DuplexValidationReport {
 
@@ -28,8 +29,11 @@ struct Side {
     std::string errorHresult;
     std::string quality = "UNKNOWN";
     std::string cleanup = "UNKNOWN";
+    std::optional<ChannelRouting::EndpointFormat> routeFormat;
     std::uint64_t bufferFrames = 0;
     std::uint64_t framesProcessed = 0;
+    std::uint64_t selectedCaptureSamples = 0;
+    std::uint64_t invalidSelectedCaptureSamples = 0;
     std::uint64_t expectedFrames = 0;
     std::uint64_t events = 0;
     std::uint64_t packets = 0;
@@ -77,10 +81,12 @@ struct Report {
     bool cancelled = false;
     bool peerStopRequested = false;
     std::string status = "INCOMPLETE";
+    std::string routeFingerprint;
     std::optional<double> startDifferenceMilliseconds;
     std::optional<double> simultaneousRuntimeMilliseconds;
     Side capture;
     Side render;
+    std::optional<ChannelRouting::Configuration> route;
 };
 
 inline std::string ToJson(const Report& report) {
@@ -97,17 +103,45 @@ inline std::string ToJson(const Report& report) {
     w.Key("requested"); w.StartObject();
       w.Key("captureEndpointId"); w.String(report.captureEndpointId.c_str());
       w.Key("renderEndpointId"); w.String(report.renderEndpointId.c_str());
-      w.Key("sampleRateHz"); w.Int(48000);
-      w.Key("encoding"); w.String("PCM16");
-      w.Key("channels"); w.Int(2);
+      w.Key("sampleRateHz"); w.Int(report.route ? report.route->capture.format.sampleRate : 48000);
+      w.Key("encoding"); w.String(report.route ? ExclusiveFormatMatrix::EncodingText(report.route->capture.format.encoding) : "PCM16");
+      w.Key("channels"); w.Int(report.route ? report.route->capture.format.channels : 2);
       w.Key("period"); w.String(report.period.c_str());
       w.Key("durationSeconds"); w.Uint(report.durationSeconds);
       w.Key("mmcss"); w.String(report.mmcss.c_str());
     w.EndObject();
+    if (report.route) {
+      const auto& route = *report.route;
+      w.Key("route"); w.StartObject();
+      w.Key("contractVersion"); w.Uint(ChannelRouting::kContractVersion);
+      w.Key("fingerprint"); w.String(report.routeFingerprint.c_str());
+      w.Key("mode"); w.String(ChannelRouting::ModeText(route.mode).data());
+      w.Key("logicalChannelCount"); w.Uint(ChannelRouting::RenderCount(route.mode));
+      w.Key("capture"); w.StartObject();
+        w.Key("endpointId"); w.String(route.captureEndpointId.c_str());
+        w.Key("sampleRateHz"); w.Uint(route.capture.format.sampleRate);
+        w.Key("encoding"); w.String(ExclusiveFormatMatrix::EncodingText(route.capture.format.encoding));
+        w.Key("channels"); w.Uint(route.capture.format.channels);
+        w.Key("channelMask"); w.Uint(route.capture.channelMask);
+        w.Key("selectedIndicesZeroBased"); w.StartArray(); for (std::uint16_t i=0;i<ChannelRouting::CaptureCount(route.mode);++i) w.Uint(route.captureChannels[i]); w.EndArray();
+      w.EndObject();
+      w.Key("render"); w.StartObject();
+        w.Key("endpointId"); w.String(route.renderEndpointId.c_str());
+        w.Key("sampleRateHz"); w.Uint(route.render.format.sampleRate);
+        w.Key("encoding"); w.String(ExclusiveFormatMatrix::EncodingText(route.render.format.encoding));
+        w.Key("channels"); w.Uint(route.render.format.channels);
+        w.Key("channelMask"); w.Uint(route.render.channelMask);
+        w.Key("selectedIndicesZeroBased"); w.StartArray(); for (std::uint16_t i=0;i<ChannelRouting::RenderCount(route.mode);++i) w.Uint(route.renderChannels[i]); w.EndArray();
+      w.EndObject();
+      w.Key("physicalMapping"); w.String("UNKNOWN");
+      w.Key("renderPolicy"); w.String("SILENCE_ONLY");
+      w.EndObject();
+    }
     const auto side = [&w](const char* key, const Side& s) {
         w.Key(key); w.StartObject();
         w.Key("endpointId"); w.String(s.endpointId.c_str());
         w.Key("direction"); w.String(s.direction.c_str());
+        if(s.routeFormat){w.Key("format");w.StartObject();w.Key("sampleRateHz");w.Uint(s.routeFormat->format.sampleRate);w.Key("channels");w.Uint(s.routeFormat->format.channels);w.Key("encoding");w.String(ExclusiveFormatMatrix::EncodingText(s.routeFormat->format.encoding));w.Key("channelMask");w.Uint(s.routeFormat->channelMask);w.EndObject();}
         w.Key("activationHresult"); if (s.activationHresult.empty()) w.Null(); else w.String(s.activationHresult.c_str());
         w.Key("devicePeriodHresult"); if (s.devicePeriodHresult.empty()) w.Null(); else w.String(s.devicePeriodHresult.c_str());
         w.Key("isFormatSupportedHresult"); if (s.formatSupportHresult.empty()) w.Null(); else w.String(s.formatSupportHresult.c_str());
@@ -118,6 +152,8 @@ inline std::string ToJson(const Report& report) {
         w.Key("setEventHandleHresult"); if (s.eventHresult.empty()) w.Null(); else w.String(s.eventHresult.c_str());
         w.Key("actualBufferFrames"); if (s.bufferFrames == 0) w.Null(); else w.Uint64(s.bufferFrames);
         w.Key("framesProcessed"); w.Uint64(s.framesProcessed);
+        w.Key("selectedCaptureSamples"); w.Uint64(s.selectedCaptureSamples);
+        w.Key("invalidSelectedCaptureSamples"); w.Uint64(s.invalidSelectedCaptureSamples);
         w.Key("expectedFrames"); w.Uint64(s.expectedFrames);
         w.Key("events"); w.Uint64(s.events);
         w.Key("packets"); w.Uint64(s.packets);

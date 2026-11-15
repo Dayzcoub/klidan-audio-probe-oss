@@ -1,5 +1,6 @@
 #include "../src/probe/exclusive_format_matrix.h"
 #include "../src/probe/wasapi_format_matrix_api.h"
+#include "../src/probe/channel_routing.h"
 
 #include <cstdio>
 #include <fstream>
@@ -225,6 +226,47 @@ bool TestExplicitCandidatesAndSingleInitialization() {
     CHECK(large.has_value()&&large->Format.nChannels==64&&large->dwChannelMask==0&&large->Format.wBitsPerSample==32);
     const auto invalid=BuildWasapiFormat({48'000,65,Encoding::Pcm16});
     CHECK(!invalid.has_value());
+    const auto eight=BuildWasapiFormat({48'000,8,Encoding::Pcm24In32},0);
+    CHECK(eight && eight->Format.nChannels==8 && eight->dwChannelMask==0 && eight->Samples.wValidBitsPerSample==24);
+    const auto invalidMask=BuildWasapiFormat({48'000,8,Encoding::Pcm16},0x3);
+    CHECK(!invalidMask);
+    const auto explicitMask=BuildWasapiFormat({48'000,2,Encoding::Float32},0x3);
+    CHECK(explicitMask && explicitMask->dwChannelMask==0x3 && explicitMask->SubFormat==KSDATAFORMAT_SUBTYPE_IEEE_FLOAT);
+    return failures==0;
+}
+
+bool TestChannelRouting() {
+    using namespace ChannelRouting;
+    Configuration route{"capture-id","render-id",{{48'000,8,Encoding::Pcm24In32},0},{{44'100,2,Encoding::Float32},3},Mode::MonoToStereo,{7,0},{0,1}};
+    CHECK(Validate(route) && ModeText(route.mode)=="MONO_TO_STEREO");
+    route.mode=Mode::StereoToStereo;route.captureChannels={6,7};
+    CHECK(Validate(route) && CaptureCount(route.mode)==2 && RenderCount(route.mode)==2);
+    route.capture={{48'000,32,Encoding::Pcm16},0};route.render={{48'000,32,Encoding::Pcm16},0};route.captureChannels={30,31};route.renderChannels={16,17};
+    CHECK(Validate(route));
+    route.mode=Mode::MonoToMono;route.captureChannels={0,0};route.renderChannels={31,0};
+    CHECK(Validate(route) && CaptureCount(route.mode)==1 && RenderCount(route.mode)==1);
+    route.mode=Mode::StereoToStereo;route.captureChannels={3,3};
+    CHECK(!Validate(route));
+    route.captureChannels={0,1};route.renderChannels={0,32};
+    CHECK(!Validate(route));
+    route.renderChannels={0,1};route.render.channelMask=1;
+    CHECK(!Validate(route));
+    route.render.channelMask=0;route.render.format.sampleRate=96'000;
+    CHECK(!Validate(route));
+    route.render.format.sampleRate=48'000;route.renderEndpointId=route.captureEndpointId;
+    CHECK(!Validate(route));
+    route.renderEndpointId="render-id";route.capture.format.encoding=static_cast<Encoding>(255);
+    CHECK(!Validate(route));
+    const std::int16_t pcm16[]{-16384,8192};
+    route.capture.format={48'000,2,Encoding::Pcm16};
+    EndpointFormat sampleFormat{route.capture.format,0};
+    CHECK(ReadSample(pcm16,0,0,sampleFormat)==-0.5&&ReadSample(pcm16,0,1,sampleFormat)==0.25);
+    const std::int32_t pcm24[]{-1073741824,536870912};
+    sampleFormat.format.encoding=Encoding::Pcm24In32;
+    CHECK(ReadSample(pcm24,0,0,sampleFormat)==-0.5&&ReadSample(pcm24,0,1,sampleFormat)==0.25);
+    const float float32[]{0.125f,-0.25f};
+    sampleFormat.format.encoding=Encoding::Float32;
+    CHECK(ReadSample(float32,0,0,sampleFormat)==0.125&&ReadSample(float32,0,1,sampleFormat)==-0.25);
     return failures==0;
 }
 }
@@ -244,6 +286,7 @@ int main(int argc, char** argv) {
     TestInitializeOnlyOutcomes();
     TestJsonSchemaAndPrivacy();
     TestExplicitCandidatesAndSingleInitialization();
+    TestChannelRouting();
     if (failures != 0) return 1;
     std::puts("Exclusive format matrix fake API tests passed");
     return 0;

@@ -6,14 +6,23 @@
 #include "wasapi_format_matrix_api.h"
 #include "probe_math.h"
 
+#include <bit>
+
 namespace ExclusiveFormatMatrix {
 namespace {
 template<class T> void Release(T*& value) noexcept { if (value) { value->Release(); value = nullptr; } }
 }
 
 std::optional<WAVEFORMATEXTENSIBLE> BuildWasapiFormat(const Format& format) noexcept {
+    const auto defaultMask = format.channels == 1 ? SPEAKER_FRONT_CENTER
+        : format.channels == 2 ? SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT : 0U;
+    return BuildWasapiFormat(format, defaultMask);
+}
+
+std::optional<WAVEFORMATEXTENSIBLE> BuildWasapiFormat(const Format& format, std::uint32_t channelMask) noexcept {
     if ((format.sampleRate != 44'100 && format.sampleRate != 48'000) || format.channels < 1 || format.channels > 64)
         return std::nullopt;
+    if (channelMask != 0 && std::popcount(channelMask) != format.channels) return std::nullopt;
     WORD bits{}, validBits{};
     GUID subFormat{};
     switch (format.encoding) {
@@ -34,8 +43,7 @@ std::optional<WAVEFORMATEXTENSIBLE> BuildWasapiFormat(const Format& format) noex
     out.Format.nAvgBytesPerSec = static_cast<DWORD>(average);
     out.Format.cbSize = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX);
     out.Samples.wValidBitsPerSample = validBits;
-    out.dwChannelMask = format.channels == 1 ? SPEAKER_FRONT_CENTER
-        : format.channels == 2 ? SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT : 0;
+    out.dwChannelMask = channelMask;
     out.SubFormat = subFormat;
     return out;
 }
