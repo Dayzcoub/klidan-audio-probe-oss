@@ -177,7 +177,42 @@ public sealed record DuplexValidationDto(string OperationId, string CaptureEndpo
 public sealed record WorkerScanEndpoint(string EndpointId, string Direction);
 public sealed record WorkerScanFormat(int SampleRateHz, string Encoding, int Channels, IReadOnlyList<string> Periods, IReadOnlyList<string> MmcssModes);
 public sealed record WorkerScanPlan(IReadOnlyList<WorkerScanEndpoint> Endpoints, IReadOnlyList<string> AllowedOperations, IReadOnlyList<WorkerScanFormat> Formats, int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount);
-public sealed record WorkerScanSessionToken(Guid ScanSessionId);
+public sealed record WorkerScanSessionToken(Guid ScanSessionId, int ContractVersion = 1, string? RouteFingerprint = null);
+public sealed record WorkerScanV2Side(int SampleRateHz, int Channels, string Encoding, uint ChannelMask, IReadOnlyList<int> SelectedIndicesZeroBased);
+public sealed record WorkerScanV2Route(string Mode, WorkerScanV2Side Capture, WorkerScanV2Side Render);
+public sealed record WorkerScanPlanV2(WorkerScanV2Route Route, IReadOnlyList<string> Periods, IReadOnlyList<string> MmcssModes,
+    int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds);
+public static class WorkerScanPlanV2Fingerprint
+{
+    public static string Route(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route)
+    {
+        ArgumentNullException.ThrowIfNull(route); ArgumentException.ThrowIfNullOrWhiteSpace(captureEndpointId); ArgumentException.ThrowIfNullOrWhiteSpace(renderEndpointId);
+        if (captureEndpointId == renderEndpointId) throw new ArgumentException("Capture and Render endpoints must be distinct.");
+        var captureCount = route.Mode == "STEREO_TO_STEREO" ? 2 : route.Mode is "MONO_TO_STEREO" or "MONO_TO_MONO" ? 1 : 0;
+        var renderCount = route.Mode == "MONO_TO_MONO" ? 1 : route.Mode is "MONO_TO_STEREO" or "STEREO_TO_STEREO" ? 2 : 0;
+        ValidateSide(route.Capture, captureCount); ValidateSide(route.Render, renderCount);
+        var canonical = $"2|{captureEndpointId}|{renderEndpointId}|{route.Mode}|";
+        static string Side(WorkerScanV2Side s) => $"{s.SampleRateHz},{s.Channels},{s.Encoding},{s.ChannelMask}|";
+        canonical += Side(route.Capture) + Side(route.Render);
+        for (var i = 0; i < captureCount; i++) canonical += $"C{route.Capture.SelectedIndicesZeroBased[i]}|";
+        for (var i = 0; i < renderCount; i++) canonical += $"R{route.Render.SelectedIndicesZeroBased[i]}|";
+        ulong hash = 14695981039346656037UL; foreach (var b in Encoding.UTF8.GetBytes(canonical)) { hash ^= b; hash *= 1099511628211UL; }
+        return hash.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
+    }
+    public static string Compute(string captureEndpointId, string renderEndpointId, WorkerScanPlanV2 plan, ulong discoveryGeneration)
+    {
+        if (plan.LifetimeSeconds is < 1 or > 1800 || plan.MaximumOperationDurationSeconds != 600 || plan.MaximumOperationCount is < 10 or > 24 || plan.MaximumTotalDurationSeconds < 1030 || plan.MaximumTotalDurationSeconds > 600L * plan.MaximumOperationCount || plan.Periods.Count is < 1 or > 2 || plan.Periods.Any(p => p is not ("MINIMUM" or "DEFAULT")) || plan.Periods.Distinct(StringComparer.Ordinal).Count() != plan.Periods.Count || plan.MmcssModes.Count is < 1 or > 2 || plan.MmcssModes.Any(m => m is not ("OFF" or "PRO_AUDIO")) || plan.MmcssModes.Distinct(StringComparer.Ordinal).Count() != plan.MmcssModes.Count) throw new ArgumentException("V2 scan scope is outside its bounded authorization limits.", nameof(plan));
+        var route = Route(captureEndpointId, renderEndpointId, plan.Route);
+        var canonical = $"SCAN_PLAN_V2|2|{discoveryGeneration}|{plan.LifetimeSeconds}|600|{plan.MaximumOperationCount}|{plan.MaximumTotalDurationSeconds}|{route}\n" +
+            string.Concat(plan.Periods.Order(StringComparer.Ordinal).Select(p => $"P|{p}\n")) +
+            string.Concat(plan.MmcssModes.Order(StringComparer.Ordinal).Select(m => $"M|{m}\n")) + "D|60\nD|300\nD|600\n";
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+    private static void ValidateSide(WorkerScanV2Side side, int count)
+    {
+        if (count == 0 || side.SampleRateHz is not (44100 or 48000) || side.Channels is < 1 or > 32 || side.Encoding is not ("PCM16" or "PCM24_IN_32" or "FLOAT32") || side.SelectedIndicesZeroBased.Count != count || side.SelectedIndicesZeroBased.Any(i => i < 0 || i >= side.Channels) || side.SelectedIndicesZeroBased.Distinct().Count() != count || (side.ChannelMask != 0 && System.Numerics.BitOperations.PopCount(side.ChannelMask) != side.Channels)) throw new ArgumentException("V2 route side is outside its bounded format or channel scope.");
+    }
+}
 public static class WorkerScanPlanFingerprint
 {
     public static string Compute(WorkerScanPlan plan)

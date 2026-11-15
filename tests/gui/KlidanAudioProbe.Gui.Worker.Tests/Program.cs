@@ -674,6 +674,53 @@ var v2Consent=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint
 using(var standaloneV2=await injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),v2Consent)))Check(standaloneV2.RootElement.GetProperty("status").GetString()=="OK","V2 is allowed with new consent after confirmed V1 closure");
 var replayedV2=await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",V2Request(Guid.NewGuid(),v2Consent)),"standalone V2 consent can be consumed only once");
 Check(replayedV2.ErrorCode=="CONSENT_REPLAY","V2 consent replay is rejected");
+var v2SessionClient=new NativeWorkerClient(formatFixtureWorker);
+try
+{
+    await v2SessionClient.ConnectAsync();
+    var v2Discovery=await v2SessionClient.ListWindowsEndpointsAsync();
+    var v2Capture=v2Discovery.Endpoints.Single(e=>e.Direction=="CAPTURE").EndpointId!;
+    var v2Render=v2Discovery.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
+    var routeFingerprint=RouteFingerprint(v2Capture,v2Render,"MONO_TO_STEREO",48000,2,"PCM16",0,48000,2,"PCM16",3,0,0,1);
+    var route=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
+    var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1800,600,10,1030);
+    var confirmationId=Guid.NewGuid();var session=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId);
+    Check(session.ContractVersion==2&&session.RouteFingerprint==routeFingerprint,"typed V2 session registration binds route and worker discovery generation");
+    Task<DuplexValidationDto> V2Operation(int seconds,bool sustained=false)=>V2OperationWithId(Guid.NewGuid(),seconds,sustained);
+    Task<DuplexValidationDto> V2OperationWithId(Guid id,int seconds,bool sustained=false)=>v2SessionClient.ValidateDuplexV2InScanAsync(id.ToString("D"),session,id,route,v2Capture,v2Render,"MINIMUM",seconds,"OFF",sustained);
+    var unqualified=await ThrowsAsync<WorkerCommandException>(()=>V2Operation(60,true),"V2 sustained is blocked until short and six-run qualification complete");
+    Check(unqualified.ErrorCode=="SCAN_QUALIFICATION_REQUIRED","V2 sustained qualification gate is enforced at Worker");
+    var shortId=Guid.NewGuid();var shortResult=await V2OperationWithId(shortId,3);Check(shortResult.Report.GetProperty("reportType").GetString()=="wasapi-duplex-validation-v2","V2 authorized short Duplex accepts bounded duration and V2 evidence");
+    var replayOperation=await ThrowsAsync<WorkerCommandException>(()=>V2OperationWithId(shortId,3),"V2 scan operation ID cannot be replayed");Check(replayOperation.ErrorCode=="SCAN_OPERATION_REJECTED","V2 operation replay is rejected");
+    var routeChangeId=Guid.NewGuid();var changedRoute=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=routeChangeId,captureEndpointId=v2Capture,renderEndpointId=v2Render,mode="MONO_TO_STEREO",capture=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=0u,selectedIndicesZeroBased=new[]{1}},render=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0,1}},period="MINIMUM",durationSeconds=1,mmcss="OFF",scanSessionId=session.ScanSessionId,scanOperationId=routeChangeId,testScenario="CLEAN"}),"route mutation after V2 authorization is rejected");Check(changedRoute.ErrorCode=="SCAN_ROUTE_MISMATCH","V2 route mutation is rejected at the Worker boundary");
+    for(var i=0;i<6;i++){var id=Guid.NewGuid();var repeat=await v2SessionClient.ValidateDuplexV2InScanAsync(id.ToString("D"),session,id,route,v2Capture,v2Render,"MINIMUM",1,"OFF");Check(repeat.Report.GetProperty("duplex").GetProperty("status").GetString()=="DUPLEX_CLEAN","V2 repeatability operation completes cleanly");}
+    var outOfOrder=await ThrowsAsync<WorkerCommandException>(()=>V2Operation(300,true),"V2 sustained ladder rejects skipped durations");
+    Check(outOfOrder.ErrorCode=="SCAN_SUSTAINED_ORDER","V2 sustained order requires 60 then 300 then 600");
+    foreach(var seconds in new[]{60,300,600}){var sustainedV2=await V2Operation(seconds,true);Check(sustainedV2.Report.GetProperty("reportType").GetString()=="wasapi-sustained-duplex-validation-v2","V2 sustained evidence uses the authorized V2 report for each duration");}
+    await v2SessionClient.CancelScanSessionAsync(session);
+    var cancelled=await ThrowsAsync<WorkerCommandException>(()=>V2Operation(1),"cancelled V2 session cannot authorize another operation");Check(cancelled.ErrorCode=="SCAN_SESSION_STALE","V2 cancellation invalidates the active authorization");
+    await v2SessionClient.CloseScanSessionAsync(session);
+    var replayConsent=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId),"V2 confirmation cannot register another session after close");Check(replayConsent.ErrorCode=="SCAN_CONSENT_REPLAY","V2 consent replay is rejected");
+    foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
+    {
+        Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);
+        var scenarioClient=new NativeWorkerClient(formatFixtureWorker);
+        try
+        {
+            await scenarioClient.ConnectAsync();var scenarioDiscovery=await scenarioClient.ListWindowsEndpointsAsync();
+            var scenarioCapture=scenarioDiscovery.Endpoints.Single(e=>e.Direction=="CAPTURE").EndpointId!;var scenarioRender=scenarioDiscovery.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
+            var staleSession=await scenarioClient.RegisterScanSessionV2Async(scenarioCapture,scenarioRender,plan,true,Guid.NewGuid());Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);
+            var staleId=Guid.NewGuid();var stale=await ThrowsAsync<WorkerCommandException>(()=>scenarioClient.ValidateDuplexV2InScanAsync(staleId.ToString("D"),staleSession,staleId,route,scenarioCapture,scenarioRender,"MINIMUM",1,"OFF"),$"V2 {scenario} fails closed");
+            Check(stale.ErrorCode=="SCAN_SESSION_STALE",$"V2 {scenario} cannot qualify evidence");
+            await scenarioClient.CancelScanSessionAsync(staleSession);await scenarioClient.CloseScanSessionAsync(staleSession);
+        }
+        finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);await scenarioClient.DisposeAsync();}
+    }
+    var unsafeSession=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,Guid.NewGuid());
+    var unsafeId=Guid.NewGuid();using(var unsafeReport=await v2SessionClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=unsafeId,captureEndpointId=v2Capture,renderEndpointId=v2Render,mode=route.Mode,capture=new{sampleRateHz=route.Capture.SampleRateHz,channels=route.Capture.Channels,encoding=route.Capture.Encoding,channelMask=route.Capture.ChannelMask,selectedIndicesZeroBased=route.Capture.SelectedIndicesZeroBased},render=new{sampleRateHz=route.Render.SampleRateHz,channels=route.Render.Channels,encoding=route.Render.Encoding,channelMask=route.Render.ChannelMask,selectedIndicesZeroBased=route.Render.SelectedIndicesZeroBased},period="MINIMUM",durationSeconds=1,mmcss="OFF",scanSessionId=unsafeSession.ScanSessionId,scanOperationId=unsafeId,testScenario="CLEANUP_UNKNOWN"}))Check(unsafeReport.RootElement.GetProperty("payload").GetProperty("report").GetProperty("capture").GetProperty("cleanup").GetString()=="UNKNOWN","V2 cleanup uncertainty remains explicit in returned evidence");
+    var unsafeFollowupId=Guid.NewGuid();var unsafeFollowup=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(unsafeFollowupId.ToString("D"),unsafeSession,unsafeFollowupId,route,v2Capture,v2Render,"MINIMUM",1,"OFF"),"V2 unknown cleanup blocks subsequent operations");Check(unsafeFollowup.ErrorCode=="SCAN_SESSION_STALE","V2 unsafe cleanup invalidates the session");await v2SessionClient.CloseScanSessionAsync(unsafeSession);
+}
+finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);await v2SessionClient.DisposeAsync();}
 async Task<WorkerCommandException> RejectNumeric(object rate,object channels,object mask,object indices)=>await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=Guid.NewGuid(),captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="MONO_TO_MONO",capture=new{sampleRateHz=rate,channels,encoding="PCM16",channelMask=mask,selectedIndicesZeroBased=indices},render=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=new string('0',64)}}),"invalid V2 numeric value is rejected before type narrowing");
 Check((await RejectNumeric(-1,2,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 sample rate rejected");
 Check((await RejectNumeric(48000,-1,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 channel count rejected");

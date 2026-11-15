@@ -3913,11 +3913,11 @@ int RunDuplex(const std::wstring& captureId, const std::wstring& renderId,
         DuplexValidationReport::Report report;
         report.reportId = *reportId;
         report.schemaVersion = route ? 3 : sustainedValidation ? 1 : 2;
-        report.reportType = route ? "wasapi-duplex-validation-v2" : sustainedValidation ? "wasapi-sustained-duplex-validation" : "wasapi-duplex-validation";
+        report.reportType = route ? (sustainedValidation ? "wasapi-sustained-duplex-validation-v2" : "wasapi-duplex-validation-v2") : sustainedValidation ? "wasapi-sustained-duplex-validation" : "wasapi-duplex-validation";
         report.operationId = operationId.empty() ? *reportId : operationId;
         report.timestampUtc = MatrixTimestampUtc();
         report.probeVersion = PROBE_VERSION;
-        report.provenance = route ? "REAL_WASAPI_DUPLEX_V2" : sustainedValidation ? "REAL_WASAPI_SUSTAINED_DUPLEX" : "REAL_WASAPI_DUPLEX";
+        report.provenance = route ? (sustainedValidation ? "REAL_WASAPI_SUSTAINED_DUPLEX_V2" : "REAL_WASAPI_DUPLEX_V2") : sustainedValidation ? "REAL_WASAPI_SUSTAINED_DUPLEX" : "REAL_WASAPI_DUPLEX";
         report.captureEndpointId = Utf8(captureId.c_str());
         report.renderEndpointId = Utf8(renderId.c_str());
         report.route = route;
@@ -4250,6 +4250,7 @@ int wmain(int argc, wchar_t** argv) {
         else if (std::wcscmp(argv[index], L"--test-stream") == 0) testStream = true;
         else if (std::wcscmp(argv[index], L"--test-duplex") == 0) testDuplex = true;
         else if (std::wcscmp(argv[index], L"--test-duplex-v2") == 0) testDuplexV2 = true;
+        else if (std::wcscmp(argv[index], L"--test-sustained-duplex-v2") == 0) { testDuplexV2 = true; sustainedDuplex = true; }
         else if (std::wcscmp(argv[index], L"--test-sustained-duplex") == 0) { testDuplex = true; sustainedDuplex = true; }
         else if (std::wcscmp(argv[index], L"--test-monitor") == 0) testMonitor = true;
         else if (std::wcscmp(argv[index], L"--test-monitor-latency") == 0) testMonitorLatency = true;
@@ -4478,7 +4479,7 @@ int wmain(int argc, wchar_t** argv) {
             : testMonitorRtlPreflight ? captureSpecified && !captureId.empty() && !renderSpecified : oneEndpoint;
         if (testDuplexV2) {
             const auto number=[](const std::wstring& text,std::uint32_t maximum,std::uint32_t& out){if(text.empty())return false;wchar_t* end=nullptr;const auto value=std::wcstoul(text.c_str(),&end,0);if(end==text.c_str()||*end!=L'\0'||value>maximum)return false;out=static_cast<std::uint32_t>(value);return true;};
-            const auto indices=[&](const std::wstring& text,std::array<std::uint16_t,2>& out,std::uint16_t count){std::size_t begin=0;for(std::uint16_t i=0;i<count;++i){const auto end=text.find(L',',begin);if((i+1<count)==(end==std::wstring::npos))return false;const auto token=text.substr(begin,end==std::wstring::npos?end:end-begin);std::uint32_t value{};if(!number(token,31,value))return false;out[i]=static_cast<std::uint16_t>(value);begin=end==std::wstring::npos?text.size():end+1;}return begin==text.size();};
+            const auto indices=[&](const std::wstring& text,std::array<std::uint16_t,2>& out,std::uint16_t count){std::size_t begin=0;for(std::uint16_t i=0;i<count;++i){const auto end=text.find(L',',begin);if((i+1<count&&end==std::wstring::npos)||(i+1==count&&end!=std::wstring::npos))return false;const auto token=text.substr(begin,end==std::wstring::npos?end:end-begin);std::uint32_t value{};if(!number(token,31,value))return false;out[i]=static_cast<std::uint16_t>(value);begin=end==std::wstring::npos?text.size():end+1;}return begin==text.size();};
             std::uint32_t cr{},cc{},cm{},rr{},rc{},rm{};ChannelRouting::Configuration route{};
             route.captureEndpointId=Utf8(captureId.c_str());route.renderEndpointId=Utf8(renderId.c_str());
             route.mode=routeModeText==L"MONO_TO_STEREO"?ChannelRouting::Mode::MonoToStereo:routeModeText==L"STEREO_TO_STEREO"?ChannelRouting::Mode::StereoToStereo:routeModeText==L"MONO_TO_MONO"?ChannelRouting::Mode::MonoToMono:static_cast<ChannelRouting::Mode>(255);
@@ -4580,11 +4581,11 @@ int wmain(int argc, wchar_t** argv) {
                          false, false, false, 1, 1, false, outputJson, externalCancelEvent,
                          operationIdText.empty() ? std::string{} : Utf8(operationIdText.c_str()), customPeriod, sustainedDuplex);
     }
-    if (testDuplexV2 && routeV2) {
+        if (testDuplexV2 && routeV2) {
         return RunDuplex(captureId, renderId, routeV2->capture.format.sampleRate, routeV2->capture.format.channels, L"pcm16",
             periodText == L"minimum", streamDuration, mmcssText == L"pro-audio", false,
             false, false, false, 1, 1, false, outputJson, externalCancelEvent,
-            operationIdText.empty()?std::string{}:Utf8(operationIdText.c_str()), std::nullopt, false, routeV2);
+            operationIdText.empty()?std::string{}:Utf8(operationIdText.c_str()), std::nullopt, sustainedDuplex, routeV2);
     }
     if (testMonitor) {
         return RunDuplex(captureId, renderId, 48'000, 2, formatText,
