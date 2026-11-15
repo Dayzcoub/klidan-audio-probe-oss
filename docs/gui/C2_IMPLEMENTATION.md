@@ -15,7 +15,7 @@
 | C1 profile v1 | Implemented local and sanitized profile contract/storage; extended here by aggregating existing real DTO evidence without a schema change |
 | Real automated scan / stream / stability / paired Duplex | Not implemented beyond the single-endpoint query/Initialize scan described here |
 
-The read-only AudioHost review in the C1 integration design identifies 48 kHz physical PCM16 candidates, stereo Render, mono/stereo Capture candidates, and a distinct internal Float32 processing path. Float32 internal processing does not make physical Float32 mandatory. AudioHost coordinated Exclusive also has requirements that a single endpoint Initialize result cannot prove. Shared remains the safe production default; Audio Probe does not change AudioHost settings or endpoints.
+The read-only AudioHost review in the C1 integration design identifies 48 kHz physical PCM16 candidates, stereo Render, mono/stereo Capture candidates, and a distinct internal Float32 processing path. Float32 internal processing does not make physical Float32 mandatory. AudioHost coordinated Exclusive also has requirements that a single endpoint Initialize result cannot prove. KLIDAN's target for professional devices is profile-qualified Exclusive; Shared is a separate fallback for home game preparation and media use when no professional audio device is available. This partial scan does not change AudioHost settings or endpoints, and evidence from either mode cannot qualify the other.
 
 ## Scan plan
 

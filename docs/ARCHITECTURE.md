@@ -2,7 +2,7 @@
 
 ## Product boundary
 - **Today:** standalone C++20 Windows CLI for endpoint enumeration and Exact Exclusive format inquiry.
-- **Future:** diagnostics core, WASAPI Shared/Exclusive stream tester, duplex/loopback analyzer, portable profile/report model, then optional Windows desktop UI.
+- **Future:** diagnostics core, WASAPI Exclusive stream tester, separate WASAPI Shared fallback tester, duplex/loopback analyzer, portable profile/report model, then optional Windows desktop UI.
 - **Not:** DAW, live mixer, KLIDAN AudioHost replacement, DSP host, system configuration tool, auto-driver installer or streaming service.
 
     [CLI] ----------+
@@ -13,6 +13,12 @@
     [KLIDAN AudioHost] <-- import versioned JSON / runtime revalidation
 
 CLI and UI consume the same core. A device capability **report** records evidence; an operator-selected **profile** proposes initial parameters. A saved profile never bypasses runtime device checks. Hardware identities are local/ephemeral, not global user IDs.
+
+## Transport priority and profile qualification
+
+WASAPI Exclusive is KLIDAN's primary target for professional audio devices. Audio Probe evidence and the resulting device-bound profile are intended to select the minimum stable Exclusive buffer for the exact endpoint and route. A stable profile requires a confirmed minimum search result and all five requested repeatability runs CLEAN, with complete saved and read-back evidence; FAILED or UNKNOWN results are diagnostic only and cannot create a stable device profile. The result only establishes the tested candidate domain and bounded test conditions.
+
+WASAPI Shared is a separate fallback for home game preparation, listening to materials, editing song regions, and watching video when a professional audio device is unavailable. Shared results do not qualify an Exclusive profile, and Exclusive results do not establish Shared behavior. A transport failure or UNKNOWN state does not silently switch modes. Existing AudioHost mode behavior remains as implemented until a separate, explicitly reviewed integration applies a qualified profile; the B5B.6 independent Exclusive diagnostic does not change transport selection or CLEAN criteria.
 
 ## Measurement states (MUST be different)
 1. Discovered endpoint and device metadata.

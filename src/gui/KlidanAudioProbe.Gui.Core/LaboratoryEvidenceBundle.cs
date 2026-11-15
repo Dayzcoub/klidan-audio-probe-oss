@@ -88,7 +88,7 @@ public static class LaboratoryEvidenceBundleService
             {
                 var profile = DeviceConfigurationProfileJson.Parse(ReadBounded(profilePath, limits.MaximumFileBytes));
                 profiles.Add(profile);
-                Add(files, profile.SchemaVersion == 4 ? "profile.v4" : "profile.legacy", $"profiles/{Path.GetFileName(profilePath)}", profilePath, null, null, limits);
+                Add(files, profile.SchemaVersion switch { 4 => "profile.v4", 5 => "profile.v5", _ => "profile.legacy" }, $"profiles/{Path.GetFileName(profilePath)}", profilePath, null, null, limits);
             }
             catch (Exception ex) { errors.Add($"Profile {Path.GetFileName(profilePath)} is invalid: {ex.Message}"); }
         }

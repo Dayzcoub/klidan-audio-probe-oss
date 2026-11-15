@@ -237,11 +237,15 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var candidates = plan.Candidates.Select(c => new { index = c.Index, requestedDuration100ns = c.RequestedDuration100ns, captureFrames = c.CaptureFrames, renderFrames = c.RenderFrames, capturePeriod100ns = c.CapturePeriod100ns, renderPeriod100ns = c.RenderPeriod100ns, captureAlignmentFrames = c.CaptureAlignmentFrames, captureAlignmentKnown = c.CaptureAlignmentKnown, renderAlignmentFrames = c.RenderAlignmentFrames, renderAlignmentKnown = c.RenderAlignmentKnown, captureMinimumFrames = c.CaptureMinimumFrames, captureMaximumFrames = c.CaptureMaximumFrames, renderMinimumFrames = c.RenderMinimumFrames, renderMaximumFrames = c.RenderMaximumFrames, rejectionReason = c.RejectionReason }).ToArray();
         var captureBounds = new { minimumPeriod100ns = plan.CaptureBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.CaptureBounds.DefaultPeriod100ns, alignmentFrames = plan.CaptureBounds.AlignmentFrames };
         var renderBounds = new { minimumPeriod100ns = plan.RenderBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.RenderBounds.DefaultPeriod100ns, alignmentFrames = plan.RenderBounds.AlignmentFrames };
-        using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 4, captureEndpointId, renderEndpointId, route, routeFingerprint,
-            candidates, captureBounds, renderBounds, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns, authorizeRepeatability,
-            maximumOperationCount = plan.MaximumOperations, maximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
-            initializeTimeoutSeconds = plan.InitializeTimeoutSeconds, sessionLifetimeSeconds = plan.SessionLifetimeSeconds,
-            cleanupDeadlineSeconds = plan.CleanupDeadlineSeconds, planFingerprint, authorization = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } }, cancellationToken).ConfigureAwait(false);
+        var payloadValue = new Dictionary<string, object?> { ["contractVersion"] = 4, ["captureEndpointId"] = captureEndpointId, ["renderEndpointId"] = renderEndpointId,
+            ["route"] = route, ["routeFingerprint"] = routeFingerprint, ["candidates"] = candidates, ["captureBounds"] = captureBounds, ["renderBounds"] = renderBounds,
+            ["mmcssModes"] = plan.MmcssModes, ["repeatabilityRuns"] = plan.RepeatabilityRuns, ["authorizeRepeatability"] = authorizeRepeatability,
+            ["maximumOperationCount"] = plan.MaximumOperations, ["maximumActiveDuplexSeconds"] = plan.MaximumActiveDuplexSeconds,
+            ["initializeTimeoutSeconds"] = plan.InitializeTimeoutSeconds, ["sessionLifetimeSeconds"] = plan.SessionLifetimeSeconds,
+            ["cleanupDeadlineSeconds"] = plan.CleanupDeadlineSeconds, ["planFingerprint"] = planFingerprint,
+            ["authorization"] = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } };
+        if (plan.RepeatSelected) payloadValue["repeatSelected"] = true;
+        using var response = await SendAsync("RegisterScanSessionV2", payloadValue, cancellationToken).ConfigureAwait(false);
         var payload = response.RootElement.GetProperty("payload");
         if (!payload.TryGetProperty("scanSessionId", out var id) || !id.TryGetGuid(out var sessionId) || sessionId == Guid.Empty || payload.GetProperty("contractVersion").GetInt32() != 4 || payload.GetProperty("state").GetString() != "AUTHORIZED") throw new InvalidDataException("Worker did not return a valid v4 scan-session token.");
         return new(sessionId, 4, routeFingerprint);
@@ -426,6 +430,8 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         Require(HasString(format, "encoding", "PCM16"), "format.encoding");
         foreach (var name in new[] { "events", "packets", "framesProcessed", "expectedFrames", "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults", "eventWaitTimeouts" })
             if (!report.TryGetProperty(name, out var value) || value.ValueKind is not (System.Text.Json.JsonValueKind.Number or System.Text.Json.JsonValueKind.Null) || value.ValueKind == System.Text.Json.JsonValueKind.Number && (!value.TryGetInt64(out var count) || count < 0)) throw new InvalidDataException($"Invalid numeric stream evidence: {name}.");
+        foreach (var name in new[] { "longEventIntervals", "eventIntervalMaximumMilliseconds", "eventIntervalMaximumEndOffsetMilliseconds", "longEventIntervalThresholdMilliseconds" })
+            if (report.TryGetProperty(name, out var value) && value.ValueKind != System.Text.Json.JsonValueKind.Null && (value.ValueKind != System.Text.Json.JsonValueKind.Number || (name == "longEventIntervals" ? !value.TryGetInt64(out var count) || count < 0 : !double.IsFinite(value.GetDouble()) || value.GetDouble() < 0))) throw new InvalidDataException($"Invalid stream timing evidence: {name}.");
         foreach (var name in new[] { "durationReached", "startSucceeded", "stopSucceeded" })
             if (!report.TryGetProperty(name, out var value) || value.ValueKind is not (System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False or System.Text.Json.JsonValueKind.Null)) throw new InvalidDataException($"Invalid boolean stream evidence: {name}.");
         if (!report.TryGetProperty("streamQuality", out var qualityValue) || qualityValue.ValueKind != System.Text.Json.JsonValueKind.String || qualityValue.GetString() is not ("CLEAN" or "ANOMALIES_PRESENT" or "INCOMPLETE" or "UNKNOWN")) throw new InvalidDataException("Unknown stream quality classification.");
@@ -437,7 +443,8 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             var stopped = report.GetProperty("stopSucceeded").ValueKind == System.Text.Json.JsonValueKind.True;
             var frames = Count("framesProcessed"); var expected = Count("expectedFrames"); var buffer = report.GetProperty("actualBufferFrames").TryGetInt32(out var actualBuffer) ? actualBuffer : 0;
             var cleanCounters = new[] { "discontinuities", "timestampErrors", "unavailableCaptureBuffers", "bufferServiceFaults" }.All(name => Count(name) == 0);
-            if (!started || !durationReached || !stopped || frames is null || expected is null || expected <= 0 || buffer <= 0 || !cleanCounters || frames < expected - Math.Max(2L * buffer, expected.Value / 10)) throw new InvalidDataException("Worker marked stream CLEAN without successful Start, bounded completion, Stop and sufficient fault-free frame servicing.");
+            var longIntervalEvidenceClean = !report.TryGetProperty("longEventIntervals", out var longIntervals) || longIntervals.ValueKind == System.Text.Json.JsonValueKind.Number && longIntervals.TryGetInt64(out var longCount) && longCount == 0;
+            if (!started || !durationReached || !stopped || frames is null || expected is null || expected <= 0 || buffer <= 0 || !cleanCounters || !longIntervalEvidenceClean || frames < expected - Math.Max(2L * buffer, expected.Value / 10)) throw new InvalidDataException("Worker marked stream CLEAN without successful Start, bounded completion, Stop and sufficient fault-free frame servicing.");
         }
         Require(HasString(report, "physicalPlayback", "NOT_MEASURED"), "physicalPlayback");
         Require(HasString(report, "physicalRouting", "UNKNOWN"), "physicalRouting");
@@ -491,8 +498,8 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route);
         var candidate = plan.Candidates.SingleOrDefault(c => c.Index == candidateIndex)
             ?? throw new ArgumentOutOfRangeException(nameof(candidateIndex));
-        if (candidate.RejectionReason.Length != 0 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF")
-            throw new ArgumentException("V4 Duplex requires an eligible consented candidate and MMCSS OFF.", nameof(candidateIndex));
+        if (candidate.RejectionReason.Length != 0 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] is not ("OFF" or "PRO_AUDIO"))
+            throw new ArgumentException("V4 Duplex requires an eligible consented candidate and one explicitly authorized MMCSS mode.", nameof(candidateIndex));
         var payload = new Dictionary<string, object?> { ["contractVersion"] = 2, ["operationId"] = operationId,
             ["scanOperationId"] = operationId, ["scanSessionId"] = session.ScanSessionId, ["captureEndpointId"] = captureEndpointId,
             ["renderEndpointId"] = renderEndpointId, ["mode"] = route.Mode,
@@ -501,7 +508,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             ["routeFingerprint"] = routeFingerprint, ["candidateIndex"] = candidateIndex,
             ["captureFrames"] = candidate.CaptureFrames, ["capturePeriod100ns"] = candidate.CapturePeriod100ns,
             ["renderFrames"] = candidate.RenderFrames, ["renderPeriod100ns"] = candidate.RenderPeriod100ns,
-            ["period"] = "CUSTOM_V2", ["durationSeconds"] = 5, ["mmcss"] = "OFF" };
+            ["period"] = "CUSTOM_V2", ["durationSeconds"] = 5, ["mmcss"] = plan.MmcssModes[0] };
         if (testScenario is not null) payload["testScenario"] = testScenario;
         using var response = await SendAsync("ValidateCustomDuplexV2", payload, cancellationToken).ConfigureAwait(false);
         var result = response.RootElement.GetProperty("payload");
@@ -569,6 +576,8 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             if (!side.GetProperty("eventIntervalsObserved").TryGetInt64(out var intervals) || intervals < 0) throw new InvalidDataException($"Invalid Duplex event interval count {sideName}.");
             foreach (var field in new[] { "frameCoveragePercent", "eventIntervalMedianMilliseconds", "eventIntervalP95Milliseconds", "eventIntervalP99Milliseconds" }) { var item = side.GetProperty(field); if (item.ValueKind != System.Text.Json.JsonValueKind.Null && (item.ValueKind != System.Text.Json.JsonValueKind.Number || !double.IsFinite(item.GetDouble()) || item.GetDouble() < 0)) throw new InvalidDataException($"Invalid Duplex timing/coverage {sideName}.{field}."); }
             if (side.TryGetProperty("eventIntervalMaximumMilliseconds", out var maximum) && maximum.ValueKind != System.Text.Json.JsonValueKind.Null && (maximum.ValueKind != System.Text.Json.JsonValueKind.Number || !double.IsFinite(maximum.GetDouble()) || maximum.GetDouble() < 0)) throw new InvalidDataException($"Invalid Duplex timing/coverage {sideName}.eventIntervalMaximumMilliseconds.");
+            foreach (var name in new[] { "eventIntervalMaximumEndOffsetMilliseconds", "longEventIntervalThresholdMilliseconds" })
+                if (side.TryGetProperty(name, out var timing) && timing.ValueKind != System.Text.Json.JsonValueKind.Null && (timing.ValueKind != System.Text.Json.JsonValueKind.Number || !double.IsFinite(timing.GetDouble()) || timing.GetDouble() < 0)) throw new InvalidDataException($"Invalid Duplex timing/coverage {sideName}.{name}.");
             var elapsed = side.GetProperty("elapsedMilliseconds"); if (elapsed.ValueKind != System.Text.Json.JsonValueKind.Number || !double.IsFinite(elapsed.GetDouble()) || elapsed.GetDouble() < 0) throw new InvalidDataException($"Invalid Duplex timing {sideName}.");
             var expectedFrames = side.GetProperty("expectedFrames").GetInt64(); var frames = side.GetProperty("framesProcessed").GetInt64();
             if (expectedFrames == 0 && frames > 0 || expectedFrames > 0 && frames > expectedFrames + 48000L * durationSeconds) throw new InvalidDataException($"Duplex frame counts are inconsistent: {sideName}.");

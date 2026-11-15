@@ -191,11 +191,14 @@ public sealed record WorkerScanV2PeriodBounds(long MinimumPeriod100ns, long Defa
 public sealed record WorkerScanV2ContractV4(WorkerScanV2Route Route, IReadOnlyList<WorkerScanV2Candidate> Candidates,
     IReadOnlyList<string> MmcssModes, int RepeatabilityRuns, int MaximumOperations, int MaximumActiveDuplexSeconds,
     int InitializeTimeoutSeconds, int SessionLifetimeSeconds, int CleanupDeadlineSeconds,
-    WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds);
+    WorkerScanV2PeriodBounds CaptureBounds, WorkerScanV2PeriodBounds RenderBounds, bool RepeatSelected = false);
 public sealed record WorkerScanV2Budget(int MaximumOperations, int MaximumActiveDuplexSeconds, int SessionLifetimeSeconds);
 public sealed record WorkerScanV2V4Consent(bool Accepted, Guid ConfirmationId, string PlanFingerprint, ulong DiscoveryGeneration);
 public sealed record WorkerScanV2V4PreparedPlan(string CaptureEndpointId, string RenderEndpointId,
-    WorkerScanV2ContractV4 Plan, WorkerScanV2V4Consent Consent);
+    WorkerScanV2ContractV4 Plan, WorkerScanV2V4Consent Consent)
+{
+    public Guid? RunId { get; init; }
+}
 public static class WorkerScanV2CandidatePlanning
 {
     public static IReadOnlyList<WorkerScanV2Candidate> Generate(WorkerScanV2Route route, int captureMinFrames, int captureMaxFrames,
@@ -231,8 +234,8 @@ public static class WorkerScanV2CandidatePlanning
         var renderMax = Frames(renderBounds.DefaultPeriod100ns, route.Render.SampleRateHz);
         if (captureMin <= 0 || renderMin <= 0 || captureMax < captureMin || renderMax < renderMin) return [];
         var periods = new SortedSet<long> { lower };
-        for (var i = 1; i < 8 && checked(lower + i * 10_000L) < upper; i++) periods.Add(checked(lower + i * 10_000L));
-        if (periods.Count < 8) periods.Add(upper);
+        for (var i = 1; i <= 6 && checked(lower + i * 10_000L) < upper; i++) periods.Add(checked(lower + i * 10_000L));
+        periods.Add(upper);
         return periods.Select((duration, index) => Make(index, duration, route, captureMin, captureMax, renderMin, renderMax,
                 captureBounds.AlignmentFrames ?? 0, renderBounds.AlignmentFrames ?? 0, captureBounds.AlignmentFrames.HasValue, renderBounds.AlignmentFrames.HasValue))
             .GroupBy(c => (c.CapturePeriod100ns, c.RenderPeriod100ns)).Select(g => g.First())
@@ -281,7 +284,7 @@ public static class WorkerScanV2ContractV4Fingerprint
     {
         var fingerprint = Compute(captureId, renderId, plan, generation);
         var periods = string.Join(", ", plan.Candidates.Select(c => $"{c.RequestedDuration100ns / 10_000m:0.###} ms C{c.CaptureFrames}/R{c.RenderFrames} frames"));
-        return $"Capture {captureId}: {plan.Route.Capture.SampleRateHz} Hz {plan.Route.Capture.Encoding} {plan.Route.Capture.Channels}ch [{string.Join(',', plan.Route.Capture.SelectedIndicesZeroBased)}], bounds {plan.CaptureBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.CaptureBounds.DefaultPeriod100ns / 10_000m:0.###} ms; Render {renderId}: {plan.Route.Render.SampleRateHz} Hz {plan.Route.Render.Encoding} {plan.Route.Render.Channels}ch [{string.Join(',', plan.Route.Render.SelectedIndicesZeroBased)}], bounds {plan.RenderBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.RenderBounds.DefaultPeriod100ns / 10_000m:0.###} ms; route={plan.Route.Mode}; {plan.Candidates.Count} candidates [{periods}]; alignment Capture={Alignment(plan.CaptureBounds)}, Render={Alignment(plan.RenderBounds)}; repeatability={plan.RepeatabilityRuns}; max audio operations={plan.MaximumOperations}; max active Duplex={plan.MaximumActiveDuplexSeconds}s; Initialize timeout={plan.InitializeTimeoutSeconds}s; session={plan.SessionLifetimeSeconds}s; cleanup={plan.CleanupDeadlineSeconds}s; plan fingerprint={fingerprint}. Results remain preliminary; v4 audio scan is unavailable in this build and transport is not enabled.";
+        return $"Capture {captureId}: {plan.Route.Capture.SampleRateHz} Hz {plan.Route.Capture.Encoding} {plan.Route.Capture.Channels}ch [{string.Join(',', plan.Route.Capture.SelectedIndicesZeroBased)}], bounds {plan.CaptureBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.CaptureBounds.DefaultPeriod100ns / 10_000m:0.###} ms; Render {renderId}: {plan.Route.Render.SampleRateHz} Hz {plan.Route.Render.Encoding} {plan.Route.Render.Channels}ch [{string.Join(',', plan.Route.Render.SelectedIndicesZeroBased)}], bounds {plan.RenderBounds.MinimumPeriod100ns / 10_000m:0.###}–{plan.RenderBounds.DefaultPeriod100ns / 10_000m:0.###} ms; route={plan.Route.Mode}; {plan.Candidates.Count} candidates [{periods}]; MMCSS={string.Join(',', plan.MmcssModes)}; alignment Capture={Alignment(plan.CaptureBounds)}, Render={Alignment(plan.RenderBounds)}; repeatability={plan.RepeatabilityRuns}; mode={(plan.RepeatSelected ? "RepeatSelected" : "ShortSearch")}; max audio operations={plan.MaximumOperations}; max active Duplex={plan.MaximumActiveDuplexSeconds}s; Initialize timeout={plan.InitializeTimeoutSeconds}s; session={plan.SessionLifetimeSeconds}s; cleanup={plan.CleanupDeadlineSeconds}s; plan fingerprint={fingerprint}. Short qualification is preliminary; a stable profile requires separate real KLIDAN AudioHost load qualification.";
         static string Alignment(WorkerScanV2PeriodBounds bounds) => bounds.AlignmentFrames is { } frames ? $"{frames} frames (reported)" : "ALIGNMENT_UNKNOWN";
     }
 
@@ -290,10 +293,10 @@ public static class WorkerScanV2ContractV4Fingerprint
         if (candidateCount is < 1 or > 8 || repeatabilityRuns is < 0 or > 5) throw new ArgumentOutOfRangeException(nameof(candidateCount));
         checked
         {
-            var operations = 3 * candidateCount + repeatabilityRuns;
-            var active = 5 * (candidateCount + repeatabilityRuns);
-            var lifetime = 111 * candidateCount + 51 * repeatabilityRuns + 28;
-            if (operations > 29 || active > 65 || lifetime > 1171) throw new ArgumentOutOfRangeException(nameof(candidateCount));
+            var operations = candidateCount * (3 + repeatabilityRuns);
+            var active = 5 * candidateCount * (1 + repeatabilityRuns);
+            var lifetime = 111 * candidateCount + 51 * candidateCount * repeatabilityRuns + 28;
+            if (operations > 64 || active > 240 || lifetime > 3600) throw new ArgumentOutOfRangeException(nameof(candidateCount));
             return new(operations, active, lifetime);
         }
     }
@@ -302,16 +305,16 @@ public static class WorkerScanV2ContractV4Fingerprint
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(captureId); ArgumentException.ThrowIfNullOrWhiteSpace(renderId);
         ArgumentNullException.ThrowIfNull(plan);
-        var budget = Budget(plan.Candidates.Count, plan.RepeatabilityRuns);
+        var budget = plan.RepeatSelected ? new WorkerScanV2Budget(7, 25, 600) : Budget(plan.Candidates.Count, plan.RepeatabilityRuns);
         if (captureId == renderId || plan.MaximumOperations != budget.MaximumOperations || plan.MaximumActiveDuplexSeconds != budget.MaximumActiveDuplexSeconds ||
             plan.SessionLifetimeSeconds != budget.SessionLifetimeSeconds || plan.InitializeTimeoutSeconds != 30 || plan.CleanupDeadlineSeconds != 8 ||
-            plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF") throw new ArgumentException("V4 authorization budget or endpoint scope is invalid.");
+            plan.MmcssModes.Count != 1 || plan.MmcssModes[0] is not ("OFF" or "PRO_AUDIO")) throw new ArgumentException("V4 authorization budget or endpoint scope is invalid.");
         ValidatePeriodBounds(plan.CaptureBounds); ValidatePeriodBounds(plan.RenderBounds);
         var route = WorkerScanPlanV2Fingerprint.Route(captureId, renderId, plan.Route);
         var lower = Math.Max(plan.CaptureBounds.MinimumPeriod100ns, plan.RenderBounds.MinimumPeriod100ns);
         var upper = Math.Min(plan.CaptureBounds.DefaultPeriod100ns, plan.RenderBounds.DefaultPeriod100ns);
         if (upper < lower) throw new ArgumentException("V4 device period bounds do not overlap.");
-        var canonical = $"SCAN_PLAN_V2|4|{generation}|{captureId}|{renderId}|{route}|{plan.RepeatabilityRuns}|{budget.MaximumOperations}|{budget.MaximumActiveDuplexSeconds}|{plan.InitializeTimeoutSeconds}|{plan.SessionLifetimeSeconds}|{plan.CleanupDeadlineSeconds}|\n" +
+        var canonical = $"SCAN_PLAN_V2|4|{generation}|{captureId}|{renderId}|{route}|" + (plan.RepeatSelected ? "REPEAT_SELECTED|" : "") + $"{plan.RepeatabilityRuns}|{budget.MaximumOperations}|{budget.MaximumActiveDuplexSeconds}|{plan.InitializeTimeoutSeconds}|{plan.SessionLifetimeSeconds}|{plan.CleanupDeadlineSeconds}|\n" +
             $"B|{plan.CaptureBounds.MinimumPeriod100ns}|{plan.CaptureBounds.DefaultPeriod100ns}|{Alignment(plan.CaptureBounds)}|{plan.RenderBounds.MinimumPeriod100ns}|{plan.RenderBounds.DefaultPeriod100ns}|{Alignment(plan.RenderBounds)}\n";
         static string Alignment(WorkerScanV2PeriodBounds bounds) => bounds.AlignmentFrames?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "ALIGNMENT_UNKNOWN";
         static void ValidatePeriodBounds(WorkerScanV2PeriodBounds bounds)
