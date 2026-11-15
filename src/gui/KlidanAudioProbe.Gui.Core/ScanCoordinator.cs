@@ -143,6 +143,11 @@ public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, s
     public IReadOnlyDictionary<string, string> QaStageStatuses { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
     public string RepeatabilityStatus { get; init; } = "NOT_RUN";
     public string SustainedStatus { get; init; } = "NOT_RUN";
+    public IReadOnlyList<V2AutoShortCandidate> AutoShortCandidates { get; init; } = [];
+    public string? RecommendedPeriod { get; init; }
+    public string Qualification { get; init; } = "NOT_CERTIFIED";
+    public string SourceSha { get; init; } = "UNKNOWN";
+    public string SessionCleanupOutcome { get; init; } = "NOT_ATTEMPTED";
     public string CaptureFriendlyName { get; init; } = string.Empty;
     public string RenderFriendlyName { get; init; } = string.Empty;
     public V2WorkerErrorDiagnostics? WorkerError { get; init; }

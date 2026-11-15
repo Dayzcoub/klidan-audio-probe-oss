@@ -33,21 +33,26 @@ try {
     Set-Content (Join-Path $repo 'source.txt') 'test'; & git -C $repo add source.txt; & git -C $repo commit -m base|Out-Null; $shaN3c=(& git -C $repo rev-parse HEAD).Trim()
     $treeN4b=Join-Path $trees 'n4b'; & git -C $repo worktree add -b feat/audio-probe-as-n4b-bounded-physical-qa $treeN4b|Out-Null; $shaN4b=(& git -C $treeN4b rev-parse HEAD).Trim()
     $treeN4b1=Join-Path $trees 'n4b1'; & git -C $repo worktree add -b fix/as-n4b1-native-duplex-v2-cli $treeN4b1 $shaN4b|Out-Null; & git -C $treeN4b1 config user.email qa@example.invalid; & git -C $treeN4b1 config user.name 'QA Test'; & git -C $treeN4b1 commit --allow-empty -m n4b1|Out-Null; $shaN4b1=(& git -C $treeN4b1 rev-parse HEAD).Trim()
+    $treeN4b2=Join-Path $trees 'n4b2'; & git -C $repo worktree add -b fix/as-n4b2-auto-short $treeN4b2 $shaN4b1|Out-Null; $shaN4b2=(& git -C $treeN4b2 rev-parse HEAD).Trim()
     @{schemaVersion=1;projects=@(@{projectId='AUDIO-PROBE-OSS';root=$root});repositories=@(@{repoId='audio-probe-oss';currentPath=$repo})}|ConvertTo-Json -Depth 5|Set-Content $registryPath -Encoding utf8
     $n3c=Add-Build (Join-Path $root 'builds\n3c') 'feat/audio-probe-as-n3c-gui-integration' $shaN3c
     $n4b=Add-Build (Join-Path $root 'builds\n4b') 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b
     $n4b1=Add-Build (Join-Path $root 'builds\n4b1') 'fix/as-n4b1-native-duplex-v2-cli' $shaN4b1
+    $n4b2=Add-Build (Join-Path $root 'builds\n4b2') 'fix/as-n4b2-auto-short' $shaN4b2
     $selectedN3c=Invoke-Select 'feat/audio-probe-as-n3c-gui-integration' $shaN3c
     $selectedN4b=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b
     $selectedN4b1=Invoke-Select 'fix/as-n4b1-native-duplex-v2-cli' $shaN4b1
+    $selectedN4b2=Invoke-Select 'fix/as-n4b2-auto-short' $shaN4b2
     Assert (($selectedN3c|ConvertFrom-Json).SourceCommit -eq $shaN3c) 'selects registered AS-N3C exact SHA'
     Assert (($selectedN4b|ConvertFrom-Json).SourceCommit -eq $shaN4b) 'selects registered AS-N4B exact SHA'
     Assert (($selectedN4b1|ConvertFrom-Json).SourceCommit -eq $shaN4b1) 'selects registered AS-N4B.1 exact SHA'
+    Assert (($selectedN4b2|ConvertFrom-Json).SourceCommit -eq $shaN4b2) 'selects registered AS-N4B.2 exact SHA'
     $duplicateDir=Join-Path $root 'builds\n4b1-duplicate'; New-Item -ItemType Directory -Path $duplicateDir -Force|Out-Null; Copy-Item (Join-Path $root 'builds\n4b1\audio-probe-qa-build.json') (Join-Path $duplicateDir 'audio-probe-qa-build.json')
     $ambiguous=$false; try{$null=Invoke-Select 'fix/as-n4b1-native-duplex-v2-cli' $shaN4b1}catch{$ambiguous=$_.Exception.Message -match 'Ambiguous builds'}; Assert $ambiguous 'refuses multiple matching manifests'; Remove-Item $duplicateDir -Recurse -Force
     $badSha=$false; try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' ('0'*40)}catch{$badSha=$_.Exception.Message -match 'Expected exactly one registered worktree'}; Assert $badSha 'rejects wrong/unregistered source SHA'
     $missingManifest=$false; Remove-Item (Join-Path $root 'builds\n4b\audio-probe-qa-build.json'); try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b}catch{$missingManifest=$_.Exception.Message -match 'No verified build'}; Assert $missingManifest 'rejects missing matching manifest'
     $n4b1Manifest=Join-Path $root 'builds\n4b1\audio-probe-qa-build.json'; $stale=Get-Content $n4b1Manifest -Raw|ConvertFrom-Json; $stale.sourceCommit='0'*40; $stale|ConvertTo-Json -Depth 5|Set-Content $n4b1Manifest -Encoding utf8; $staleRejected=$false; try{$null=Invoke-Select 'fix/as-n4b1-native-duplex-v2-cli' $shaN4b1}catch{$staleRejected=$_.Exception.Message -match 'No verified build'}; Assert $staleRejected 'rejects a stale source SHA manifest'
+    $n4b2Manifest=Join-Path $root 'builds\n4b2\audio-probe-qa-build.json'; $stale=Get-Content $n4b2Manifest -Raw|ConvertFrom-Json; $stale.sourceCommit='0'*40; $stale|ConvertTo-Json -Depth 5|Set-Content $n4b2Manifest -Encoding utf8; $staleRejected=$false; try{$null=Invoke-Select 'fix/as-n4b2-auto-short' $shaN4b2}catch{$staleRejected=$_.Exception.Message -match 'No verified build'}; Assert $staleRejected 'rejects a stale AS-N4B.2 source SHA'
     Remove-Item $n4b1Manifest
     Add-Build (Join-Path $root 'builds\n4b') 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b|Out-Null
     $badInstall=$false; try{$null=Invoke-Select 'feat/audio-probe-as-n4b-bounded-physical-qa' $shaN4b (Join-Path $root 'unverified.exe')}catch{$badInstall=$_.Exception.Message -match 'must exactly match'}; Assert $badInstall 'InstallPath cannot bypass verified build identity'
@@ -64,5 +69,5 @@ try {
     $registered=& $launcher -RegisterBuild -SourceBranch 'fix/as-n4b1-native-duplex-v2-cli' -ExpectedSha $shaN4b1 -BuildDirectory $registerGood -NativeCliPath $goodCli -WorkspaceRegistryPath $registryPath
     Assert (Test-Path -LiteralPath $registered -PathType Leaf) 'registers exact-SHA GUI/Worker/CLI manifest'
     $overwrite=$false; try{$null=& $launcher -RegisterBuild -SourceBranch 'fix/as-n4b1-native-duplex-v2-cli' -ExpectedSha $shaN4b1 -BuildDirectory $registerGood -NativeCliPath $goodCli -WorkspaceRegistryPath $registryPath}catch{$overwrite=$_.Exception.Message -match 'Refusing to overwrite'}; Assert $overwrite 'does not overwrite an existing QA build manifest'
-    Write-Host 'PASS: AS-N3C/AS-N4B/AS-N4B.1 source selection, exact GUI ProductVersion, manifest, binary integrity, registration and InstallPath gate'
+    Write-Host 'PASS: AS-N3C/AS-N4B/AS-N4B.1/AS-N4B.2 source selection, exact GUI ProductVersion, manifest, binary integrity, registration and InstallPath gate'
 } finally { if(Test-Path $root){Remove-Item $root -Recurse -Force} }

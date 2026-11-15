@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $manifestName = 'audio-probe-qa-build.json'
-$supportedBranches = @('feat/audio-probe-as-n3c-gui-integration', 'feat/audio-probe-as-n4b-bounded-physical-qa', 'fix/as-n4b1-native-duplex-v2-cli')
+$supportedBranches = @('feat/audio-probe-as-n3c-gui-integration', 'feat/audio-probe-as-n4b-bounded-physical-qa', 'fix/as-n4b1-native-duplex-v2-cli', 'fix/as-n4b2-auto-short')
 
 function Get-WorkspaceContext {
     if (-not (Test-Path -LiteralPath $WorkspaceRegistryPath -PathType Leaf)) { throw "Workspace registry missing: $WorkspaceRegistryPath" }
