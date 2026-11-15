@@ -10,9 +10,9 @@ public sealed class WorkerAutomaticScanWorkflow(NativeWorkerClient worker) : IAu
     private int _mayBeActive;
 
     public Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
-        string period, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken) =>
+        string period, string qaMode, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken) =>
         new WorkerV2AutomaticScanWorkflow(worker).RunAsync(captureEndpointId, renderEndpointId, route, true, confirmationId,
-            cancellationToken: cancellationToken, period: period, progress: progress);
+            cancellationToken: cancellationToken, period: period, qaMode: qaMode, progress: progress);
 
     public Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
         bool routeValidated, Guid confirmationId, string evidenceRoot, CancellationToken cancellationToken = default) =>

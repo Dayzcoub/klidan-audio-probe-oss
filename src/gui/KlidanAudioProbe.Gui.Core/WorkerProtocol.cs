@@ -181,7 +181,7 @@ public sealed record WorkerScanSessionToken(Guid ScanSessionId, int ContractVers
 public sealed record WorkerScanV2Side(int SampleRateHz, int Channels, string Encoding, uint ChannelMask, IReadOnlyList<int> SelectedIndicesZeroBased);
 public sealed record WorkerScanV2Route(string Mode, WorkerScanV2Side Capture, WorkerScanV2Side Render);
 public sealed record WorkerScanPlanV2(WorkerScanV2Route Route, IReadOnlyList<string> Periods, IReadOnlyList<string> MmcssModes,
-    int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds);
+    int LifetimeSeconds, int MaximumOperationDurationSeconds, int MaximumOperationCount, long MaximumTotalDurationSeconds, string QaMode = "DISCOVERY");
 public static class WorkerScanPlanV2Fingerprint
 {
     public static string Route(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route)
@@ -201,11 +201,12 @@ public static class WorkerScanPlanV2Fingerprint
     }
     public static string Compute(string captureEndpointId, string renderEndpointId, WorkerScanPlanV2 plan, ulong discoveryGeneration)
     {
-        if (plan.LifetimeSeconds is < 1 or > 1800 || plan.MaximumOperationDurationSeconds != 600 || plan.MaximumOperationCount is < 10 or > 24 || plan.MaximumTotalDurationSeconds < 1030 || plan.MaximumTotalDurationSeconds > 600L * plan.MaximumOperationCount || plan.Periods.Count is < 1 or > 2 || plan.Periods.Any(p => p is not ("MINIMUM" or "DEFAULT")) || plan.Periods.Distinct(StringComparer.Ordinal).Count() != plan.Periods.Count || plan.MmcssModes.Count is < 1 or > 2 || plan.MmcssModes.Any(m => m is not ("OFF" or "PRO_AUDIO")) || plan.MmcssModes.Distinct(StringComparer.Ordinal).Count() != plan.MmcssModes.Count) throw new ArgumentException("V2 scan scope is outside its bounded authorization limits.", nameof(plan));
+        var (lifetime, maxDuration, maxOperations, maxTotal) = plan.QaMode switch { "SHORT" => (120, 5, 3, 5L), "FULL" => (1200, 600, 12, 995L), _ => throw new ArgumentException("V2 audio authorization requires SHORT or FULL QA mode.", nameof(plan)) };
+        if (plan.LifetimeSeconds != lifetime || plan.MaximumOperationDurationSeconds != maxDuration || plan.MaximumOperationCount != maxOperations || plan.MaximumTotalDurationSeconds != maxTotal || plan.Periods.Count is < 1 or > 2 || plan.Periods.Any(p => p is not ("MINIMUM" or "DEFAULT")) || plan.Periods.Distinct(StringComparer.Ordinal).Count() != plan.Periods.Count || plan.MmcssModes.Count is < 1 or > 2 || plan.MmcssModes.Any(m => m is not ("OFF" or "PRO_AUDIO")) || plan.MmcssModes.Distinct(StringComparer.Ordinal).Count() != plan.MmcssModes.Count) throw new ArgumentException("V2 scan scope is outside its bounded authorization limits.", nameof(plan));
         var route = Route(captureEndpointId, renderEndpointId, plan.Route);
-        var canonical = $"SCAN_PLAN_V2|2|{discoveryGeneration}|{plan.LifetimeSeconds}|600|{plan.MaximumOperationCount}|{plan.MaximumTotalDurationSeconds}|{route}\n" +
+        var canonical = $"SCAN_PLAN_V2|3|{discoveryGeneration}|{plan.QaMode}|{plan.LifetimeSeconds}|{maxDuration}|{maxOperations}|{maxTotal}|{route}\n" +
             string.Concat(plan.Periods.Order(StringComparer.Ordinal).Select(p => $"P|{p}\n")) +
-            string.Concat(plan.MmcssModes.Order(StringComparer.Ordinal).Select(m => $"M|{m}\n")) + "D|60\nD|300\nD|600\n";
+            string.Concat(plan.MmcssModes.Order(StringComparer.Ordinal).Select(m => $"M|{m}\n")) + (plan.QaMode == "FULL" ? "D|60\nD|300\nD|600\n" : "");
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
     private static void ValidateSide(WorkerScanV2Side side, int count)

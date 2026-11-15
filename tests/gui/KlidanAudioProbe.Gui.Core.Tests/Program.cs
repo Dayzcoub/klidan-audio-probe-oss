@@ -779,12 +779,12 @@ v2RouteWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V
 v2RouteVm.DiscoverWindowsEndpointsCommand.Execute(null);
 Check(PumpUntil(() => v2RouteVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "V2 route discovery completes from deterministic endpoint fixtures");
 var enCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US"); var ruCulture = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
-Check(Localization.Get("VmScanEngineV1Description", enCulture).Contains("Basic check", StringComparison.Ordinal) && Localization.Get("VmScanEngineV1Description", ruCulture).Contains("Базовая проверка", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", enCulture).Contains("active Capture", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", ruCulture).Contains("Нужны активные endpoint", StringComparison.Ordinal) && Localization.Get("VmV2CheckStopped", ruCulture) == "Проверка остановлена" && Localization.Get("VmV2CheckStopped", enCulture) == "Check stopped", "V1/V2 mode explanations and stopped state are localized in RU and EN");
+Check(Localization.Get("VmScanEngineV1Description", enCulture).Contains("Basic check", StringComparison.Ordinal) && Localization.Get("VmScanEngineV1Description", ruCulture).Contains("Базовая проверка", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", enCulture).Contains("active Capture", StringComparison.Ordinal) && Localization.Get("VmScanEngineV2Description", ruCulture).Contains("Нужны активные endpoint", StringComparison.Ordinal) && Localization.Get("VmV2CheckStopped", ruCulture) == "Проверка остановлена" && Localization.Get("VmV2CheckStopped", enCulture) == "Check stopped" && Localization.Get("VmV2QaShortSummary", enCulture).Contains("not certified", StringComparison.Ordinal) && Localization.Get("VmV2QaShortSummary", ruCulture).Contains("не сертифицирована", StringComparison.Ordinal), "V1/V2 descriptions, Short non-certification, and stopped state are localized in RU and EN");
 v2RouteVm.SelectedPhysicalDeviceGroup = v2RouteVm.PhysicalDeviceGroups.Single();
 v2RouteVm.AutomaticScanV2CaptureChannels = 8;
 v2RouteVm.AutomaticScanV2CaptureChannel1 = 8;
 v2RouteVm.AutomaticScanV2RenderChannels = 2;
-Check(v2RouteVm.AutomaticScanEngine == "V2_ADAPTIVE" && v2RouteVm.AutomaticScanV2Period == "MINIMUM" && v2RouteVm.AutomaticScanV2RouteSummary.Contains("8", StringComparison.Ordinal), "V2 starts MINIMUM-first and permits choosing the last one-based channel in a multichannel stream");
+Check(v2RouteVm.AutomaticScanEngine == "V2_ADAPTIVE" && v2RouteVm.AutomaticScanV2Period == "MINIMUM" && v2RouteVm.AutomaticScanV2QaMode == "DISCOVERY" && v2RouteVm.AutomaticScanV2RouteSummary.Contains("8", StringComparison.Ordinal), "V2 starts with Discovery and MINIMUM-first while permitting the last one-based channel in a multichannel stream");
 foreach (var mode in new[] { "MONO_TO_STEREO", "STEREO_TO_STEREO", "MONO_TO_MONO" }) { v2RouteVm.AutomaticScanV2Mode = mode; Check(v2RouteVm.AutomaticScanV2Modes.Any(m => m.Value == v2RouteVm.AutomaticScanV2Mode), $"V2 route mode {mode} is selectable"); }
 v2RouteVm.AutomaticScanV2Mode = "MONO_TO_STEREO";
 var v2LayoutWindow = new MainWindow(v2RouteVm) { Width = 1280, Height = 800, ShowActivated = false };
@@ -858,6 +858,25 @@ Check(!v2RouteVm.AutomaticScanConsentPending && !v2RouteVm.ConfirmAutomaticScanC
 v2RouteVm.PrepareAutomaticScanCommand.Execute(null); Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "V2 route consent prepares for endpoint invalidation test");
 v2RouteVm.SelectedDuplexRenderEndpoint = null;
 Check(!v2RouteVm.AutomaticScanConsentPending && !v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null), "changing V2 endpoint after preparation invalidates consent and command execution");
+v2RouteVm.SelectedDuplexRenderEndpoint = v2RouteVm.DuplexRenderEndpoints.Single();
+var v2QaWindow = new MainWindow(v2RouteVm) { Width = 1280, Height = 800, ShowActivated = false }; v2QaWindow.Show(); v2QaWindow.UpdateLayout();
+v2RouteVm.AutomaticScanV2QaMode = "SHORT"; v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)) && v2RouteVm.AutomaticScanConsentText.Contains("SHORT", StringComparison.Ordinal), "Short QA plan presents bounded consent after fresh route preparation");
+var qaConsent = (CheckBox)v2QaWindow.FindName("AutomaticScanConsentCheckBox"); var qaConfirm = (Button)v2QaWindow.FindName("ConfirmAutomaticScanButton");
+qaConsent.IsChecked = true; v2QaWindow.UpdateLayout();
+Check(qaConfirm.IsEnabled, "Short QA requires the selected-plan consent"); qaConfirm.Command!.Execute(qaConfirm.CommandParameter);
+Check(PumpUntil(() => v2Workflow.LastV2QaMode == "SHORT" && v2RouteVm.HasAutomaticScanResult, TimeSpan.FromSeconds(2)), "GUI dispatches selected Short QA depth to V2 workflow");
+v2RouteVm.AutomaticScanV2QaMode = "FULL"; v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "Full QA requires a fresh plan and consent");
+v2RouteVm.AutomaticScanV2QaMode = "DISCOVERY";
+Check(!v2RouteVm.AutomaticScanConsentPending && !v2RouteVm.AutomaticScanFullBudgetConfirmed && !v2RouteVm.ConfirmAutomaticScanCommand.CanExecute(null), "changing QA depth after Full preparation clears consent and the separate budget approval");
+v2RouteVm.AutomaticScanV2QaMode = "FULL"; v2RouteVm.PrepareAutomaticScanCommand.Execute(null);
+Check(PumpUntil(() => v2RouteVm.AutomaticScanConsentPending, TimeSpan.FromSeconds(2)), "Full QA requires a new plan after depth change");
+var fullBudget = (CheckBox)v2QaWindow.FindName("AutomaticScanFullBudgetCheckBox"); qaConsent.IsChecked = true; v2QaWindow.UpdateLayout();
+Check(v2RouteVm.AutomaticScanFullBudgetConfirmationVisible && !v2RouteVm.AutomaticScanFullBudgetConfirmed && !qaConfirm.IsEnabled, "Full QA remains disabled pending separate full-budget consent");
+fullBudget.IsChecked = true; v2QaWindow.UpdateLayout(); Check(qaConfirm.IsEnabled, "Full QA starts only after explicit full-budget consent"); qaConfirm.Command!.Execute(qaConfirm.CommandParameter);
+Check(PumpUntil(() => v2Workflow.LastV2QaMode == "FULL" && v2RouteVm.HasAutomaticScanResult, TimeSpan.FromSeconds(2)), "GUI dispatches explicitly confirmed Full QA depth to V2 workflow");
+v2QaWindow.Close();
 v2RouteVm.AutomaticScanEngine = "V1_COMPATIBLE";
 Check(((StackPanel)physicalWindow.FindName("DevicesPanel")).Visibility == Visibility.Visible && ((StackPanel)physicalWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed && ((StackPanel)physicalWindow.FindName("OperatorResultPanel")).Visibility == Visibility.Collapsed, "Device page is the only primary page visible in normal mode");
 physicalVm.OpenDeveloperToolsCommand.Execute(null); physicalWindow.UpdateLayout();
@@ -3279,6 +3298,7 @@ sealed class GuiAutomaticScanWorkflow(WindowsEndpointDiscoveryDto discovery) : I
     public string? LastV2RenderId { get; private set; }
     public WorkerScanV2Route? LastV2Route { get; private set; }
     public string? LastV2Period { get; private set; }
+    public string? LastV2QaMode { get; private set; }
     public Guid LastV2ConfirmationId { get; private set; }
     public TaskCompletionSource<WindowsEndpointDiscoveryDto>? RefreshGate { get; init; }
     public bool HoldRunUntilReleased { get; init; }
@@ -3345,11 +3365,11 @@ sealed class GuiAutomaticScanWorkflow(WindowsEndpointDiscoveryDto discovery) : I
     }
 
     public Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
-        string period, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken)
+        string period, string qaMode, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken)
     {
         RunV2Calls++;
         LastV2CaptureId = captureEndpointId; LastV2RenderId = renderEndpointId; LastV2Route = route;
-        LastV2Period = period; LastV2ConfirmationId = confirmationId;
+        LastV2Period = period; LastV2QaMode = qaMode; LastV2ConfirmationId = confirmationId;
         RunStarted.TrySetResult();
         progress?.Invoke(new("SHORT_DUPLEX", "RUNNING", "Synthetic GUI workflow", Guid.NewGuid().ToString("D"), 1));
         IReadOnlyList<V2AutomaticScanOperation> operations = [new("SHORT_DUPLEX", Guid.NewGuid().ToString("D"), null, null, "COMPLETED", period, 1, "CONFIRMED", "TEST_FAKE_GUI_WORKFLOW", null)];
@@ -3357,7 +3377,7 @@ sealed class GuiAutomaticScanWorkflow(WindowsEndpointDiscoveryDto discovery) : I
         return Task.FromResult(new V2AutomaticScanResult(Guid.NewGuid().ToString("D"), "COMPLETED", captureEndpointId,
             renderEndpointId, WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route), route, period,
             operations, stages, null, null)
-        { CaptureFriendlyName = "Fixture Capture", RenderFriendlyName = "Fixture Render" });
+            { CaptureFriendlyName = "Fixture Capture", RenderFriendlyName = "Fixture Render", QaMode = qaMode, RepeatabilityStatus = qaMode == "FULL" ? "COMPLETED" : "NOT_REQUESTED", SustainedStatus = qaMode == "FULL" ? "COMPLETED" : "NOT_REQUESTED" });
     }
 }
 

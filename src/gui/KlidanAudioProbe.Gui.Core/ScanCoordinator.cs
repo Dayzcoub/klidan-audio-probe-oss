@@ -139,6 +139,10 @@ public sealed record V2AutomaticScanResult(string SessionId, string Lifecycle, s
     string RouteFingerprint, WorkerScanV2Route Route, string Period, IReadOnlyList<V2AutomaticScanOperation> Operations,
     IReadOnlyList<AutomaticScanStageResult> Stages, string? EvidencePath, string? Error)
 {
+    public string QaMode { get; init; } = "FULL";
+    public IReadOnlyDictionary<string, string> QaStageStatuses { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+    public string RepeatabilityStatus { get; init; } = "NOT_RUN";
+    public string SustainedStatus { get; init; } = "NOT_RUN";
     public string CaptureFriendlyName { get; init; } = string.Empty;
     public string RenderFriendlyName { get; init; } = string.Empty;
     public V2WorkerErrorDiagnostics? WorkerError { get; init; }
@@ -150,6 +154,10 @@ public interface IAutomaticScanWorkflow
     AutomaticScanPreparation Prepare(WindowsEndpointDiscoveryDto discovery, AutomaticScanSelection selection);
     Task<ScanRunResult> RunApprovedAsync(AutomaticScanPreparation preparation, Guid confirmationId,
         Action<ScanProgressEvent>? progress, CancellationToken cancellationToken);
+    Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
+        string period, string qaMode, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken) =>
+        qaMode == "FULL" ? RunV2Async(captureEndpointId, renderEndpointId, route, period, confirmationId, progress, cancellationToken) :
+        Task.FromException<V2AutomaticScanResult>(new NotSupportedException("This workflow does not support bounded V2 QA modes."));
     Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
         string period, Guid confirmationId, Action<V2AutomaticScanProgress>? progress, CancellationToken cancellationToken) =>
         Task.FromException<V2AutomaticScanResult>(new NotSupportedException("V2 Automatic Scan is unavailable in this workflow."));
