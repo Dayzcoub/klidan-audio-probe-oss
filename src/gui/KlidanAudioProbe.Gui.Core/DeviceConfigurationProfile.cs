@@ -24,6 +24,7 @@ public sealed record DeviceConfigurationProfile(
     public IReadOnlyList<ProfileStreamObservation> StreamObservations { get; init; } = [];
     public IReadOnlyList<ProfileDuplexObservation> DuplexObservations { get; init; } = [];
     public ProfileSustainedSelection? SustainedSelection { get; init; }
+    public ProfileStableShortSelection? StableShortSelection { get; init; }
 }
 
 public sealed record ProfileEnvironment(string? OsDescription, string? ProcessArchitecture);
@@ -92,11 +93,22 @@ public sealed record ProfileRecommendation(ProfileConfigurationChoice? Preferred
 public sealed record ProfileSustainedSelection(string SourceScanSessionId, ProfileSustainedConfiguration? Preferred, ProfileSustainedConfiguration? Fallback, string Scope, string Confidence, IReadOnlyList<string> UnavailableReasons, IReadOnlyList<ProfileSustainedEvidenceReference> Evidence);
 public sealed record ProfileSustainedConfiguration(string CaptureEndpointId, string RenderEndpointId, ProfileAudioFormat Format, string Period, int CaptureBufferFrames, int RenderBufferFrames, string Mmcss, int DurationSeconds, string Quality, string Confidence, IReadOnlyList<Guid> OperationIds, IReadOnlyList<Guid> ReportIds, IReadOnlyList<Guid> EvidenceReferences);
 public sealed record ProfileSustainedEvidenceReference(Guid EvidenceId, Guid OperationId, Guid ReportId, string SourceProvenance, string SourceReference, string CaptureEndpointId, string RenderEndpointId, ProfileAudioFormat Format, string Period, string Mmcss, int DurationSeconds, string Quality, string Classification, string CleanupStatus, int CaptureBufferFrames, int RenderBufferFrames);
+public sealed record ProfileStableShortSelection(string ProfileKind, string CaptureEndpointId, string RenderEndpointId, string RouteMode, ProfileAudioFormat CaptureFormat, ProfileAudioFormat RenderFormat, IReadOnlyList<int> CaptureChannelIndices, IReadOnlyList<int> RenderChannelIndices, int RequestedCaptureFrames, long RequestedCapturePeriod100ns, int ActualCaptureFrames, long ActualCapturePeriod100ns, int RequestedRenderFrames, long RequestedRenderPeriod100ns, int ActualRenderFrames, long ActualRenderPeriod100ns, string Mmcss, int SelectedCandidateIndex, string PlanFingerprint, ulong DiscoveryGeneration, string SearchQualification, int RepeatabilityRequested, int RepeatabilityCompleted, IReadOnlyList<Guid> RepeatOperationIds, string EvidenceProvenance, string SourceEvidenceId, string SourceEvidenceSha256, DateTimeOffset QualifiedAtUtc);
 public sealed record ProfileStreamObservation(Guid InitializeEvidenceId, Guid OperationId, string Provenance, DateTimeOffset ObservedAtUtc, string Direction, ProfileAudioFormat Format, int DurationSeconds, string? ActivationHresult, string? IsFormatSupportedHresult, string? InitializeHresult, string? StartHresult, bool? StartSucceeded, long? Events, long? Packets, long? FramesProcessed, long? ExpectedFrames, double? FrameCoveragePercent, double? ElapsedMilliseconds, bool? DurationReached, long? Discontinuities, long? TimestampErrors, long? UnavailableCaptureBuffers, long? BufferServiceFaults, long? EventWaitTimeouts, string StreamQuality, bool? StopSucceeded, string? StopHresult, string Cleanup, string CleanupDetail, string PhysicalPlayback, string PhysicalRouting);
 public sealed record ProfileDuplexObservation(Guid EvidenceId, Guid OperationId, string CaptureEndpointId, string RenderEndpointId, string Period, string Mmcss, int DurationSeconds, JsonElement Report);
 
 public static class DeviceConfigurationProfileFactory
 {
+    public static DeviceConfigurationProfile CreateStableShort(DeviceConfigurationProfile baseProfile, ProfileStableShortSelection selection)
+    {
+        if (baseProfile.SchemaVersion != 3 || baseProfile.Privacy != "LOCAL_MACHINE" || baseProfile.EndpointBindings.Capture?.EndpointId != selection.CaptureEndpointId || baseProfile.EndpointBindings.Render?.EndpointId != selection.RenderEndpointId)
+            throw new InvalidDataException("A v5 profile requires a local v3 profile bound to the exact selected endpoint pair.");
+        if (selection.ProfileKind == "DEVICE" && (selection.EvidenceProvenance != "REAL_WASAPI_V4_DUPLEX" || baseProfile.DuplexObservations.Count == 0 || baseProfile.DuplexObservations.Any(o => !baseProfile.Evidence.Any(e => e.Id == o.EvidenceId && e.SourceProvenance == "REAL_WASAPI_DUPLEX"))))
+            throw new InvalidDataException("A physical v5 profile requires real exact-pair base evidence and real repeatability provenance.");
+        var recommendation = new ProfileRecommendation(null, null, ["Short-run repeatability does not establish sustained AudioHost or physical KLIDAN qualification."]) { Scope = "NONE", Confidence = "NOT_AVAILABLE" };
+        return DeviceConfigurationProfileJson.Validate(baseProfile with { SchemaVersion = 5, ProfileId = Guid.NewGuid(), CreatedAtUtc = selection.QualifiedAtUtc, DuplexObservations = [], Recommendation = recommendation, StableShortSelection = selection });
+    }
+
     public static DeviceConfigurationProfile CreateDuplex(WindowsEndpointDto capture, WindowsEndpointDto render, IReadOnlyList<DuplexValidationDto> validations, string? probeVersion = null, Guid? profileId = null, DateTimeOffset? createdAtUtc = null)
     {
         if (capture.Direction != "CAPTURE" || render.Direction != "RENDER" || capture.DeviceState != "ACTIVE" || render.DeviceState != "ACTIVE" || string.IsNullOrWhiteSpace(capture.EndpointId) || string.IsNullOrWhiteSpace(render.EndpointId) || capture.EndpointId == render.EndpointId || validations.Count is < 1 or > 2) throw new InvalidDataException("A Duplex profile requires an exact active Capture/Render pair and one or two observations.");
@@ -350,6 +362,7 @@ public static class DeviceConfigurationProfileJson
     public static byte[] SerializeSanitized(DeviceConfigurationProfile profile)
     {
         Validate(profile);
+        if (profile.SchemaVersion == 5) throw new InvalidDataException("Stable short profiles are local exact-device records and cannot be exported as sanitized profiles.");
         var sanitized = profile with
         {
             Device = new(null, null, null, null, null, null, null),
@@ -357,6 +370,7 @@ public static class DeviceConfigurationProfileJson
             Evidence = profile.Evidence.Select(e => e.SourceProvenance == "OPERATOR_PROVIDED" ? e with { SourceReference = $"OPERATOR_PROVIDED_REDACTED-{e.Id:D}" } : e).ToArray(),
             DuplexObservations = profile.DuplexObservations.Select(o => o with { CaptureEndpointId = "REDACTED", RenderEndpointId = "REDACTED", Report = RedactEndpointIds(o.Report) }).ToArray(),
             SustainedSelection = profile.SustainedSelection is { } sustained ? SanitizeSustainedSelection(sustained) : null,
+            StableShortSelection = profile.StableShortSelection,
             Privacy = "SANITIZED_PORTABLE"
         };
         return Serialize(Validate(sanitized));
@@ -375,8 +389,10 @@ public static class DeviceConfigurationProfileJson
     {
         ArgumentNullException.ThrowIfNull(p);
         static void Need(bool condition, string message) { if (!condition) throw new InvalidDataException(message); }
-        Need(p.SchemaVersion is 1 or 2 or 3 or 4, "Unsupported profile schemaVersion.");
+        Need(p.SchemaVersion is 1 or 2 or 3 or 4 or 5, "Unsupported profile schemaVersion.");
         Need(p.SchemaVersion == 4 || p.SustainedSelection is null, "Only v4 profiles may contain sustained selection evidence.");
+        Need(p.SchemaVersion == 5 || p.StableShortSelection is null, "Only v5 profiles may contain stable short selection evidence.");
+        Need(p.SchemaVersion != 5 || p.SustainedSelection is null, "v5 short profiles cannot claim sustained qualification.");
         Need(p.ProfileId != Guid.Empty, "profileId must be a UUID.");
         Need(p.CreatedAtUtc.Offset == TimeSpan.Zero, "createdAtUtc must be UTC.");
         if (p.Environment is null || p.Device is null || p.EndpointBindings is null || p.CapabilityEvidence is null || p.Recommendation is null || p.Evidence is null || p.AudioHostAssessments is null)
@@ -521,6 +537,11 @@ public static class DeviceConfigurationProfileJson
             Need(p.Recommendation.Preferred is null && p.Recommendation.Fallback is null && p.Recommendation.Scope == "NONE", "v4 sustained selection must not reuse a v3 short-run recommendation.");
             ValidateSustainedSelection(p.SustainedSelection, p.Privacy, p.EndpointBindings);
         }
+        else if (p.SchemaVersion == 5)
+        {
+            Need(p.Recommendation.Preferred is null && p.Recommendation.Fallback is null && p.Recommendation.Scope == "NONE", "v5 stable short profile must not create an AudioHost recommendation.");
+            ValidateStableShortSelection(p.StableShortSelection, p.Privacy, p.EndpointBindings);
+        }
         else
         {
             Need(p.Recommendation.Scope is "NONE" or "PROBE_PROVISIONAL" && p.Recommendation.Confidence is "PROVISIONAL" or "LOW" or "NOT_AVAILABLE", "Invalid v3 recommendation scope or confidence.");
@@ -528,6 +549,26 @@ public static class DeviceConfigurationProfileJson
             Need(p.Recommendation.Fallback is null || p.Recommendation.Scope == "PROBE_PROVISIONAL" && p.Recommendation.Fallback.Mode == "PROBE_PROVISIONAL" && p.Recommendation.Fallback.Evidence.All(id => duplexIds.Contains(id)), "Fallback choice requires matching provisional Duplex evidence.");
         }
         return p;
+
+        static void ValidateStableShortSelection(ProfileStableShortSelection? selection, string privacy, ProfileEndpointBindings bindings)
+        {
+            if (selection is null) throw new InvalidDataException("v5 stable short selection is required.");
+            Need(selection.ProfileKind is "DEVICE" or "TEST_ONLY", "Unknown v5 profile kind.");
+            Need(!string.IsNullOrWhiteSpace(selection.CaptureEndpointId) && selection.CaptureEndpointId == bindings.Capture?.EndpointId && !string.IsNullOrWhiteSpace(selection.RenderEndpointId) && selection.RenderEndpointId == bindings.Render?.EndpointId, "v5 stable selection endpoint identities differ from bindings.");
+            Need(selection.RouteMode is "MONO_TO_MONO" or "MONO_TO_STEREO" or "STEREO_TO_MONO" or "STEREO_TO_STEREO" or "CUSTOM", "Invalid v5 route mode.");
+            var captureFormat = selection.CaptureFormat ?? throw new InvalidDataException("v5 Capture format is required.");
+            var renderFormat = selection.RenderFormat ?? throw new InvalidDataException("v5 Render format is required.");
+            Need((captureFormat.Encoding is "PCM16" or "PCM24_IN_32" or "FLOAT32") && (renderFormat.Encoding is "PCM16" or "PCM24_IN_32" or "FLOAT32") && captureFormat.SampleRate is >= 8_000 and <= 384_000 && renderFormat.SampleRate is >= 8_000 and <= 384_000 && captureFormat.Channels is >= 1 and <= 64 && renderFormat.Channels is >= 1 and <= 64, "Invalid v5 per-side audio formats.");
+            Need(ValidIndices(selection.CaptureChannelIndices, captureFormat.Channels) && ValidIndices(selection.RenderChannelIndices, renderFormat.Channels), "Invalid v5 channel indices.");
+            Need(selection.RequestedCaptureFrames > 0 && selection.ActualCaptureFrames == selection.RequestedCaptureFrames && selection.RequestedCapturePeriod100ns > 0 && selection.ActualCapturePeriod100ns == selection.RequestedCapturePeriod100ns && selection.RequestedRenderFrames > 0 && selection.ActualRenderFrames == selection.RequestedRenderFrames && selection.RequestedRenderPeriod100ns > 0 && selection.ActualRenderPeriod100ns == selection.RequestedRenderPeriod100ns, "v5 stable profile requires exact requested/actual geometry on both sides.");
+            Need(selection.Mmcss == "OFF" && selection.SelectedCandidateIndex >= 0 && selection.DiscoveryGeneration > 0 && selection.SearchQualification == "MINIMUM_SHORT_CLEAN_FOUND" && selection.RepeatabilityRequested == 5 && selection.RepeatabilityCompleted == 5 && selection.RepeatOperationIds is { Count: 5 } && selection.RepeatOperationIds.All(id => id != Guid.Empty) && selection.RepeatOperationIds.Distinct().Count() == 5, "v5 stable profile requires exact 5/5 repeatability qualification.");
+            Need(Hash(selection.PlanFingerprint, 64) && !string.IsNullOrWhiteSpace(selection.SourceEvidenceId) && selection.SourceEvidenceId.Length <= 256 && Hash(selection.SourceEvidenceSha256, 64) && selection.QualifiedAtUtc.Offset == TimeSpan.Zero, "v5 source evidence identity, fingerprint, or timestamp is invalid.");
+            Need(selection.ProfileKind == "DEVICE" ? selection.EvidenceProvenance == "REAL_WASAPI_V4_DUPLEX" : selection.EvidenceProvenance == "TEST_FAKE_WASAPI_V4_DUPLEX", "v5 evidence provenance does not match profile kind.");
+            Need(selection.ProfileKind == "TEST_ONLY" || privacy == "LOCAL_MACHINE", "A physical v5 profile must remain local.");
+
+            static bool ValidIndices(IReadOnlyList<int>? indices, int channelCount) => indices is { Count: > 0 and <= 64 } && indices.All(i => i >= 0 && i < channelCount) && indices.Distinct().Count() == indices.Count;
+            static bool Hash(string value, int length) => value.Length == length && value.All(Uri.IsHexDigit);
+        }
 
         static void ValidateSustainedSelection(ProfileSustainedSelection? selection, string privacy, ProfileEndpointBindings bindings)
         {
@@ -656,8 +697,11 @@ public static class DeviceConfigurationProfileStorage
     {
         public bool IsAvailable => Profile is not null;
         public bool IsSustained => Profile?.SchemaVersion == 4 && Profile.SustainedSelection is not null;
+        public bool IsStableShort => Profile?.SchemaVersion == 5 && Profile.StableShortSelection is not null;
         public string TechnicalDisplayName => System.IO.Path.GetFileName(Path);
-        public DateTimeOffset? MeasurementTimestampUtc => Profile is null ? null : Profile.SchemaVersion >= 3
+        public DateTimeOffset? MeasurementTimestampUtc => Profile is null ? null : Profile.SchemaVersion == 5
+            ? Profile.StableShortSelection?.QualifiedAtUtc.ToUniversalTime()
+            : Profile.SchemaVersion >= 3
             ? Profile.DuplexObservations.Select(o => o.Report.TryGetProperty("timestampUtc", out var value) && DateTimeOffset.TryParse(value.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timestamp) ? timestamp.ToUniversalTime() : DateTimeOffset.MinValue).DefaultIfEmpty().Max() is var duplexTimestamp && duplexTimestamp > DateTimeOffset.MinValue ? duplexTimestamp : null
             : Profile.Evidence.Select(e => e.ObservedAtUtc).Where(t => t > DateTimeOffset.MinValue).DefaultIfEmpty().Max() is var legacyTimestamp && legacyTimestamp > DateTimeOffset.MinValue ? legacyTimestamp : null;
         public DateTimeOffset? SortTimestampUtc => MeasurementTimestampUtc ?? (Profile?.CreatedAtUtc > DateTimeOffset.MinValue ? Profile.CreatedAtUtc.ToUniversalTime() : null);
@@ -667,9 +711,11 @@ public static class DeviceConfigurationProfileStorage
         public string TechnicalTimestamp => MeasurementTimestampUtc?.ToString("O", CultureInfo.InvariantCulture) ?? Profile?.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture) ?? "UNKNOWN";
         public string OperatorResult => Profile?.SchemaVersion == 4 && Profile.SustainedSelection is { } sustained
             ? $"v4 · Primary {sustained.Preferred?.Period ?? "NONE"} · {sustained.Preferred?.Mmcss ?? "—"} · {sustained.Preferred?.DurationSeconds.ToString() ?? "—"} с · {sustained.Confidence}"
+            : Profile?.SchemaVersion == 5 && Profile.StableShortSelection is { } stable ? $"v5 · {stable.CaptureFormat.Period} · 5/5 · {stable.ProfileKind}"
             : Profile?.SchemaVersion == 3 ? "v3 · Short Duplex profile" : Profile is not null ? $"v{Profile.SchemaVersion} · Legacy profile" : "Профиль недоступен";
         public string HistoricalSelection => Profile?.SchemaVersion == 4 && Profile.SustainedSelection is { } sustained
             ? $"Primary: {sustained.Preferred?.Period ?? "NONE"} · Fallback: {sustained.Fallback?.Period ?? "NONE"} · {sustained.Confidence}"
+            : Profile?.SchemaVersion == 5 && Profile.StableShortSelection is { } stable ? $"Selected candidate: {stable.SelectedCandidateIndex} · Repeatability: 5/5 · {stable.SearchQualification}"
             : Profile is not null ? $"v{Profile.SchemaVersion} · предыдущие измерения" : "Недоступно";
         public string OperatorDisplayName => Profile is { } profile
             ? profile.EndpointBindings.Capture?.FriendlyName is { Length: > 0 } capture && profile.EndpointBindings.Render?.FriendlyName is { Length: > 0 } render
@@ -702,7 +748,7 @@ public static class DeviceConfigurationProfileStorage
                 }
                 totalBytes += length;
                 var profile = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(path));
-                entries.Add(new(path, profile, OperatorName(profile), "AVAILABLE", profile.SchemaVersion == 4 ? "Длительный профиль" : "Предыдущие измерения"));
+                entries.Add(new(path, profile, OperatorName(profile), "AVAILABLE", profile.SchemaVersion == 4 ? "Длительный профиль" : profile.SchemaVersion == 5 ? "Стабильный короткий профиль" : "Предыдущие измерения"));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
             {

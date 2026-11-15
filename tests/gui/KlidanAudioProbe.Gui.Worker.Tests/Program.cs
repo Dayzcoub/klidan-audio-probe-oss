@@ -736,6 +736,14 @@ try
     Check(v4RenderInit.GetProperty("initializeDisposition").GetString()=="INITIALIZED_EXACT"&&v4RenderInit.GetProperty("actualFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4RenderInit.GetProperty("actualPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns,"V4 Render Initialize independently preserves exact candidate geometry");
     var v4DuplexId=Guid.NewGuid();var v4Duplex=await v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,v4DuplexId,route,v2Capture,v2Render,v4Plan,0);
     Check(v4Duplex.GetProperty("duplexDisposition").GetString()=="CLEAN"&&v4Duplex.GetProperty("captureEndpointId").GetString()==v2Capture&&v4Duplex.GetProperty("renderEndpointId").GetString()==v2Render&&v4Duplex.GetProperty("actualCaptureFrames").GetInt32()==v4Candidates[0].CaptureFrames&&v4Duplex.GetProperty("actualRenderFrames").GetInt32()==v4Candidates[0].RenderFrames&&v4Duplex.GetProperty("actualCapturePeriod100ns").GetInt64()==v4Candidates[0].CapturePeriod100ns&&v4Duplex.GetProperty("actualRenderPeriod100ns").GetInt64()==v4Candidates[0].RenderPeriod100ns&&v4Duplex.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX","isolated v4 transport returns exact endpoint identity, per-side geometry and explicit test provenance");
+    var preparedV4Evaluation=new WorkerScanV2V4PreparedPlan(v2Capture,v2Render,v4Plan,v4Consent);
+    Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,v4Duplex)=="CLEAN","strict v4 evaluator accepts the complete exact synthetic CLEAN report");
+    var missingReportField=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();missingReportField["report"]!["capture"]!.AsObject().Remove("stopSucceeded");
+    using(var incompleteV4=JsonDocument.Parse(missingReportField.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,incompleteV4.RootElement)=="UNKNOWN","strict v4 evaluator classifies a missing required native report field as UNKNOWN");
+    var wrongV4Geometry=System.Text.Json.Nodes.JsonNode.Parse(v4Duplex.GetRawText())!.AsObject();wrongV4Geometry["actualCaptureFrames"]=(int)v4Candidates[0].CaptureFrames+1;
+    using(var mismatchedV4=JsonDocument.Parse(wrongV4Geometry.ToJsonString()))Check(V4ShortCleanEvaluator.Classify(preparedV4Evaluation,v4Session,0,v4DuplexId,mismatchedV4.RootElement)=="UNKNOWN","strict v4 evaluator classifies contradictory per-side actual geometry as UNKNOWN");
+    var searchOnlyRepeatId=Guid.NewGuid();var searchOnlyRepeat=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateCustomDuplexV2InScanAsync(v4Session,searchOnlyRepeatId,route,v2Capture,v2Render,v4Plan,0),"V4 B3 search-only authorization cannot execute repeatability despite the plan ceiling");
+    Check(searchOnlyRepeat.ErrorCode=="V4_SEQUENCE_REJECTED","Worker requires explicit repeatability-mode authorization independently of the approved operation ceiling");
     var v4EvidencePath=Path.Combine(Path.GetTempPath(),$"klidan-v4-test-evidence-{Guid.NewGuid():N}.json");
     try{await File.WriteAllTextAsync(v4EvidencePath,v4Duplex.GetRawText());using var v4EvidenceReadback=JsonDocument.Parse(await File.ReadAllTextAsync(v4EvidencePath));Check(v4EvidenceReadback.RootElement.GetProperty("provenance").GetString()=="TEST_FAKE_WASAPI_V4_DUPLEX"&&v4EvidenceReadback.RootElement.GetProperty("operationId").GetGuid()==v4DuplexId,"v4 test harness persists and reads back the exact explicitly synthetic CUSTOM Duplex evidence");}
     finally{if(File.Exists(v4EvidencePath))File.Delete(v4EvidencePath);}
@@ -778,36 +786,60 @@ try
     var mixedRateSession=await v2SessionClient.RegisterScanSessionV2V4Async(v2Capture,v2Render,mixedRatePlan,mixedRateConsent);
     Check(mixedRateSession.ContractVersion==4&&mixedRateCandidates.All(c=>c.CaptureFrames!=c.RenderFrames||c.CapturePeriod100ns!=c.RenderPeriod100ns),"C# and C++ v4 authorization agree on independently rounded 44.1/48 kHz candidate geometry");
     await v2SessionClient.CloseScanSessionAsync(mixedRateSession);
-    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario)
+    async Task<(V4AutomaticSearchResult Result, string[] Operations)> RunV4Search(string name, Func<int, string, string?> scenario, bool qualify = false, int repeats = 5, WorkerScanV2Route? routeOverride = null, CancellationToken cancellationToken = default)
     {
         var client = new NativeWorkerClient(formatFixtureWorker); await client.ConnectAsync();
         var found = await client.ListWindowsEndpointsAsync();
         var captureId = found.Endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!;
         var renderId = found.Endpoints.Single(e => e.Direction == "RENDER").EndpointId!;
-        var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(route);
+        var searchRoute = routeOverride ?? route;
+        var candidates = WorkerScanV2CandidatePlanning.For48KhzThreeToTenMs(searchRoute);
         var bounds = new WorkerScanV2PeriodBounds(30_000, 100_000);
-        var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, 5);
-        var searchPlan = new WorkerScanV2ContractV4(route, candidates, ["OFF"], 5, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
+        var budget = WorkerScanV2ContractV4Fingerprint.Budget(candidates.Count, repeats);
+        var searchPlan = new WorkerScanV2ContractV4(searchRoute, candidates, ["OFF"], repeats, budget.MaximumOperations, budget.MaximumActiveDuplexSeconds, 30, budget.SessionLifetimeSeconds, 8, bounds, bounds);
         var accepted = WorkerScanV2ContractV4Fingerprint.CreateConsent(captureId, renderId, searchPlan, client.DiscoveryGeneration, true, Guid.NewGuid());
         var seen = new List<string>();
         var evidenceRoot = Path.Combine(Path.GetTempPath(), "klidan-v4-search-" + Guid.NewGuid().ToString("N"));
         try
         {
             var result = await new WorkerV4AutomaticSearchWorkflow(client).RunAsync(new(captureId, renderId, searchPlan, accepted), evidenceRoot,
-                testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); });
-            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence).Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal), $"{name} full candidate matrix persists and reads back synthetic provenance");
+                cancellationToken, testScenario: (index, operation) => { seen.Add($"{candidates[index].RequestedDuration100ns / 10_000}:{operation}"); return scenario(index, operation); }, runRepeatability: qualify);
+            var serializedEvidence = V2CandidateMatrixEvidenceJson.SerializeRoundTrip(result.Evidence);
+            Check(result.EvidencePath is not null && File.Exists(result.EvidencePath) && serializedEvidence.Contains("TEST_FAKE_WASAPI_V4_DUPLEX", StringComparison.Ordinal), $"{name} full candidate matrix persists and reads back synthetic provenance [path={result.EvidencePath ?? "null"}; exists={result.EvidencePath is not null && File.Exists(result.EvidencePath)}; lifecycle={result.Evidence.Lifecycle}; state={result.Evidence.SelectionState}; stop={result.Evidence.StopReason}; matrix={result.Evidence.Candidates.FirstOrDefault()?.DuplexDisposition}; repeats={result.Evidence.RepeatabilityCompleted}; ops={string.Join(',', seen)}; provenance={result.Evidence.Provenance}]");
             return (result, seen.ToArray());
         }
         finally { await client.DisposeAsync(); if (Directory.Exists(evidenceRoot)) Directory.Delete(evidenceRoot, true); }
     }
-    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null);
-    Check(bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.Candidates.Take(3).Select(e => e.DuplexDisposition).SequenceEqual(new[] { "FAILED", "FAILED", "CLEAN" }) && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody selects 5 ms after FAILED 3/4 ms and skips every larger candidate");
-    Check(bloodySearch.Operations.SequenceEqual(new[] { "3:CAPTURE_INITIALIZE", "3:RENDER_INITIALIZE", "3:DUPLEX", "4:CAPTURE_INITIALIZE", "4:RENDER_INITIALIZE", "4:DUPLEX", "5:CAPTURE_INITIALIZE", "5:RENDER_INITIALIZE", "5:DUPLEX" }), "Bloody search serializes Capture Initialize, Render Initialize, then Short Duplex for each candidate");
-    Check(bloodySearch.Result.Evidence.UsedOperations == 9 && bloodySearch.Result.Evidence.UsedActiveDuplexSeconds == 15 && bloodySearch.Result.Evidence.RepeatabilityPending && !bloodySearch.Result.Evidence.GlobalMinimumProven, "B3 records bounded operations and leaves repeatability pending for B4");
-    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null);
-    Check(flow8Search.Result.Evidence.SelectedCandidateIndex == 0 && flow8Search.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "SKIPPED"), "FLOW 8 selects its first confirmed SHORT_CLEAN and skips later candidates");
+    var bloodySearch = await RunV4Search("Bloody synthetic search", (index, operation) => operation == "DUPLEX" ? index < 2 ? "SERVICE_FAILURE" : "CLEAN" : null, true);
+    Check(bloodySearch.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && bloodySearch.Result.Evidence.SelectedCandidateIndex == 2 && bloodySearch.Result.Evidence.RepeatabilityCompleted == 5 && bloodySearch.Result.Evidence.RepeatabilityRuns.All(r => r.Result == "CLEAN") && bloodySearch.Result.Evidence.Candidates.Skip(3).All(e => e.DuplexDisposition == "SKIPPED"), "Bloody confirms 5 ms only after five additional CLEAN repeats; larger candidates remain skipped");
+    Check(bloodySearch.Operations.Where(x => x.Contains("REPEAT", StringComparison.Ordinal)).SequenceEqual(Enumerable.Range(1, 5).Select(i => $"5:REPEAT_{i}")) && bloodySearch.Operations.All(x => !x.StartsWith("6:", StringComparison.Ordinal)), "Bloody repeats only the selected 5 ms candidate and never falls back");
+    Check(bloodySearch.Result.Evidence.UsedOperations == 14 && bloodySearch.Result.Evidence.UsedActiveDuplexSeconds == 40 && bloodySearch.Result.Evidence.SessionCleanup == "CLOSE_CONFIRMED", "B4 records repeat operations, active duration, and confirmed same-session close");
+    var flow8Route = route with { Capture = route.Capture with { Channels = 1, ChannelMask = 0, SelectedIndicesZeroBased = [0] } };
+    var flow8Search = await RunV4Search("FLOW 8 synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, routeOverride: flow8Route);
+    Check(flow8Search.Result.Evidence.SelectionState == "REPEATABILITY_CONFIRMED" && flow8Search.Result.Evidence.SelectedCandidateIndex == 0 && flow8Search.Result.Evidence.RepeatabilityCompleted == 5 && flow8Search.Result.Evidence.RepeatabilityRuns.All(r => r.ActualCaptureFrames == flow8Route.Capture.SampleRateHz * 3 / 1000 && r.ActualRenderFrames == flow8Route.Render.SampleRateHz * 3 / 1000), "FLOW 8 mono Capture/stereo Render retains exact 3 ms geometry across five CLEAN repeats");
     var unknownSearch = await RunV4Search("UNKNOWN stop synthetic search", (index, operation) => operation == "DUPLEX" ? "CLEANUP_UNKNOWN" : null);
     Check(unknownSearch.Result.Evidence.SelectionState == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates[0].DuplexDisposition == "UNKNOWN" && unknownSearch.Result.Evidence.Candidates.Skip(1).All(e => e.DuplexDisposition == "NOT_TESTED" && e.LowerPeriodCoverage == "UNKNOWN") && unknownSearch.Operations.Length == 3, "UNKNOWN immediately stops the search and leaves later candidates explicitly untested");
+    foreach (var failAt in new[] { 1, 3, 5 })
+    {
+        var failedRepeat = await RunV4Search($"repeat {failAt} FAILED synthetic", (index, operation) => operation == $"REPEAT_{failAt}" ? "SERVICE_FAILURE" : null, true);
+        Check(failedRepeat.Result.Evidence.SelectionState == "REPEATABILITY_FAILED" && failedRepeat.Result.Evidence.RepeatabilityCompleted == failAt && failedRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == failAt && !failedRepeat.Result.Evidence.ProfileEligible, $"Repeat {failAt} FAILED stops without extra repeats or stable profile");
+    }
+    var unknownRepeat = await RunV4Search("repeat cleanup UNKNOWN synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : operation == "REPEAT_2" ? "CLEANUP_UNKNOWN" : null, true);
+    Check(unknownRepeat.Result.Evidence.SelectionState == "UNKNOWN" && unknownRepeat.Result.Evidence.RepeatabilityCompleted == 2 && unknownRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == 2 && unknownRepeat.Result.Evidence.RepeatabilityRuns[1].Cleanup == "UNKNOWN", "UNKNOWN cleanup on a repeat preserves that run and stops every later operation");
+    using (var cancelRepeat = new CancellationTokenSource())
+    {
+        var cancelledRepeat = await RunV4Search("cancel during repeat synthetic", (index, operation) =>
+        {
+            if (operation.EndsWith("_INITIALIZE", StringComparison.Ordinal)) return null;
+            if (operation == "REPEAT_2") { _ = Task.Run(async () => { await Task.Delay(1000); cancelRepeat.Cancel(); }); return "WAIT_FOR_CANCEL"; }
+            return "CLEAN";
+        }, true, cancellationToken: cancelRepeat.Token);
+        Check(cancelledRepeat.Result.Evidence.SelectionState == "UNKNOWN" && cancelledRepeat.Result.Evidence.Lifecycle is "CANCELLED" or "UNKNOWN" && cancelledRepeat.Result.Evidence.RepeatabilityRuns.Count is 1 or 2 && cancelledRepeat.Operations.Count(x => x.Contains("REPEAT_", StringComparison.Ordinal)) == cancelledRepeat.Result.Evidence.RepeatabilityRuns.Count, $"cancellation during Duplex records the attempted repeat as UNKNOWN and prevents later repeats [life={cancelledRepeat.Result.Evidence.Lifecycle}; stop={cancelledRepeat.Result.Evidence.StopReason}; repeat={cancelledRepeat.Result.Evidence.RepeatabilityCompleted}; ops={string.Join(',',cancelledRepeat.Operations)}]");
+    }
+    var preliminary = await RunV4Search("R=2 preliminary synthetic", (index, operation) => operation == "DUPLEX" || operation.StartsWith("REPEAT_", StringComparison.Ordinal) ? "CLEAN" : null, true, 2);
+    Check(preliminary.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && preliminary.Result.Evidence.RepeatabilityRequested == 2 && preliminary.Result.Evidence.RepeatabilityCompleted == 2 && !preliminary.Result.Evidence.ProfileEligible, "R less than five stays preliminary and cannot create a stable profile");
+    var noRepeats = await RunV4Search("R=0 search-only synthetic", (index, operation) => operation == "DUPLEX" ? "CLEAN" : null, true, 0);
+    Check(noRepeats.Result.Evidence.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND" && noRepeats.Result.Evidence.RepeatabilityCompleted == 0 && noRepeats.Operations.All(x => !x.Contains("REPEAT_", StringComparison.Ordinal)), "R=0 preserves search-only behavior without invoking repeatability");
     foreach(var scenario in new[]{"EXPIRE_ON_REGISTER","GENERATION_MISMATCH"})
     {
         Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",scenario);

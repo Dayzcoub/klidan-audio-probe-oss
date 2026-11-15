@@ -8,16 +8,16 @@
 
 namespace ScanPlanV2V4 {
 
-enum class Step { CaptureInitialize, RenderInitialize, Duplex };
+enum class Step { CaptureInitialize, RenderInitialize, Duplex, Repeatability };
 enum class Disposition { Clean, Failed, Unsupported, Unknown };
 
 class TransportSequence {
 public:
     explicit TransportSequence(std::vector<Candidate> candidates, unsigned maxOperations,
-                               unsigned maxActiveSeconds)
+                               unsigned maxActiveSeconds, unsigned repeatabilityRuns = 0)
         : candidates_(std::move(candidates)), maxOperations_(maxOperations),
-          maxActiveSeconds_(maxActiveSeconds) {
-        if (candidates_.empty() || candidates_.size() > 8 || maxOperations_ == 0 || maxActiveSeconds_ == 0)
+          maxActiveSeconds_(maxActiveSeconds), repeatabilityRuns_(repeatabilityRuns) {
+        if (candidates_.empty() || candidates_.size() > 8 || maxOperations_ == 0 || maxActiveSeconds_ == 0 || repeatabilityRuns_ > 5)
             throw std::invalid_argument("invalid V4 transport sequence scope");
         AdvancePastRejected();
     }
@@ -28,10 +28,11 @@ public:
             !operationIds_.insert(std::move(operationId)).second || usedOperations_ >= maxOperations_)
             throw std::invalid_argument("V4 operation is stale, concurrent, replayed, or outside budget");
         const auto expected = phase_ == Phase::Capture ? Step::CaptureInitialize :
-            phase_ == Phase::Render ? Step::RenderInitialize : phase_ == Phase::Duplex ? Step::Duplex : Step::CaptureInitialize;
+            phase_ == Phase::Render ? Step::RenderInitialize : phase_ == Phase::Duplex ? Step::Duplex :
+            phase_ == Phase::Repeatability ? Step::Repeatability : Step::CaptureInitialize;
         if (step != expected || phase_ == Phase::Done || phase_ == Phase::Stopped)
             throw std::invalid_argument("V4 operation violates Capture Initialize, Render Initialize, Duplex order");
-        if (step == Step::Duplex && (durationSeconds == 0 || usedActiveSeconds_ + durationSeconds > maxActiveSeconds_))
+        if ((step == Step::Duplex || step == Step::Repeatability) && (durationSeconds != 5 || usedActiveSeconds_ + durationSeconds > maxActiveSeconds_))
             throw std::invalid_argument("V4 active Duplex budget exceeded");
         inFlight_ = true;
         inFlightStep_ = step;
@@ -49,28 +50,40 @@ public:
             return;
         }
         if (!exactGeometry && inFlightStep_ != Step::Duplex) disposition = Disposition::Failed;
-        if (inFlightStep_ == Step::Duplex) usedActiveSeconds_ += inFlightDuration_;
+        if (inFlightStep_ == Step::Duplex || inFlightStep_ == Step::Repeatability) usedActiveSeconds_ += inFlightDuration_;
+        if (inFlightStep_ == Step::Repeatability) {
+            if (disposition != Disposition::Clean) { stopped_ = true; phase_ = Phase::RepeatabilityFailed; return; }
+            ++repeatabilityCompleted_;
+            if (repeatabilityCompleted_ == repeatabilityRuns_) { stopped_ = true; phase_ = Phase::Done; }
+            else { stopped_ = true; phase_ = Phase::RepeatabilityPending; }
+            return;
+        }
         if (disposition == Disposition::Failed || disposition == Disposition::Unsupported) {
             AdvanceCandidate();
             return;
         }
         if (inFlightStep_ == Step::CaptureInitialize) phase_ = Phase::Render;
         else if (inFlightStep_ == Step::RenderInitialize) phase_ = Phase::Duplex;
-        else { stopped_ = true; phase_ = Phase::RepeatabilityPending; }
+        else { selectedCandidateIndex_ = cursor_; stopped_ = true; phase_ = Phase::RepeatabilityPending; }
     }
+
+    void BeginRepeatability() noexcept { if (phase_ == Phase::RepeatabilityPending && repeatabilityRuns_ > repeatabilityCompleted_) { stopped_ = false; phase_ = Phase::Repeatability; } }
 
     bool Stopped() const noexcept { return stopped_; }
     bool RepeatabilityPending() const noexcept { return phase_ == Phase::RepeatabilityPending; }
+    bool RepeatabilityFailed() const noexcept { return phase_ == Phase::RepeatabilityFailed; }
+    unsigned RepeatabilityCompleted() const noexcept { return repeatabilityCompleted_; }
+    unsigned SelectedCandidateIndex() const noexcept { return selectedCandidateIndex_; }
     bool Complete() const noexcept { return phase_ == Phase::Done; }
     unsigned UsedOperations() const noexcept { return usedOperations_; }
     unsigned UsedActiveSeconds() const noexcept { return usedActiveSeconds_; }
     unsigned CandidateIndex() const noexcept { return cursor_ < candidates_.size() ? candidates_[cursor_].index : static_cast<unsigned>(candidates_.size()); }
     Step ExpectedStep() const noexcept {
-        return phase_ == Phase::Render ? Step::RenderInitialize : phase_ == Phase::Duplex ? Step::Duplex : Step::CaptureInitialize;
+        return phase_ == Phase::Render ? Step::RenderInitialize : phase_ == Phase::Duplex ? Step::Duplex : phase_ == Phase::Repeatability ? Step::Repeatability : Step::CaptureInitialize;
     }
 
 private:
-    enum class Phase { Capture, Render, Duplex, Done, Stopped, RepeatabilityPending };
+    enum class Phase { Capture, Render, Duplex, Done, Stopped, RepeatabilityPending, Repeatability, RepeatabilityFailed };
     void AdvancePastRejected() {
         while (cursor_ < candidates_.size() && !candidates_[cursor_].rejectionReason.empty()) ++cursor_;
         phase_ = cursor_ < candidates_.size() ? Phase::Capture : Phase::Done;
@@ -82,7 +95,7 @@ private:
 
     std::vector<Candidate> candidates_;
     std::set<std::string> operationIds_;
-    unsigned maxOperations_{}, maxActiveSeconds_{}, usedOperations_{}, usedActiveSeconds_{}, cursor_{};
+    unsigned maxOperations_{}, maxActiveSeconds_{}, repeatabilityRuns_{}, repeatabilityCompleted_{}, usedOperations_{}, usedActiveSeconds_{}, cursor_{}, selectedCandidateIndex_{static_cast<unsigned>(-1)};
     Phase phase_{Phase::Capture};
     Step inFlightStep_{Step::CaptureInitialize};
     unsigned inFlightDuration_{};

@@ -10,7 +10,7 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
 {
     public async Task<V4AutomaticSearchResult> RunAsync(WorkerScanV2V4PreparedPlan prepared,
         string? evidenceRoot = null, CancellationToken cancellationToken = default,
-        Func<int, string, string?>? testScenario = null)
+        Func<int, string, string?>? testScenario = null, bool runRepeatability = false, DeviceConfigurationProfile? profileBase = null)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         var plan = prepared.Plan;
@@ -22,12 +22,13 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
         var entries = plan.Candidates.Select(c => new V2CandidateMatrixEntry(c, "NOT_TESTED", "NOT_TESTED", "NOT_TESTED", "NOT_ATTEMPTED", "NOT_ATTEMPTED", [], true,
             c.RejectionReason.Length == 0 ? "NOT_RUN" : c.RejectionReason, "INCOMPLETE", "NOT_RUN", "NOT_RUN")).ToArray();
         var operations = 0; var activeSeconds = 0; var selected = (int?)null; var state = "MINIMUM_NOT_PROVEN"; var lifecycle = "COMPLETED"; var stopReason = "CANDIDATE_DOMAIN_EXHAUSTED";
+        var repeatRuns = new List<V4RepeatabilityRunEvidence>(); var sessionCleanup = "NOT_ATTEMPTED";
         WorkerScanSessionToken? session = null;
         var attemptedProvenance = new HashSet<string>(StringComparer.Ordinal);
         void Update(int index, Func<V2CandidateMatrixEntry, V2CandidateMatrixEntry> update) => entries[index] = update(entries[index]);
         try
         {
-            session = await worker.RegisterScanSessionV2V4Async(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, consent, cancellationToken).ConfigureAwait(false);
+            session = await worker.RegisterScanSessionV2V4Async(prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, consent, cancellationToken, runRepeatability).ConfigureAwait(false);
             foreach (var candidate in plan.Candidates)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -67,25 +68,46 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
                 {
                     selected = candidate.Index; state = "MINIMUM_SHORT_CLEAN_FOUND"; stopReason = "SMALLER_SHORT_CLEAN_FOUND";
                     foreach (var larger in plan.Candidates.Where(c => c.Index > candidate.Index)) Update(larger.Index, e => e with { CaptureInitializeDisposition = "SKIPPED", RenderInitializeDisposition = "SKIPPED", DuplexDisposition = "SKIPPED", DuplexNotRun = true, SkipReason = "SMALLER_SHORT_CLEAN_FOUND", ReasonCodes = ["SMALLER_SHORT_CLEAN_FOUND"] });
+                    if (runRepeatability && plan.RepeatabilityRuns > 0)
+                    {
+                        for (var run = 0; run < plan.RepeatabilityRuns; run++)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var repeatId = Guid.NewGuid(); operations++;
+                            JsonElement repeatEvidence;
+                            try
+                            {
+                                repeatEvidence = await worker.ValidateCustomDuplexV2InScanAsync(session, repeatId, plan.Route, prepared.CaptureEndpointId, prepared.RenderEndpointId, plan, candidate.Index,
+                                    cancellationToken, testScenario?.Invoke(candidate.Index, $"REPEAT_{run + 1}")).ConfigureAwait(false);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                repeatRuns.Add(UnknownRepeat(repeatId, session, candidate, "OPERATION_CANCELLED")); state = "UNKNOWN"; lifecycle = "CANCELLED"; stopReason = "REPEATABILITY_CANCELLED_UNKNOWN"; break;
+                            }
+                            catch (Exception)
+                            {
+                                repeatRuns.Add(UnknownRepeat(repeatId, session, candidate, "WORKER_OPERATION_UNKNOWN")); state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "REPEATABILITY_WORKER_FAILURE"; break;
+                            }
+                            attemptedProvenance.Add(repeatEvidence.GetProperty("provenance").GetString()!); activeSeconds += 5;
+                            var repeatClass = V4ShortCleanEvaluator.Classify(prepared, session, candidate.Index, repeatId, repeatEvidence);
+                            var repeat = ToRepeatabilityEvidence(repeatEvidence, session, candidate, repeatClass);
+                            repeatRuns.Add(repeat);
+                            Update(candidate.Index, e => e with { RepeatabilityStatus = repeatClass == "CLEAN" ? "NOT_RUN" : repeatClass == "FAILED" ? "FAILED" : "UNKNOWN" });
+                            if (repeatClass == "UNKNOWN") { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "REPEATABILITY_UNKNOWN"; break; }
+                            if (repeatClass == "FAILED") { state = "REPEATABILITY_FAILED"; stopReason = "REPEATABILITY_FAILED_NO_FALLBACK"; break; }
+                        }
+                        if (state == "MINIMUM_SHORT_CLEAN_FOUND" && repeatRuns.Count == plan.RepeatabilityRuns)
+                        {
+                            if (plan.RepeatabilityRuns == 5) { state = "REPEATABILITY_CONFIRMED"; stopReason = "REPEATABILITY_5_OF_5_CLEAN"; Update(candidate.Index, e => e with { RepeatabilityStatus = "CONFIRMED" }); }
+                            else stopReason = "REPEATABILITY_PRELIMINARY";
+                        }
+                    }
                     break;
                 }
             }
         }
-        catch (OperationCanceledException) { state = "UNKNOWN"; lifecycle = "CANCELLED"; stopReason = "OPERATOR_CANCELLED"; throw; }
-        catch (Exception) { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "WORKER_OR_EVIDENCE_FAILURE"; throw; }
-        finally
-        {
-            if (session is { } active)
-            {
-                try
-                {
-                    if (state == "UNKNOWN" || lifecycle == "CANCELLED") await worker.CancelScanSessionAsync(active, CancellationToken.None).ConfigureAwait(false);
-                    else await worker.CloseScanSessionAsync(active, CancellationToken.None).ConfigureAwait(false);
-                }
-                catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "SESSION_CLEANUP_UNKNOWN"; }
-            }
-        }
-
+        catch (OperationCanceledException) { state = "UNKNOWN"; lifecycle = "CANCELLED"; stopReason = "OPERATOR_CANCELLED"; }
+        catch (Exception) { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "WORKER_OR_EVIDENCE_FAILURE"; }
         var smallest = selected is { } selectedIndex ? selectedIndex : plan.Candidates.Count;
         for (var i = 0; i < entries.Length; i++)
         {
@@ -95,15 +117,69 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
             Update(i, e => e with { LowerPeriodCoverage = coverage, Provenance = e.Provenance == "NOT_RUN" ? (attemptedProvenance.Count == 1 ? attemptedProvenance.Single() : attemptedProvenance.Count == 0 ? "PLAN_ONLY" : "MIXED_PROVENANCE") : e.Provenance });
         }
         var evidenceProvenance = attemptedProvenance.Count == 1 ? attemptedProvenance.Single() : attemptedProvenance.Count == 0 ? "PLAN_ONLY" : "MIXED_PROVENANCE";
-        var result = new V2CandidateMatrixEvidence(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries, state, evidenceProvenance)
+        V2CandidateMatrixEvidence CreateEvidence() => new(1, consent.PlanFingerprint, routeFingerprint, lifecycle, plan.CaptureBounds, plan.RenderBounds, plan.Candidates, entries, state, evidenceProvenance)
         {
             EvidenceVersion = 2, DiscoveryGeneration = consent.DiscoveryGeneration, SelectedCandidateIndex = selected,
             GlobalMinimumProven = false, UsedOperations = operations,
             MaximumOperations = plan.MaximumOperations, UsedActiveDuplexSeconds = activeSeconds, MaximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
-            StopReason = stopReason, RepeatabilityPending = state == "MINIMUM_SHORT_CLEAN_FOUND"
+            StopReason = stopReason, RepeatabilityPending = state == "MINIMUM_SHORT_CLEAN_FOUND",
+            RepeatabilityRequested = runRepeatability ? plan.RepeatabilityRuns : 0, RepeatabilityCompleted = repeatRuns.Count, RepeatabilityRuns = repeatRuns,
+            SessionCleanup = sessionCleanup
         };
+        var result = CreateEvidence();
+        string? path = null;
+        if (evidenceRoot is not null)
+        {
+            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-open-session-{Guid.NewGuid():D}.json")); }
+            catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
+        }
+        if (session is { } active)
+        {
+            try
+            {
+                if (state == "UNKNOWN" || lifecycle == "CANCELLED") await worker.CancelScanSessionAsync(active, CancellationToken.None).ConfigureAwait(false);
+                else await worker.CloseScanSessionAsync(active, CancellationToken.None).ConfigureAwait(false);
+                sessionCleanup = lifecycle == "CANCELLED" || state == "UNKNOWN" ? "CANCEL_CONFIRMED" : "CLOSE_CONFIRMED";
+            }
+            catch { sessionCleanup = "UNKNOWN"; state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "SESSION_CLEANUP_UNKNOWN"; }
+        }
+        result = CreateEvidence();
         if (result.UsedOperations > result.MaximumOperations) throw new InvalidDataException("V4 audio operations exceeded the consented budget.");
-        var path = evidenceRoot is null ? null : V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-{Guid.NewGuid():D}.json"));
+        if (evidenceRoot is not null)
+        {
+            try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceRoot, $"v4-search-closed-session-{Guid.NewGuid():D}.json")); }
+            catch { state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "FINAL_EVIDENCE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence(); }
+        }
+        if (profileBase is not null && result.SelectionState == "REPEATABILITY_CONFIRMED" && sessionCleanup == "CLOSE_CONFIRMED" && repeatRuns.Count == 5 && path is not null && selected is { } profileCandidate)
+        {
+            var evidenceDirectory = evidenceRoot!;
+            var candidate = plan.Candidates[profileCandidate];
+            var sourceHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+            var repeatProvenance = repeatRuns.Select(r => r.Provenance).Distinct(StringComparer.Ordinal).Single();
+            var testOnly = repeatProvenance == "TEST_FAKE_WASAPI_V4_DUPLEX";
+            var selection = new ProfileStableShortSelection(testOnly ? "TEST_ONLY" : "DEVICE", prepared.CaptureEndpointId, prepared.RenderEndpointId, plan.Route.Mode,
+                new(plan.Route.Capture.Encoding, plan.Route.Capture.SampleRateHz, plan.Route.Capture.Channels, plan.Route.Capture.Encoding == "PCM16" ? 16 : 32, plan.Route.Capture.Encoding == "PCM16" ? 16 : 32, $"CUSTOM:{candidate.CaptureFrames}:{candidate.CapturePeriod100ns}"),
+                new(plan.Route.Render.Encoding, plan.Route.Render.SampleRateHz, plan.Route.Render.Channels, plan.Route.Render.Encoding == "PCM16" ? 16 : 32, plan.Route.Render.Encoding == "PCM16" ? 16 : 32, $"CUSTOM:{candidate.RenderFrames}:{candidate.RenderPeriod100ns}"),
+                plan.Route.Capture.SelectedIndicesZeroBased, plan.Route.Render.SelectedIndicesZeroBased, candidate.CaptureFrames, candidate.CapturePeriod100ns, candidate.CaptureFrames, candidate.CapturePeriod100ns,
+                candidate.RenderFrames, candidate.RenderPeriod100ns, candidate.RenderFrames, candidate.RenderPeriod100ns, "OFF", candidate.Index, consent.PlanFingerprint, consent.DiscoveryGeneration,
+                "MINIMUM_SHORT_CLEAN_FOUND", 5, 5, repeatRuns.Select(r => r.OperationId).ToArray(), repeatProvenance,
+                Path.GetFileName(path), sourceHash, DateTimeOffset.UtcNow);
+            try
+            {
+                var profile = DeviceConfigurationProfileFactory.CreateStableShort(profileBase, selection);
+                var profilePath = DeviceConfigurationProfileStorage.SaveLocal(profile, evidenceDirectory);
+                var profileReadBack = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(profilePath));
+                if (profileReadBack.ProfileId != profile.ProfileId || profileReadBack.StableShortSelection?.SourceEvidenceSha256 != sourceHash || profileReadBack.StableShortSelection!.RepeatOperationIds.Count != 5 || profileReadBack.StableShortSelection.CaptureEndpointId != prepared.CaptureEndpointId || profileReadBack.StableShortSelection.RenderEndpointId != prepared.RenderEndpointId) throw new InvalidDataException("Stable profile exact read-back verification failed.");
+                var profileHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(profilePath))).ToLowerInvariant();
+                result = result with { ProfileEligible = true, ProfilePath = profilePath, ProfileSha256 = profileHash };
+                path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profiled-{Guid.NewGuid():D}.json"));
+            }
+            catch
+            {
+                state = "UNKNOWN"; lifecycle = "UNKNOWN"; stopReason = "PROFILE_SAVE_OR_READBACK_FAILED"; result = CreateEvidence();
+                try { path = V2CandidateMatrixEvidenceJson.SaveNoOverwriteAndVerify(result, Path.Combine(evidenceDirectory, $"v4-search-profile-failure-{Guid.NewGuid():D}.json")); } catch { }
+            }
+        }
         return new(result, path);
 
         async Task<JsonElement> Initialize(WorkerScanV2Candidate candidate, string direction)
@@ -123,6 +199,14 @@ public sealed class WorkerV4AutomaticSearchWorkflow(NativeWorkerClient worker)
     }
 
     private static int? Positive(JsonElement e, string name) => e.TryGetProperty(name, out var x) && x.ValueKind == JsonValueKind.Number && x.TryGetInt32(out var v) && v > 0 ? v : null;
+    private static V4RepeatabilityRunEvidence ToRepeatabilityEvidence(JsonElement e, WorkerScanSessionToken session, WorkerScanV2Candidate candidate, string classification) =>
+        new(e.GetProperty("operationId").GetGuid(), session.ScanSessionId, session.RouteFingerprint!, candidate.Index, classification, e.GetProperty("reasonCode").GetString()!,
+            candidate.CaptureFrames, candidate.CapturePeriod100ns, Positive(e, "actualCaptureFrames"), PositiveLong(e, "actualCapturePeriod100ns"),
+            candidate.RenderFrames, candidate.RenderPeriod100ns, Positive(e, "actualRenderFrames"), PositiveLong(e, "actualRenderPeriod100ns"),
+            e.GetProperty("cleanup").GetString()!, e.GetProperty("provenance").GetString()!);
+    private static V4RepeatabilityRunEvidence UnknownRepeat(Guid operationId, WorkerScanSessionToken session, WorkerScanV2Candidate candidate, string reason) =>
+        new(operationId, session.ScanSessionId, session.RouteFingerprint!, candidate.Index, "UNKNOWN", reason, candidate.CaptureFrames, candidate.CapturePeriod100ns, null, null,
+            candidate.RenderFrames, candidate.RenderPeriod100ns, null, null, "UNKNOWN", "UNKNOWN");
     private static string MatrixInitialize(JsonElement e) => e.GetProperty("initializeDisposition").GetString() == "INITIALIZED_EXACT" ? "INITIALIZED" : e.GetProperty("initializeDisposition").GetString()!;
     private static long? PositiveLong(JsonElement e, string name) => e.TryGetProperty(name, out var x) && x.ValueKind == JsonValueKind.Number && x.TryGetInt64(out var v) && v > 0 ? v : null;
     private static bool Exact(JsonElement e, WorkerScanV2Candidate c, bool capture) => e.GetProperty("initializeDisposition").GetString() == "INITIALIZED_EXACT" &&

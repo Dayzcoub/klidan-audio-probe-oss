@@ -26,7 +26,19 @@ public sealed record V2CandidateMatrixEvidence(int SchemaVersion, string PlanFin
     public int MaximumActiveDuplexSeconds { get; init; }
     public string StopReason { get; init; } = "PLAN_ONLY";
     public bool RepeatabilityPending { get; init; }
+    public int RepeatabilityRequested { get; init; }
+    public int RepeatabilityCompleted { get; init; }
+    public IReadOnlyList<V4RepeatabilityRunEvidence> RepeatabilityRuns { get; init; } = [];
+    public string SessionCleanup { get; init; } = "NOT_ATTEMPTED";
+    public bool ProfileEligible { get; init; }
+    public string? ProfilePath { get; init; }
+    public string? ProfileSha256 { get; init; }
 }
+
+public sealed record V4RepeatabilityRunEvidence(Guid OperationId, Guid SessionId, string RouteFingerprint, int CandidateIndex, string Result, string ReasonCode,
+    int? RequestedCaptureFrames, long? RequestedCapturePeriod100ns, int? ActualCaptureFrames, long? ActualCapturePeriod100ns,
+    int? RequestedRenderFrames, long? RequestedRenderPeriod100ns, int? ActualRenderFrames, long? ActualRenderPeriod100ns,
+    string Cleanup, string Provenance);
 
 public static class V2CandidateMatrixEvidenceJson
 {
@@ -61,6 +73,21 @@ public static class V2CandidateMatrixEvidenceJson
         if (value.SelectionState is not ("MINIMUM_SHORT_CLEAN_FOUND" or "REPEATABILITY_CONFIRMED" or "REPEATABILITY_FAILED" or "MINIMUM_NOT_PROVEN" or "UNKNOWN")) throw new InvalidDataException("Candidate matrix selection state is invalid.");
         if (value.EvidenceVersion == 2 && (value.Lifecycle == "PLANNED" || value.DiscoveryGeneration == 0 || value.MaximumOperations is < 1 or > 29 || value.UsedOperations < 0 || value.UsedOperations > value.MaximumOperations || value.MaximumActiveDuplexSeconds is < 0 or > 65 || value.UsedActiveDuplexSeconds < 0 || value.UsedActiveDuplexSeconds > value.MaximumActiveDuplexSeconds || string.IsNullOrWhiteSpace(value.StopReason) || value.SelectedCandidateIndex is { } selected && (selected < 0 || selected >= value.CandidateDomain.Count) || value.RepeatabilityPending != (value.SelectionState == "MINIMUM_SHORT_CLEAN_FOUND")))
             throw new InvalidDataException("V4 completed candidate matrix budget, generation, or selection evidence is invalid.");
+        if (value.EvidenceVersion == 2)
+        {
+            var profileExpected = value.SelectionState == "REPEATABILITY_CONFIRMED" && value.RepeatabilityRequested == 5 && value.RepeatabilityCompleted == 5 && value.SessionCleanup == "CLOSE_CONFIRMED" && !string.IsNullOrWhiteSpace(value.ProfilePath) && !string.IsNullOrWhiteSpace(value.ProfileSha256);
+            if (value.RepeatabilityRequested is < 0 or > 5 || value.RepeatabilityCompleted != value.RepeatabilityRuns.Count || value.RepeatabilityCompleted > value.RepeatabilityRequested || value.SessionCleanup is not ("NOT_ATTEMPTED" or "CLOSE_CONFIRMED" or "CANCEL_CONFIRMED" or "UNKNOWN") || value.ProfileEligible != profileExpected || value.ProfilePath is not null && string.IsNullOrWhiteSpace(value.ProfileSha256) || value.ProfileSha256 is not null && !Hash(value.ProfileSha256, 64))
+                throw new InvalidDataException("Repeatability or stable profile evidence is invalid.");
+            var seen = new HashSet<Guid>();
+            foreach (var run in value.RepeatabilityRuns)
+            {
+                if (run is null || run.OperationId == Guid.Empty || run.SessionId == Guid.Empty || !Hash(run.RouteFingerprint, 16) || !seen.Add(run.OperationId) || run.CandidateIndex != value.SelectedCandidateIndex || run.CandidateIndex < 0 || run.CandidateIndex >= value.CandidateDomain.Count || run.Result is not ("CLEAN" or "FAILED" or "UNKNOWN") || string.IsNullOrWhiteSpace(run.ReasonCode) || run.Cleanup is not ("CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" or "UNKNOWN") || run.Provenance is not ("REAL_WASAPI_V4_DUPLEX" or "TEST_FAKE_WASAPI_V4_DUPLEX" or "UNKNOWN") || run.Provenance == "UNKNOWN" && (run.Result != "UNKNOWN" || run.Cleanup != "UNKNOWN"))
+                    throw new InvalidDataException("Repeatability operation identity or outcome is invalid.");
+                var candidate = value.CandidateDomain[run.CandidateIndex];
+                if (run.RequestedCaptureFrames != candidate.CaptureFrames || run.RequestedCapturePeriod100ns != candidate.CapturePeriod100ns || run.RequestedRenderFrames != candidate.RenderFrames || run.RequestedRenderPeriod100ns != candidate.RenderPeriod100ns || run.Result == "CLEAN" && (run.ActualCaptureFrames != run.RequestedCaptureFrames || run.ActualCapturePeriod100ns != run.RequestedCapturePeriod100ns || run.ActualRenderFrames != run.RequestedRenderFrames || run.ActualRenderPeriod100ns != run.RequestedRenderPeriod100ns || run.Cleanup != "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED"))
+                    throw new InvalidDataException("Repeatability geometry or cleanup evidence is inconsistent.");
+            }
+        }
     }
 
     private static bool CleanupOutcomeInvalid(this V2CandidateMatrixEntry e) => e.CaptureCleanup is not ("NOT_ATTEMPTED" or "RELEASE_ATTEMPTED" or "UNKNOWN" or "FAILED") || e.RenderCleanup is not ("NOT_ATTEMPTED" or "RELEASE_ATTEMPTED" or "UNKNOWN" or "FAILED");

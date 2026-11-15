@@ -226,7 +226,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
     }
 
     public async Task<WorkerScanSessionToken> RegisterScanSessionV2V4Async(string captureEndpointId, string renderEndpointId,
-        WorkerScanV2ContractV4 plan, WorkerScanV2V4Consent consent, CancellationToken cancellationToken = default)
+        WorkerScanV2ContractV4 plan, WorkerScanV2V4Consent consent, CancellationToken cancellationToken = default, bool authorizeRepeatability = false)
     {
         if (!_capabilities.Contains("ScanSessionAuthorizationV2ContractV4", StringComparer.Ordinal)) throw new WorkerCommandException("RegisterScanSessionV2", "NOT_SUPPORTED", "Worker does not implement V2 contract v4.");
         if (!consent.Accepted || consent.ConfirmationId == Guid.Empty || _discoveryGeneration == 0 || consent.DiscoveryGeneration != _discoveryGeneration) throw new ArgumentException("Fresh discovery and explicit operator acceptance are required for V2 contract v4.", nameof(consent));
@@ -238,7 +238,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         var captureBounds = new { minimumPeriod100ns = plan.CaptureBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.CaptureBounds.DefaultPeriod100ns, alignmentFrames = plan.CaptureBounds.AlignmentFrames };
         var renderBounds = new { minimumPeriod100ns = plan.RenderBounds.MinimumPeriod100ns, defaultPeriod100ns = plan.RenderBounds.DefaultPeriod100ns, alignmentFrames = plan.RenderBounds.AlignmentFrames };
         using var response = await SendAsync("RegisterScanSessionV2", new { contractVersion = 4, captureEndpointId, renderEndpointId, route, routeFingerprint,
-            candidates, captureBounds, renderBounds, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns,
+            candidates, captureBounds, renderBounds, mmcssModes = plan.MmcssModes, repeatabilityRuns = plan.RepeatabilityRuns, authorizeRepeatability,
             maximumOperationCount = plan.MaximumOperations, maximumActiveDuplexSeconds = plan.MaximumActiveDuplexSeconds,
             initializeTimeoutSeconds = plan.InitializeTimeoutSeconds, sessionLifetimeSeconds = plan.SessionLifetimeSeconds,
             cleanupDeadlineSeconds = plan.CleanupDeadlineSeconds, planFingerprint, authorization = new { accepted = consent.Accepted, confirmationId = consent.ConfirmationId } }, cancellationToken).ConfigureAwait(false);

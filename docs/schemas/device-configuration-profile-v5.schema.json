@@ -1,0 +1,674 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:klidan-audio-probe:device-configuration-profile:v5",
+  "title": "KLIDAN Audio Probe Device Configuration Profile v5",
+  "description": "A local, evidence-backed stable short-run WASAPI Exclusive profile. Advisory only; it does not authorize AudioHost activation or claim physical KLIDAN QA.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "createdAtUtc",
+    "probeVersion",
+    "platform",
+    "backend",
+    "environment",
+    "device",
+    "endpointBindings",
+    "capabilityEvidence",
+    "evidence",
+    "audioHostAssessments",
+    "streamObservations",
+    "duplexObservations",
+    "recommendation",
+    "privacy",
+    "stableShortSelection"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 5
+    },
+    "profileId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "createdAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "probeVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "platform": {
+      "const": "WINDOWS"
+    },
+    "backend": {
+      "const": "WASAPI"
+    },
+    "environment": {
+      "type": "object"
+    },
+    "device": {
+      "type": "object"
+    },
+    "endpointBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture",
+        "render"
+      ],
+      "properties": {
+        "capture": {
+          "$ref": "#/$defs/endpointBinding"
+        },
+        "render": {
+          "$ref": "#/$defs/endpointBinding"
+        }
+      }
+    },
+    "capabilityEvidence": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024
+    },
+    "audioHostAssessments": {
+      "type": "array",
+      "maxItems": 8
+    },
+    "streamObservations": {
+      "type": "array",
+      "maxItems": 64
+    },
+    "duplexObservations": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "recommendation": {
+      "$ref": "#/$defs/v4Recommendation"
+    },
+    "privacy": {
+      "enum": [
+        "LOCAL_MACHINE",
+        "SANITIZED_PORTABLE"
+      ]
+    },
+    "stableShortSelection": {
+      "properties": {
+        "repeatabilityRequested": {
+          "const": 5
+        },
+        "captureChannelIndices": {
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "actualRenderPeriod100ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "actualCapturePeriod100ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestedRenderPeriod100ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "planFingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "sourceEvidenceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "requestedCaptureFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "discoveryGeneration": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "renderChannelIndices": {
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "repeatabilityCompleted": {
+          "const": 5
+        },
+        "renderFormat": {
+          "$ref": "#/$defs/v5AudioFormat"
+        },
+        "routeMode": {
+          "enum": [
+            "MONO_TO_MONO",
+            "MONO_TO_STEREO",
+            "STEREO_TO_MONO",
+            "STEREO_TO_STEREO",
+            "CUSTOM"
+          ]
+        },
+        "captureFormat": {
+          "$ref": "#/$defs/v5AudioFormat"
+        },
+        "profileKind": {
+          "enum": [
+            "DEVICE",
+            "TEST_ONLY"
+          ]
+        },
+        "actualCaptureFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestedRenderFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedCandidateIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceEvidenceId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "searchQualification": {
+          "const": "MINIMUM_SHORT_CLEAN_FOUND"
+        },
+        "repeatOperationIds": {
+          "items": {
+            "$ref": "#/$defs/uuid"
+          },
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "mmcss": {
+          "const": "OFF"
+        },
+        "actualRenderFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestedCapturePeriod100ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "qualifiedAtUtc": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "renderEndpointId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "captureEndpointId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidenceProvenance": {
+          "enum": [
+            "REAL_WASAPI_V4_DUPLEX",
+            "TEST_FAKE_WASAPI_V4_DUPLEX"
+          ]
+        }
+      },
+      "required": [
+        "profileKind",
+        "captureEndpointId",
+        "renderEndpointId",
+        "routeMode",
+        "captureFormat",
+        "renderFormat",
+        "captureChannelIndices",
+        "renderChannelIndices",
+        "requestedCaptureFrames",
+        "requestedCapturePeriod100ns",
+        "actualCaptureFrames",
+        "actualCapturePeriod100ns",
+        "requestedRenderFrames",
+        "requestedRenderPeriod100ns",
+        "actualRenderFrames",
+        "actualRenderPeriod100ns",
+        "mmcss",
+        "selectedCandidateIndex",
+        "planFingerprint",
+        "discoveryGeneration",
+        "searchQualification",
+        "repeatabilityRequested",
+        "repeatabilityCompleted",
+        "repeatOperationIds",
+        "evidenceProvenance",
+        "sourceEvidenceId",
+        "sourceEvidenceSha256",
+        "qualifiedAtUtc"
+      ],
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "uuidList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/uuid"
+      }
+    },
+    "endpointBinding": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "endpointId",
+        "direction",
+        "state",
+        "friendlyName",
+        "binding"
+      ],
+      "properties": {
+        "endpointId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "direction": {
+          "enum": [
+            "CAPTURE",
+            "RENDER"
+          ]
+        },
+        "state": {
+          "const": "ACTIVE"
+        },
+        "friendlyName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "binding": {
+          "enum": [
+            "LOCAL_EXACT",
+            "SANITIZED_UNBOUND"
+          ]
+        }
+      }
+    },
+    "audioFormat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "encoding",
+        "sampleRate",
+        "channels",
+        "containerBits",
+        "validBits",
+        "period"
+      ],
+      "properties": {
+        "encoding": {
+          "const": "PCM16"
+        },
+        "sampleRate": {
+          "const": 48000
+        },
+        "channels": {
+          "const": 2
+        },
+        "containerBits": {
+          "const": 16
+        },
+        "validBits": {
+          "const": 16
+        },
+        "period": {
+          "type": "string",
+          "pattern": "^(MINIMUM|DEFAULT|CUSTOM:[1-9][0-9]*:[1-9][0-9]*)$"
+        }
+      }
+    },
+    "v4Recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preferred",
+        "fallback",
+        "unavailableReasons",
+        "scope",
+        "confidence"
+      ],
+      "properties": {
+        "preferred": {
+          "type": "null"
+        },
+        "fallback": {
+          "type": "null"
+        },
+        "unavailableReasons": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "scope": {
+          "const": "NONE"
+        },
+        "confidence": {
+          "enum": [
+            "PROVISIONAL",
+            "LOW",
+            "NOT_AVAILABLE"
+          ]
+        }
+      }
+    },
+    "sustainedSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceScanSessionId",
+        "preferred",
+        "fallback",
+        "scope",
+        "confidence",
+        "unavailableReasons",
+        "evidence"
+      ],
+      "properties": {
+        "sourceScanSessionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "preferred": {
+          "$ref": "#/$defs/sustainedConfiguration"
+        },
+        "fallback": {
+          "$ref": "#/$defs/sustainedConfiguration"
+        },
+        "scope": {
+          "enum": [
+            "SUSTAINED_VALIDATED",
+            "NONE"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "VERIFIED_SUSTAINED_CLEAN",
+            "PROVISIONAL_SINGLE_SUSTAINED_RUN",
+            "MIXED_RESULTS",
+            "WARNINGS",
+            "INCOMPLETE",
+            "UNKNOWN",
+            "NOT_TESTED"
+          ]
+        },
+        "unavailableReasons": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/sustainedEvidence"
+          }
+        }
+      }
+    },
+    "sustainedConfiguration": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "captureEndpointId",
+        "renderEndpointId",
+        "format",
+        "period",
+        "captureBufferFrames",
+        "renderBufferFrames",
+        "mmcss",
+        "durationSeconds",
+        "quality",
+        "confidence",
+        "operationIds",
+        "reportIds",
+        "evidenceReferences"
+      ],
+      "properties": {
+        "captureEndpointId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "renderEndpointId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "$ref": "#/$defs/audioFormat"
+        },
+        "period": {
+          "type": "string",
+          "pattern": "^(MINIMUM|DEFAULT|CUSTOM:[1-9][0-9]*:[1-9][0-9]*)$"
+        },
+        "captureBufferFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "renderBufferFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mmcss": {
+          "enum": [
+            "OFF",
+            "PRO_AUDIO"
+          ]
+        },
+        "durationSeconds": {
+          "enum": [
+            300,
+            600
+          ]
+        },
+        "quality": {
+          "const": "DUPLEX_CLEAN"
+        },
+        "confidence": {
+          "enum": [
+            "VERIFIED_SUSTAINED_CLEAN",
+            "PROVISIONAL_SINGLE_SUSTAINED_RUN"
+          ]
+        },
+        "operationIds": {
+          "$ref": "#/$defs/uuidList"
+        },
+        "reportIds": {
+          "$ref": "#/$defs/uuidList"
+        },
+        "evidenceReferences": {
+          "$ref": "#/$defs/uuidList"
+        }
+      }
+    },
+    "sustainedEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "operationId",
+        "reportId",
+        "sourceProvenance",
+        "sourceReference",
+        "captureEndpointId",
+        "renderEndpointId",
+        "format",
+        "period",
+        "mmcss",
+        "durationSeconds",
+        "quality",
+        "classification",
+        "cleanupStatus",
+        "captureBufferFrames",
+        "renderBufferFrames"
+      ],
+      "properties": {
+        "evidenceId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "operationId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "reportId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sourceProvenance": {
+          "const": "REAL_WASAPI_SUSTAINED_DUPLEX"
+        },
+        "sourceReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "captureEndpointId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "renderEndpointId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "$ref": "#/$defs/audioFormat"
+        },
+        "period": {
+          "type": "string",
+          "pattern": "^(MINIMUM|DEFAULT|CUSTOM:[1-9][0-9]*:[1-9][0-9]*)$"
+        },
+        "mmcss": {
+          "enum": [
+            "OFF",
+            "PRO_AUDIO"
+          ]
+        },
+        "durationSeconds": {
+          "enum": [
+            60,
+            300,
+            600
+          ]
+        },
+        "quality": {
+          "enum": [
+            "DUPLEX_CLEAN",
+            "DUPLEX_WARNINGS",
+            "INCOMPLETE",
+            "UNKNOWN"
+          ]
+        },
+        "classification": {
+          "enum": [
+            "SUSTAINED_CLEAN",
+            "SUSTAINED_WARNINGS",
+            "INCOMPLETE",
+            "UNKNOWN"
+          ]
+        },
+        "cleanupStatus": {
+          "const": "RELEASE_ATTEMPTED"
+        },
+        "captureBufferFrames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "renderBufferFrames": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "v5AudioFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "channels": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "encoding": {
+          "maxLength": 32,
+          "minLength": 1,
+          "type": "string"
+        },
+        "period": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sampleRate": {
+          "maximum": 384000,
+          "minimum": 8000,
+          "type": "integer"
+        },
+        "validBits": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "containerBits": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "encoding",
+        "sampleRate",
+        "channels",
+        "containerBits",
+        "validBits",
+        "period"
+      ],
+      "type": "object"
+    }
+  }
+}
