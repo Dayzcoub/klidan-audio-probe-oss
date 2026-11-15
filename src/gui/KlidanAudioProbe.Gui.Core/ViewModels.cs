@@ -8,6 +8,8 @@ using System.Globalization;
 
 namespace KlidanAudioProbe.Gui.Core;
 
+public sealed record V2AutoShortCandidateDisplay(string Period, string Result, string Buffer, string Reason, string Details);
+
 public interface ILaboratoryEvidenceBundleExportInteraction
 {
     Task<string?> PickDestinationAsync(string suggestedFileName);
@@ -568,7 +570,8 @@ public sealed class MainViewModel : ViewModel
             return string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanConsentSummary"), string.Join("\n", endpoints), identity, operations, sustainedMode, active, prepared.MaximumTotalOperations, prepared.MaximumWallClockSeconds, prepared.WorkerPlan.LifetimeSeconds, prepared.WorkerPlan.MaximumOperationCount, stages);
         }
     }
-    public string AutomaticScanResultSummary => AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
+    public string AutomaticScanResultSummary => _automaticScanV2Result is { QaMode: "AUTO_SHORT", Lifecycle: "AUTO_SHORT_COMPLETED" } autoShortDone ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2AutoShortResultSummary"), autoShortDone.Qualification) :
+        AutomaticScanBusy && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultScanning"), _automaticScanStatus) :
         _automaticScanV2Result is { Lifecycle: "UNKNOWN" } unknownV2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2UnknownOperatorSummary"), V2StageLabel(unknownV2.WorkerError?.Stage ?? unknownV2.Operations.LastOrDefault(o => o.State == "UNKNOWN")?.Stage ?? "SHORT_DUPLEX"), unknownV2.WorkerError?.ErrorCode ?? Localization.Get("VmV2WorkerErrorCodeUnavailable"), Localization.Get("VmV2OperationCleanupUnconfirmed"), unknownV2.WorkerError?.WorkerState ?? Localization.Get("VmV2WorkerStateUnknown"), Localization.Get("VmV2OpenReportForDetails")) :
         _automaticScanOutcomeUnknown && _automaticScanAttempted ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanResultUnknown"), _automaticScanStatus) :
         _automaticScanV2Result is { } v2 ? string.Format(Localization.CurrentCulture, Localization.Get("VmV2ResultSummary"), V2LifecycleLabel(v2.Lifecycle), V2QaModeSummaryLabel(v2.QaMode), v2.Period, v2.Operations.Count(o => o.State == "COMPLETED"), V2ResultErrorLabel(v2)) :
@@ -589,7 +592,23 @@ public sealed class MainViewModel : ViewModel
         ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanRecommendationSelected"), result.Recommendation.Scope, preferred.Period, preferred.SampleRate / 1000, preferred.Encoding, preferred.CaptureBufferFrames, preferred.RenderBufferFrames, preferred.Mmcss, preferred.DurationSeconds, preferred.Confidence, result.Recommendation.Fallback is { } fallback ? $"{fallback.Period} · MMCSS {fallback.Mmcss}" : "NONE", string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)))
         : string.Format(Localization.CurrentCulture, Localization.Get("VmAutomaticScanFinalConfigurationMissing"), string.Join(" ", result.Recommendation.Reasons.Select(RecommendationReasonLabel)));
     public bool AutomaticScanAutoShortVisible => _automaticScanV2Result?.QaMode == "AUTO_SHORT";
-    public IReadOnlyList<V2AutoShortCandidate> AutomaticScanAutoShortCandidates => _automaticScanV2Result?.AutoShortCandidates ?? [];
+    public string AutomaticScanRecommendationPeriodDisplay
+    {
+        get
+        {
+            if (_automaticScanV2Result is not { QaMode: "AUTO_SHORT", RecommendedPeriod: { } period } result) return Localization.Get("VmAutomaticScanRecommendationMissing");
+            var candidate = result.AutoShortCandidates.FirstOrDefault(c => c.Period == period);
+            return candidate?.Period100ns is > 0 ? FormatPeriodMilliseconds(candidate.Period100ns.Value) : Localization.Get("VmValueUnknown");
+        }
+    }
+    public IReadOnlyList<V2AutoShortCandidateDisplay> AutomaticScanAutoShortCandidates => (_automaticScanV2Result?.AutoShortCandidates ?? []).Select(c =>
+        new V2AutoShortCandidateDisplay($"{c.Period} · {FormatPeriodMilliseconds(c.Period100ns)} / {FormatPeriodMilliseconds(c.RenderPeriod100ns)}", Localization.Get(c.Status switch
+        {
+            "SHORT_CLEAN" => "VmAutoCandidateClean", "SHORT_FAILED" => "VmAutoCandidateFailed", "UNKNOWN" => "VmAutoCandidateUnknown", _ => "VmAutoCandidateUnsupported"
+        }), c.BufferSummary, Localization.Get(c.Status switch
+        {
+            "SHORT_CLEAN" => "VmAutoCandidateReasonClean", "SHORT_FAILED" => "VmAutoCandidateReasonFailed", "UNKNOWN" => "VmAutoCandidateReasonUnknown", _ => "VmAutoCandidateReasonUnsupported"
+        }), $"{Localization.Get("VmAutoCandidateDetailsSupport")}: {c.SupportSummary}; {Localization.Get("VmAutoCandidateDetailsPeriods")}: {FormatPeriodMilliseconds(c.Period100ns)} / {FormatPeriodMilliseconds(c.RenderPeriod100ns)}; {Localization.Get("VmAutoCandidateDetailsReason")}: {c.Reason}")).ToArray();
     public string AutomaticScanPhysicalLatencyText => Localization.Get("VmAutomaticScanLatencyNotMeasured");
     public string AutomaticScanResultProvenance
     {
@@ -642,7 +661,7 @@ public sealed class MainViewModel : ViewModel
     public bool CanExportAutomaticScan => !_automaticScanExportRunning && _bundleExportInteraction is not null &&
         (_automaticScanV2Result?.EvidencePath is { Length: > 0 } v2Path && File.Exists(v2Path) ||
          _automaticScanResult is { Lifecycle: ScanRunLifecycle.Completed, Persistence: { Status: "SAVED_AND_RELOADED", SummaryPath: not null } });
-    public string AutomaticScanExportStatus => _automaticScanExportStatus;
+    public string AutomaticScanExportStatus => HasAutomaticScanResult && new[] { Localization.Get("VmScanExportInvalidatedByNewScan", CultureInfo.GetCultureInfo("en-US")), Localization.Get("VmScanExportInvalidatedByNewScan", CultureInfo.GetCultureInfo("ru-RU")) }.Contains(_automaticScanExportStatus, StringComparer.Ordinal) ? string.Empty : _automaticScanExportStatus;
     public string AutomaticScanExportTechnicalDetails => _automaticScanExportTechnicalDetails;
     public DeviceScanResult? DeviceScanResult => _deviceScanResult;
     public bool HasDeviceScanResult => _deviceScanResult is not null;
@@ -2125,6 +2144,7 @@ public sealed class MainViewModel : ViewModel
         Changed(nameof(AutomaticScanResultDevice));
         Changed(nameof(AutomaticScanResultSummary));
         Changed(nameof(AutomaticScanRecommendationText));
+        Changed(nameof(AutomaticScanRecommendationPeriodDisplay));
         Changed(nameof(AutomaticScanAutoShortVisible)); Changed(nameof(AutomaticScanAutoShortCandidates));
         Changed(nameof(AutomaticScanPersistenceText));
         Changed(nameof(AutomaticScanStagePlanText));
@@ -2205,9 +2225,14 @@ public sealed class MainViewModel : ViewModel
 
     private static string V2LifecycleLabel(string lifecycle) => Localization.Get(lifecycle switch
     {
+        "AUTO_SHORT_COMPLETED" => "VmAutoShortCompleted",
         "COMPLETED" or "SHORT_COMPLETED" => "VmAutomaticScanCompleted", "UNKNOWN" => "VmAutomaticScanOutcomeUnknown",
         "FAILED" => "VmAutomaticScanFailed", _ => "VmAutomaticScanPartiallyCompleted"
     });
+
+    private static string FormatPeriodMilliseconds(long? period100ns) => period100ns is > 0
+        ? string.Format(Localization.CurrentCulture, Localization.Get("VmAutoPeriodMilliseconds"), period100ns.Value / 10000m)
+        : Localization.Get("VmValueUnknown");
 
     private static string V2QaModeLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscovery", "SHORT" => "VmV2QaShort", "AUTO_SHORT" => "VmV2QaAutoShort", _ => "VmV2QaFull" });
     private static string V2QaModeSummaryLabel(string qaMode) => Localization.Get(qaMode switch { "DISCOVERY" => "VmV2QaDiscoverySummary", "SHORT" => "VmV2QaShortSummary", "AUTO_SHORT" => "VmV2QaAutoShortSummary", _ => "VmV2QaFullSummary" });
@@ -2224,7 +2249,7 @@ public sealed class MainViewModel : ViewModel
             var captureFormat = $"{result.Route.Capture.SampleRateHz} Hz {result.Route.Capture.Encoding} {result.Route.Capture.Channels}ch [{string.Join("/", result.Route.Capture.SelectedIndicesZeroBased.Select(i => i + 1))}]";
             var renderFormat = $"{result.Route.Render.SampleRateHz} Hz {result.Route.Render.Encoding} {result.Route.Render.Channels}ch [{string.Join("/", result.Route.Render.SelectedIndicesZeroBased.Select(i => i + 1))}]";
             var recommendation = result.RecommendedPeriod is { } p ? $"{p} / Capture {captureFormat} / Render {renderFormat} / {result.Route.Mode}" : Localization.Get("VmAutomaticScanRecommendationMissing");
-            return $"{Localization.Get("VmV2QaAutoShortRecommendation")}: {recommendation} · {result.Qualification} / NOT_CERTIFIED";
+            return $"{recommendation} · {result.Qualification} / NOT_CERTIFIED";
         }
         var report = result.Operations.FirstOrDefault(o => o.Stage == "SHORT_DUPLEX" && o.Evidence is not null)?.Evidence;
         var captureFrames = report is { } c && c.TryGetProperty("capture", out var capture) && capture.TryGetProperty("actualBufferFrames", out var cf) ? cf.ToString() : Localization.Get("VmValueUnknown");

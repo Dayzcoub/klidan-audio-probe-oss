@@ -1362,4 +1362,19 @@ Fallback: {1}
   <data name="VmV2ProgressNotRequested" xml:space="preserve"><value>Не запрашивалось для выбранной глубины QA.</value></data>
   <data name="VmV2ProgressOperationUnknown" xml:space="preserve"><value>Результат операции или очистки не подтверждён; все последующие аудиооперации остановлены.</value></data>
   <data name="VmV2ProgressOperationFailed" xml:space="preserve"><value>Выбранная операция не пройдена; последующие этапы остановлены. Исходная диагностика доступна в технических подробностях.</value></data>
+  <data name="VmAutoShortCompleted" xml:space="preserve"><value>Автоподбор завершён</value></data>
+  <data name="VmV2AutoShortResultSummary" xml:space="preserve"><value>Автоподбор завершён · квалификация {0} · НЕ СЕРТИФИЦИРОВАНО</value></data>
+  <data name="VmAutoPeriodMilliseconds" xml:space="preserve"><value>{0:0.##} мс</value></data>
+  <data name="VmAutoCandidateClean" xml:space="preserve"><value>SHORT пройден чисто</value></data>
+  <data name="VmAutoCandidateFailed" xml:space="preserve"><value>SHORT не пройден</value></data>
+  <data name="VmAutoCandidateUnknown" xml:space="preserve"><value>Исход не определён</value></data>
+  <data name="VmAutoCandidateUnsupported" xml:space="preserve"><value>Формат не поддержан</value></data>
+  <data name="VmAutoCandidateReasonClean" xml:space="preserve"><value>Чистый запуск, 5 секунд</value></data>
+  <data name="VmAutoCandidateReasonFailed" xml:space="preserve"><value>Отчёт содержит предупреждения или ошибку</value></data>
+  <data name="VmAutoCandidateReasonUnknown" xml:space="preserve"><value>Исход или очистка не подтверждены</value></data>
+  <data name="VmAutoCandidateReasonUnsupported" xml:space="preserve"><value>Формат не подтверждён для обоих устройств</value></data>
+  <data name="VmAutoCandidateDetails" xml:space="preserve"><value>Технические данные кандидатов</value></data>
+  <data name="VmAutoCandidateDetailsSupport" xml:space="preserve"><value>Поддержка Capture / Render</value></data>
+  <data name="VmAutoCandidateDetailsPeriods" xml:space="preserve"><value>Периоды устройств (Capture / Render)</value></data>
+  <data name="VmAutoCandidateDetailsReason" xml:space="preserve"><value>Код причины</value></data>
 </root>

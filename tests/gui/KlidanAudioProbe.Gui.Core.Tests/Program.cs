@@ -6,6 +6,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Reflection;
 using System.IO;
 using System.Text;
@@ -26,6 +28,19 @@ void Check(bool condition, string name)
     checks++;
     if (!condition) throw new InvalidOperationException($"FAIL: {name}");
     Console.WriteLine($"PASS: {name}");
+}
+void CaptureUiScreenshot(Window window, string fileName, double scale = 1.0)
+{
+    var directory = Environment.GetEnvironmentVariable("KLIDAN_UI_SCREENSHOT_DIR");
+    if (string.IsNullOrWhiteSpace(directory)) return;
+    Directory.CreateDirectory(directory);
+    var width = Math.Max(1, (int)Math.Round(window.ActualWidth * 96 * scale / 96));
+    var height = Math.Max(1, (int)Math.Round(window.ActualHeight * 96 * scale / 96));
+    var bitmap = new RenderTargetBitmap(width, height, 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+    bitmap.Render(window);
+    var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+    using var stream = File.Create(Path.Combine(directory, fileName)); encoder.Save(stream);
+    Check(File.Exists(Path.Combine(directory, fileName)) && new FileInfo(Path.Combine(directory, fileName)).Length > 0, $"WPF regression screenshot saved: {fileName} ({width}×{height})");
 }
 V2AutoShortCandidate AutoCandidate(string period, string status) => new(period, period == "DEFAULT" ? 100000 : 30000, period == "DEFAULT" ? 480 : 144, "SUPPORTED_REPORTED", "SUPPORTED_REPORTED", status, "fixture");
 var autoCaptureId = "auto-capture"; var autoRenderId = "auto-render";
@@ -863,12 +878,35 @@ Check(!openV2ReportButton.IsEnabled && !v2RouteVm.OpenAutomaticScanLocationComma
 var v2OpenFolder = Path.Combine(Path.GetTempPath(), $"klidan-v2-open-folder-{Guid.NewGuid():N}"); Directory.CreateDirectory(v2OpenFolder);
 var v2OpenEvidence = Path.Combine(v2OpenFolder, "evidence.json"); File.WriteAllText(v2OpenEvidence, "{}");
 var currentV2Result = (V2AutomaticScanResult)typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(v2RouteVm)!;
-var autoUiCandidates = new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN") with { RenderBufferFrames = 480, RenderPeriod100ns = 100000 }, AutoCandidate("MINIMUM", "SHORT_FAILED") with { RenderBufferFrames = 144, RenderPeriod100ns = 30000 } };
-typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result with { QaMode = "AUTO_SHORT", AutoShortCandidates = autoUiCandidates, RecommendedPeriod = "DEFAULT", Qualification = "SHORT_CLEAN" });
-typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
+var autoUiCandidates = new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN") with { RenderBufferFrames = 480, RenderPeriod100ns = 100000 }, AutoCandidate("MINIMUM", "SHORT_FAILED") with { RenderBufferFrames = 144, RenderPeriod100ns = 30000, Reason = "CAPTURE_COVERAGE_BELOW_99;RENDER_DISCONTINUITIES_NONZERO;" + new string('x', 320) } };
+void DisplayAutoShort(WorkerScanV2Route route, string capName, string renName, IReadOnlyList<V2AutoShortCandidate> candidates, string? recommended, string lifecycle = "AUTO_SHORT_COMPLETED", string qualification = "SHORT_CLEAN")
+{
+    typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result with { Lifecycle = lifecycle, QaMode = "AUTO_SHORT", Route = route, CaptureFriendlyName = capName, RenderFriendlyName = renName, AutoShortCandidates = candidates, RecommendedPeriod = recommended, Qualification = qualification });
+    typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
+}
+var bloodyUiRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 2, "PCM16", 3, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
+DisplayAutoShort(bloodyUiRoute, "Bloody Capture endpoint with a deliberately long descriptive name", "Bloody Render endpoint with a deliberately long descriptive name", autoUiCandidates, "DEFAULT");
 v2LayoutWindow.Width = 1920; v2LayoutWindow.Height = 1080; v2LayoutWindow.UpdateLayout();
 var autoComparison = (Expander)v2LayoutWindow.FindName("AutomaticScanAutoShortComparison");
-Check(v2RouteVm.AutomaticScanAutoShortVisible && v2RouteVm.AutomaticScanAutoShortCandidates.Count == 2 && autoComparison.Visibility == Visibility.Visible && v2RouteVm.AutomaticScanRecommendationText.Contains("DEFAULT", StringComparison.Ordinal) && v2RouteVm.AutomaticScanRecommendationText.Contains("NOT_CERTIFIED", StringComparison.Ordinal) && autoComparison.ActualWidth <= 1920 && autoComparison.ActualHeight <= 1080, "AUTO_SHORT results show two comparison rows and a separate preliminary NOT_CERTIFIED recommendation within a 1920×1080 window");
+var recommendationPeriod = (TextBlock)v2LayoutWindow.FindName("AutomaticScanRecommendationPeriodText");
+var autoHeadline = (TextBlock)v2LayoutWindow.FindName("AutomaticScanResultHeadlineText");
+Check(v2RouteVm.AutomaticScanAutoShortVisible && v2RouteVm.AutomaticScanAutoShortCandidates.Count == 2 && autoComparison.Visibility == Visibility.Visible && v2RouteVm.AutomaticScanResultHeadline == Localization.Get("VmAutoShortCompleted") && v2RouteVm.AutomaticScanResultSummary.Contains(Localization.Get("VmV2AutoShortResultSummary").Contains("NOT_CERTIFIED", StringComparison.Ordinal) ? "NOT_CERTIFIED" : "НЕ СЕРТИФИЦИРОВАНО", StringComparison.Ordinal) && v2RouteVm.AutomaticScanRecommendationPeriodDisplay.Contains("10", StringComparison.Ordinal) && v2RouteVm.AutomaticScanAutoShortCandidates[0].Period.Contains("10", StringComparison.Ordinal) && v2RouteVm.AutomaticScanAutoShortCandidates[1].Result == Localization.Get("VmAutoCandidateFailed") && v2RouteVm.AutomaticScanAutoShortCandidates[1].Reason.Length < 80 && v2RouteVm.AutomaticScanAutoShortCandidates[1].Details.Contains("CAPTURE_COVERAGE_BELOW_99", StringComparison.Ordinal) && autoHeadline.Text == Localization.Get("VmAutoShortCompleted") && recommendationPeriod.ActualWidth <= autoComparison.ActualWidth && autoComparison.ActualWidth <= 1920 && autoComparison.ActualHeight <= 1080 && !v2RouteVm.AutomaticScanResultSummary.Contains("SCANNING", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(v2RouteVm.AutomaticScanExportStatus), $"Bloody AUTO_SHORT UI separates completed status, DEFAULT 10 ms recommendation, concise candidate rows and expandable diagnostic codes [headline={v2RouteVm.AutomaticScanResultHeadline}; summary={v2RouteVm.AutomaticScanResultSummary}; period={v2RouteVm.AutomaticScanRecommendationPeriodDisplay}; candidate={v2RouteVm.AutomaticScanAutoShortCandidates[1]}; headlineText={autoHeadline.Text}; widths={recommendationPeriod.ActualWidth}/{autoComparison.ActualWidth}]");
+CaptureUiScreenshot(v2LayoutWindow, "AS-N4B.2.1-Bloody-DEFAULT-10ms.png");
+var flowUiRoute = new WorkerScanV2Route("MONO_TO_STEREO", new(48000, 1, "PCM16", 0, [0]), new(48000, 2, "PCM16", 3, [0, 1]));
+var flowCandidates = new[] { AutoCandidate("DEFAULT", "SHORT_CLEAN") with { RenderBufferFrames = 480, RenderPeriod100ns = 100000 }, AutoCandidate("MINIMUM", "SHORT_CLEAN") with { RenderBufferFrames = 144, RenderPeriod100ns = 30000 } };
+DisplayAutoShort(flowUiRoute, "BEHRINGER FLOW 8 Capture", "BEHRINGER FLOW 8 Render", flowCandidates, "MINIMUM"); v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.AutomaticScanResultHeadline == Localization.Get("VmAutoShortCompleted") && v2RouteVm.AutomaticScanAutoShortCandidates.All(c => c.Result == Localization.Get("VmAutoCandidateClean")) && v2RouteVm.AutomaticScanRecommendationPeriodDisplay.Contains("3", StringComparison.Ordinal) && v2RouteVm.AutomaticScanResultDevice.Contains("BEHRINGER FLOW 8", StringComparison.Ordinal), "FLOW 8 AUTO_SHORT UI recommends the smaller 3 ms candidate when both results are clean");
+v2LayoutWindow.Width = 1920; v2LayoutWindow.Height = 1080; v2LayoutWindow.UpdateLayout(); CaptureUiScreenshot(v2LayoutWindow, "AS-N4B.2.1-FLOW8-MINIMUM-3ms.png");
+DisplayAutoShort(flowUiRoute, "BEHRINGER FLOW 8 USB Capture endpoint with an extended product and location description", "BEHRINGER FLOW 8 USB Render endpoint with an extended product and location description", [flowCandidates[0], flowCandidates[1] with { Status = "UNKNOWN", Reason = "WORKER_DISCONNECT_CLEANUP_UNCONFIRMED;" + new string((char)120, 320) }], null, "UNKNOWN", "UNKNOWN"); v2LayoutWindow.UpdateLayout(); ((Expander)v2LayoutWindow.FindName("AutomaticScanAutoShortDetails")).IsExpanded = true; v2LayoutWindow.UpdateLayout();
+Check(v2RouteVm.AutomaticScanResultHeadline == Localization.Get("VmV2CheckStopped") && v2RouteVm.AutomaticScanRecommendationPeriodDisplay == Localization.Get("VmAutomaticScanRecommendationMissing") && v2RouteVm.AutomaticScanAutoShortCandidates[1].Result == Localization.Get("VmAutoCandidateUnknown") && v2RouteVm.AutomaticScanAutoShortCandidates[1].Details.Length > 250, "AUTO_SHORT UNKNOWN displays no recommended period and remains distinct from candidate results");
+var autoPriorUiLanguage = Localization.CurrentCulture.Name; Localization.SetLanguage("ru-RU", false); var autoRuStatus = v2RouteVm.AutomaticScanResultHeadline; var autoRuPeriod = v2RouteVm.AutomaticScanAutoShortCandidates[0].Period; Localization.SetLanguage("en-US", false); var autoEnStatus = v2RouteVm.AutomaticScanResultHeadline; var autoEnPeriod = v2RouteVm.AutomaticScanAutoShortCandidates[0].Period; Localization.SetLanguage(autoPriorUiLanguage, false);
+Check(autoRuStatus == Localization.Get("VmV2CheckStopped", System.Globalization.CultureInfo.GetCultureInfo("ru-RU")) && autoRuPeriod.Contains("мс", StringComparison.Ordinal) && autoEnStatus == Localization.Get("VmV2CheckStopped", System.Globalization.CultureInfo.GetCultureInfo("en-US")) && autoEnPeriod.Contains("ms", StringComparison.Ordinal), "AUTO_SHORT unknown state and millisecond units localize in RU/EN");
+foreach (var (physicalW, physicalH, scale) in new[] { (1920d, 1080d, 1.0), (1920d, 1080d, 1.25), (1920d, 1080d, 1.5) })
+{
+    v2LayoutWindow.Width = physicalW / scale; v2LayoutWindow.Height = physicalH / scale; v2LayoutWindow.UpdateLayout();
+    Check(autoComparison.ActualWidth <= v2LayoutWindow.ActualWidth && autoComparison.ActualHeight <= v2LayoutWindow.ActualHeight && ((TextBlock)v2LayoutWindow.FindName("AutomaticScanResultDeviceText")).TextWrapping == TextWrapping.Wrap, $"AUTO_SHORT result and long endpoint labels fit 1920×1080 at {scale:P0} effective scaling");
+    CaptureUiScreenshot(v2LayoutWindow, $"AS-N4B.2.1-UNKNOWN-1920x1080-{scale:P0}.png", scale);
+}
 typeof(MainViewModel).GetField("_automaticScanV2Result", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(v2RouteVm, currentV2Result);
 typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(v2RouteVm, null);
 v2LayoutWindow.Width = 1280; v2LayoutWindow.Height = 800; v2LayoutWindow.UpdateLayout();
@@ -1213,7 +1251,7 @@ SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationCo
 var buttonVm = new MainViewModel(worker: buttonWorker, automaticScanWorkflow: automaticUiWorkflow);
 buttonVm.AutomaticScanEngine = "V1_COMPATIBLE";
 var automaticResultNotifications = new HashSet<string>(StringComparer.Ordinal);
-buttonVm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(buttonVm.AutomaticScanResultHeadline) or nameof(buttonVm.AutomaticScanResultDevice) or nameof(buttonVm.AutomaticScanResultSummary) or nameof(buttonVm.AutomaticScanRecommendationText) or nameof(buttonVm.AutomaticScanPersistenceText)) automaticResultNotifications.Add(e.PropertyName); };
+buttonVm.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(buttonVm.AutomaticScanResultHeadline) or nameof(buttonVm.AutomaticScanResultDevice) or nameof(buttonVm.AutomaticScanResultSummary) or nameof(buttonVm.AutomaticScanRecommendationText) or nameof(buttonVm.AutomaticScanRecommendationPeriodDisplay) or nameof(buttonVm.AutomaticScanPersistenceText)) automaticResultNotifications.Add(e.PropertyName); };
 var buttonWindow = new MainWindow(buttonVm) { Width = 1280, Height = 800, ShowActivated = false };
 buttonWindow.Show(); buttonWindow.UpdateLayout();
 var actualScanButton = (Button)buttonWindow.FindName("DeviceScanButton");
@@ -1243,7 +1281,7 @@ PumpUntil(() => !buttonVm.AutomaticScanRunning && buttonVm.AutomaticScanResult i
 Check(buttonVm.AutomaticScanResult?.Lifecycle == ScanRunLifecycle.Cancelled && buttonVm.AutomaticScanProgressRows.Count > 0 && buttonVm.AutomaticScanPersistenceText.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanReportNotSaved"), StringComparison.OrdinalIgnoreCase) && buttonWorker.RealQueryCalls == 0, "cancelled test-only workflow preserves operation progress without real hardware calls or a fabricated saved report");
 var automaticResultPanel = (StackPanel)buttonWindow.FindName("OperatorResultPanel");
 Check(buttonVm.AutomaticScanResultProvenance.StartsWith("UNKNOWN", StringComparison.Ordinal) && automaticResultPanel.Visibility == Visibility.Visible && ((StackPanel)buttonWindow.FindName("DevicesPanel")).Visibility == Visibility.Collapsed && ((StackPanel)buttonWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Collapsed, "result screen alone presents unknown provenance and retains the terminal scan result");
-Check(automaticResultNotifications.SetEquals([nameof(buttonVm.AutomaticScanResultHeadline), nameof(buttonVm.AutomaticScanResultDevice), nameof(buttonVm.AutomaticScanResultSummary), nameof(buttonVm.AutomaticScanRecommendationText), nameof(buttonVm.AutomaticScanPersistenceText)]) && ((TextBlock)buttonWindow.FindName("AutomaticScanResultHeadlineText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCancelled") && ((TextBlock)buttonWindow.FindName("AutomaticScanResultDeviceText")).Text == "Fixture Interface" && ((TextBlock)buttonWindow.FindName("AutomaticScanRecommendationText")).Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanFinalConfigurationMissing").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && ((TextBlock)buttonWindow.FindName("AutomaticScanPersistenceText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanReportNotSaved"), "actual WPF result bindings receive terminal headline, device, summary, final selection and persistence notifications");
+Check(automaticResultNotifications.SetEquals([nameof(buttonVm.AutomaticScanResultHeadline), nameof(buttonVm.AutomaticScanResultDevice), nameof(buttonVm.AutomaticScanResultSummary), nameof(buttonVm.AutomaticScanRecommendationText), nameof(buttonVm.AutomaticScanRecommendationPeriodDisplay), nameof(buttonVm.AutomaticScanPersistenceText)]) && ((TextBlock)buttonWindow.FindName("AutomaticScanResultHeadlineText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanCancelled") && ((TextBlock)buttonWindow.FindName("AutomaticScanResultDeviceText")).Text == "Fixture Interface" && ((TextBlock)buttonWindow.FindName("AutomaticScanRecommendationText")).Text.Contains(KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanFinalConfigurationMissing").Split("{0}", StringSplitOptions.None)[0], StringComparison.Ordinal) && ((TextBlock)buttonWindow.FindName("AutomaticScanPersistenceText")).Text == KlidanAudioProbe.Gui.Core.Localization.Get("VmAutomaticScanReportNotSaved"), $"actual WPF result bindings receive terminal headline, device, summary, final selection and persistence notifications [notifs={string.Join(",", automaticResultNotifications)}; headline={((TextBlock)buttonWindow.FindName("AutomaticScanResultHeadlineText")).Text}; device={((TextBlock)buttonWindow.FindName("AutomaticScanResultDeviceText")).Text}; rec={((TextBlock)buttonWindow.FindName("AutomaticScanRecommendationText")).Text}; persist={((TextBlock)buttonWindow.FindName("AutomaticScanPersistenceText")).Text}]");
 Check(buttonVm.AutomaticScanPairEnabled == false && automaticUiWorkflow.PreparedPlan?.Target.Capture?.EndpointId == "local-windows-id" && automaticUiWorkflow.LastConfirmationId != Guid.Empty, "authorization is issued only after consent and binds the refreshed exact endpoint");
 buttonVm.OpenManualRealToolsCommand.Execute(null); buttonWindow.UpdateLayout();
 Check(buttonVm.DeveloperToolsOpen && buttonVm.WorkflowStep == OperatorStep.Test && ((StackPanel)buttonWindow.FindName("OperatorTestPanel")).Visibility == Visibility.Visible, "legacy manual real controls remain available only through Developer Tools");
@@ -3110,7 +3148,7 @@ try
 }
 finally { if (Directory.Exists(bundleSecurityRoot)) Directory.Delete(bundleSecurityRoot, true); }
 Check(mainWindowXaml.Contains("{loc:Loc ExportResults}", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanExportStatusText", StringComparison.Ordinal) && mainWindowXaml.Contains("LOCAL_FULL_EVIDENCE", StringComparison.Ordinal) == false, "L2-B result screen exposes one explicit export action with a separate status and technical-details area");
-Check(mainWindowXaml.Contains("AutomaticScanAutoShortComparison", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanAutoShortCandidates", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoPeriodLengthColumn", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoFramesColumn", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoReasonColumn", StringComparison.Ordinal), "AUTO_SHORT result screen exposes candidate comparison for support, period, buffer frames, and exclusion reason");
+Check(mainWindowXaml.Contains("AutomaticScanAutoShortComparison", StringComparison.Ordinal) && mainWindowXaml.Contains("AutomaticScanAutoShortCandidates", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoCandidateDetails", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoFramesColumn", StringComparison.Ordinal) && mainWindowXaml.Contains("VmAutoReasonColumn", StringComparison.Ordinal), "AUTO_SHORT result screen exposes candidate comparison for support, period, buffer frames, and exclusion reason");
 Check(!new MainViewModel().CanExportAutomaticScan && !new MainViewModel().ExportAutomaticScanCommand.CanExecute(null), "L2-B export is disabled without an explicitly completed persisted result and native export interaction");
 var bundleUiRoot = Path.Combine(Path.GetTempPath(), $"klidan-bundle-ui-{Guid.NewGuid():N}");
 var bundleUiScans = Path.Combine(bundleUiRoot, "Scans");
