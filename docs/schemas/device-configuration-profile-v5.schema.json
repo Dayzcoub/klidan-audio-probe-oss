@@ -199,7 +199,7 @@
           "type": "string"
         },
         "searchQualification": {
-          "enum": ["MINIMUM_SHORT_CLEAN_FOUND", "MINIMUM_QUALIFIED_IN_CONSENTED_DOMAIN"]
+          "enum": ["MINIMUM_SHORT_CLEAN_FOUND", "MINIMUM_QUALIFIED_IN_CONSENTED_DOMAIN", "QUALIFIED_OPERATING_POINT"]
         },
         "repeatOperationIds": {
           "items": {
@@ -283,6 +283,12 @@
         { "type": "null" },
         { "$ref": "#/$defs/audioHostQualification" }
       ]
+    },
+    "historicalAudioHostBinding": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/historicalAudioHostBinding" }
+      ]
     }
   },
   "$defs": {
@@ -354,10 +360,10 @@
         "resultSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
         "audioHostBuildSha": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
         "sourceEvidenceSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
-        "shortSearchSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
-        "repeatabilitySummarySha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
-        "repeatabilityMatrixSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
-        "profileMatrixSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "shortSearchSha256": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
+        "repeatabilitySummarySha256": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
+        "repeatabilityMatrixSha256": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
+        "profileMatrixSha256": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
         "provenance": { "enum": ["REAL_AUDIOHOST", "TEST_ONLY"] },
         "captureEndpointId": { "type": "string", "minLength": 1, "maxLength": 2048 },
         "renderEndpointId": { "type": "string", "minLength": 1, "maxLength": 2048 },
@@ -366,6 +372,27 @@
         "period100ns": { "type": "integer", "minimum": 1 },
         "mmcss": { "enum": ["OFF", "PRO_AUDIO"] },
         "qualifiedAtUtc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "historicalAudioHostBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "originalRunId", "qualificationRunId", "runnerRunId", "scannerSourceCommit", "audioHostBuildCommit", "scannerManifestSha256", "scannerQualificationSha256", "evidenceIndexSha256", "auditSha256", "audioHostEvidenceManifestSha256", "runnerConfigSha256", "runnerResultSha256", "runnerSummarySha256", "watchdogJournalSha256", "candidateIndex", "captureEndpointId", "renderEndpointId", "encoding", "sampleRateHz", "routeMode", "captureFrames", "renderFrames", "period100ns", "shortResult", "repeatOperationIds", "repeatResults", "sessionCleanup", "repeatCleanup", "watchdogOutcome", "watchdogExitCode", "audioHostResult", "nativeCleanupConfirmed", "forcedTermination", "minimumWithinConsentedDomainProven", "globalMinimumProven", "verifiedAtUtc", "sourceFiles"],
+      "properties": {
+        "sourceType": { "const": "V4_SCAN_QUALIFICATION_HISTORICAL" },
+        "originalRunId": { "$ref": "#/$defs/uuid" }, "qualificationRunId": { "$ref": "#/$defs/uuid" }, "runnerRunId": { "$ref": "#/$defs/uuid" },
+        "scannerSourceCommit": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" }, "audioHostBuildCommit": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
+        "scannerManifestSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "scannerQualificationSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "evidenceIndexSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "auditSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "audioHostEvidenceManifestSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "runnerConfigSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "runnerResultSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "runnerSummarySha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "watchdogJournalSha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "candidateIndex": { "const": 7 }, "captureEndpointId": { "type": "string", "minLength": 1 }, "renderEndpointId": { "type": "string", "minLength": 1 }, "encoding": { "const": "PCM16" }, "sampleRateHz": { "const": 48000 }, "routeMode": { "const": "MONO_TO_STEREO" }, "captureFrames": { "const": 480 }, "renderFrames": { "const": 480 }, "period100ns": { "const": 100000 },
+        "shortResult": { "const": "CLEAN" }, "repeatOperationIds": { "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }, "repeatResults": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "const": "CLEAN" } }, "sessionCleanup": { "const": "CLOSE_CONFIRMED" }, "repeatCleanup": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "const": "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" } },
+        "watchdogOutcome": { "const": "RUNNER_SUCCEEDED" }, "watchdogExitCode": { "const": 0 }, "audioHostResult": { "const": "LOAD_CLEAN" }, "nativeCleanupConfirmed": { "const": true }, "forcedTermination": { "const": false }, "minimumWithinConsentedDomainProven": { "const": true }, "globalMinimumProven": { "const": false }, "verifiedAtUtc": { "type": "string", "format": "date-time" },
+        "sourceFiles": { "type": "array", "minItems": 20, "items": { "$ref": "#/$defs/historicalEvidenceFile" } }
+      }
+    },
+    "historicalEvidenceFile": {
+      "type": "object", "additionalProperties": false, "required": ["role", "path", "sha256"], "properties": {
+        "role": { "type": "string", "minLength": 1 }, "path": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }
       }
     },
     "audioFormat": {

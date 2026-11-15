@@ -196,7 +196,19 @@ public sealed class WorkerV4ScanQualificationCoordinator(WorkerV4AutomaticSearch
         int operations, int activeSeconds, bool diagnosticOnly, string lifecycle, string workerCleanup, string stopReason)
     {
         var rowSet = entries;
-        for (var i = 0; i < rowSet.Length; i++) rowSet[i] = rowSet[i] with { LowerPeriodCoverage = selected is { } s && i <= s ? "COMPLETE" : selected is null && rowSet[i].DuplexDisposition is ("FAILED" or "UNSUPPORTED") ? "COMPLETE" : "INCOMPLETE" };
+        bool ProvenLowerPeriod(V2CandidateMatrixEntry row) =>
+            row.Provenance is "REAL_WASAPI_V4_DUPLEX" or "TEST_FAKE_WASAPI_V4_DUPLEX" && row.DuplexDisposition == "FAILED" && !row.DuplexNotRun &&
+            row.DuplexEvidence is { ValueKind: System.Text.Json.JsonValueKind.Object } &&
+            row.ActualCaptureFrames == row.Candidate.CaptureFrames && row.ActualRenderFrames == row.Candidate.RenderFrames &&
+            row.ActualCapturePeriod100ns == row.Candidate.CapturePeriod100ns && row.ActualRenderPeriod100ns == row.Candidate.RenderPeriod100ns &&
+            row.CaptureCleanup == "RELEASE_ATTEMPTED" && row.RenderCleanup == "RELEASE_ATTEMPTED";
+        for (var i = 0; i < rowSet.Length; i++)
+        {
+            var lower = rowSet.Take(i).ToArray();
+            var coverage = lower.Any(r => r.DuplexDisposition is "UNKNOWN" or "NOT_TESTED") ? "UNKNOWN" :
+                workerCleanup == "CLOSE_CONFIRMED" && lower.All(ProvenLowerPeriod) ? "COMPLETE" : "INCOMPLETE";
+            rowSet[i] = rowSet[i] with { LowerPeriodCoverage = coverage };
+        }
         var repeatRuns = selected is { } idx ? rowSet[idx].RepeatabilityEvidence : [];
         return new(1, p.Consent.PlanFingerprint, WorkerScanPlanV2Fingerprint.Route(p.CaptureEndpointId, p.RenderEndpointId, p.Plan.Route), lifecycle, p.Plan.CaptureBounds, p.Plan.RenderBounds, p.Plan.Candidates, rowSet,
             selected is null ? "MINIMUM_NOT_PROVEN" : "REPEATABILITY_CONFIRMED", rowSet.Any(e => e.Provenance.StartsWith("TEST_FAKE", StringComparison.Ordinal)) ? "TEST_FAKE_WASAPI_V4_DUPLEX" : "REAL_WASAPI_V4_DUPLEX")

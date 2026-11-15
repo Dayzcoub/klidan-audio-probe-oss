@@ -589,6 +589,8 @@ Check(DeviceConfigurationEvaluator.Recommend([minimumAssessment, mismatchedPairD
 var duplexProfile = DeviceConfigurationProfileFactory.CreateDuplex(profileEndpoint, renderEndpoint, [duplexMinimum, duplexDefault], "C2c-test", Guid.NewGuid(), DateTimeOffset.Parse("2026-10-31T00:01:00Z"));
 var stableShort = new ProfileStableShortSelection("TEST_ONLY", profileEndpoint.EndpointId!, renderEndpoint.EndpointId!, "STEREO_TO_STEREO", new("PCM16", 48000, 2, 16, 16, "CUSTOM:240:50000"), new("PCM16", 48000, 2, 16, 16, "CUSTOM:240:50000"), [0, 1], [0, 1], 240, 50000, 240, 50000, 240, 50000, 240, 50000, "OFF", 2, new string('a', 64), 7, "MINIMUM_SHORT_CLEAN_FOUND", 5, 5, Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray(), "TEST_FAKE_WASAPI_V4_DUPLEX", "v4-search.json", new string('b', 64), DateTimeOffset.UtcNow);
 var stableShortProfile = DeviceConfigurationProfileFactory.CreateStableShort(duplexProfile, stableShort);
+Throws<InvalidDataException>(() => DeviceConfigurationProfileJson.Validate(stableShortProfile with { StableShortSelection = stableShort with { SearchQualification = "QUALIFIED_OPERATING_POINT" } }), "v5 refuses an operating-point scope without a real physical LOAD_CLEAN qualification");
+Throws<InvalidDataException>(() => DeviceConfigurationProfileJson.Validate(stableShortProfile with { StableShortSelection = stableShort with { SearchQualification = "QUALIFIED_OPERATING_POINT_UNKNOWN" } }), "v5 rejects unknown qualification scope values");
 var stableShortRoundTrip = DeviceConfigurationProfileJson.Parse(DeviceConfigurationProfileJson.SerializeLocal(stableShortProfile));
 Check(stableShortRoundTrip.SchemaVersion == 5 && stableShortRoundTrip.StableShortSelection?.RepeatabilityCompleted == 5 && stableShortRoundTrip.StableShortSelection.ProfileKind == "TEST_ONLY", "profile v5 round-trip preserves exact short-run geometry and isolates TEST_FAKE provenance as test-only");
 Check(stableShortRoundTrip.AudioHostQualification is null, "legacy v5 short-only profile remains valid without AudioHost qualification");
@@ -798,6 +800,11 @@ foreach (var resourceFile in new[] { "UiResources.resx", "UiResources.ru-RU.resx
     Check(missing.Length == 0, $"all {requiredLocalizationKeys.Length} XAML localization keys exist in {resourceFile}" + (missing.Length == 0 ? string.Empty : $": {string.Join(", ", missing)}"));
 }
 var mainWindowCode = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml.cs"));
+using (var v5Schema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v5.schema.json"))))
+    Check(v5Schema.RootElement.GetProperty("properties").GetProperty("stableShortSelection").GetProperty("properties").GetProperty("searchQualification").GetProperty("enum").EnumerateArray().Any(v => v.GetString() == "QUALIFIED_OPERATING_POINT") &&
+        v5Schema.RootElement.GetProperty("$defs").GetProperty("historicalAudioHostBinding").GetProperty("required").EnumerateArray().Any(v => v.GetString() == "audioHostEvidenceManifestSha256") &&
+        v5Schema.RootElement.GetProperty("$defs").GetProperty("historicalAudioHostBinding").GetProperty("properties").GetProperty("audioHostEvidenceManifestSha256").GetProperty("pattern").GetString() == "^[0-9a-fA-F]{64}$",
+        "Profile v5 schema pins the historical AudioHost manifest and distinct operating-point scope");
 using (var profileSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v1.schema.json"))))
 using (var streamSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v2.schema.json"))))
 using (var duplexSchema = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(repoRoot.FullName, "docs/schemas/device-configuration-profile-v3.schema.json"))))
@@ -3849,6 +3856,8 @@ void RunB5B19CIntegrationTests()
         Recommendation = new(new("COORDINATED_EXCLUSIVE", devicePublicationSelection.CaptureFormat, "5 ms", []), null, []) { Scope = "KLIDAN_QUALIFIED", Confidence = "VERIFIED" },
         AudioHostAssessments = [new("COORDINATED_EXCLUSIVE", devicePublicationSelection.CaptureFormat with { Period = null }, devicePublicationSelection.RenderFormat with { Period = null }, [], true, [], [])]
     });
+    var qualifiedOperatingPointProfile = DeviceConfigurationProfileJson.Validate(devicePublicationProfile with { StableShortSelection = devicePublicationSelection with { SearchQualification = "QUALIFIED_OPERATING_POINT" } });
+    Check(qualifiedOperatingPointProfile.StableShortSelection?.SearchQualification == "QUALIFIED_OPERATING_POINT" && qualifiedOperatingPointProfile.AudioHostQualification is { Result: "LOAD_CLEAN", Cleanup: "CONFIRMED" }, "v5 accepts operating-point scope only when bound to real LOAD_CLEAN with confirmed cleanup");
     var profilePublication = RunV4FailureCase("profile-publication-order", (vm, workflow) =>
     {
         workflow.PendingProfile = devicePublicationProfile;
@@ -4087,6 +4096,75 @@ async Task WriteNewForTest(string path, byte[] bytes, CancellationToken ct)
     await stream.WriteAsync(bytes, ct); await stream.FlushAsync(ct);
 }
 
+if (Environment.GetEnvironmentVariable("KLIDAN_HISTORICAL_IMPORT_QA") == "1")
+{
+    const string scanner = @"H:\Projects\Audio-Probe-OSS\qa\B5B.20B\Release-QA-20261113T112125Z-def5e75defb7\evidence\bc6638e5-6e3e-4f31-9a5a-c2084049d37f";
+    const string index = @"H:\Projects\KLIDAN\artifacts\B5B.21C-BloodyG501-historical-evidence-index.json";
+    const string audit = @"H:\Projects\Audio-Probe-OSS\artifacts\B5B.21I-BloodyG501-consented-domain-minimum-audit.json";
+    const string audioManifest = @"H:\Projects\Audio-Probe-OSS\artifacts\B5B.21J-AudioHost-physical-evidence-manifest.json";
+    const string audio = @"H:\Projects\KLIDAN\qa\physical\B5B.21F\2b07ff5e579d451eaa9b539439aca44f\55271755e4d24fd4b411bfd7e346d0c8";
+    const string auditSha = "9fb80629f3ad935812eda6c2879144983d2a091ad77718958e9ae6fdbf87ecef";
+    var audioManifestSha = "1bf2d0fba87c5ed fbbc43c150da2c471febd2a85704e741007f1ba16c0a0b98e".Replace(" ", "");
+    var outputDir = Path.Combine(Environment.GetEnvironmentVariable("KLIDAN_HISTORICAL_IMPORT_QA_ROOT") ?? throw new InvalidOperationException("KLIDAN_HISTORICAL_IMPORT_QA_ROOT is required."), Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(outputDir);
+    HistoricalAudioHostProfileImportRequest Request(string? manifestSha = null, string? scannerRoot = null, string? audioRoot = null) => new(
+        scannerRoot ?? scanner, index, audit, auditSha, audioManifest, manifestSha ?? audioManifestSha, audioRoot ?? audio, outputDir);
+    var importedPath = HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request());
+    var imported = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(importedPath));
+    var historical = imported.HistoricalAudioHostBinding!;
+    Check(imported.SchemaVersion == 5 && historical.AudioHostResult == "LOAD_CLEAN" && historical.MinimumWithinConsentedDomainProven && !historical.GlobalMinimumProven,
+        "historical scanner plus AudioHost evidence imports as a consented-domain DEVICE Profile v5, without global-minimum claim");
+    Check(historical.RunnerRunId == "55271755-e4d2-4fd4-b411-bfd7e346d0c8", "historical runner Run ID is represented as a schema-valid canonical UUID while source files retain original bytes");
+    Check(historical.SessionCleanup == "CLOSE_CONFIRMED" && historical.RepeatCleanup.All(x => x == "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED") &&
+        historical.SourceFiles.Any(x => x.Role == "AUDIOHOST_EVIDENCE_MANIFEST" && x.Sha256 == audioManifestSha),
+        "historical import preserves distinct cleanup statuses and binds the AudioHost source manifest");
+    Throws<InvalidDataException>(() => HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request(new string('0', 64))), "historical import rejects altered AudioHost manifest SHA");
+    var originalBytes = File.ReadAllBytes(importedPath);
+    Throws<IOException>(() => HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request()), "re-import refuses to overwrite the existing deterministic profile");
+    Check(File.ReadAllBytes(importedPath).SequenceEqual(originalBytes), "duplicate historical import preserves the existing profile bytes");
+
+    var invalidBindings = new[]
+    {
+        historical with { GlobalMinimumProven = true },
+        historical with { CaptureEndpointId = "wrong-endpoint" },
+        historical with { Period100ns = 90_000 },
+        historical with { RepeatOperationIds = historical.RepeatOperationIds.Take(4).ToArray() },
+        historical with { RepeatOperationIds = historical.RepeatOperationIds.Take(4).Append(historical.RepeatOperationIds[0]).ToArray() },
+        historical with { RepeatResults = historical.RepeatResults.Take(4).Append("FAILED").ToArray() },
+        historical with { RepeatResults = historical.RepeatResults.Take(4).Append("UNKNOWN").ToArray() },
+        historical with { SessionCleanup = "UNKNOWN" },
+        historical with { RepeatCleanup = historical.RepeatCleanup.Select(_ => "CAPTURE:CLOSE_CONFIRMED;RENDER:CLOSE_CONFIRMED").ToArray() },
+        historical with { WatchdogOutcome = "RUNNER_FAILED" },
+        historical with { WatchdogExitCode = 1 },
+        historical with { NativeCleanupConfirmed = false },
+        historical with { AudioHostResult = "TEST_ONLY" },
+        historical with { MinimumWithinConsentedDomainProven = false }
+    };
+    foreach (var invalid in invalidBindings)
+        Throws<InvalidDataException>(() => DeviceConfigurationProfileJson.Validate(imported with { HistoricalAudioHostBinding = invalid }), "historical binding rejects tampered scope, geometry, repeat, watchdog, cleanup, or provenance");
+    var tamperedAudioRoot = Path.Combine(Path.GetTempPath(), $"historical-audio-manifest-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(tamperedAudioRoot);
+    try
+    {
+        foreach (var directory in Directory.EnumerateDirectories(audio, "*", SearchOption.AllDirectories)) Directory.CreateDirectory(Path.Combine(tamperedAudioRoot, Path.GetRelativePath(audio, directory)));
+        foreach (var file in Directory.EnumerateFiles(audio, "*", SearchOption.AllDirectories)) File.Copy(file, Path.Combine(tamperedAudioRoot, Path.GetRelativePath(audio, file)));
+        var summaryPath = Path.Combine(tamperedAudioRoot, "measurements", "load-qualification-summary.json");
+        File.AppendAllText(summaryPath, " ");
+        Throws<InvalidDataException>(() => HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request(audioRoot: tamperedAudioRoot)), "historical import rejects AudioHost summary bytes changed after manifesting");
+    }
+    finally { Directory.Delete(tamperedAudioRoot, true); }
+    var badScannerRoot = Path.Combine(Path.GetTempPath(), $"historical-scanner-manifest-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(badScannerRoot);
+    try
+    {
+        File.Copy(Path.Combine(scanner, "run-start.json"), Path.Combine(badScannerRoot, "run-start.json"));
+        var manifestNode = JsonNode.Parse(File.ReadAllBytes(Path.Combine(scanner, "run-manifest.json")))!.AsObject();
+        manifestNode["files"]!.AsArray()[0]!["sha256"] = new string('0', 64);
+        File.WriteAllText(Path.Combine(badScannerRoot, "run-manifest.json"), manifestNode.ToJsonString());
+        Throws<InvalidDataException>(() => HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request(scannerRoot: badScannerRoot)), "historical import rejects altered original scanner manifest SHA");
+    }
+    finally { Directory.Delete(badScannerRoot, true); }
+}
 Console.WriteLine($"All GUI Core checks passed ({checks}).");
 }
 

@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/src/tools/">
     <Project Path="src/tools/KlidanAudioProbe.V4.Headless/KlidanAudioProbe.V4.Headless.csproj" />
+    <Project Path="src/tools/KlidanAudioProbe.HistoricalProfileImport/KlidanAudioProbe.HistoricalProfileImport.csproj" />
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/gui/">

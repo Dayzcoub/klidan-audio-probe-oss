@@ -1427,6 +1427,7 @@ Fallback: {1}
   <data name="VmV4ScanError" xml:space="preserve"><value>V4 scan stopped: {0}: {1}</value></data>
   <data name="VmV4ScanCancellationRequested" xml:space="preserve"><value>Cancellation requested. Waiting for worker cleanup and evidence save…</value></data>
   <data name="VmV4MinimumNotProven" xml:space="preserve"><value>Not proven in tested candidate domain</value></data>
+  <data name="VmV4QualifiedOperatingPoint" xml:space="preserve"><value>{0} — LOAD_CLEAN. Minimum not confirmed</value></data>
   <data name="VmV4MinimumWithinDomain" xml:space="preserve"><value>{0} is the minimum stable SHORT candidate within the fully tested candidate domain</value></data>
   <data name="VmV4ScanResults" xml:space="preserve"><value>Result: {0}
 Selected period: {1} · Capture frames: {2} · Render frames: {3}
