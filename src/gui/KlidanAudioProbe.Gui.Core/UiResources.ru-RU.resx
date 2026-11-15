@@ -1377,4 +1377,34 @@ Fallback: {1}
   <data name="VmAutoCandidateDetailsSupport" xml:space="preserve"><value>Поддержка Capture / Render</value></data>
   <data name="VmAutoCandidateDetailsPeriods" xml:space="preserve"><value>Периоды устройств (Capture / Render)</value></data>
   <data name="VmAutoCandidateDetailsReason" xml:space="preserve"><value>Код причины</value></data>
+  <data name="V4PlanHeading" xml:space="preserve"><value>Предварительный план V2 CUSTOM (аудиозапуск закрыт)</value></data>
+  <data name="V4RepeatabilityLabel" xml:space="preserve"><value>Запланированные повторы:</value></data>
+  <data name="V4PreparePlan" xml:space="preserve"><value>Подготовить пассивный план</value></data>
+  <data name="V4ConsentHeading" xml:space="preserve"><value>Проверьте этот план</value></data>
+  <data name="V4ConsentCheck" xml:space="preserve"><value>Я проверил(а) и принимаю этот план</value></data>
+  <data name="V4AcceptPlan" xml:space="preserve"><value>Принять план</value></data>
+  <data name="VmV4PlanNotPrepared" xml:space="preserve"><value>План v4 не подготовлен.</value></data>
+  <data name="VmV4PlanInvalidated" xml:space="preserve"><value>Подготовленный план и согласие сброшены из-за изменения параметров или обнаружения устройств.</value></data>
+  <data name="VmV4PlanPreparationStarted" xml:space="preserve"><value>Подготовка пассивного плана…</value></data>
+  <data name="VmV4PlanQueryingBounds" xml:space="preserve"><value>Получение границ форматов Capture и Render.</value></data>
+  <data name="VmV4PlanAwaitingConsent" xml:space="preserve"><value>План готов. Проверьте его и подтвердите создание квитанции согласия.</value></data>
+  <data name="VmV4PlanCancelled" xml:space="preserve"><value>Подготовка плана или согласие отменены.</value></data>
+  <data name="VmV4PlanBlocked" xml:space="preserve"><value>Подготовка заблокирована: {0}</value></data>
+  <data name="VmV4ReceiptCreatedAudioUnavailable" xml:space="preserve"><value>Квитанция согласия создана для этого плана. Аудиосканирование v4 пока недоступно.</value></data>
+  <data name="VmV4AudioGateClosed" xml:space="preserve"><value>Доступны только просмотр и согласие. Initialize v4, CUSTOM Duplex, сканирование и создание стабильного профиля будут закрыты до следующих этапов.</value></data>
+  <data name="VmV4NoFingerprint" xml:space="preserve"><value>Нет fingerprint плана</value></data>
+  <data name="VmV4BoundsSummary" xml:space="preserve"><value>Заявленные границы (Default — верхняя граница поиска, не аппаратный максимум): Capture {0}–{1} мс; Render {2}–{3} мс; пересечение {4}–{5} мс.</value></data>
+  <data name="VmV4CandidateSummary" xml:space="preserve"><value>Запрошено {0} мс · Capture {1} кадров ({2} мс) / Render {3} кадров ({4} мс){5}</value></data>
+  <data name="VmV4EndpointSummary" xml:space="preserve"><value>{0} ({1}) · {2} Гц {3}, каналов {4}, индексы каналов {5}</value></data>
+  <data name="VmV4ConsentSummary" xml:space="preserve"><value>Capture: {0}
+Render: {1}
+Маршрут: {2}
+Границы поиска: {3}
+Кандидаты ({4}): {5}
+Выравнивание: Capture {6}; Render {7} (неизвестно — не сообщено)
+Повторов: {8}; максимум аудиоопераций: {9}; активный Duplex: не более {10} с
+Время сессии: {11} с; тайм-аут Initialize: {12} с; срок очистки: {13} с
+Fingerprint плана: {14}
+Будущие результаты будут предварительными и не подтверждают стабильный профиль.</value></data>
+  <data name="VmV4ReceiptSummary" xml:space="preserve"><value>Квитанция согласия: {0:D}; поколение обнаружения: {1}</value></data>
 </root>
