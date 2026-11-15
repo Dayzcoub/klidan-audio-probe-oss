@@ -11,6 +11,7 @@
 #include "matrix_timestamp.h"
 #include "channel_routing.h"
 #include "scan_plan_v2_v4.h"
+#include "scan_plan_v2_v4_transport.h"
 
 #include <algorithm>
 #include <array>
@@ -579,7 +580,7 @@ std::optional<std::string> RunStreamCli(std::string_view endpointId, std::string
 std::optional<std::string> RunDuplexCli(std::string_view operationId, std::string_view captureId,
         std::string_view renderId, std::string_view period, unsigned duration,
         std::string_view mmcss, HANDLE cancelEvent, std::string& failureCode, std::string& failureDetail, bool sustained = false,
-        const ChannelRouting::Configuration* route = nullptr) {
+        const ChannelRouting::Configuration* route = nullptr, const ScanPlanV2V4::Candidate* v4Candidate = nullptr) {
     std::wstring module(32768, L'\0');
     const DWORD moduleLength = GetModuleFileNameW(nullptr, module.data(), static_cast<DWORD>(module.size()));
     if (moduleLength == 0 || moduleLength >= module.size()) { failureCode = "WORKER_PATH_UNAVAILABLE"; return std::nullopt; }
@@ -595,9 +596,10 @@ std::optional<std::string> RunDuplexCli(std::string_view operationId, std::strin
     struct TempFile { const std::wstring& path; ~TempFile() { DeleteFileW(path.c_str()); } } cleanup{reportPath};
     if (!SetHandleInformation(cancelEvent, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) { failureCode = "CANCEL_EVENT_INHERIT_FAILED"; return std::nullopt; }
     const auto captureWide = Wide(captureId), renderWide = Wide(renderId), operationWide = Wide(operationId);
-    const std::wstring cliPeriod = period == "MINIMUM" ? L"minimum" : period == "DEFAULT" ? L"default" : L"custom:" + Wide(period.substr(7));
+    const std::string expectedPeriod = v4Candidate ? "CUSTOM_V2:" + std::to_string(v4Candidate->capturePeriod100ns) + ":" + std::to_string(v4Candidate->captureFrames) + ":" + std::to_string(v4Candidate->renderPeriod100ns) + ":" + std::to_string(v4Candidate->renderFrames) : std::string(period);
+    const std::wstring cliPeriod = v4Candidate ? L"default" : period == "MINIMUM" ? L"minimum" : period == "DEFAULT" ? L"default" : L"custom:" + Wide(period.substr(7));
     std::wstring command = QuoteArgument(cliPath) + L" --capture-id " + QuoteArgument(captureWide) +
-        L" --render-id " + QuoteArgument(renderWide) + (route ? sustained ? L" --test-sustained-duplex-v2" : L" --test-duplex-v2" : sustained ? L" --test-sustained-duplex" : L" --test-duplex") + (route ? L"" : L" --rate 48000 --channels 2 --format pcm16");
+        L" --render-id " + QuoteArgument(renderWide) + (route ? v4Candidate ? L" --test-duplex-v2-custom" : sustained ? L" --test-sustained-duplex-v2" : L" --test-duplex-v2" : sustained ? L" --test-sustained-duplex" : L" --test-duplex") + (route ? L"" : L" --rate 48000 --channels 2 --format pcm16");
     if(route){
         const auto rate=[](const auto& side){return std::to_wstring(side.format.sampleRate);};
         const auto channels=[](const auto& side){return std::to_wstring(side.format.channels);};
@@ -605,6 +607,10 @@ std::optional<std::string> RunDuplexCli(std::string_view operationId, std::strin
         const auto mask=[](const auto& side){return std::to_wstring(side.channelMask);};
         const auto indexList=[](const auto& values,std::uint16_t count){std::wstring text;for(std::uint16_t i=0;i<count;++i){if(i)text+=L",";text+=std::to_wstring(values[i]);}return text;};
         command+=L" --route-mode "+Wide(ChannelRouting::ModeText(route->mode))+L" --capture-rate "+rate(route->capture)+L" --capture-channels "+channels(route->capture)+L" --capture-format "+encoding(route->capture)+L" --capture-mask "+mask(route->capture)+L" --capture-indices "+indexList(route->captureChannels,ChannelRouting::CaptureCount(route->mode))+L" --render-rate "+rate(route->render)+L" --render-channels "+channels(route->render)+L" --render-format "+encoding(route->render)+L" --render-mask "+mask(route->render)+L" --render-indices "+indexList(route->renderChannels,ChannelRouting::RenderCount(route->mode));
+        if(v4Candidate){
+            command+=L" --capture-custom-period "+QuoteArgument(L"custom:"+std::to_wstring(v4Candidate->capturePeriod100ns)+L":"+std::to_wstring(v4Candidate->captureFrames));
+            command+=L" --render-custom-period "+QuoteArgument(L"custom:"+std::to_wstring(v4Candidate->renderPeriod100ns)+L":"+std::to_wstring(v4Candidate->renderFrames));
+        }
     }
     command+=
         L" --period " + cliPeriod +
@@ -674,7 +680,7 @@ std::optional<std::string> RunDuplexCli(std::string_view operationId, std::strin
             return equals(side,"endpointId",id)&&equals(side,"direction",direction)&&format.HasMember("sampleRateHz")&&format["sampleRateHz"].IsUint()&&format["sampleRateHz"].GetUint()==expected.format.sampleRate&&format.HasMember("channels")&&format["channels"].IsUint()&&format["channels"].GetUint()==expected.format.channels&&equals(format,"encoding",ExclusiveFormatMatrix::EncodingText(expected.format.encoding))&&format.HasMember("channelMask")&&format["channelMask"].IsUint()&&format["channelMask"].GetUint()==expected.channelMask&&side.HasMember("ready")&&side["ready"].IsBool()&&side.HasMember("startSucceeded")&&side["startSucceeded"].IsBool()&&side.HasMember("stopSucceeded")&&side["stopSucceeded"].IsBool()&&side.HasMember("durationReached")&&side["durationReached"].IsBool()&&side.HasMember("cleanup")&&side["cleanup"].IsString()&&side.HasMember("actualBufferFrames")&&(side["actualBufferFrames"].IsUint64()||side["actualBufferFrames"].IsNull())&&side.HasMember("errorStage")&&side["errorStage"].IsString();
         };
         const auto routeSideMatches=[&](const char* key,const ChannelRouting::EndpointFormat& expected,const std::array<std::uint16_t,2>& indices,std::uint16_t count){const auto it=parsed["route"].FindMember(key);if(it==parsed["route"].MemberEnd()||!it->value.IsObject())return false;const auto& side=it->value;if(!side.HasMember("selectedIndicesZeroBased")||!side["selectedIndicesZeroBased"].IsArray()||side["selectedIndicesZeroBased"].Size()!=count||!side.HasMember("sampleRateHz")||!side["sampleRateHz"].IsUint()||side["sampleRateHz"].GetUint()!=expected.format.sampleRate||!side.HasMember("channels")||!side["channels"].IsUint()||side["channels"].GetUint()!=expected.format.channels||!equals(side,"encoding",ExclusiveFormatMatrix::EncodingText(expected.format.encoding))||!side.HasMember("channelMask")||!side["channelMask"].IsUint()||side["channelMask"].GetUint()!=expected.channelMask)return false;for(std::uint16_t i=0;i<count;++i)if(!side["selectedIndicesZeroBased"][i].IsUint()||side["selectedIndicesZeroBased"][i].GetUint()!=indices[i])return false;return true;};
-        const auto requestedMatches=[&](){if(!parsed.HasMember("requested")||!parsed["requested"].IsObject())return false;const auto& q=parsed["requested"];return equals(q,"captureEndpointId",captureId)&&equals(q,"renderEndpointId",renderId)&&equals(q,"period",period)&&equals(q,"mmcss",mmcss)&&q.HasMember("durationSeconds")&&q["durationSeconds"].IsUint()&&q["durationSeconds"].GetUint()==duration;};
+        const auto requestedMatches=[&](){if(!parsed.HasMember("requested")||!parsed["requested"].IsObject())return false;const auto& q=parsed["requested"];return equals(q,"captureEndpointId",captureId)&&equals(q,"renderEndpointId",renderId)&&equals(q,"period",expectedPeriod)&&equals(q,"mmcss",mmcss)&&q.HasMember("durationSeconds")&&q["durationSeconds"].IsUint()&&q["durationSeconds"].GetUint()==duration;};
         const bool valid=parsed.IsObject()&&parsed.HasMember("schemaVersion")&&parsed["schemaVersion"].IsInt()&&parsed["schemaVersion"].GetInt()==3&&equals(parsed,"reportType",sustained?"wasapi-sustained-duplex-validation-v2":"wasapi-duplex-validation-v2")&&equals(parsed,"provenance",sustained?"REAL_WASAPI_SUSTAINED_DUPLEX_V2":"REAL_WASAPI_DUPLEX_V2")&&equals(parsed,"operationId",operationId)&&requestedMatches()&&parsed.HasMember("route")&&parsed["route"].IsObject()&&equals(parsed["route"],"fingerprint",ChannelRouting::Fingerprint(*route))&&equals(parsed["route"],"mode",ChannelRouting::ModeText(route->mode))&&equals(parsed["route"],"physicalMapping","UNKNOWN")&&equals(parsed["route"],"renderPolicy","SILENCE_ONLY")&&routeSideMatches("capture",route->capture,route->captureChannels,ChannelRouting::CaptureCount(route->mode))&&routeSideMatches("render",route->render,route->renderChannels,ChannelRouting::RenderCount(route->mode))&&sideMatches("capture",captureId,"CAPTURE",route->capture)&&sideMatches("render",renderId,"RENDER",route->render);
         if(!valid) { failureCode="DUPLEX_V2_REPORT_CONTRACT_INVALID";return std::nullopt; }
     } else if (!DuplexValidationReport::Validate(parsed, captureId, renderId, period, duration, mmcss, operationId,
@@ -739,6 +745,9 @@ struct ScanAuthorization {
     std::set<std::string> v2Periods,v2Mmcss;std::set<unsigned> sustainedDurations;
     std::uint64_t maxTotalDuration{},usedTotalDuration{};bool shortQualified{},qualificationFailed{};
     unsigned repeatabilityClean{},nextSustainedDuration{60},pendingDuration{};std::string pendingStage,pendingPeriod,pendingMmcss;
+    std::vector<ScanPlanV2V4::Candidate> v4Candidates;
+    std::unique_ptr<ScanPlanV2V4::TransportSequence> v4Sequence;
+    unsigned v4RepeatabilityRuns{},v4InitializeTimeoutSeconds{},v4CleanupDeadlineSeconds{};
 };
 bool HasOnlyMembers(const rapidjson::Value& value,std::initializer_list<std::string_view> names) {if(!value.IsObject())return false;for(auto it=value.MemberBegin();it!=value.MemberEnd();++it){const std::string_view name(it->name.GetString(),it->name.GetStringLength());if(std::find(names.begin(),names.end(),name)==names.end())return false;}return true;}
 ChannelRouting::Configuration ReadV2Route(const rapidjson::Value& value,std::string captureId,std::string renderId,bool strictMembers=true) {
@@ -821,7 +830,7 @@ std::shared_ptr<ScanAuthorization> ParseScanAuthorizationV2V4(const rapidjson::V
     if(Sha256(canonical)!=planFingerprint)throw Rejection("SCAN_FINGERPRINT_MISMATCH","Worker-computed immutable v4 plan fingerprint does not match.");
     const auto& auth=payload["authorization"];if(auth.HasMember("accepted")&&auth["accepted"].IsBool())accepted=auth["accepted"].GetBool();if(!accepted||!ReadString(auth,"confirmationId",confirmation))throw Rejection("SCAN_CONSENT_REQUIRED","Explicit fresh v4 operator acceptance is required.");
     confirmation=GuidString(confirmation);if(consumedConfirmations.size()>=128)throw Rejection("SCAN_CONSENT_CAPACITY","Worker authorization history is full; restart before another session.");if(consumedConfirmations.contains(confirmation))throw Rejection("SCAN_CONSENT_REPLAY","This authorization was already consumed.");consumedConfirmations.insert(confirmation);
-    auto session=std::make_shared<ScanAuthorization>();session->version4=true;session->route=std::move(route);session->routeFingerprint=routeFingerprint;session->endpoints.emplace(captureId,"CAPTURE");session->endpoints.emplace(renderId,"RENDER");session->maxOperations=budget.operations;session->maxDuration=5;session->maxTotalDuration=budget.activeSeconds;session->discoveryGeneration=generation;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;return session;
+    auto session=std::make_shared<ScanAuthorization>();session->version4=true;session->route=std::move(route);session->routeFingerprint=routeFingerprint;session->endpoints.emplace(captureId,"CAPTURE");session->endpoints.emplace(renderId,"RENDER");session->maxOperations=budget.operations;session->maxDuration=5;session->maxTotalDuration=budget.activeSeconds;session->discoveryGeneration=generation;session->expires=GetTickCount64()+static_cast<std::uint64_t>(lifetime)*1000;session->v4Candidates=candidates;session->v4RepeatabilityRuns=static_cast<unsigned>(repeatability);session->v4InitializeTimeoutSeconds=static_cast<unsigned>(initTimeout);session->v4CleanupDeadlineSeconds=static_cast<unsigned>(cleanup);session->v4Sequence=std::make_unique<ScanPlanV2V4::TransportSequence>(std::move(candidates),budget.operations,budget.activeSeconds);return session;
 }
 std::string ScanPlanFingerprint(const rapidjson::Value& payload) {
     const auto& endpoints=payload["endpoints"];const auto& operations=payload["allowedOperations"];const auto& formats=payload["formats"];
@@ -963,6 +972,110 @@ bool CompleteV2Qualification(const std::shared_ptr<ScanAuthorization>& session,s
 }
 struct ScanOperationFinish { std::shared_ptr<ScanAuthorization> session;bool accepted{},finished{};void Finish(bool reusable){if(finished){if(!reusable&&session){accepted=false;session->invalidationReason=ScanInvalidationReason::UnsafeCleanup;session->invalid=true;}return;}if(session){session->active=false;if(!reusable){session->invalidationReason=ScanInvalidationReason::UnsafeCleanup;session->invalid=true;}}accepted=reusable;finished=true;}~ScanOperationFinish(){Finish(accepted);} };
 
+const ScanPlanV2V4::Candidate& AuthorizeV4Initialize(const rapidjson::Value& payload,
+        const std::shared_ptr<ScanAuthorization>& session,
+        const std::unordered_map<std::string,std::string>& discovered, std::uint64_t generation,
+        ScanPlanV2V4::Step step, std::string& operationId, std::string& endpointId,
+        std::string& direction, ExclusiveFormatMatrix::Format& format) {
+    using namespace ScanPlanV2V4;
+    if (!session || !session->version4 || !session->v4Sequence || session->invalid ||
+        GetTickCount64() >= session->expires || generation != session->discoveryGeneration)
+        throw Rejection("SCAN_SESSION_STALE", "V4 authorization is missing, expired, invalidated, or from an old discovery generation.");
+    std::string sessionId, fingerprint;
+    std::uint64_t candidateIndex{}, requestedPeriod{};
+    std::uint32_t requestedFrames{};
+    if (!ReadString(payload, "scanSessionId", sessionId) || GuidString(sessionId) != session->id ||
+        !ReadString(payload, "operationId", operationId) || !ReadString(payload, "scanOperationId", sessionId) || GuidString(sessionId) != GuidString(operationId) ||
+        !ReadString(payload, "endpointId", endpointId) || !ReadString(payload, "direction", direction) ||
+        !ReadString(payload, "routeFingerprint", fingerprint) || fingerprint != session->routeFingerprint ||
+        !payload.HasMember("candidateIndex") || !payload["candidateIndex"].IsUint64() ||
+        !payload.HasMember("requestedPeriod100ns") || !payload["requestedPeriod100ns"].IsUint64() ||
+        !payload.HasMember("requestedFrames") || !payload["requestedFrames"].IsUint())
+        throw Rejection("INVALID_V4_REQUEST", "V4 Initialize request identity or exact geometry is malformed.");
+    candidateIndex = payload["candidateIndex"].GetUint64(); requestedPeriod = payload["requestedPeriod100ns"].GetUint64(); requestedFrames = payload["requestedFrames"].GetUint();
+    if (candidateIndex >= session->v4Candidates.size()) throw Rejection("V4_CANDIDATE_OUT_OF_SCOPE", "Candidate index is outside the registered v4 plan.");
+    const auto& candidate = session->v4Candidates[static_cast<std::size_t>(candidateIndex)];
+    if (!candidate.rejectionReason.empty()) throw Rejection("V4_CANDIDATE_REJECTED", "Rejected candidate geometry cannot be initialized.");
+    const bool capture = step == Step::CaptureInitialize;
+    const auto& side = capture ? session->route->capture : session->route->render;
+    const auto expectedEndpoint = capture ? session->route->captureEndpointId : session->route->renderEndpointId;
+    const auto expectedDirection = capture ? "CAPTURE" : "RENDER";
+    const auto expectedFrames = capture ? candidate.captureFrames : candidate.renderFrames;
+    const auto expectedPeriod = capture ? candidate.capturePeriod100ns : candidate.renderPeriod100ns;
+    if (endpointId != expectedEndpoint || direction != expectedDirection || requestedFrames != expectedFrames || requestedPeriod != static_cast<std::uint64_t>(expectedPeriod) ||
+        discovered.find(endpointId) == discovered.end() || discovered.at(endpointId) != direction)
+        throw Rejection("V4_GEOMETRY_MISMATCH", "V4 Initialize endpoint, direction, frames, or period differs from the registered candidate.");
+    int sampleRate{}, channels{}; std::string encoding;
+    if (!ReadInt(payload,"sampleRate",sampleRate) || !ReadInt(payload,"channels",channels) || !ReadString(payload,"encoding",encoding) ||
+        sampleRate != static_cast<int>(side.format.sampleRate) || channels != side.format.channels || encoding != ExclusiveFormatMatrix::EncodingText(side.format.encoding))
+        throw Rejection("V4_ROUTE_MISMATCH", "V4 Initialize format differs from the authorized route side.");
+    format = side.format;
+    try { session->v4Sequence->Begin(static_cast<unsigned>(candidateIndex), step, GuidString(operationId)); }
+    catch (const std::invalid_argument& error) { throw Rejection("V4_SEQUENCE_REJECTED", error.what()); }
+    session->active = true;
+    return candidate;
+}
+
+const ScanPlanV2V4::Candidate& AuthorizeV4Duplex(const rapidjson::Value& payload,
+        const std::shared_ptr<ScanAuthorization>& session,
+        const std::unordered_map<std::string,std::string>& discovered, std::uint64_t generation,
+        const ChannelRouting::Configuration& route, std::string_view operationId,
+        std::string_view captureId, std::string_view renderId, unsigned duration, std::string_view mmcss) {
+    using namespace ScanPlanV2V4;
+    if (!session || !session->version4 || !session->v4Sequence || session->invalid ||
+        GetTickCount64() >= session->expires || generation != session->discoveryGeneration)
+        throw Rejection("SCAN_SESSION_STALE", "V4 authorization is missing, expired, invalidated, or from an old discovery generation.");
+    std::string sessionId, routeFingerprint;
+    std::uint64_t candidateIndex{};
+    std::uint32_t captureFrames{}, renderFrames{};
+    std::uint64_t capturePeriod{}, renderPeriod{};
+    if (!ReadString(payload,"scanSessionId",sessionId) || GuidString(sessionId)!=session->id ||
+        !ReadString(payload,"routeFingerprint",routeFingerprint) || routeFingerprint!=session->routeFingerprint ||
+        !payload.HasMember("candidateIndex") || !payload["candidateIndex"].IsUint64() ||
+        !payload.HasMember("captureFrames") || !payload["captureFrames"].IsUint() ||
+        !payload.HasMember("renderFrames") || !payload["renderFrames"].IsUint() ||
+        !payload.HasMember("capturePeriod100ns") || !payload["capturePeriod100ns"].IsUint64() ||
+        !payload.HasMember("renderPeriod100ns") || !payload["renderPeriod100ns"].IsUint64())
+        throw Rejection("INVALID_V4_REQUEST", "V4 Duplex identity or per-side geometry is incomplete.");
+    candidateIndex=payload["candidateIndex"].GetUint64();captureFrames=payload["captureFrames"].GetUint();renderFrames=payload["renderFrames"].GetUint();
+    capturePeriod=payload["capturePeriod100ns"].GetUint64();renderPeriod=payload["renderPeriod100ns"].GetUint64();
+    const auto& expected=*session->route;
+    if (captureId!=expected.captureEndpointId || renderId!=expected.renderEndpointId ||
+        routeFingerprint!=ChannelRouting::Fingerprint(route) || ChannelRouting::Fingerprint(route)!=session->routeFingerprint ||
+        duration!=5 || mmcss!="OFF" || route.mode!=expected.mode ||
+        route.capture.format.sampleRate!=expected.capture.format.sampleRate || route.capture.format.channels!=expected.capture.format.channels || route.capture.format.encoding!=expected.capture.format.encoding ||
+        route.render.format.sampleRate!=expected.render.format.sampleRate || route.render.format.channels!=expected.render.format.channels || route.render.format.encoding!=expected.render.format.encoding)
+        throw Rejection("V4_ROUTE_OR_BUDGET_MISMATCH", "V4 Duplex route or fixed five-second MMCSS-OFF scope differs from consent.");
+    if (discovered.find(std::string(captureId))==discovered.end() || discovered.at(std::string(captureId))!="CAPTURE" ||
+        discovered.find(std::string(renderId))==discovered.end() || discovered.at(std::string(renderId))!="RENDER")
+        throw Rejection("SCAN_ENDPOINT_OUT_OF_SCOPE", "V4 Duplex endpoints are not current discovered Capture/Render endpoints.");
+    if (candidateIndex>=session->v4Candidates.size()) throw Rejection("V4_CANDIDATE_OUT_OF_SCOPE", "Candidate index is outside the registered v4 plan.");
+    const auto& candidate=session->v4Candidates[static_cast<std::size_t>(candidateIndex)];
+    if (!candidate.rejectionReason.empty() || captureFrames!=candidate.captureFrames || renderFrames!=candidate.renderFrames ||
+        capturePeriod!=static_cast<std::uint64_t>(candidate.capturePeriod100ns) || renderPeriod!=static_cast<std::uint64_t>(candidate.renderPeriod100ns))
+        throw Rejection("V4_GEOMETRY_MISMATCH", "V4 Duplex geometry differs from the registered candidate.");
+    try { session->v4Sequence->Begin(static_cast<unsigned>(candidateIndex),Step::Duplex,GuidString(operationId),duration); }
+    catch (const std::invalid_argument& error) { throw Rejection("V4_SEQUENCE_REJECTED",error.what()); }
+    session->active=true;
+    return candidate;
+}
+
+struct V4OperationFinish {
+    std::shared_ptr<ScanAuthorization> session; bool finished{};
+    void Finish(ScanPlanV2V4::Disposition disposition, bool cleanup, bool exactGeometry = true) {
+        if (finished) return; finished = true;
+        if (session && session->v4Sequence) {
+            try { session->v4Sequence->Complete(disposition, cleanup, exactGeometry); }
+            catch (...) { disposition = ScanPlanV2V4::Disposition::Unknown; }
+            session->active = false;
+            if (disposition == ScanPlanV2V4::Disposition::Unknown || !cleanup) {
+                session->invalidationReason = ScanInvalidationReason::UnsafeCleanup; session->invalid = true;
+            }
+        }
+    }
+    ~V4OperationFinish() { if (!finished) Finish(ScanPlanV2V4::Disposition::Unknown, false); }
+};
+
 bool HandleClient(HANDLE pipe) {
     Writer writer(pipe); FakeOperationService service(writer); std::vector<std::uint8_t> bytes;
     std::unordered_map<std::string,std::string> discoveredActive;
@@ -984,7 +1097,7 @@ bool HandleClient(HANDLE pipe) {
         auto hello=ParseObject(bytes);std::string helloId;
         const auto failure=ValidateHandshake(hello,helloId);
         if(!failure.empty())return writer.Error("HANDSHAKE","INCOMPATIBLE_PROTOCOL",failure,helloId);
-        if(!writer.Raw("{\"bootstrapVersion\":1,\"kind\":\"response\",\"correlationId\":\""+helloId+"\",\"product\":\"KLIDAN_AUDIO_PROBE_WORKER\",\"protocol\":{\"major\":1,\"minor\":0},\"schemas\":{\"command\":1,\"event\":1,\"report\":1},\"workerVersion\":\"0.3.2\",\"capabilities\":[\"Handshake\",\"ListEndpoints\",\"ListWindowsEndpoints\",\"RealExclusiveFormatQuery\",\"RealExclusiveFormatInitialize\",\"RealExclusiveCustomPeriodInitialize\",\"RealExclusiveStreamValidation\",\"RealExclusiveDuplexValidation\",\"RealExclusiveSustainedDuplexValidation\",\"ScanSessionAuthorizationV1\",\"ScanSessionAuthorizationV2\",\"ScanSessionAuthorizationV2ContractV4\",\"RealExclusiveDuplexValidationV2\",\"RealExclusiveSustainedDuplexValidationV2\",\"StartCaptureMeter\",\"StartRenderChannelTest\",\"StopSession\",\"CancelStreamValidation\",\"CancelDuplexValidation\",\"Shutdown\""
+        if(!writer.Raw("{\"bootstrapVersion\":1,\"kind\":\"response\",\"correlationId\":\""+helloId+"\",\"product\":\"KLIDAN_AUDIO_PROBE_WORKER\",\"protocol\":{\"major\":1,\"minor\":0},\"schemas\":{\"command\":1,\"event\":1,\"report\":1},\"workerVersion\":\"0.3.2\",\"capabilities\":[\"Handshake\",\"ListEndpoints\",\"ListWindowsEndpoints\",\"RealExclusiveFormatQuery\",\"RealExclusiveFormatInitialize\",\"RealExclusiveCustomPeriodInitialize\",\"RealExclusiveStreamValidation\",\"RealExclusiveDuplexValidation\",\"RealExclusiveSustainedDuplexValidation\",\"ScanSessionAuthorizationV1\",\"ScanSessionAuthorizationV2\",\"ScanSessionAuthorizationV2ContractV4\",\"V2CustomTransportContractV4\",\"RealExclusiveDuplexValidationV2\",\"RealExclusiveSustainedDuplexValidationV2\",\"StartCaptureMeter\",\"StartRenderChannelTest\",\"StopSession\",\"CancelStreamValidation\",\"CancelDuplexValidation\",\"Shutdown\""
 #if defined(PROBE_TEST_WASAPI_BACKEND)
             ",\"TestInjectedFormatBackend\",\"TestInjectedStreamBackend\",\"TestInjectedDuplexBackend\""
 #endif
@@ -1063,6 +1176,71 @@ bool HandleClient(HANDLE pipe) {
                 scanAuthorization->invalidationReason=command=="CancelScanSession"?ScanInvalidationReason::Cancelled:ScanInvalidationReason::Closed;scanAuthorization->invalid=true;
                 if(command=="CancelScanSession"&&scanAuthorization->active){std::lock_guard lock(streamCancelMutex);if(streamCancelEvent)SetEvent(streamCancelEvent);if(duplexCancelEvent)SetEvent(duplexCancelEvent);}
                 writer.Response(correlation,command,"OK","","","{\"state\":\"INVALIDATED\",\"operationOutcome\":\""+std::string(scanAuthorization->active?"UNKNOWN":"NOT_RUNNING")+"\"}");if(command=="CloseScanSession")scanAuthorization.reset();continue;
+            }
+            if(command=="InitializeCustomPeriodV2") {
+                std::string operationId,endpointId,direction; ExclusiveFormatMatrix::Format format{};
+                std::shared_ptr<ScanAuthorization> v4Session=scanAuthorization;
+                const auto step=payload.HasMember("direction")&&payload["direction"].IsString()&&std::string_view(payload["direction"].GetString(),payload["direction"].GetStringLength())=="RENDER"?ScanPlanV2V4::Step::RenderInitialize:ScanPlanV2V4::Step::CaptureInitialize;
+                const ScanPlanV2V4::Candidate* candidate=nullptr;
+                try { candidate=&AuthorizeV4Initialize(payload,v4Session,discoveredActive,discoveryGeneration,step,operationId,endpointId,direction,format); }
+                catch(const Rejection& ex){writer.Response(correlation,command,"ERROR",ex.code,ex.what());continue;}
+                if(service.Busy()||realOperationBusy.exchange(true)) { if(v4Session->v4Sequence)v4Session->v4Sequence->Complete(ScanPlanV2V4::Disposition::Unknown,false);v4Session->active=false;v4Session->invalid=true;writer.Response(correlation,command,"ERROR","BUSY","A V4 audio operation is already active.");continue; }
+                const auto frames=step==ScanPlanV2V4::Step::CaptureInitialize?candidate->captureFrames:candidate->renderFrames;
+                const auto period=step==ScanPlanV2V4::Step::CaptureInitialize?candidate->capturePeriod100ns:candidate->renderPeriod100ns;
+                std::string scenario;
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+                scenario=std::getenv("KLIDAN_TEST_V4_SCENARIO")?std::getenv("KLIDAN_TEST_V4_SCENARIO"):"";
+#endif
+                realOperation=std::thread([&,operationId,endpointId,direction,format,frames,period,correlation,v4Session,step,scenario]() mutable {
+                    V4OperationFinish finish{v4Session};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string body="{}",ScanPlanV2V4::Disposition disposition=ScanPlanV2V4::Disposition::Unknown,bool cleanup=false,bool geometry=false){finish.Finish(disposition,cleanup,geometry);realOperationBusy=false;const bool sent=writer.Response(correlation,"InitializeCustomPeriodV2",status,code,message,body);if(!sent)finish.Finish(ScanPlanV2V4::Disposition::Unknown,false);return sent;};
+                    HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);if(FAILED(com)){terminal("ERROR","COM_INITIALIZE_FAILED","V4 Initialize thread could not initialize COM.");return;}
+                    IMMDevice* device=nullptr;
+                    try {
+#if !defined(PROBE_TEST_WASAPI_BACKEND)
+                        const auto endpointError=RevalidateEndpoint(endpointId,direction,&device);if(!endpointError.empty())throw Rejection("ENDPOINT_INVALID","The exact active endpoint changed before V4 Initialize.");
+#endif
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+                        InjectedWasapiApi api;
+#else
+                        ExclusiveFormatMatrix::WasapiApi api(device);
+#endif
+                        const auto query=api.QuerySupport(format);
+                        ExclusiveFormatMatrix::Attempt attempt;
+                        const bool inBounds=query.minimumDevicePeriod100ns&&query.defaultDevicePeriod100ns&&period>=*query.minimumDevicePeriod100ns&&period<=*query.defaultDevicePeriod100ns;
+                        if(inBounds)attempt=api.InitializeOnly(format,ExclusiveFormatMatrix::PeriodRequest::Custom(period,frames));
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+                        if(scenario=="INIT_FAILED")attempt.finalInitializeHr=static_cast<std::int32_t>(0x80004005U);
+                        if(scenario=="INIT_UNSUPPORTED")attempt.finalInitializeHr=ExclusiveFormatMatrix::kUnsupportedFormat;
+                        if(scenario=="ALIGNMENT_MISMATCH"){attempt.firstInitializeHr=ExclusiveFormatMatrix::kBufferSizeNotAligned;attempt.alignmentFrames=frames+1;}
+                        if(scenario=="ACTUAL_FRAMES_MISMATCH"&&attempt.actualBufferFrames)++*attempt.actualBufferFrames;
+                        if(scenario=="ACTUAL_PERIOD_MISMATCH"&&attempt.actualPeriod100ns)++*attempt.actualPeriod100ns;
+                        if(scenario=="CLEANUP_UNKNOWN")attempt.cleanup=ExclusiveFormatMatrix::Cleanup::Incomplete;
+#endif
+                        const bool success=inBounds&&attempt.finalInitializeHr&&*attempt.finalInitializeHr==ExclusiveFormatMatrix::kOk;
+                        const bool cleanup=attempt.cleanup==ExclusiveFormatMatrix::Cleanup::ReleaseAttempted&&attempt.clientReleaseAttempts>0;
+                        const bool exact=success&&attempt.actualBufferFrames&&*attempt.actualBufferFrames==frames&&attempt.actualPeriod100ns&&*attempt.actualPeriod100ns==period&&(!attempt.alignmentFrames||*attempt.alignmentFrames==frames);
+                        const auto disposition=!cleanup?ScanPlanV2V4::Disposition::Unknown:!inBounds?ScanPlanV2V4::Disposition::Unsupported:!attempt.finalInitializeHr?ScanPlanV2V4::Disposition::Unknown:!success?(*attempt.finalInitializeHr==ExclusiveFormatMatrix::kUnsupportedFormat?ScanPlanV2V4::Disposition::Unsupported:ScanPlanV2V4::Disposition::Failed):!exact?ScanPlanV2V4::Disposition::Failed:ScanPlanV2V4::Disposition::Clean;
+                        const auto hr=attempt.finalInitializeHr?std::to_string(*attempt.finalInitializeHr):"null";
+                        const auto actualFrames=attempt.actualBufferFrames?std::to_string(*attempt.actualBufferFrames):"null";
+                        const auto actualPeriod=attempt.actualPeriod100ns?std::to_string(*attempt.actualPeriod100ns):"null";
+                        const auto cleanupText=cleanup?"RELEASE_ATTEMPTED":attempt.cleanup==ExclusiveFormatMatrix::Cleanup::Failed?"FAILED":"UNKNOWN";
+                        const auto dispositionText=disposition==ScanPlanV2V4::Disposition::Clean?"INITIALIZED_EXACT":disposition==ScanPlanV2V4::Disposition::Unsupported?"UNSUPPORTED":disposition==ScanPlanV2V4::Disposition::Failed?"FAILED":"UNKNOWN";
+                        const auto reason=!cleanup?"CLEANUP_UNKNOWN":!inBounds?"CUSTOM_PERIOD_OUT_OF_BOUNDS":success&&!exact?"ACTUAL_GEOMETRY_MISMATCH":disposition==ScanPlanV2V4::Disposition::Failed?"INITIALIZE_FAILED":disposition==ScanPlanV2V4::Disposition::Unsupported?"FORMAT_OR_PERIOD_UNSUPPORTED":"INITIALIZE_OUTCOME_UNKNOWN";
+                        const auto alignmentFrames=attempt.alignmentFrames?std::to_string(*attempt.alignmentFrames):"null";
+                        const auto alignmentHr=attempt.firstInitializeHr&&*attempt.firstInitializeHr==ExclusiveFormatMatrix::kBufferSizeNotAligned?std::string("BUFFER_SIZE_NOT_ALIGNED"):std::string("NONE");
+                        const std::string body="{\"contractVersion\":4,\"operationId\":"+JsonString(operationId)+",\"scanSessionId\":"+JsonString(v4Session->id)+",\"candidateIndex\":"+std::to_string(candidate->index)+",\"routeFingerprint\":"+JsonString(v4Session->routeFingerprint)+",\"endpointId\":"+JsonString(endpointId)+",\"direction\":"+JsonString(direction)+",\"sampleRateHz\":"+std::to_string(format.sampleRate)+",\"channels\":"+std::to_string(format.channels)+",\"encoding\":"+JsonString(ExclusiveFormatMatrix::EncodingText(format.encoding))+",\"requestedPeriod100ns\":"+std::to_string(period)+",\"requestedFrames\":"+std::to_string(frames)+",\"actualPeriod100ns\":"+actualPeriod+",\"actualFrames\":"+actualFrames+",\"alignmentFrames\":"+alignmentFrames+",\"alignmentReason\":"+JsonString(alignmentHr)+",\"initializeDisposition\":"+JsonString(dispositionText)+",\"initializeHresult\":"+hr+",\"reasonCode\":"+JsonString(reason)+",\"cleanup\":"+JsonString(cleanupText)+",\"provenance\":\""+std::string(
+#if defined(PROBE_TEST_WASAPI_BACKEND)
+                            "TEST_FAKE_WASAPI_V4_INITIALIZE"
+#else
+                            "REAL_WASAPI_V4_INITIALIZE"
+#endif
+                        )+"\"}";
+                        if(device)device->Release();device=nullptr;CoUninitialize();terminal("OK","","",body,disposition,cleanup,exact);
+                    } catch(const Rejection& ex){if(device)device->Release();CoUninitialize();terminal("ERROR",ex.code,ex.what());}
+                    catch(...){if(device)device->Release();CoUninitialize();terminal("ERROR","V4_INITIALIZE_FAILED","V4 Initialize did not produce complete evidence.");}
+                });
+                continue;
             }
             if(command=="InitializeExclusiveCustomPeriod") {
                 std::string operationId,endpointId,direction,encoding,periodText; int sampleRate{},channels{},period100ns{},frames{};
@@ -1305,9 +1483,10 @@ bool HandleClient(HANDLE pipe) {
                 });
                 continue;
             }
-            if(command=="ValidateDuplex"||command=="ValidateSustainedDuplex"||command=="ValidateDuplexV2"||command=="ValidateSustainedDuplexV2") {
+            if(command=="ValidateDuplex"||command=="ValidateSustainedDuplex"||command=="ValidateDuplexV2"||command=="ValidateSustainedDuplexV2"||command=="ValidateCustomDuplexV2") {
                 const bool sustained=command=="ValidateSustainedDuplex"||command=="ValidateSustainedDuplexV2";
-                const bool routeV2=command=="ValidateDuplexV2"||command=="ValidateSustainedDuplexV2";
+                const bool customV4=command=="ValidateCustomDuplexV2";
+                const bool routeV2=command=="ValidateDuplexV2"||command=="ValidateSustainedDuplexV2"||customV4;
                 std::string operationId,captureId,renderId,period,mmcss;
                 int sampleRate=0,channels=0,duration=0;
                 const auto isCustomPeriodText = [&period] { return period.size() > 7 && period.compare(0, 7, "CUSTOM:") == 0; };
@@ -1316,7 +1495,7 @@ bool HandleClient(HANDLE pipe) {
                    !ReadString(payload,"mmcss",mmcss)||!ReadInt(payload,"durationSeconds",duration)||
                    (!routeV2&&(!ReadInt(payload,"sampleRate",sampleRate)||!ReadInt(payload,"channels",channels)||sampleRate!=48000||channels!=2))||
                    duration<1||(sustained?(duration!=60&&duration!=300&&duration!=600):duration>10)||
-                   (period!="MINIMUM"&&period!="DEFAULT"&&(!isCustomPeriodText()||routeV2))||(mmcss!="OFF"&&mmcss!="PRO_AUDIO")||
+                   (period!="MINIMUM"&&period!="DEFAULT"&&!(customV4&&period=="CUSTOM_V2")&&(!isCustomPeriodText()||routeV2))||(mmcss!="OFF"&&mmcss!="PRO_AUDIO")||
                    captureId.empty()||renderId.empty()||captureId==renderId||captureId.size()>32768||renderId.size()>32768) {
                     writer.Response(correlation,command,"ERROR","INVALID_ARGUMENT","Duplex validation requires an explicit distinct endpoint pair and bounded 48 kHz stereo PCM16 settings.");continue;
                 }
@@ -1333,7 +1512,8 @@ bool HandleClient(HANDLE pipe) {
                 if(captureEntry==discoveredActive.end()||renderEntry==discoveredActive.end()) { writer.Response(correlation,command,"ERROR","ENDPOINT_NOT_DISCOVERED","Both exact endpoints must come from the latest explicit Windows discovery.");continue; }
                 if(captureEntry->second!="CAPTURE"||renderEntry->second!="RENDER") { writer.Response(correlation,command,"ERROR","ENDPOINT_DIRECTION_MISMATCH","The selected endpoint pair must contain one Capture and one Render endpoint.");continue; }
                 const bool scanRequested=payload.HasMember("scanSessionId")||payload.HasMember("scanOperationId");
-                if(routeV2&&scanRequested&&(!scanAuthorization||!scanAuthorization->version2)){writer.Response(correlation,command,"ERROR","V1_V2_SESSION_CONFLICT","V1 scan authorization cannot authorize a V2 route operation.");continue;}
+                if(customV4&&!scanRequested){writer.Response(correlation,command,"ERROR","SCAN_SESSION_REQUIRED","V4 CUSTOM Duplex requires a registered v4 session.");continue;}
+                if(routeV2&&scanRequested&&(!scanAuthorization||(!scanAuthorization->version2&&!(customV4&&scanAuthorization->version4)))){writer.Response(correlation,command,"ERROR","V1_V2_SESSION_CONFLICT","The session contract version cannot authorize this route operation.");continue;}
                 if(routeV2&&!scanRequested&&scanAuthorization){writer.Response(correlation,command,"ERROR","SCAN_SESSION_CONFLICT","Close the existing scan session before starting a standalone V2 operation.");continue;}
                 if(command=="ValidateSustainedDuplexV2"&&!scanRequested){writer.Response(correlation,command,"ERROR","SCAN_SESSION_REQUIRED","V2 sustained validation requires an authorized V2 scan session.");continue;}
                 if(!routeV2&&scanAuthorization&&!scanAuthorization->invalid&&!payload.HasMember("scanSessionId")){writer.Response(correlation,command,"ERROR","SCAN_SESSION_REQUIRED","Operations must use the active approved scan token until that session is closed.");continue;}
@@ -1348,7 +1528,8 @@ bool HandleClient(HANDLE pipe) {
                 }
                 if(service.Busy()||realOperationBusy.exchange(true)){writer.Response(correlation,command,"ERROR","BUSY","Another real diagnostic operation is active in this worker.");continue;}
                 std::shared_ptr<ScanAuthorization> operationScanSession;
-                if(scanRequested)try{if(routeV2)AuthorizeV2ScanOperation(payload,scanAuthorization,discoveredActive,discoveryGeneration,command,*route,period,duration,mmcss);else{std::vector<ExclusiveFormatMatrix::Format> one{{48000,2,ExclusiveFormatMatrix::Encoding::Pcm16}};AuthorizeScanOperation(payload,scanAuthorization,discoveredActive,discoveryGeneration,command,one,period,duration,mmcss,"","",captureId,renderId);}operationScanSession=scanAuthorization;}catch(const Rejection& ex){realOperationBusy=false;writer.Response(correlation,command,"ERROR",ex.code,ex.what());continue;}
+                const ScanPlanV2V4::Candidate* v4Candidate=nullptr;
+                if(scanRequested)try{if(customV4)v4Candidate=&AuthorizeV4Duplex(payload,scanAuthorization,discoveredActive,discoveryGeneration,*route,operationId,captureId,renderId,static_cast<unsigned>(duration),mmcss);else if(routeV2)AuthorizeV2ScanOperation(payload,scanAuthorization,discoveredActive,discoveryGeneration,command,*route,period,duration,mmcss);else{std::vector<ExclusiveFormatMatrix::Format> one{{48000,2,ExclusiveFormatMatrix::Encoding::Pcm16}};AuthorizeScanOperation(payload,scanAuthorization,discoveredActive,discoveryGeneration,command,one,period,duration,mmcss,"","",captureId,renderId);}operationScanSession=scanAuthorization;}catch(const Rejection& ex){realOperationBusy=false;writer.Response(correlation,command,"ERROR",ex.code,ex.what());continue;}
                 if(realOperation.joinable())realOperation.join();
                 duplexOperationId=operationId;duplexOperationCorrelation=correlation;
                 if(pendingDuplexCancelId!=operationId)pendingDuplexCancelId.clear();
@@ -1368,17 +1549,20 @@ bool HandleClient(HANDLE pipe) {
                 if(!cancellation){if(operationScanSession){operationScanSession->active=false;operationScanSession->invalidationReason=ScanInvalidationReason::UnsafeCleanup;operationScanSession->invalid=true;}realOperationBusy=false;writer.Response(correlation,command,"ERROR","CANCEL_EVENT_CREATE_FAILED","Could not create Duplex cancellation event.");continue;}
                 {std::lock_guard lock(streamCancelMutex);duplexCancelEvent=cancellation;}
                 if(pendingDuplexCancelId==operationId){SetEvent(cancellation);pendingDuplexCancelId.clear();}
-                realOperation=std::thread([&,command,operationId,captureId,renderId,period,mmcss,duration,correlation,cancellation,operationScanSession,sustained,route
+                const auto v4CandidateCopy=v4Candidate?std::optional<ScanPlanV2V4::Candidate>(*v4Candidate):std::nullopt;
+                realOperation=std::thread([&,command,operationId,captureId,renderId,period,mmcss,duration,correlation,cancellation,operationScanSession,sustained,route,customV4,v4CandidateCopy
 #if defined(PROBE_TEST_WASAPI_BACKEND)
                     ,scenario
 #endif
                     ]() mutable {
-                    ScanOperationFinish scanFinish{operationScanSession};
-                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,command,status,code,message,payload);if(!sent)scanFinish.Finish(false);return sent;};
+                    ScanOperationFinish scanFinish{customV4?nullptr:operationScanSession};
+                    V4OperationFinish v4Finish{customV4?operationScanSession:nullptr};
+                    const auto terminal=[&](std::string_view status,std::string_view code,std::string_view message,std::string_view payload="{}",bool reusable=false){if(customV4&&!v4Finish.finished)v4Finish.Finish(ScanPlanV2V4::Disposition::Unknown,false);scanFinish.Finish(reusable);realOperationBusy=false;const bool sent=writer.Response(correlation,command,status,code,message,payload);if(!sent){scanFinish.Finish(false);if(customV4)v4Finish.Finish(ScanPlanV2V4::Disposition::Unknown,false);}return sent;};
                     const auto finishCancellation=[&](){std::lock_guard lock(streamCancelMutex);if(duplexCancelEvent==cancellation)duplexCancelEvent=nullptr;CloseHandle(cancellation);};
 #if defined(PROBE_TEST_WASAPI_BACKEND)
-                    DuplexValidationReport::Report fake;fake.schemaVersion=route?3:sustained?1:2;fake.reportType=route?(sustained?"wasapi-sustained-duplex-validation-v2":"wasapi-duplex-validation-v2"):sustained?"wasapi-sustained-duplex-validation":"wasapi-duplex-validation";fake.provenance=route?(sustained?"TEST_FAKE_WASAPI_SUSTAINED_DUPLEX_V2":"TEST_FAKE_WASAPI_DUPLEX_V2"):sustained?"TEST_FAKE_WASAPI_SUSTAINED_DUPLEX":"TEST_FAKE_WASAPI_DUPLEX";fake.operationId=operationId;fake.reportId=NewGuid();fake.timestampUtc="2026-10-31T00:00:00.000Z";fake.probeVersion="test";fake.captureEndpointId=captureId;fake.renderEndpointId=renderId;fake.period=period;fake.mmcss=mmcss;fake.durationSeconds=duration;fake.bothReady=true;fake.startAuthorized=true;fake.status="DUPLEX_CLEAN";fake.startDifferenceMilliseconds=0.025;fake.simultaneousRuntimeMilliseconds=duration*1000.0;fake.route=route;if(route)fake.routeFingerprint=ChannelRouting::Fingerprint(*route);
-                    auto fill=[&](DuplexValidationReport::Side& side,const std::string& id,const char* direction){const auto rate=route?(direction==std::string_view("CAPTURE")?route->capture.format.sampleRate:route->render.format.sampleRate):48'000U;const auto expected=static_cast<std::uint64_t>(rate)*duration;side.endpointId=id;side.direction=direction;if(route)side.routeFormat=direction==std::string_view("CAPTURE")?route->capture:route->render;side.bufferFrames=144;side.framesProcessed=expected;side.expectedFrames=expected;side.events=1666;side.packets=1666;side.eventIntervalsObserved=1665;side.frameCoveragePercent=100.0;side.elapsedMilliseconds=duration*1000.0;side.ready=true;side.startSucceeded=true;side.stopSucceeded=true;side.durationReached=true;side.quality="CLEAN";side.cleanup="RELEASE_ATTEMPTED";side.startOffsetMilliseconds=0.0;};
+                    const auto v4PeriodText=v4CandidateCopy?"CUSTOM_V2:"+std::to_string(v4CandidateCopy->capturePeriod100ns)+":"+std::to_string(v4CandidateCopy->captureFrames)+":"+std::to_string(v4CandidateCopy->renderPeriod100ns)+":"+std::to_string(v4CandidateCopy->renderFrames):period;
+                    DuplexValidationReport::Report fake;fake.schemaVersion=route?3:sustained?1:2;fake.reportType=route?(sustained?"wasapi-sustained-duplex-validation-v2":"wasapi-duplex-validation-v2"):sustained?"wasapi-sustained-duplex-validation":"wasapi-duplex-validation";fake.provenance=route?(sustained?"TEST_FAKE_WASAPI_SUSTAINED_DUPLEX_V2":"TEST_FAKE_WASAPI_DUPLEX_V2"):sustained?"TEST_FAKE_WASAPI_SUSTAINED_DUPLEX":"TEST_FAKE_WASAPI_DUPLEX";fake.operationId=operationId;fake.reportId=NewGuid();fake.timestampUtc="2026-10-31T00:00:00.000Z";fake.probeVersion="test";fake.captureEndpointId=captureId;fake.renderEndpointId=renderId;fake.period=v4PeriodText;fake.mmcss=mmcss;fake.durationSeconds=duration;fake.bothReady=true;fake.startAuthorized=true;fake.status="DUPLEX_CLEAN";fake.startDifferenceMilliseconds=0.025;fake.simultaneousRuntimeMilliseconds=duration*1000.0;fake.route=route;if(route)fake.routeFingerprint=ChannelRouting::Fingerprint(*route);
+                    auto fill=[&](DuplexValidationReport::Side& side,const std::string& id,const char* direction){const auto isCapture=direction==std::string_view("CAPTURE");const auto rate=route?(isCapture?route->capture.format.sampleRate:route->render.format.sampleRate):48'000U;const auto expected=static_cast<std::uint64_t>(rate)*duration;side.endpointId=id;side.direction=direction;if(route)side.routeFormat=isCapture?route->capture:route->render;side.bufferFrames=v4CandidateCopy?(isCapture?v4CandidateCopy->captureFrames:v4CandidateCopy->renderFrames):144U;side.framesProcessed=expected;side.expectedFrames=expected;side.events=1666;side.packets=1666;side.eventIntervalsObserved=1665;side.frameCoveragePercent=100.0;side.elapsedMilliseconds=duration*1000.0;side.ready=true;side.startSucceeded=true;side.stopSucceeded=true;side.durationReached=true;side.quality="CLEAN";side.cleanup="RELEASE_ATTEMPTED";side.startOffsetMilliseconds=0.0;};
                     fill(fake.capture,captureId,"CAPTURE");fill(fake.render,renderId,"RENDER");
                     const auto expected=fake.capture.expectedFrames;
                     fake.capture.devicePositionAnomalies=0;fake.capture.unavailableCaptureBuffers=0;fake.render.silentBuffersServiced=1666;
@@ -1411,7 +1595,17 @@ bool HandleClient(HANDLE pipe) {
                     if(scenario=="DELAY_RESPONSE") Sleep(5500);
                     const auto report=DuplexValidationReport::ToJson(fake);
                     finishCancellation();
-                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"scanSessionId\":"+JsonString(operationScanSession?operationScanSession->id:std::string{})+",\"report\":"+report+"}";if(operationScanSession&&operationScanSession->version2)CompleteV2Qualification(operationScanSession,command,response);terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
+                    if(customV4&&v4CandidateCopy){
+                        const auto actualCapture=static_cast<std::uint32_t>(fake.capture.bufferFrames),actualRender=static_cast<std::uint32_t>(fake.render.bufferFrames);
+                        const auto actualCapturePeriod=ProbeMath::DurationForFrames(actualCapture,route->capture.format.sampleRate),actualRenderPeriod=ProbeMath::DurationForFrames(actualRender,route->render.format.sampleRate);
+                        const bool geometry=actualCapture==v4CandidateCopy->captureFrames&&actualRender==v4CandidateCopy->renderFrames&&actualCapturePeriod==v4CandidateCopy->capturePeriod100ns&&actualRenderPeriod==v4CandidateCopy->renderPeriod100ns;
+                        const bool cleanup=fake.capture.cleanup=="RELEASE_ATTEMPTED"&&fake.render.cleanup=="RELEASE_ATTEMPTED";
+                        const auto disposition=!cleanup?ScanPlanV2V4::Disposition::Unknown:fake.status=="DUPLEX_CLEAN"&&geometry?ScanPlanV2V4::Disposition::Clean:ScanPlanV2V4::Disposition::Failed;
+                        v4Finish.Finish(disposition,cleanup,geometry);
+                        const auto label=disposition==ScanPlanV2V4::Disposition::Clean?"CLEAN":disposition==ScanPlanV2V4::Disposition::Failed?"FAILED":"UNKNOWN";
+                        const auto evidence="{\"contractVersion\":4,\"operationId\":"+JsonString(operationId)+",\"scanSessionId\":"+JsonString(operationScanSession->id)+",\"candidateIndex\":"+std::to_string(v4CandidateCopy->index)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"routeFingerprint\":"+JsonString(operationScanSession->routeFingerprint)+",\"requestedCaptureFrames\":"+std::to_string(v4CandidateCopy->captureFrames)+",\"requestedCapturePeriod100ns\":"+std::to_string(v4CandidateCopy->capturePeriod100ns)+",\"requestedRenderFrames\":"+std::to_string(v4CandidateCopy->renderFrames)+",\"requestedRenderPeriod100ns\":"+std::to_string(v4CandidateCopy->renderPeriod100ns)+",\"actualCaptureFrames\":"+std::to_string(actualCapture)+",\"actualCapturePeriod100ns\":"+std::to_string(actualCapturePeriod)+",\"actualRenderFrames\":"+std::to_string(actualRender)+",\"actualRenderPeriod100ns\":"+std::to_string(actualRenderPeriod)+",\"duplexDisposition\":"+JsonString(label)+",\"reasonCode\":"+JsonString(geometry?fake.status:"ACTUAL_GEOMETRY_MISMATCH")+",\"cleanup\":"+JsonString(cleanup?"CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED":"UNKNOWN")+",\"provenance\":\"TEST_FAKE_WASAPI_V4_DUPLEX\",\"report\":"+report+"}";
+                        terminal("OK","","",evidence,true);
+                    } else {const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"scanSessionId\":"+JsonString(operationScanSession?operationScanSession->id:std::string{})+",\"report\":"+report+"}";if(operationScanSession&&operationScanSession->version2)CompleteV2Qualification(operationScanSession,command,response);terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));}
 #else
                     const HRESULT com=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
                     if(FAILED(com)){finishCancellation();terminal("ERROR","COM_INITIALIZE_FAILED","Duplex operation thread could not initialize COM.","{\"hresult\":"+ExclusiveFormatMatrix::HresultJson(static_cast<std::int32_t>(com))+"}");return;}
@@ -1419,10 +1613,28 @@ bool HandleClient(HANDLE pipe) {
                     if(validation.empty()){validation=RevalidateEndpoint(renderId,"RENDER",&device);if(device)device->Release();}
                     CoUninitialize();
                     if(!validation.empty()){finishCancellation();terminal("ERROR",validation,"Exact endpoint pair failed active-state/direction revalidation before operation.");return;}
-                    std::string failure, failureDetail;auto report=RunDuplexCli(operationId,captureId,renderId,period,static_cast<unsigned>(duration),mmcss,cancellation,failure,failureDetail,sustained,route?&*route:nullptr);
+                    std::string failure, failureDetail;auto report=RunDuplexCli(operationId,captureId,renderId,period,static_cast<unsigned>(duration),mmcss,cancellation,failure,failureDetail,sustained,route?&*route:nullptr,v4CandidateCopy?&*v4CandidateCopy:nullptr);
                     finishCancellation();
                     if(!report){terminal("ERROR",failure,"Structured Duplex evidence unavailable; operation or cleanup outcome may be unknown. "+failureDetail);return;}
-                    const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"scanSessionId\":"+JsonString(operationScanSession?operationScanSession->id:std::string{})+",\"report\":"+*report+"}";if(operationScanSession&&operationScanSession->version2)CompleteV2Qualification(operationScanSession,command,response);terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));
+                    if(customV4&&v4CandidateCopy){
+                        std::vector<std::uint8_t> reportBytes(report->begin(),report->end());auto parsed=ParseObject(reportBytes);
+                        const auto sideFrames=[&](const char* key)->std::optional<std::uint32_t>{if(!parsed.HasMember(key)||!parsed[key].IsObject()||!parsed[key].HasMember("actualBufferFrames")||!parsed[key]["actualBufferFrames"].IsUint64())return std::nullopt;const auto frames64=parsed[key]["actualBufferFrames"].GetUint64();if(frames64==0||frames64>UINT32_MAX)return std::nullopt;return static_cast<std::uint32_t>(frames64);};
+                        const auto capFrames=sideFrames("capture"),renFrames=sideFrames("render");
+                        const bool cleanup=parsed.HasMember("capture")&&parsed.HasMember("render")&&parsed["capture"].IsObject()&&parsed["render"].IsObject()&&
+                            parsed["capture"].HasMember("cleanup")&&parsed["capture"]["cleanup"].IsString()&&std::string_view(parsed["capture"]["cleanup"].GetString())=="RELEASE_ATTEMPTED"&&
+                            parsed["render"].HasMember("cleanup")&&parsed["render"]["cleanup"].IsString()&&std::string_view(parsed["render"]["cleanup"].GetString())=="RELEASE_ATTEMPTED"&&
+                            parsed["capture"].HasMember("stopSucceeded")&&parsed["capture"]["stopSucceeded"].IsBool()&&parsed["capture"]["stopSucceeded"].GetBool()&&
+                            parsed["render"].HasMember("stopSucceeded")&&parsed["render"]["stopSucceeded"].IsBool()&&parsed["render"]["stopSucceeded"].GetBool();
+                        const auto capPeriod=capFrames?std::optional<std::uint64_t>(ProbeMath::DurationForFrames(*capFrames,route->capture.format.sampleRate)):std::nullopt;
+                        const auto renPeriod=renFrames?std::optional<std::uint64_t>(ProbeMath::DurationForFrames(*renFrames,route->render.format.sampleRate)):std::nullopt;
+                        const bool geometry=capFrames&&renFrames&&capPeriod&&renPeriod&&*capFrames==v4CandidateCopy->captureFrames&&*renFrames==v4CandidateCopy->renderFrames&&*capPeriod==static_cast<std::uint64_t>(v4CandidateCopy->capturePeriod100ns)&&*renPeriod==static_cast<std::uint64_t>(v4CandidateCopy->renderPeriod100ns);
+                        const bool clean=parsed.HasMember("duplex")&&parsed["duplex"].IsObject()&&parsed["duplex"].HasMember("status")&&parsed["duplex"]["status"].IsString()&&std::string_view(parsed["duplex"]["status"].GetString())=="DUPLEX_CLEAN";
+                        const auto disposition=!cleanup||!capFrames||!renFrames?ScanPlanV2V4::Disposition::Unknown:clean&&geometry?ScanPlanV2V4::Disposition::Clean:ScanPlanV2V4::Disposition::Failed;
+                        v4Finish.Finish(disposition,cleanup,geometry);const auto label=disposition==ScanPlanV2V4::Disposition::Clean?"CLEAN":disposition==ScanPlanV2V4::Disposition::Failed?"FAILED":"UNKNOWN";
+                        const auto nullable=[](const auto& value){return value?std::to_string(*value):std::string("null");};
+                        const auto evidence="{\"contractVersion\":4,\"operationId\":"+JsonString(operationId)+",\"scanSessionId\":"+JsonString(operationScanSession->id)+",\"candidateIndex\":"+std::to_string(v4CandidateCopy->index)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"routeFingerprint\":"+JsonString(operationScanSession->routeFingerprint)+",\"requestedCaptureFrames\":"+std::to_string(v4CandidateCopy->captureFrames)+",\"requestedCapturePeriod100ns\":"+std::to_string(v4CandidateCopy->capturePeriod100ns)+",\"requestedRenderFrames\":"+std::to_string(v4CandidateCopy->renderFrames)+",\"requestedRenderPeriod100ns\":"+std::to_string(v4CandidateCopy->renderPeriod100ns)+",\"actualCaptureFrames\":"+nullable(capFrames)+",\"actualCapturePeriod100ns\":"+nullable(capPeriod)+",\"actualRenderFrames\":"+nullable(renFrames)+",\"actualRenderPeriod100ns\":"+nullable(renPeriod)+",\"duplexDisposition\":"+JsonString(label)+",\"reasonCode\":"+JsonString(!cleanup?"CLEANUP_UNKNOWN":!geometry?"ACTUAL_GEOMETRY_MISMATCH":clean?"CLEAN":"DUPLEX_NOT_CLEAN")+",\"cleanup\":"+JsonString(cleanup?"CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED":"UNKNOWN")+",\"provenance\":\"REAL_WASAPI_V4_DUPLEX\",\"report\":"+*report+"}";
+                        terminal("OK","","",evidence,true);
+                    } else {const auto response="{\"operationId\":"+JsonString(operationId)+",\"captureEndpointId\":"+JsonString(captureId)+",\"renderEndpointId\":"+JsonString(renderId)+",\"scanSessionId\":"+JsonString(operationScanSession?operationScanSession->id:std::string{})+",\"report\":"+*report+"}";if(operationScanSession&&operationScanSession->version2)CompleteV2Qualification(operationScanSession,command,response);terminal("OK","","",response,!operationScanSession||ScanReportSafe(response));}
 #endif
                     realOperationBusy=false;
                 });

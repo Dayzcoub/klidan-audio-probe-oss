@@ -3355,6 +3355,29 @@ try
     typeof(MainViewModel).GetField("_automaticScanResult", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(incompleteVm, bundleResult with { Lifecycle = ScanRunLifecycle.Unknown });
     typeof(MainViewModel).GetMethod("NotifyAutomaticScanResultBindings", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(incompleteVm, null);
     Check(!incompleteVm.CanExportAutomaticScan && !incompleteVm.ExportAutomaticScanCommand.CanExecute(null), "L2-B.1 UNKNOWN or incomplete scan cannot start a complete export");
+
+    var generationWorker = new GuiStateWorkerClient([]) { WindowsDiscovery = physicalPairFixture, AdvertiseWindowsDiscovery = true, AdvertiseV2 = true, AdvertisePassiveFormatQuery = true, DiscoveryGeneration = 11,
+        RealQueryFactory = (id, direction, counts, _) => Task.FromResult(PassiveMatrix(id, direction, direction == "CAPTURE" ? 8 : 2)) };
+    var generationVm = new MainViewModel(worker: generationWorker);
+    generationWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for V4 generation invalidation fixture."));
+    generationVm.DiscoverWindowsEndpointsCommand.Execute(null);
+    Check(PumpUntil(() => generationVm.PhysicalDeviceGroups.Count == 1, TimeSpan.FromSeconds(2)), "V4 generation invalidation fixture discovers exact endpoints");
+    generationVm.AutomaticScanEngine = "V2_ADAPTIVE";
+    generationVm.SelectedPhysicalDeviceGroup = generationVm.PhysicalDeviceGroups.Single();
+    generationVm.AutomaticScanV2CaptureChannels = 8; generationVm.AutomaticScanV2CaptureChannel1 = 8;
+    generationVm.AutomaticScanV2RenderChannels = 2;
+    var generationWindow = new MainWindow(generationVm) { Width = 1280, Height = 800, ShowActivated = false };
+    generationWindow.Show(); generationWindow.UpdateLayout();
+    ((Button)generationWindow.FindName("V4PreparePlanButton")).Command!.Execute(null);
+    var generationPrepared = PumpUntil(() => generationVm.V4ConsentPending, TimeSpan.FromSeconds(3));
+    generationWindow.Close();
+    Check(generationPrepared, $"V4 generation invalidation fixture prepares passive consent [can={generationVm.PrepareV4CustomPlanCommand.CanExecute(null)}, pair={generationVm.HasCurrentDuplexPair}, state={generationVm.WorkerState.State}, caps={string.Join(',', generationWorker.Capabilities)}, capture={generationVm.SelectedDuplexCaptureEndpoint?.EndpointId}, render={generationVm.SelectedDuplexRenderEndpoint?.EndpointId}, status={generationVm.V4PlanStatus}]");
+    generationVm.V4ConsentChecked = true; generationVm.AcceptV4CustomPlanCommand.Execute(null);
+    Check(generationVm.V4ReceiptCreated, "V4 generation invalidation fixture accepts the exact prepared plan");
+    generationWorker.DiscoveryGeneration++;
+    generationVm.DiscoverWindowsEndpointsCommand.Execute(null);
+    Check(!generationVm.V4PlanReady && !generationVm.V4ConsentPending && generationVm.V4ConsentReceipt is null,
+        "Worker discovery generation refresh immediately invalidates prepared v4 plan and consent receipt");
 }
 finally { if (Directory.Exists(bundleUiRoot)) Directory.Delete(bundleUiRoot, true); }
 Console.WriteLine($"All GUI Core checks passed ({checks}).");

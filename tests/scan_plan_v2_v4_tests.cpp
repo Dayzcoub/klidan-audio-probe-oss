@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "scan_plan_v2_v4.h"
+#include "scan_plan_v2_v4_transport.h"
 
 #undef assert
 #define assert(expr) do { if (!(expr)) { std::cerr << "assertion failed at line " << __LINE__ << ": " #expr << '\n'; return 1; } } while (false)
@@ -55,6 +56,30 @@ int Run() {
         "C|4|70000|336|336|70000|70000|0|false|0|false|144|480|144|480|\nC|5|80000|384|384|80000|80000|0|false|0|false|144|480|144|480|\n"
         "C|6|90000|432|432|90000|90000|0|false|0|false|144|480|144|480|\nC|7|100000|480|480|100000|100000|0|false|0|false|144|480|144|480|\nM|OFF\n";
     assert(unicodeCanonical == expected);
+
+    TransportSequence sequence(candidates, 24, 40);
+    bool orderRejected = false;
+    try { sequence.Begin(0, Step::Duplex, "duplex-first", 5); } catch (const std::invalid_argument&) { orderRejected = true; }
+    assert(orderRejected && sequence.UsedOperations() == 0);
+    sequence.Begin(0, Step::CaptureInitialize, "cap-0"); sequence.Complete(Disposition::Clean, true);
+    bool replayRejected = false;
+    try { sequence.Begin(0, Step::RenderInitialize, "cap-0"); } catch (const std::invalid_argument&) { replayRejected = true; }
+    assert(replayRejected && sequence.UsedOperations() == 1);
+    sequence.Begin(0, Step::RenderInitialize, "ren-0"); sequence.Complete(Disposition::Failed, true);
+    assert(sequence.CandidateIndex() == 1 && sequence.ExpectedStep() == Step::CaptureInitialize);
+    sequence.Begin(1, Step::CaptureInitialize, "cap-1"); sequence.Complete(Disposition::Clean, true);
+    sequence.Begin(1, Step::RenderInitialize, "ren-1"); sequence.Complete(Disposition::Clean, true);
+    sequence.Begin(1, Step::Duplex, "duplex-1", 5); sequence.Complete(Disposition::Failed, true);
+    assert(sequence.CandidateIndex() == 2 && sequence.UsedActiveSeconds() == 5);
+    sequence.Begin(2, Step::CaptureInitialize, "cap-2"); sequence.Complete(Disposition::Unknown, true);
+    assert(sequence.Stopped());
+    bool stoppedRejected = false;
+    try { sequence.Begin(2, Step::CaptureInitialize, "cap-2-retry"); } catch (const std::invalid_argument&) { stoppedRejected = true; }
+    assert(stoppedRejected);
+
+    TransportSequence mismatch(candidates, 24, 40);
+    mismatch.Begin(0, Step::CaptureInitialize, "cap-mismatch"); mismatch.Complete(Disposition::Clean, true, false);
+    assert(mismatch.CandidateIndex() == 1); // A successful Initialize with different actual geometry cannot authorize Duplex.
     return 0;
 }
 

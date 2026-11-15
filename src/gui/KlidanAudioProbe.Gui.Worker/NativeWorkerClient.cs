@@ -319,6 +319,55 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         return result;
     }
 
+    public async Task<JsonElement> InitializeCustomPeriodV2InScanAsync(WorkerScanSessionToken session, Guid operationId,
+        string captureEndpointId, string renderEndpointId, WorkerScanV2ContractV4 plan, int candidateIndex,
+        string direction, CancellationToken cancellationToken = default)
+    {
+        if (session.ContractVersion != 4 || session.ScanSessionId == Guid.Empty || operationId == Guid.Empty ||
+            direction is not ("CAPTURE" or "RENDER") || !_capabilities.Contains("V2CustomTransportContractV4", StringComparer.Ordinal))
+            throw new ArgumentException("An explicitly registered v4 custom transport session is required.");
+        var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, plan.Route);
+        var candidate = plan.Candidates.SingleOrDefault(c => c.Index == candidateIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(candidateIndex));
+        if (candidate.RejectionReason.Length != 0) throw new ArgumentException("Rejected candidate cannot be initialized.", nameof(candidateIndex));
+        var capture = direction == "CAPTURE";
+        var endpointId = capture ? captureEndpointId : renderEndpointId;
+        var side = capture ? plan.Route.Capture : plan.Route.Render;
+        var frames = capture ? candidate.CaptureFrames : candidate.RenderFrames;
+        var period = capture ? candidate.CapturePeriod100ns : candidate.RenderPeriod100ns;
+        var payload = new { operationId, scanOperationId = operationId, scanSessionId = session.ScanSessionId,
+            candidateIndex, endpointId, direction, sampleRate = side.SampleRateHz, channels = side.Channels,
+            encoding = side.Encoding, requestedPeriod100ns = period, requestedFrames = frames, routeFingerprint };
+        using var response = await SendAsync("InitializeCustomPeriodV2", payload, cancellationToken).ConfigureAwait(false);
+        var result = response.RootElement.GetProperty("payload");
+        var disposition = result.GetProperty("initializeDisposition").GetString();
+        var cleanup = result.GetProperty("cleanup").GetString();
+        var actualFrames = result.GetProperty("actualFrames");
+        var actualPeriod = result.GetProperty("actualPeriod100ns");
+        var initializeHresult = result.GetProperty("initializeHresult");
+        var missingField = new[] { "contractVersion", "operationId", "scanSessionId", "candidateIndex", "routeFingerprint", "endpointId", "direction", "sampleRateHz", "channels", "encoding", "requestedPeriod100ns", "requestedFrames", "actualPeriod100ns", "actualFrames", "alignmentFrames", "alignmentReason", "initializeDisposition", "initializeHresult", "reasonCode", "cleanup", "provenance" }.FirstOrDefault(name => !result.TryGetProperty(name, out _));
+        if (missingField is not null) throw new InvalidDataException($"V4 Initialize evidence is missing required field {missingField}.");
+        if (result.GetProperty("contractVersion").GetInt32() != 4 || result.GetProperty("operationId").GetGuid() != operationId ||
+            result.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || result.GetProperty("candidateIndex").GetInt32() != candidateIndex ||
+            result.GetProperty("routeFingerprint").GetString() != routeFingerprint || result.GetProperty("endpointId").GetString() != endpointId ||
+            result.GetProperty("direction").GetString() != direction || result.GetProperty("sampleRateHz").GetInt32() != side.SampleRateHz ||
+            result.GetProperty("channels").GetInt32() != side.Channels || result.GetProperty("encoding").GetString() != side.Encoding ||
+            result.GetProperty("requestedPeriod100ns").GetInt64() != period ||
+            result.GetProperty("requestedFrames").GetInt32() != frames ||
+            disposition is not ("INITIALIZED_EXACT" or "FAILED" or "UNSUPPORTED" or "UNKNOWN") ||
+            (actualFrames.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            (actualPeriod.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            (initializeHresult.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            cleanup is not ("RELEASE_ATTEMPTED" or "FAILED" or "UNKNOWN") ||
+            result.GetProperty("alignmentFrames").ValueKind is not (JsonValueKind.Number or JsonValueKind.Null) ||
+            string.IsNullOrWhiteSpace(result.GetProperty("alignmentReason").GetString()) ||
+            string.IsNullOrWhiteSpace(result.GetProperty("reasonCode").GetString()) ||
+            result.GetProperty("provenance").GetString() is not ("REAL_WASAPI_V4_INITIALIZE" or "TEST_FAKE_WASAPI_V4_INITIALIZE") ||
+            disposition == "INITIALIZED_EXACT" && (actualFrames.GetInt32() != frames || actualPeriod.GetInt64() != period || initializeHresult.GetInt32() != 0 || cleanup != "RELEASE_ATTEMPTED"))
+            throw new InvalidDataException("V4 Initialize evidence omits required identity, exact geometry, disposition, or cleanup fields.");
+        return result.Clone();
+    }
+
     public Task<RealStreamValidationDto> ValidateStreamInScanAsync(string operationId, string endpointId, string direction, string period, int durationSeconds, string mmcss,
         WorkerScanSessionToken scanSession, Guid scanOperationId, CancellationToken cancellationToken = default) =>
         ValidateStreamCoreAsync(operationId, endpointId, direction, period, durationSeconds, mmcss, null, cancellationToken, null, scanSession, scanOperationId);
@@ -419,6 +468,60 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
             ["period"] = period, ["durationSeconds"] = durationSeconds, ["mmcss"] = mmcss, ["scanSessionId"] = session.ScanSessionId, ["scanOperationId"] = scanOperationId };
         if (testScenario is not null) payload["testScenario"] = testScenario;
         return ValidateDuplexV2CoreAsync(command, operation, session, route, captureEndpointId, renderEndpointId, period, durationSeconds, mmcss, payload, cancellationToken);
+    }
+
+    public async Task<JsonElement> ValidateCustomDuplexV2InScanAsync(WorkerScanSessionToken session, Guid operationId,
+        WorkerScanV2Route route, string captureEndpointId, string renderEndpointId, WorkerScanV2ContractV4 plan,
+        int candidateIndex, CancellationToken cancellationToken = default, string? testScenario = null)
+    {
+        if (session.ContractVersion != 4 || session.ScanSessionId == Guid.Empty || operationId == Guid.Empty ||
+            !_capabilities.Contains("V2CustomTransportContractV4", StringComparer.Ordinal))
+            throw new ArgumentException("An explicitly registered v4 custom transport session is required.");
+        if (testScenario is not null && (!_capabilities.Contains("TestInjectedDuplexBackend", StringComparer.Ordinal) ||
+            testScenario is not ("CLEAN" or "BENIGN_INTERMEDIATE_WAIT" or "SERVICE_FAILURE" or "WATCHDOG" or "LONG_EVENT_INTERVAL" or "PACKET_DRAIN_LIMIT" or "CAPTURE_FAIL" or "RENDER_FAIL" or "INSUFFICIENT_FRAMES" or "NO_OVERLAP" or "CANCELLED" or "CLEANUP_UNKNOWN" or "WAIT_FOR_CANCEL" or "COMMAND_ERROR" or "NO_RESPONSE")))
+            throw new ArgumentException("Injected v4 Duplex scenarios are available only in test workers.", nameof(testScenario));
+        var routeFingerprint = WorkerScanPlanV2Fingerprint.Route(captureEndpointId, renderEndpointId, route);
+        var candidate = plan.Candidates.SingleOrDefault(c => c.Index == candidateIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(candidateIndex));
+        if (candidate.RejectionReason.Length != 0 || plan.MmcssModes.Count != 1 || plan.MmcssModes[0] != "OFF")
+            throw new ArgumentException("V4 Duplex requires an eligible consented candidate and MMCSS OFF.", nameof(candidateIndex));
+        var payload = new Dictionary<string, object?> { ["contractVersion"] = 2, ["operationId"] = operationId,
+            ["scanOperationId"] = operationId, ["scanSessionId"] = session.ScanSessionId, ["captureEndpointId"] = captureEndpointId,
+            ["renderEndpointId"] = renderEndpointId, ["mode"] = route.Mode,
+            ["capture"] = new { sampleRateHz = route.Capture.SampleRateHz, channels = route.Capture.Channels, encoding = route.Capture.Encoding, channelMask = route.Capture.ChannelMask, selectedIndicesZeroBased = route.Capture.SelectedIndicesZeroBased },
+            ["render"] = new { sampleRateHz = route.Render.SampleRateHz, channels = route.Render.Channels, encoding = route.Render.Encoding, channelMask = route.Render.ChannelMask, selectedIndicesZeroBased = route.Render.SelectedIndicesZeroBased },
+            ["routeFingerprint"] = routeFingerprint, ["candidateIndex"] = candidateIndex,
+            ["captureFrames"] = candidate.CaptureFrames, ["capturePeriod100ns"] = candidate.CapturePeriod100ns,
+            ["renderFrames"] = candidate.RenderFrames, ["renderPeriod100ns"] = candidate.RenderPeriod100ns,
+            ["period"] = "CUSTOM_V2", ["durationSeconds"] = 5, ["mmcss"] = "OFF" };
+        if (testScenario is not null) payload["testScenario"] = testScenario;
+        using var response = await SendAsync("ValidateCustomDuplexV2", payload, cancellationToken).ConfigureAwait(false);
+        var result = response.RootElement.GetProperty("payload");
+        var disposition = result.GetProperty("duplexDisposition").GetString();
+        var cleanup = result.GetProperty("cleanup").GetString();
+        var actualCaptureFrames = result.GetProperty("actualCaptureFrames");
+        var actualCapturePeriod = result.GetProperty("actualCapturePeriod100ns");
+        var actualRenderFrames = result.GetProperty("actualRenderFrames");
+        var actualRenderPeriod = result.GetProperty("actualRenderPeriod100ns");
+        var missingField = new[] { "contractVersion", "operationId", "scanSessionId", "candidateIndex", "captureEndpointId", "renderEndpointId", "routeFingerprint", "requestedCaptureFrames", "requestedCapturePeriod100ns", "requestedRenderFrames", "requestedRenderPeriod100ns", "actualCaptureFrames", "actualCapturePeriod100ns", "actualRenderFrames", "actualRenderPeriod100ns", "duplexDisposition", "reasonCode", "cleanup", "provenance" }.FirstOrDefault(name => !result.TryGetProperty(name, out _));
+        if (missingField is not null) throw new InvalidDataException($"V4 Duplex evidence is missing required field {missingField}.");
+        if (result.GetProperty("contractVersion").GetInt32() != 4 || result.GetProperty("operationId").GetGuid() != operationId ||
+            result.GetProperty("scanSessionId").GetGuid() != session.ScanSessionId || result.GetProperty("candidateIndex").GetInt32() != candidateIndex ||
+            result.GetProperty("captureEndpointId").GetString() != captureEndpointId || result.GetProperty("renderEndpointId").GetString() != renderEndpointId || result.GetProperty("routeFingerprint").GetString() != routeFingerprint ||
+            result.GetProperty("requestedCaptureFrames").GetInt32() != candidate.CaptureFrames ||
+            result.GetProperty("requestedCapturePeriod100ns").GetInt64() != candidate.CapturePeriod100ns ||
+            result.GetProperty("requestedRenderFrames").GetInt32() != candidate.RenderFrames ||
+            result.GetProperty("requestedRenderPeriod100ns").GetInt64() != candidate.RenderPeriod100ns ||
+            (actualCaptureFrames.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            (actualCapturePeriod.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            (actualRenderFrames.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            (actualRenderPeriod.ValueKind is not (JsonValueKind.Number or JsonValueKind.Null)) ||
+            disposition is not ("CLEAN" or "FAILED" or "UNKNOWN") || string.IsNullOrWhiteSpace(result.GetProperty("reasonCode").GetString()) ||
+            cleanup is not ("CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED" or "UNKNOWN") ||
+            result.GetProperty("provenance").GetString() is not ("REAL_WASAPI_V4_DUPLEX" or "TEST_FAKE_WASAPI_V4_DUPLEX") ||
+            disposition == "CLEAN" && (actualCaptureFrames.GetInt32() != candidate.CaptureFrames || actualCapturePeriod.GetInt64() != candidate.CapturePeriod100ns || actualRenderFrames.GetInt32() != candidate.RenderFrames || actualRenderPeriod.GetInt64() != candidate.RenderPeriod100ns || cleanup != "CAPTURE:RELEASE_ATTEMPTED;RENDER:RELEASE_ATTEMPTED"))
+            throw new InvalidDataException("V4 Duplex evidence omits required identity or per-side geometry.");
+        return result.Clone();
     }
 
     private async Task<DuplexValidationDto> ValidateDuplexV2CoreAsync(string command, Guid operation, WorkerScanSessionToken session, WorkerScanV2Route route, string captureId, string renderId, string period, int duration, string mmcss, object payload, CancellationToken cancellationToken)
@@ -667,7 +770,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
                 if (!pending.TryAbandon(out _)) return completion.Task.GetAwaiter().GetResult();
                 completion.TrySetCanceled();
                 RaiseSafely(TransportFault, new WorkerTransportFaultDto("RESPONSE_TIMEOUT", $"No response arrived for {command}; command outcome remains unknown.", CorrelationId: id, Command: command));
-                if (IsSupervisedNativeOperation(command)) EndTransport(command.Contains("Duplex", StringComparison.Ordinal) ? "DUPLEX_SUPERVISION_TIMEOUT" : command == "InitializeExclusiveCustomPeriod" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
+                if (IsSupervisedNativeOperation(command)) EndTransport(command.Contains("Duplex", StringComparison.Ordinal) ? "DUPLEX_SUPERVISION_TIMEOUT" : command is "InitializeExclusiveCustomPeriod" or "InitializeCustomPeriodV2" ? "PERIOD_DISCOVERY_SUPERVISION_TIMEOUT" : command == "CloseScanSession" ? "SESSION_CLOSE_SUPERVISION_TIMEOUT" : "NATIVE_DRIVER_TIMEOUT", "Real native operation exceeded the bounded GUI deadline; worker and child processes were terminated, and operation/cleanup outcome is unknown.", QueryExitCode(_process));
                 throw new TimeoutException($"No response arrived for {command} within the response deadline.");
             }
         }
@@ -688,7 +791,7 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         finally { if (acquired) _writeGate.Release(); Trace("send-complete"); }
     }
 
-    private static bool IsSupervisedNativeOperation(string command) => command is "QueryFormatMatrix" or "ValidateFormatMatrix" or "ValidateStream" or "ValidateDuplex" or "ValidateSustainedDuplex" or "ValidateDuplexV2" or "ValidateSustainedDuplexV2" or "InitializeExclusiveCustomPeriod" or "CloseScanSession";
+    private static bool IsSupervisedNativeOperation(string command) => command is "QueryFormatMatrix" or "ValidateFormatMatrix" or "ValidateStream" or "ValidateDuplex" or "ValidateSustainedDuplex" or "ValidateDuplexV2" or "ValidateSustainedDuplexV2" or "InitializeExclusiveCustomPeriod" or "InitializeCustomPeriodV2" or "ValidateCustomDuplexV2" or "CloseScanSession";
 
     private static TimeSpan GetResponseTimeout(string command) => command switch
     {
@@ -696,8 +799,10 @@ public sealed class NativeWorkerClient(string? workerPath = null) : IWorkerClien
         "ValidateDuplex" => DuplexResponseTimeout,
         "ValidateSustainedDuplex" => SustainedDuplexResponseTimeout,
         "ValidateDuplexV2" => DuplexResponseTimeout,
+        "ValidateCustomDuplexV2" => DuplexResponseTimeout,
         "ValidateSustainedDuplexV2" => SustainedDuplexResponseTimeout,
         "InitializeExclusiveCustomPeriod" => TimeSpan.FromSeconds(20),
+        "InitializeCustomPeriodV2" => TimeSpan.FromSeconds(30),
         "QueryFormatMatrix" or "ValidateFormatMatrix" => TimeSpan.FromSeconds(30),
         "CloseScanSession" => TimeSpan.FromSeconds(SessionCloseTimeoutSeconds),
         _ => TimeSpan.FromSeconds(5)
