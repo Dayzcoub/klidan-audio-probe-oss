@@ -512,8 +512,9 @@ Check(accessibleEvidence.Contains("INITIALIZED", StringComparison.Ordinal) && ac
 var passiveEvidence = vm.Formats.SelectMany(f => new[] { f.DefaultPeriod, f.MinimumPeriod }).First(p => p.Status == FormatStatus.SupportedReported);
 Check(passiveEvidence.Provenance == "PASSIVE_QUERY" && passiveEvidence.AccessibleText.Contains("S_OK", StringComparison.Ordinal), "passive format results expose provenance and raw query HRESULT");
 Check(((Style)app.Resources[typeof(DataGrid)]).Setters.OfType<Setter>().Any(s => s.Property == DataGrid.RowHeightProperty && Equals(s.Value, 42d)), "DataGrid uses a consistent compact row height");
-var repoRoot = new DirectoryInfo(AppContext.BaseDirectory);
-while (repoRoot is not null && !File.Exists(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml"))) repoRoot = repoRoot.Parent;
+var configuredRepoRoot = Environment.GetEnvironmentVariable("KLIDAN_TEST_REPOSITORY_ROOT");
+var repoRoot = configuredRepoRoot is null ? new DirectoryInfo(AppContext.BaseDirectory) : new DirectoryInfo(configuredRepoRoot);
+while (configuredRepoRoot is null && repoRoot is not null && !File.Exists(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml"))) repoRoot = repoRoot.Parent;
 if (repoRoot is null) throw new InvalidOperationException("Could not locate repository source for static WPF checks.");
 var mainWindowXaml = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/MainWindow.xaml"));
 var appXaml = File.ReadAllText(Path.Combine(repoRoot.FullName, "src/gui/KlidanAudioProbe.Gui.App/App.xaml"));

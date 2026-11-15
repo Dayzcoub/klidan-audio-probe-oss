@@ -119,7 +119,7 @@ public sealed class DuplexRepeatabilityWorkerWorkflow(NativeWorkerClient worker)
         catch (Exception exception)
         {
             // BUSY is an explicit registration refusal; it does not leave an unknown native operation behind.
-            if (session is null && registrationAttempted && exception is WorkerCommandException { Command: "RegisterScanSession", ErrorCode: "BUSY" })
+            if (session is null && registrationAttempted && exception is WorkerCommandException { Command: "RegisterScanSession" })
                 throw;
             if (session is null && registrationAttempted)
             {

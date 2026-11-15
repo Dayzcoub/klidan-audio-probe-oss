@@ -77,15 +77,17 @@ string ClientRequestJson(Guid requestId, string command = "ListEndpoints", strin
     return JsonSerializer.Serialize(message);
 }
 ConsentReceiptDto ConsentReceiptFor(WorkerSessionSettingsDto settings) => new(true, Guid.NewGuid(), WorkerConsent.Fingerprint(settings));
-var root = new DirectoryInfo(AppContext.BaseDirectory);
-while (root is not null && !File.Exists(Path.Combine(root.FullName, "CMakeLists.txt"))) root = root.Parent;
+var configuredRoot = Environment.GetEnvironmentVariable("KLIDAN_TEST_REPOSITORY_ROOT");
+var root = configuredRoot is null ? new DirectoryInfo(AppContext.BaseDirectory) : new DirectoryInfo(configuredRoot);
+while (configuredRoot is null && root is not null && !File.Exists(Path.Combine(root.FullName, "CMakeLists.txt"))) root = root.Parent;
 if (root is null) throw new InvalidOperationException("Repository root not found.");
-var buildWorker = Path.Combine(root.FullName, "src", "gui", "KlidanAudioProbe.Gui.App", "bin", "Release", "net10.0-windows", "KlidanProbeWorker.exe");
-var nativeWorker = Path.Combine(root.FullName, "build", "worker", "Release", "KlidanProbeWorker.exe");
+var buildRoot = Environment.GetEnvironmentVariable("KLIDAN_TEST_BUILD_ROOT") ?? Path.Combine(root.FullName, "build");
+var buildWorker = Environment.GetEnvironmentVariable("KLIDAN_TEST_GUI_WORKER") ?? Path.Combine(root.FullName, "src", "gui", "KlidanAudioProbe.Gui.App", "bin", "Release", "net10.0-windows", "KlidanProbeWorker.exe");
+var nativeWorker = Path.Combine(buildRoot, "worker", "Release", "KlidanProbeWorker.exe");
 var testWorker = Path.Combine(AppContext.BaseDirectory, "KlidanAudioProbe.Gui.Worker.Tests.exe");
-var stallWorker = Path.Combine(root.FullName, "build", "worker-tests", "Release", "probe_worker_stall_fixture.exe");
-var mismatchWorker = Path.Combine(root.FullName, "build", "worker-tests", "Release", "probe_worker_mismatch_fixture.exe");
-var formatFixtureWorker = Path.Combine(root.FullName, "build", "worker-tests", "Release", "probe_worker_format_fixture.exe");
+var stallWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_stall_fixture.exe");
+var mismatchWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_mismatch_fixture.exe");
+var formatFixtureWorker = Path.Combine(buildRoot, "worker-tests", "Release", "probe_worker_format_fixture.exe");
 foreach (var binary in new[] { buildWorker, nativeWorker, testWorker, stallWorker, mismatchWorker, formatFixtureWorker }) if (!File.Exists(binary)) throw new FileNotFoundException("Build the native worker and worker fixtures before running these tests.", binary);
 var productionWorkerBinaryText = Encoding.ASCII.GetString(File.ReadAllBytes(nativeWorker));
 Check(!productionWorkerBinaryText.Contains("KLIDAN_TEST_PERIOD_SCENARIO", StringComparison.Ordinal) && !productionWorkerBinaryText.Contains("REJECT_FIRST_FOUR", StringComparison.Ordinal), "production Release Worker contains no period-discovery Fake Worker scenario mechanism");
@@ -420,12 +422,34 @@ Check(sustained.Report.GetProperty("schemaVersion").GetInt32() == 1 && sustained
 await injectedFormatClient.CloseScanSessionAsync(sustainedSession);
 var replayedScanConsent = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.RegisterScanSessionAsync(scanPlan, true, scanConfirmation), "scan authorization confirmation cannot be replayed after closing its session");
 Check(replayedScanConsent.ErrorCode == "SCAN_CONSENT_REPLAY", "Worker consumes scan-session approval IDs once per connection");
-var expiredPlan = ScanPlan([scanEndpoints[0]], 1);
-var expiredScan = await injectedFormatClient.RegisterScanSessionAsync(expiredPlan, true, Guid.NewGuid());
-await Task.Delay(1100);
-var expiredError = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.QueryFormatMatrixInScanAsync(expiredScan, Guid.NewGuid(), "injected-endpoint-capture", "CAPTURE", [2]), "expired Worker scan session cannot authorize another operation");
-Check(expiredError.ErrorCode == "SCAN_SESSION_STALE", "Worker enforces scan-session expiry independently of the caller");
-await injectedFormatClient.CancelScanSessionAsync(expiredScan);
+Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO", "EXPIRE_ON_REGISTER");
+var expiryClient = new NativeWorkerClient(formatFixtureWorker);
+try
+{
+    await expiryClient.ConnectAsync();
+    var expiryEndpoints = await expiryClient.ListWindowsEndpointsAsync();
+    var expiryCapture = expiryEndpoints.Endpoints.Single(e => e.Direction == "CAPTURE");
+    var expiryPlan = ScanPlan([new(expiryCapture.EndpointId!, "CAPTURE")]);
+    var expirySession = await expiryClient.RegisterScanSessionAsync(expiryPlan, true, Guid.NewGuid());
+    var expiryError = await ThrowsAsync<WorkerCommandException>(() => expiryClient.QueryFormatMatrixInScanAsync(expirySession, Guid.NewGuid(), expiryCapture.EndpointId!, "CAPTURE", [2]), "expired Worker scan session cannot authorize another operation");
+    Check(expiryError.ErrorCode == "SCAN_SESSION_STALE" && expiryError.Message.Contains("expired", StringComparison.OrdinalIgnoreCase), "Worker reports expiry as the scan-session stale cause without identifiers");
+    await expiryClient.CloseScanSessionAsync(expirySession);
+}
+finally { Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO", null); await expiryClient.DisposeAsync(); }
+Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO", "GENERATION_MISMATCH");
+var generationClient = new NativeWorkerClient(formatFixtureWorker);
+try
+{
+    await generationClient.ConnectAsync();
+    var generationEndpoints = await generationClient.ListWindowsEndpointsAsync();
+    var generationCapture = generationEndpoints.Endpoints.Single(e => e.Direction == "CAPTURE");
+    var generationPlan = ScanPlan([new(generationCapture.EndpointId!, "CAPTURE")]);
+    var generationSession = await generationClient.RegisterScanSessionAsync(generationPlan, true, Guid.NewGuid());
+    var generationError = await ThrowsAsync<WorkerCommandException>(() => generationClient.QueryFormatMatrixInScanAsync(generationSession, Guid.NewGuid(), generationCapture.EndpointId!, "CAPTURE", [2]), "a discovery-generation mismatch rejects authorization");
+    Check(generationError.ErrorCode == "SCAN_SESSION_STALE" && generationError.Message.Contains("generation", StringComparison.OrdinalIgnoreCase), "Worker distinguishes discovery-generation mismatch without endpoint identifiers");
+    await generationClient.CloseScanSessionAsync(generationSession);
+}
+finally { Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO", null); await generationClient.DisposeAsync(); }
 var badFingerprint = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.SendForTestAsync("RegisterScanSession", new { endpoints = new[] { new { endpointId = "injected-endpoint-capture", direction = "CAPTURE" } }, allowedOperations = new[] { "QueryFormatMatrix" }, formats = new[] { new { sampleRateHz = 48000, encoding = "PCM16", channels = 2, periods = new[] { "MINIMUM" }, mmcssModes = new[] { "OFF" } } }, lifetimeSeconds = 60, maximumOperationDurationSeconds = 5, maximumOperationCount = 1, planFingerprint = new string('0', 64), authorization = new { accepted = true, confirmationId = Guid.NewGuid() } }), "worker recomputes the immutable scan plan fingerprint");
 Check(badFingerprint.ErrorCode == "SCAN_FINGERPRINT_MISMATCH", "caller-supplied plan fingerprint is not treated as authorization");
 var scopedPlan = ScanPlan([scanEndpoints[0]], periods: ["MINIMUM"]);
@@ -436,11 +460,11 @@ var alteredError = await ThrowsAsync<WorkerCommandException>(() => injectedForma
 Check(alteredError.ErrorCode == "SCAN_FORMAT_OUT_OF_SCOPE", "changed period/settings are rejected by Worker plan validation");
 await injectedFormatClient.CancelScanSessionAsync(scopedSession);
 var cancelledError = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.QueryFormatMatrixInScanAsync(scopedSession, Guid.NewGuid(), "injected-endpoint-capture", "CAPTURE", [2]), "cancelled scan session cannot authorize later operations");
-Check(cancelledError.ErrorCode == "SCAN_SESSION_STALE", "session cancellation invalidates the Worker authorization state");
+Check(cancelledError.ErrorCode == "SCAN_SESSION_STALE" && cancelledError.Message.Contains("cancelled", StringComparison.OrdinalIgnoreCase), "session cancellation invalidates the Worker authorization state with a distinct safe cause");
 var discoveryStaleSession = await injectedFormatClient.RegisterScanSessionAsync(ScanPlan(scanEndpoints), true, Guid.NewGuid());
 using (var refreshedDiscovery = await injectedFormatClient.SendForTestAsync("ListWindowsEndpoints", new { })) { }
 var discoveryStaleError = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.QueryFormatMatrixInScanAsync(discoveryStaleSession, Guid.NewGuid(), "injected-endpoint-capture", "CAPTURE", [2]), "a discovery refresh invalidates previously authorized endpoint identity");
-Check(discoveryStaleError.ErrorCode == "SCAN_SESSION_STALE", "scan authorization is tied to the exact Worker discovery generation");
+Check(discoveryStaleError.ErrorCode == "SCAN_SESSION_STALE" && discoveryStaleError.Message.Contains("discovery refresh", StringComparison.OrdinalIgnoreCase), "scan authorization invalidation identifies discovery refresh without exposing endpoint identity");
 var cleanupPlan = new WorkerScanPlan([scanEndpoints[0]], ["ValidateStream"], [new(48000, "PCM16", 2, ["MINIMUM"], ["OFF"])], 60, 1, 2);
 var cleanupSession = await injectedFormatClient.RegisterScanSessionAsync(cleanupPlan, true, Guid.NewGuid());
 var cleanupOperation = Guid.NewGuid();
@@ -449,13 +473,32 @@ Check(cleanupEvidence.Report.GetProperty("cleanup").GetString() == "UNKNOWN", "u
 var cleanupBlockedOperation = Guid.NewGuid();
 var cleanupBlocked = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.ValidateStreamAsync(cleanupBlockedOperation.ToString("D"), scanEndpoints[0].EndpointId, "CAPTURE", "MINIMUM", 1, "OFF", new(false, Guid.Empty, ""), scanSession: cleanupSession, scanOperationId: cleanupBlockedOperation), "unknown cleanup invalidates the session and blocks subsequent operations");
 Check(cleanupBlocked.ErrorCode == "SCAN_SESSION_STALE", "unsafe cleanup permanently invalidates Worker scan authorization");
+var busyDiscovery = await injectedFormatClient.ListWindowsEndpointsAsync();
+var busyRepeatability = new DuplexRepeatabilityWorkerWorkflow(injectedFormatClient);
+var busyPreparation = busyRepeatability.Prepare(busyDiscovery, busyDiscovery.Endpoints.Single(e => e.Direction == "CAPTURE"), busyDiscovery.Endpoints.Single(e => e.Direction == "RENDER"));
+var busyPeriodCandidate = new PeriodDiscoveryCandidate(240, 50_000);
+var busyPeriodPlan = new WorkerScanPlan([new(busyDiscovery.Endpoints.Single(e => e.Direction == "CAPTURE").EndpointId!, "CAPTURE"), new(busyDiscovery.Endpoints.Single(e => e.Direction == "RENDER").EndpointId!, "RENDER")], ["InitializeExclusiveCustomPeriod"], [new(48_000, "PCM16", 2, [busyPeriodCandidate.AuthorizationValue], ["OFF"])], 60, 10, 2);
+var busyPeriodPreparation = new PeriodDiscoveryPreparation(busyDiscovery,
+    busyDiscovery.Endpoints.Single(e => e.Direction == "CAPTURE"), busyDiscovery.Endpoints.Single(e => e.Direction == "RENDER"),
+    [busyPeriodCandidate], busyPeriodPlan, "busy-period-fixture", "bounded registration BUSY fixture");
 var cancelSession = await injectedFormatClient.RegisterScanSessionAsync(cleanupPlan, true, Guid.NewGuid());
 var cancelSessionOperation = Guid.NewGuid();
 var cancelSessionRun = injectedFormatClient.ValidateStreamAsync(cancelSessionOperation.ToString("D"), scanEndpoints[0].EndpointId, "CAPTURE", "MINIMUM", 1, "OFF", new(false, Guid.Empty, ""), testScenario: "WAIT_FOR_CANCEL", scanSession: cancelSession, scanOperationId: cancelSessionOperation);
-await Task.Delay(100);
+var busyPeriodWorkflow = new ExclusivePeriodDiscoveryWorkerWorkflow(injectedFormatClient);
+var busyPeriodResult = await busyPeriodWorkflow.RunApprovedAsync(busyPeriodPreparation, Guid.NewGuid());
+Check(busyPeriodResult.Lifecycle == "FAILED" && busyPeriodResult.Diagnostics?.TerminationReason == "REGISTRATION_BUSY" && busyPeriodResult.Diagnostics.SessionCloseStatus == "NOT_ATTEMPTED", "period discovery preserves confirmed registration BUSY as FAILED, not UNKNOWN");
+var busyRegistration = await ThrowsAsync<WorkerCommandException>(() => busyRepeatability.RunApprovedAsync(busyPreparation, Guid.NewGuid()), "confirmed BUSY during scan-session registration is returned without being mislabeled UNKNOWN");
+Check(busyRegistration.Command == "RegisterScanSession" && busyRegistration.ErrorCode == "BUSY", "repeatability preserves a confirmed registration refusal");
+var busyOperationId = Guid.NewGuid();
+var busyDuringStream = await ThrowsAsync<WorkerCommandException>(() => injectedFormatClient.ValidateStreamAsync(busyOperationId.ToString("D"), scanEndpoints[0].EndpointId, "CAPTURE", "MINIMUM", 1, "OFF", new(false, Guid.Empty, ""), scanSession: cancelSession, scanOperationId: busyOperationId), "a second operation while the first is held active receives BUSY");
+Check(busyDuringStream.ErrorCode == "BUSY", "Worker retains BUSY rejection for a genuinely active operation");
 await injectedFormatClient.CancelScanSessionAsync(cancelSession);
 var cancelledSessionReport = await cancelSessionRun;
 Check(cancelledSessionReport.Report.GetProperty("cancelled").GetBoolean() && cancelledSessionReport.Report.GetProperty("streamQuality").GetString() != "CLEAN", "session cancellation signals the existing bounded Stream cancellation event and preserves incomplete evidence");
+var afterBusyPeriod = await busyPeriodWorkflow.RunApprovedAsync(busyPeriodPreparation, Guid.NewGuid());
+Check(afterBusyPeriod.Lifecycle == "COMPLETED" && afterBusyPeriod.Reports.Count == 2, "confirmed period registration BUSY releases its shared lease and allows a later successful period series");
+var afterBusyRepeatability = await busyRepeatability.RunApprovedAsync(busyPreparation, Guid.NewGuid());
+Check(afterBusyRepeatability.Lifecycle == ScanRunLifecycle.Completed && afterBusyRepeatability.Runs.Count == 6 && injectedFormatClient.State.State == WorkerConnectionState.ConnectedFake, $"confirmed registration BUSY releases the shared lease and permits later six-run repeatability after the active operation ends ({afterBusyRepeatability.Lifecycle}; {afterBusyRepeatability.Summary})");
 var scanDiscovery = await injectedFormatClient.ListWindowsEndpointsAsync();
 var scanTarget = new ScanTarget(scanDiscovery.Endpoints.Single(e => e.Direction == "CAPTURE"), scanDiscovery.Endpoints.Single(e => e.Direction == "RENDER"), ScanPairIdentity.OperatorSelectedPair);
 var scanCapabilities = new ScanCapabilities(true, true, true, true, true);
@@ -551,6 +594,52 @@ var fullPeriodSeries = await periodDiscovery.RunApprovedAsync(fullPeriodPreparat
 Check(fullPeriodSeries.Lifecycle == "COMPLETED" && fullPeriodSeries.Reports.Count == 16 && fullPeriodSeries.Reports.All(r => r.Candidates.Single().Classification == "ACCEPTED") && fullPeriodSeries.Diagnostics?.Operations.Count == 16 && fullPeriodSeries.Diagnostics.SessionCloseStatus == "CONFIRMED", "eight candidates by two endpoints complete with per-operation diagnostics and confirmed session close");
 Check(fullPeriodSeries.Diagnostics!.Operations.Select(o => o.OperationIndex).SequenceEqual(Enumerable.Range(1, 16)), "period diagnostics preserve the exact 1..16 operation order");
 Check(fullPeriodSeries.ReportPath is not null && File.ReadAllText(fullPeriodSeries.ReportPath).Contains("terminationReason", StringComparison.Ordinal) && File.ReadAllText(fullPeriodSeries.ReportPath).Contains("operationDiagnostics", StringComparison.Ordinal), "period termination diagnostics are persisted in the compatible JSON envelope");
+var repeatedPeriod = fullPeriodCandidates[0];
+var repeatedPlan = fullPeriodPlan with { Formats = [new(48_000, "PCM16", 2, [repeatedPeriod.AuthorizationValue], ["OFF"])], MaximumOperationCount = 24 };
+var repeatedSession = await injectedFormatClient.RegisterScanSessionAsync(repeatedPlan, true, Guid.NewGuid());
+var repeatedReports = new List<ExclusivePeriodDiscoveryReportDto>();
+for (var i = 0; i < 24; i++) repeatedReports.Add(await injectedFormatClient.InitializeExclusiveCustomPeriodAsync(repeatedSession, Guid.NewGuid(), periodCapture.EndpointId!, "CAPTURE", (int)repeatedPeriod.Period100ns, (int)repeatedPeriod.Frames));
+await injectedFormatClient.CloseScanSessionAsync(repeatedSession);
+Check(repeatedReports.Count == 24 && repeatedReports.All(r => r.Candidates.Single().Classification == "ACCEPTED") && injectedFormatClient.State.State == WorkerConnectionState.ConnectedFake, "24 bounded Initialize operations run consecutively after each terminal IPC response with confirmed session close");
+var gateSuffix = Guid.NewGuid().ToString("N");
+var terminalGateName = $"Local\\KlidanAudioProbe.AsN1.Terminal.{gateSuffix}";
+var operationIdleName = $"Local\\KlidanAudioProbe.AsN1.Idle.{gateSuffix}";
+var operationBusyName = $"Local\\KlidanAudioProbe.AsN1.Busy.{gateSuffix}";
+using (var terminalGate = new EventWaitHandle(false, EventResetMode.ManualReset, terminalGateName))
+using (var operationIdle = new EventWaitHandle(false, EventResetMode.ManualReset, operationIdleName))
+using (var operationBusy = new EventWaitHandle(false, EventResetMode.ManualReset, operationBusyName))
+{
+    Environment.SetEnvironmentVariable("KLIDAN_TEST_POST_RESPONSE_GATE", terminalGateName);
+    Environment.SetEnvironmentVariable("KLIDAN_TEST_OPERATION_IDLE_EVENT", operationIdleName);
+    Environment.SetEnvironmentVariable("KLIDAN_TEST_OPERATION_BUSY_EVENT", operationBusyName);
+    var terminalClient = new NativeWorkerClient(formatFixtureWorker);
+    try
+    {
+        await terminalClient.ConnectAsync();
+        var terminalEndpoints = await terminalClient.ListWindowsEndpointsAsync();
+        var capture = terminalEndpoints.Endpoints.Single(e => e.Direction == "CAPTURE");
+        var candidate = new PeriodDiscoveryCandidate(240, 50_000);
+        var plan = new WorkerScanPlan([new(capture.EndpointId!, "CAPTURE")], ["InitializeExclusiveCustomPeriod"], [new(48_000, "PCM16", 2, [candidate.AuthorizationValue], ["OFF"])], 60, 10, 2);
+        var session = await terminalClient.RegisterScanSessionAsync(plan, true, Guid.NewGuid());
+        operationIdle.Reset(); operationBusy.Reset();
+        await terminalClient.InitializeExclusiveCustomPeriodAsync(session, Guid.NewGuid(), capture.EndpointId!, "CAPTURE", (int)candidate.Period100ns, (int)candidate.Frames);
+        operationIdle.Reset(); operationBusy.Reset();
+        var secondOperation = Guid.NewGuid();
+        var second = terminalClient.InitializeExclusiveCustomPeriodAsync(session, secondOperation, capture.EndpointId!, "CAPTURE", (int)candidate.Period100ns, (int)candidate.Frames);
+        var observed = WaitHandle.WaitAny([operationIdle, operationBusy], TimeSpan.FromSeconds(5));
+        terminalGate.Set();
+        var secondResult = await second;
+        await terminalClient.CloseScanSessionAsync(session);
+        Check(observed == 0 && secondResult.OperationId == secondOperation.ToString("D") && terminalClient.State.State == WorkerConnectionState.ConnectedFake, "the first response is terminal before the next request is dispatched; a barrier proves BUSY is already clear while the prior thread exits");
+    }
+    finally { terminalGate.Set(); Environment.SetEnvironmentVariable("KLIDAN_TEST_POST_RESPONSE_GATE", null); Environment.SetEnvironmentVariable("KLIDAN_TEST_OPERATION_IDLE_EVENT", null); Environment.SetEnvironmentVariable("KLIDAN_TEST_OPERATION_BUSY_EVENT", null); await terminalClient.DisposeAsync(); }
+}
+var sixDuplexPlan = new WorkerScanPlan([new(periodCapture.EndpointId!, "CAPTURE"), new(periodRender.EndpointId!, "RENDER")], ["ValidateDuplex"], [new(48_000, "PCM16", 2, ["MINIMUM"], ["OFF"])], 60, 5, 6);
+var sixDuplexSession = await injectedFormatClient.RegisterScanSessionAsync(sixDuplexPlan, true, Guid.NewGuid());
+var sixDuplexReports = new List<DuplexValidationDto>();
+for (var i = 0; i < 6; i++) { var operationId = Guid.NewGuid(); sixDuplexReports.Add(await injectedFormatClient.ValidateDuplexInScanAsync(operationId.ToString("D"), periodCapture.EndpointId!, periodRender.EndpointId!, "MINIMUM", 1, "OFF", sixDuplexSession, operationId)); }
+await injectedFormatClient.CloseScanSessionAsync(sixDuplexSession);
+Check(sixDuplexReports.Count == 6 && sixDuplexReports.All(r => r.Report.GetProperty("provenance").GetString() == "TEST_FAKE_WASAPI_DUPLEX") && injectedFormatClient.State.State == WorkerConnectionState.ConnectedFake, "six sequential authorized Duplex operations complete and leave the Worker reusable");
 Environment.SetEnvironmentVariable("KLIDAN_TEST_PERIOD_SCENARIO", "REJECT_FIRST_FOUR");
 var rejectedScenarioClient = new NativeWorkerClient(formatFixtureWorker);
 try
