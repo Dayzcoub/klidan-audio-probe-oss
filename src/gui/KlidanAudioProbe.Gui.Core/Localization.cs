@@ -31,4 +31,5 @@ public static class Localization
     }
 
     public static string Get(string key) => Resources.GetString(key, CurrentCulture) ?? Resources.GetString(key, CultureInfo.GetCultureInfo("en-US")) ?? key;
+    public static string Get(string key, CultureInfo culture) => Resources.GetString(key, culture) ?? Resources.GetString(key, CultureInfo.GetCultureInfo("en-US")) ?? key;
 }

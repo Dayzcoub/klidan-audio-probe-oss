@@ -1252,4 +1252,90 @@ Fallback: {1}
   <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Состояние: {0}\n{1}\nСохранение: {2}\nОтчёт: {3}</value></data>
   <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Состояние: {0}\nСохранение: {1}\nОтчёт: {2}{3}</value></data>
   <data name="VmErrorDetail" xml:space="preserve"><value>Ошибка: {0}</value></data>
+  <data name="UiExportJsonFilter" xml:space="preserve"><value>Отчёт JSON (*.json)|*.json</value></data>
+  <data name="VmPeriodDefault" xml:space="preserve"><value>DEFAULT</value></data>
+  <data name="VmPeriodMinimum" xml:space="preserve"><value>MINIMUM</value></data>
+  <data name="VmRouteMonoMono" xml:space="preserve"><value>Моно → моно</value></data>
+  <data name="VmRouteMonoStereo" xml:space="preserve"><value>Моно → стерео</value></data>
+  <data name="VmRouteStereoStereo" xml:space="preserve"><value>Стерео → стерео</value></data>
+  <data name="VmScanEngineAdaptiveV2" xml:space="preserve"><value>Адаптивное сканирование (V2)</value></data>
+  <data name="VmScanEngineCompatibleV1" xml:space="preserve"><value>Совместимое сканирование (V1)</value></data>
+  <data name="VmV2CapabilityUnavailable" xml:space="preserve"><value>Возможность V2 Worker недоступна.</value></data>
+  <data name="VmV2EvidencePath" xml:space="preserve"><value>Сохранённое свидетельство V2: {0}</value></data>
+  <data name="VmV2NotSelected" xml:space="preserve"><value>Выберите endpoint и допустимый маршрут.</value></data>
+  <data name="VmV2OperationProgress" xml:space="preserve"><value>{0} · {1} с</value></data>
+  <data name="VmV2PhysicalMappingUnknown" xml:space="preserve"><value>Номер логического канала не указывает на физическое гнездо. Физическое соответствие: UNKNOWN.</value></data>
+  <data name="VmV2ReadyToQuery" xml:space="preserve"><value>Маршрут допустим; поддержку формата устройства проверит сканирование.</value></data>
+  <data name="VmV2ResultConfiguration" xml:space="preserve"><value>{0} · {1}: Capture {2} Гц, каналы {3}, индексы {4}; Render {5} Гц, каналы {6}, индексы {7}. Буферы Capture/Render: {8}/{9} кадров. Состояние: {10}. RTL=NOT_MEASURED; AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · {1} · {2} · завершено операций: {3}. {4}</value></data>
+  <data name="VmV2RouteInvalid" xml:space="preserve"><value>Недопустимый маршрут: каналы должны входить в геометрию потока и не повторяться.</value></data>
+  <data name="VmV2RouteSummary" xml:space="preserve"><value>{0} · Capture {1} → Render {2}</value></data>
+  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); режим {4}; каналы Capture {5}/{6}, {7} Гц {8}; каналы Render {9}/{10}, {11} Гц {12}; период {13}; маршрут {14}. Не более 12 операций, 1030 секунд аудио, 1800 секунд всего.</value></data>
+  <data name="VmV2SelectPair" xml:space="preserve"><value>Выберите Capture и Render endpoint.</value></data>
+  <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} каналов</value></data>
+  <data name="VmV2StreamGeometry" xml:space="preserve"><value>Поток Capture: {0} каналов; Render: {1} каналов</value></data>
+  <data name="VmPhysicalGroupRenderAvailable" xml:space="preserve"><value>Доступен выходной endpoint</value></data>
+  <data name="RenderFormatLabel" xml:space="preserve"><value>Формат выхода</value></data>
+  <data name="VmNoActiveAudioDevices" xml:space="preserve"><value>Активные аудиоустройства не найдены. Обновите список или подключите/включите устройство.</value></data>
+  <data name="CaptureFormatLabel" xml:space="preserve"><value>Формат входа</value></data>
+  <data name="V2RouteSelection" xml:space="preserve"><value>Маршрут V2</value></data>
+  <data name="V2RouteSummaryLabel" xml:space="preserve"><value>Выбранный маршрут</value></data>
+  <data name="VmPhysicalDeviceNameUnavailable" xml:space="preserve"><value>Имя устройства недоступно</value></data>
+  <data name="VmPhysicalGroupChooseCapture" xml:space="preserve"><value>Выберите входной endpoint</value></data>
+  <data name="ReportsSectionHeading" xml:space="preserve"><value>ОТЧЁТЫ</value></data>
+  <data name="CaptureChannelsLabel" xml:space="preserve"><value>Каналы входа</value></data>
+  <data name="ProfilesSectionHeading" xml:space="preserve"><value>ПРОФИЛИ</value></data>
+  <data name="VmPhysicalGroupCaptureAvailable" xml:space="preserve"><value>Доступен входной endpoint</value></data>
+  <data name="RenderChannelOneBased" xml:space="preserve"><value>Выходной канал (номер с 1)</value></data>
+  <data name="VmPhysicalGroupInput" xml:space="preserve"><value>Вход</value></data>
+  <data name="VmPhysicalGroupEndpointNote" xml:space="preserve"><value>ACTIVE — состояние endpoint в Windows, а не подтверждение физического присутствия. Физическая группа может содержать несколько аудиоendpoint; группировка не определяет разъём или канал.</value></data>
+  <data name="V2RouteModeLabel" xml:space="preserve"><value>Режим маршрута</value></data>
+  <data name="V2PeriodLabel" xml:space="preserve"><value>Период буфера</value></data>
+  <data name="VmPhysicalGroupContainerSource" xml:space="preserve"><value>Основание группировки: Windows Container ID</value></data>
+  <data name="VmPhysicalGroupConfirmedPair" xml:space="preserve"><value>Подтверждённая пара endpoint</value></data>
+  <data name="VmPhysicalGroupInputOutput" xml:space="preserve"><value>Вход + выход</value></data>
+  <data name="VmPhysicalGroupChooseRender" xml:space="preserve"><value>Выберите выходной endpoint</value></data>
+  <data name="VmEndpointNameUnavailable" xml:space="preserve"><value>Имя недоступно</value></data>
+  <data name="RenderStreamGeometry" xml:space="preserve"><value>Поток Capture: {0} каналов; поток Render: {1} каналов</value></data>
+  <data name="VmPhysicalGroupChoosePair" xml:space="preserve"><value>Выберите endpoint явно</value></data>
+  <data name="CaptureStreamGeometry" xml:space="preserve"><value>Поток Capture: {0} каналов; поток Render: {1} каналов</value></data>
+  <data name="CaptureChannelOneBased" xml:space="preserve"><value>Входной канал (номер с 1)</value></data>
+  <data name="VmPhysicalGroupDuplicateName" xml:space="preserve"><value>{0} · вариант {1}</value></data>
+  <data name="RenderChannelTwoOneBased" xml:space="preserve"><value>Второй выходной канал (номер с 1)</value></data>
+  <data name="VmPhysicalGroupOutput" xml:space="preserve"><value>Выход</value></data>
+  <data name="CaptureChannelTwoOneBased" xml:space="preserve"><value>Второй входной канал (номер с 1)</value></data>
+  <data name="RenderChannelsLabel" xml:space="preserve"><value>Каналы выхода</value></data>
+  <data name="ScannerSectionHeading" xml:space="preserve"><value>СКАНИРОВАНИЕ</value></data>
+  <data name="ScanEngineLabel" xml:space="preserve"><value>Режим сканирования</value></data>
+  <data name="VmPhysicalGroupIdentityUnknown" xml:space="preserve"><value>Основание группировки не подтверждает физическую идентичность</value></data>
+  <data name="VmPhysicalGroupUnconfirmed" xml:space="preserve"><value>Физическая идентичность не подтверждена</value></data>
+  <data name="VmPhysicalGroupChooseEndpoint" xml:space="preserve"><value>Выберите аудиоendpoint</value></data>
+  <data name="ProgressSectionHeading" xml:space="preserve"><value>ХОД ПРОВЕРКИ</value></data>
+  <data name="VmWorkerDisconnectedDefaultSource" xml:space="preserve"><value>Worker отключён.</value></data>
+  <data name="VmAutomaticScanSummarySource" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmRepeatabilitySummarySource" xml:space="preserve"><value>План: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmScanEngineV1Description" xml:space="preserve"><value>Базовая проверка: проверяет один endpoint Capture или Render либо совместимую пару Capture/Render. Подходит для обычной диагностики устройств.</value></data>
+  <data name="VmScanEngineV2Description" xml:space="preserve"><value>Проверка выбранных каналов: проверяет точный маршрут Capture → Render, независимые форматы потоков и логические каналы. Нужны активные endpoint Capture и Render. Смена режима сбрасывает прежнее согласие и не запускает аудио.</value></data>
+  <data name="VmV2CheckStopped" xml:space="preserve"><value>Проверка остановлена</value></data>
+  <data name="VmV2StageShortDuplex" xml:space="preserve"><value>Короткий Duplex</value></data>
+  <data name="VmV2UnknownOperatorSummary" xml:space="preserve"><value>Этап: {0}. Результат: UNKNOWN. Код ошибки Worker: {1}. Результат операции или очистки не подтверждён. Состояние Worker: {3}. Автоматический повтор не выполнялся. {4}</value></data>
+  <data name="VmV2WorkerErrorCodeUnavailable" xml:space="preserve"><value>недоступен</value></data>
+  <data name="VmV2WorkerStateUnknown" xml:space="preserve"><value>неизвестно</value></data>
+  <data name="VmV2OperationCleanupUnconfirmed" xml:space="preserve"><value>Результат операции или очистки не подтверждён</value></data>
+  <data name="VmV2OpenReportForDetails" xml:space="preserve"><value>Откройте сохранённый отчёт для подробностей.</value></data>
+  <data name="VmV2ProgressDiscoveryVerified" xml:space="preserve"><value>Активные endpoint и актуальное обнаружение проверены.</value></data>
+  <data name="VmV2ProgressFormatQuery" xml:space="preserve"><value>Пассивный запрос форматов завершён.</value></data>
+  <data name="VmV2ProgressRouteConfirmed" xml:space="preserve"><value>Выбранный маршрут и период подтверждены.</value></data>
+  <data name="VmV2ProgressInitializeClean" xml:space="preserve"><value>Оба потока открыты и очищены.</value></data>
+  <data name="VmV2ProgressShortClean" xml:space="preserve"><value>Короткий Duplex завершён без ошибок.</value></data>
+  <data name="VmV2ProgressShortUnknown" xml:space="preserve"><value>Короткий Duplex не прошёл квалификацию; дальнейшие аудиооперации остановлены.</value></data>
+  <data name="VmV2ProgressRepeatabilityClean" xml:space="preserve"><value>Шесть последовательных операций Duplex завершены без ошибок.</value></data>
+  <data name="VmV2ProgressRepeatabilityFailed" xml:space="preserve"><value>Повторяемость не подтверждена; Sustained не запускался.</value></data>
+  <data name="VmV2ProgressSustainedClean" xml:space="preserve"><value>Проверки 60/300/600 секунд завершены последовательно без ошибок.</value></data>
+  <data name="VmV2ProgressSustainedStopped" xml:space="preserve"><value>Sustained-проверки остановлены: данные не подтвердили стабильность.</value></data>
+  <data name="VmV2ProgressFinalSelection" xml:space="preserve"><value>Выбран квалифицированный маршрут; это не подтверждает физическую RTL или AudioHost.</value></data>
+  <data name="VmV2ProgressEvidenceSaved" xml:space="preserve"><value>Данные сохранены и проверены чтением.</value></data>
+  <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>Выбранный маршрут и период не подтверждены; аудиопроверка не запускалась.</value></data>
+  <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Не удалось сохранить результаты.</value></data>
+  <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize не пройден; последующие аудиооперации остановлены.</value></data>
 </root>

@@ -1252,4 +1252,90 @@ Fallback: {1}
   <data name="VmPeriodDiscoveryResultSummary" xml:space="preserve"><value>Lifecycle: {0}\n{1}\nPersistence: {2}\nReport: {3}</value></data>
   <data name="VmCustomPeriodDuplexResultSummary" xml:space="preserve"><value>Lifecycle: {0}\nPersistence: {1}\nReport: {2}{3}</value></data>
   <data name="VmErrorDetail" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="UiExportJsonFilter" xml:space="preserve"><value>JSON report (*.json)|*.json</value></data>
+  <data name="VmPeriodDefault" xml:space="preserve"><value>DEFAULT</value></data>
+  <data name="VmPeriodMinimum" xml:space="preserve"><value>MINIMUM</value></data>
+  <data name="VmRouteMonoMono" xml:space="preserve"><value>Mono to mono</value></data>
+  <data name="VmRouteMonoStereo" xml:space="preserve"><value>Mono to stereo</value></data>
+  <data name="VmRouteStereoStereo" xml:space="preserve"><value>Stereo to stereo</value></data>
+  <data name="VmScanEngineAdaptiveV2" xml:space="preserve"><value>Adaptive scan (V2)</value></data>
+  <data name="VmScanEngineCompatibleV1" xml:space="preserve"><value>Compatible scan (V1)</value></data>
+  <data name="VmV2CapabilityUnavailable" xml:space="preserve"><value>V2 Worker capability is unavailable.</value></data>
+  <data name="VmV2EvidencePath" xml:space="preserve"><value>Saved V2 evidence: {0}</value></data>
+  <data name="VmV2NotSelected" xml:space="preserve"><value>Select endpoints and a valid route.</value></data>
+  <data name="VmV2OperationProgress" xml:space="preserve"><value>{0} · {1}s</value></data>
+  <data name="VmV2PhysicalMappingUnknown" xml:space="preserve"><value>Logical channel numbers do not identify physical jacks. Physical mapping is UNKNOWN.</value></data>
+  <data name="VmV2ReadyToQuery" xml:space="preserve"><value>Route is valid; device format support will be queried during scanning.</value></data>
+  <data name="VmV2ResultConfiguration" xml:space="preserve"><value>{0} · {1}: Capture {2} Hz {3} channels {4}; Render {5} Hz {6} channels {7}. Buffer frames Capture/Render: {8}/{9}. Lifecycle: {10}. RTL=NOT_MEASURED; AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmV2ResultSummary" xml:space="preserve"><value>{0} · {1} · {2} · {3} operations completed. {4}</value></data>
+  <data name="VmV2RouteInvalid" xml:space="preserve"><value>Invalid route: selected channels must be within stream bounds and unique.</value></data>
+  <data name="VmV2RouteSummary" xml:space="preserve"><value>{0} · Capture {1} → Render {2}</value></data>
+  <data name="VmV2ScanConsentSummary" xml:space="preserve"><value>Capture {0} ({1}) → Render {2} ({3}); mode {4}; Capture channels {5}/{6}, {7} Hz {8}; Render channels {9}/{10}, {11} Hz {12}; period {13}; route {14}. Maximum 12 operations, 1030 seconds audio, 1800 seconds total.</value></data>
+  <data name="VmV2SelectPair" xml:space="preserve"><value>Select a Capture and Render endpoint.</value></data>
+  <data name="VmV2StreamChannelCountOption" xml:space="preserve"><value>{0} channels</value></data>
+  <data name="VmV2StreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="VmPhysicalGroupRenderAvailable" xml:space="preserve"><value>Render endpoint available</value></data>
+  <data name="RenderFormatLabel" xml:space="preserve"><value>Render format</value></data>
+  <data name="VmNoActiveAudioDevices" xml:space="preserve"><value>No active audio devices were found. Refresh device discovery or connect/enable an audio device.</value></data>
+  <data name="CaptureFormatLabel" xml:space="preserve"><value>Capture format</value></data>
+  <data name="V2RouteSelection" xml:space="preserve"><value>V2 route selection</value></data>
+  <data name="V2RouteSummaryLabel" xml:space="preserve"><value>Selected route</value></data>
+  <data name="VmPhysicalDeviceNameUnavailable" xml:space="preserve"><value>Device name unavailable</value></data>
+  <data name="VmPhysicalGroupChooseCapture" xml:space="preserve"><value>Choose an input endpoint</value></data>
+  <data name="ReportsSectionHeading" xml:space="preserve"><value>REPORTS</value></data>
+  <data name="CaptureChannelsLabel" xml:space="preserve"><value>Capture channels</value></data>
+  <data name="ProfilesSectionHeading" xml:space="preserve"><value>PROFILES</value></data>
+  <data name="VmPhysicalGroupCaptureAvailable" xml:space="preserve"><value>Capture endpoint available</value></data>
+  <data name="RenderChannelOneBased" xml:space="preserve"><value>Render channel (1-based)</value></data>
+  <data name="VmPhysicalGroupInput" xml:space="preserve"><value>Input</value></data>
+  <data name="VmPhysicalGroupEndpointNote" xml:space="preserve"><value>ACTIVE is the Windows endpoint state, not proof of physical presence. A physical device group may contain multiple audio endpoints; it does not identify a jack or channel.</value></data>
+  <data name="V2RouteModeLabel" xml:space="preserve"><value>Route mode</value></data>
+  <data name="V2PeriodLabel" xml:space="preserve"><value>Buffer period</value></data>
+  <data name="VmPhysicalGroupContainerSource" xml:space="preserve"><value>Grouping evidence: Windows Container ID</value></data>
+  <data name="VmPhysicalGroupConfirmedPair" xml:space="preserve"><value>Confirmed endpoint pair</value></data>
+  <data name="VmPhysicalGroupInputOutput" xml:space="preserve"><value>Input + output</value></data>
+  <data name="VmPhysicalGroupChooseRender" xml:space="preserve"><value>Choose an output endpoint</value></data>
+  <data name="VmEndpointNameUnavailable" xml:space="preserve"><value>Name unavailable</value></data>
+  <data name="RenderStreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="VmPhysicalGroupChoosePair" xml:space="preserve"><value>Choose the endpoints explicitly</value></data>
+  <data name="CaptureStreamGeometry" xml:space="preserve"><value>Capture stream: {0} channels; Render stream: {1} channels</value></data>
+  <data name="CaptureChannelOneBased" xml:space="preserve"><value>Capture channel (1-based)</value></data>
+  <data name="VmPhysicalGroupDuplicateName" xml:space="preserve"><value>{0} · option {1}</value></data>
+  <data name="RenderChannelTwoOneBased" xml:space="preserve"><value>Second Render channel (1-based)</value></data>
+  <data name="VmPhysicalGroupOutput" xml:space="preserve"><value>Output</value></data>
+  <data name="CaptureChannelTwoOneBased" xml:space="preserve"><value>Second Capture channel (1-based)</value></data>
+  <data name="RenderChannelsLabel" xml:space="preserve"><value>Render channels</value></data>
+  <data name="ScannerSectionHeading" xml:space="preserve"><value>SCAN</value></data>
+  <data name="ScanEngineLabel" xml:space="preserve"><value>Scan engine</value></data>
+  <data name="VmPhysicalGroupIdentityUnknown" xml:space="preserve"><value>Grouping evidence does not confirm physical identity</value></data>
+  <data name="VmPhysicalGroupUnconfirmed" xml:space="preserve"><value>Physical identity is unconfirmed</value></data>
+  <data name="VmPhysicalGroupChooseEndpoint" xml:space="preserve"><value>Choose an audio endpoint</value></data>
+  <data name="ProgressSectionHeading" xml:space="preserve"><value>PROGRESS</value></data>
+  <data name="VmWorkerDisconnectedDefaultSource" xml:space="preserve"><value>Worker is disconnected.</value></data>
+  <data name="VmAutomaticScanSummarySource" xml:space="preserve"><value>{0} · завершено {1} · пропущено {2} · ошибки {3}. Physical RTL=NOT_MEASURED · AudioHost=NOT_CERTIFIED.</value></data>
+  <data name="VmRepeatabilitySummarySource" xml:space="preserve"><value>План: {0}; attempted: {1}; completed: {2}; failed: {3}; unknown: {4}; skipped: {5}. {6}</value></data>
+  <data name="VmScanEngineV1Description" xml:space="preserve"><value>Basic check: tests one Capture or Render endpoint, or a compatible Capture/Render pair. Suitable for ordinary device diagnostics.</value></data>
+  <data name="VmScanEngineV2Description" xml:space="preserve"><value>Selected-channel check: tests this exact Capture → Render route, with independent stream formats and logical channel selection. Requires one active Capture and one active Render endpoint. Changing mode only resets prior consent; it does not start audio.</value></data>
+  <data name="VmV2CheckStopped" xml:space="preserve"><value>Check stopped</value></data>
+  <data name="VmV2StageShortDuplex" xml:space="preserve"><value>Short Duplex</value></data>
+  <data name="VmV2UnknownOperatorSummary" xml:space="preserve"><value>Stage: {0}. Result: UNKNOWN. Worker error code: {1}. The operation or cleanup was not confirmed. Worker state: {3}. No automatic retry was made. {4}</value></data>
+  <data name="VmV2WorkerErrorCodeUnavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="VmV2WorkerStateUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VmV2OperationCleanupUnconfirmed" xml:space="preserve"><value>Operation or cleanup could not be confirmed</value></data>
+  <data name="VmV2OpenReportForDetails" xml:space="preserve"><value>Open the saved report for details.</value></data>
+  <data name="VmV2ProgressDiscoveryVerified" xml:space="preserve"><value>Active endpoints and current discovery verified.</value></data>
+  <data name="VmV2ProgressFormatQuery" xml:space="preserve"><value>Passive format query completed.</value></data>
+  <data name="VmV2ProgressRouteConfirmed" xml:space="preserve"><value>Selected route and period confirmed.</value></data>
+  <data name="VmV2ProgressInitializeClean" xml:space="preserve"><value>Both streams initialized and cleaned up.</value></data>
+  <data name="VmV2ProgressShortClean" xml:space="preserve"><value>Short Duplex completed cleanly.</value></data>
+  <data name="VmV2ProgressShortUnknown" xml:space="preserve"><value>Short Duplex did not qualify; later audio operations stopped.</value></data>
+  <data name="VmV2ProgressRepeatabilityClean" xml:space="preserve"><value>Six sequential Duplex operations completed cleanly.</value></data>
+  <data name="VmV2ProgressRepeatabilityFailed" xml:space="preserve"><value>Repeatability failed; Sustained was not started.</value></data>
+  <data name="VmV2ProgressSustainedClean" xml:space="preserve"><value>60/300/600-second checks completed cleanly in order.</value></data>
+  <data name="VmV2ProgressSustainedStopped" xml:space="preserve"><value>Sustained checks stopped because evidence was not clean.</value></data>
+  <data name="VmV2ProgressFinalSelection" xml:space="preserve"><value>Selected the fully qualified route; this does not certify physical RTL or AudioHost.</value></data>
+  <data name="VmV2ProgressEvidenceSaved" xml:space="preserve"><value>Evidence saved and read back.</value></data>
+  <data name="VmV2ProgressFormatNotConfirmed" xml:space="preserve"><value>The selected route and period were not confirmed; audio was not started.</value></data>
+  <data name="VmV2ProgressEvidenceSaveFailed" xml:space="preserve"><value>Evidence could not be saved.</value></data>
+  <data name="VmV2ProgressInitializeFailed" xml:space="preserve"><value>Initialize failed; later audio operations were stopped.</value></data>
 </root>
