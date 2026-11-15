@@ -9,6 +9,10 @@ public sealed class WorkerAutomaticScanWorkflow(NativeWorkerClient worker) : IAu
     private int _running;
     private int _mayBeActive;
 
+    public Task<V2AutomaticScanResult> RunV2Async(string captureEndpointId, string renderEndpointId, WorkerScanV2Route route,
+        bool operatorAccepted, Guid confirmationId, string? evidenceRoot = null, CancellationToken cancellationToken = default) =>
+        new WorkerV2AutomaticScanWorkflow(worker).RunAsync(captureEndpointId, renderEndpointId, route, operatorAccepted, confirmationId, evidenceRoot, cancellationToken);
+
     public async Task<WindowsEndpointDiscoveryDto> RefreshEndpointsAsync(CancellationToken cancellationToken)
     {
         if (worker.State.State == WorkerConnectionState.Disconnected)

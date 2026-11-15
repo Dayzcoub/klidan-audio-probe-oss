@@ -683,9 +683,14 @@ try
     var v2Render=v2Discovery.Endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
     var routeFingerprint=RouteFingerprint(v2Capture,v2Render,"MONO_TO_STEREO",48000,2,"PCM16",0,48000,2,"PCM16",3,0,0,1);
     var route=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
-    var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1800,600,10,1030);
+    var plan=new WorkerScanPlanV2(route,["MINIMUM"],["OFF"],1800,600,12,1030);
     var confirmationId=Guid.NewGuid();var session=await v2SessionClient.RegisterScanSessionV2Async(v2Capture,v2Render,plan,true,confirmationId);
     Check(session.ContractVersion==2&&session.RouteFingerprint==routeFingerprint,"typed V2 session registration binds route and worker discovery generation");
+    var v2CaptureInit=await v2SessionClient.ValidateFormatMatrixInScanAsync(session,Guid.NewGuid(),v2Capture,"CAPTURE",route.Capture.SampleRateHz,route.Capture.Channels,route.Capture.Encoding,"MINIMUM");
+    var v2RenderInit=await v2SessionClient.ValidateFormatMatrixInScanAsync(session,Guid.NewGuid(),v2Render,"RENDER",route.Render.SampleRateHz,route.Render.Channels,route.Render.Encoding,"MINIMUM");
+    Check(v2CaptureInit.Candidates.Single().InitializeAttempted&&v2RenderInit.Candidates.Single().InitializeAttempted,"V2 route-bound Initialize runs for both stream formats inside the same V2 session");
+    var v2InitMutation=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateFormatMatrixInScanAsync(session,Guid.NewGuid(),v2Capture,"CAPTURE",44100,2,"FLOAT32","MINIMUM"),"V2 Initialize cannot change the authorized route format");
+    Check(v2InitMutation.ErrorCode=="SCAN_FORMAT_OUT_OF_SCOPE","V2 session rejects Initialize outside its immutable route format scope");
     Task<DuplexValidationDto> V2Operation(int seconds,bool sustained=false)=>V2OperationWithId(Guid.NewGuid(),seconds,sustained);
     Task<DuplexValidationDto> V2OperationWithId(Guid id,int seconds,bool sustained=false)=>v2SessionClient.ValidateDuplexV2InScanAsync(id.ToString("D"),session,id,route,v2Capture,v2Render,"MINIMUM",seconds,"OFF",sustained);
     var unqualified=await ThrowsAsync<WorkerCommandException>(()=>V2Operation(60,true),"V2 sustained is blocked until short and six-run qualification complete");
@@ -721,6 +726,59 @@ try
     var unsafeFollowupId=Guid.NewGuid();var unsafeFollowup=await ThrowsAsync<WorkerCommandException>(()=>v2SessionClient.ValidateDuplexV2InScanAsync(unsafeFollowupId.ToString("D"),unsafeSession,unsafeFollowupId,route,v2Capture,v2Render,"MINIMUM",1,"OFF"),"V2 unknown cleanup blocks subsequent operations");Check(unsafeFollowup.ErrorCode=="SCAN_SESSION_STALE","V2 unsafe cleanup invalidates the session");await v2SessionClient.CloseScanSessionAsync(unsafeSession);
 }
 finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);await v2SessionClient.DisposeAsync();}
+var automaticV2Client=new NativeWorkerClient(formatFixtureWorker);
+try
+{
+    await automaticV2Client.ConnectAsync();
+    var automaticDiscovery=await automaticV2Client.ListWindowsEndpointsAsync();
+    var automaticCapture=automaticDiscovery.Endpoints.Single(e=>e.Direction=="CAPTURE");
+    var automaticRender=automaticDiscovery.Endpoints.Single(e=>e.Direction=="RENDER");
+    var automaticRoute=new WorkerScanV2Route("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1]));
+    var automaticRoot=Path.Combine(buildRoot,"as-n3b-v2-evidence");Directory.CreateDirectory(automaticRoot);
+    var automaticResult=await new WorkerAutomaticScanWorkflow(automaticV2Client).RunV2Async(automaticCapture.EndpointId!,automaticRender.EndpointId!,automaticRoute,true,Guid.NewGuid(),automaticRoot);
+    Check(automaticResult.Lifecycle=="COMPLETED"&&automaticResult.Stages.Single(s=>s.Stage==AutomaticScanStage.REPEATABILITY).State==AutomaticScanStageState.COMPLETED,"V2 Automatic Scan runs a caller-selected route through six-run repeatability");
+    Check(automaticResult.Operations.Count(o=>o.Stage=="REPEATABILITY")==6&&automaticResult.Operations.Where(o=>o.Stage=="SUSTAINED_VALIDATION").Select(o=>o.DurationSeconds).SequenceEqual(new int?[]{60,300,600}),"V2 orchestration gates 60/300/600 on clean short and repeatability evidence");
+    using var savedV2=JsonDocument.Parse(File.ReadAllBytes(automaticResult.EvidencePath!));
+    Check(savedV2.RootElement.GetProperty("result").GetProperty("routeFingerprint").GetString()==automaticResult.RouteFingerprint&&savedV2.RootElement.GetProperty("physicalRtl").GetString()=="NOT_MEASURED"&&savedV2.RootElement.GetProperty("audioHost").GetString()=="NOT_CERTIFIED","V2 scan evidence persists and rereads the exact route without claiming RTL or AudioHost certification");
+}
+finally{await automaticV2Client.DisposeAsync();}
+Check(WorkerV2AutomaticScanWorkflow.QueryChannelCounts(10).SequenceEqual(new[]{1,2,8,16,32,10})&&WorkerV2AutomaticScanWorkflow.QueryChannelCounts(64).SequenceEqual(new[]{1,2,8,16,32}),"adaptive query uses a bounded common-channel shortlist and includes only representable endpoint-reported geometry");
+async Task<V2AutomaticScanResult> RunV2Fixture(WorkerScanV2Route selectedRoute,string label,Func<string,int,string?>? scenario=null,CancellationToken token=default,Action<NativeWorkerClient>? configure=null)
+{
+    var client=new NativeWorkerClient(formatFixtureWorker);
+    try
+    {
+        await client.ConnectAsync();var endpoints=(await client.ListWindowsEndpointsAsync()).Endpoints;
+        var cap=endpoints.Single(e=>e.Direction=="CAPTURE").EndpointId!;var ren=endpoints.Single(e=>e.Direction=="RENDER").EndpointId!;
+        configure?.Invoke(client);
+        return await new WorkerV2AutomaticScanWorkflow(client).RunAsync(cap,ren,selectedRoute,true,Guid.NewGuid(),Path.Combine(buildRoot,"as-n3b-v2-evidence",label),token,scenario);
+    }
+    finally{await client.DisposeAsync();}
+}
+var monoToMono=await RunV2Fixture(new("MONO_TO_MONO",new(48000,2,"PCM16",3,[1]),new(48000,2,"PCM16",3,[0])),"mono-mono");
+var stereoToStereo=await RunV2Fixture(new("STEREO_TO_STEREO",new(48000,2,"PCM16",3,[0,1]),new(48000,2,"PCM16",3,[0,1])),"stereo-stereo");
+var independentFormats=await RunV2Fixture(new("STEREO_TO_STEREO",new(44100,2,"PCM24_IN_32",3,[0,1]),new(48000,2,"FLOAT32",3,[0,1])),"independent-formats");
+Check(new[]{monoToMono,stereoToStereo,independentFormats}.All(r=>r.Lifecycle=="COMPLETED"&&r.Operations.Count(o=>o.Stage=="REPEATABILITY")==6),"Mono-to-Mono, Stereo-to-Stereo and independent Capture/Render format routes complete through bounded qualification");
+var capture8Render2=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,8,"PCM16",0,[7]),new(48000,2,"PCM16",3,[0,1])),"capture8-render2");
+V2AutomaticScanResult capture8Render2Clean;
+Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO","ALLOW_8CH_INITIALIZE_CLEAN");
+try{capture8Render2Clean=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,8,"PCM16",0,[7]),new(48000,2,"PCM16",3,[0,1])),"capture8-render2-clean");}
+finally{Environment.SetEnvironmentVariable("KLIDAN_TEST_SCAN_SCENARIO",null);}
+var capture32Render32=await RunV2Fixture(new("STEREO_TO_STEREO",new(48000,32,"PCM16",0,[30,31]),new(48000,32,"PCM16",0,[30,31])),"capture32-render32");
+Check(capture8Render2.Lifecycle=="UNKNOWN"&&capture8Render2.Operations.All(o=>o.Stage=="INITIALIZE")&&capture8Render2Clean.Lifecycle=="COMPLETED"&&capture8Render2Clean.Operations.Count(o=>o.Stage=="REPEATABILITY")==6&&capture32Render32.Lifecycle=="COMPLETED"&&capture32Render32.Route.Capture.SelectedIndicesZeroBased.SequenceEqual(new[]{30,31}),"8ch/2ch cleanup uncertainty blocks audio, explicit-clean 8ch/2ch completes, and the selected 32ch pair remains testable");
+var deviceUnsupported=await RunV2Fixture(new("MONO_TO_STEREO",new(44100,1,"PCM24_IN_32",0,[0]),new(48000,2,"PCM16",3,[0,1])),"unsupported-format");
+Check(deviceUnsupported.Operations.Count==0&&deviceUnsupported.Error!.Contains("CAPTURE=UNSUPPORTED_BY_DEVICE",StringComparison.Ordinal)&&File.Exists(deviceUnsupported.EvidencePath),"confirmed device format rejection is distinguished, saved, and does not start Initialize or audio");
+var unqueriedFormat=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,6,"PCM16",0,[5]),new(48000,2,"PCM16",3,[0,1])),"unqueried-format");
+var failedActivation=await RunV2Fixture(new("MONO_TO_STEREO",new(44100,1,"FLOAT32",0,[0]),new(48000,2,"PCM16",3,[0,1])),"unknown-format");
+Check(unqueriedFormat.Operations.Count==0&&unqueriedFormat.Error!.Contains("CAPTURE=NOT_TESTED",StringComparison.Ordinal)&&failedActivation.Operations.Count==0&&failedActivation.Error!.Contains("CAPTURE=UNKNOWN",StringComparison.Ordinal),"unqueried geometry and activation failure remain NOT_TESTED/UNKNOWN instead of device incompatibility");
+var repeatFailed=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1])),"repeat-failed",(stage,index)=>stage=="REPEATABILITY"&&index==2?"SERVICE_FAILURE":null);
+var repeatUnknown=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1])),"repeat-unknown",(stage,index)=>stage=="REPEATABILITY"&&index==2?"CLEANUP_UNKNOWN":null);
+Check(repeatFailed.Stages.Single(s=>s.Stage==AutomaticScanStage.REPEATABILITY).State==AutomaticScanStageState.FAILED&&repeatFailed.Operations.All(o=>o.Stage!="SUSTAINED_VALIDATION")&&repeatUnknown.Lifecycle=="UNKNOWN"&&repeatUnknown.Operations.All(o=>o.Stage!="SUSTAINED_VALIDATION"),"FAILED Repeatability and UNKNOWN cleanup both prevent Sustained and later audio work");
+using(var sustainedCancellation=new CancellationTokenSource())
+{
+    var written=0;var cancelledSustained=await RunV2Fixture(new("MONO_TO_STEREO",new(48000,2,"PCM16",0,[0]),new(48000,2,"PCM16",3,[0,1])),"sustained-cancel",(stage,index)=>stage=="SUSTAINED_VALIDATION"&&index==8?"WAIT_FOR_CANCEL":null,sustainedCancellation.Token,client=>client.RequestWrittenForTest=_=>{if(Interlocked.Increment(ref written)==14)sustainedCancellation.Cancel();});
+    Check(cancelledSustained.Lifecycle=="UNKNOWN"&&cancelledSustained.Operations.Count(o=>o.Stage=="SUSTAINED_VALIDATION")==1&&cancelledSustained.EvidencePath is not null,"cancellation at the first Sustained request preserves UNKNOWN evidence and suppresses 300/600-second follow-ups");
+}
 async Task<WorkerCommandException> RejectNumeric(object rate,object channels,object mask,object indices)=>await ThrowsAsync<WorkerCommandException>(()=>injectedFormatClient.SendForTestAsync("ValidateDuplexV2",new{contractVersion=2,operationId=Guid.NewGuid(),captureEndpointId="injected-endpoint-capture",renderEndpointId="injected-endpoint-render",mode="MONO_TO_MONO",capture=new{sampleRateHz=rate,channels,encoding="PCM16",channelMask=mask,selectedIndicesZeroBased=indices},render=new{sampleRateHz=48000,channels=2,encoding="PCM16",channelMask=3u,selectedIndicesZeroBased=new[]{0}},period="MINIMUM",durationSeconds=1,mmcss="OFF",consentReceipt=new{accepted=true,confirmationId=Guid.NewGuid(),requestFingerprint=new string('0',64)}}),"invalid V2 numeric value is rejected before type narrowing");
 Check((await RejectNumeric(-1,2,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 sample rate rejected");
 Check((await RejectNumeric(48000,-1,0u,new[]{0})).ErrorCode=="ROUTE_INVALID","negative V2 channel count rejected");
