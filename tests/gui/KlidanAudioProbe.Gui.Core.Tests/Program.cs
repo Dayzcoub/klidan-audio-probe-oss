@@ -3438,10 +3438,13 @@ try
     Check(DeviceConfigurationProfileStorage.DiscoverLocal(savedProfilesRoot).Count == 0, "S5-B2 empty local profile directory remains empty");
     File.WriteAllBytes(Path.Combine(savedProfilesRoot, "profile-v4.json"), DeviceConfigurationProfileJson.SerializeLocal(sustainedProfile));
     File.WriteAllBytes(Path.Combine(savedProfilesRoot, "profile-v3.json"), DeviceConfigurationProfileJson.SerializeLocal(duplexProfile));
+    File.WriteAllBytes(Path.Combine(savedProfilesRoot, "profile-v5-short.json"), DeviceConfigurationProfileJson.SerializeLocal(stableShortProfile));
     File.WriteAllBytes(Path.Combine(savedProfilesRoot, "profile-sanitized.json"), DeviceConfigurationProfileJson.SerializeSanitized(sustainedProfile));
     File.WriteAllText(Path.Combine(savedProfilesRoot, "profile-invalid.json"), "{\"schemaVersion\":4}");
     var savedEntries = DeviceConfigurationProfileStorage.DiscoverLocal(savedProfilesRoot);
-    Check(savedEntries.Count == 4 && savedEntries.Count(e => e.IsAvailable) == 3 && savedEntries.Any(e => !e.IsAvailable && e.Reason.Contains("повреждён", StringComparison.OrdinalIgnoreCase)) && savedEntries.Any(e => e.Profile?.SchemaVersion == 3) && savedEntries.Any(e => e.IsSustained), "S5-B2 discovers valid v4, legacy v3, sanitized and invalid profiles without trusting malformed data");
+    Check(savedEntries.Count == 5 && savedEntries.Count(e => e.IsAvailable) == 4 && savedEntries.Any(e => !e.IsAvailable && e.Reason.Contains("повреждён", StringComparison.OrdinalIgnoreCase)) && savedEntries.Any(e => e.Profile?.SchemaVersion == 3) && savedEntries.Any(e => e.IsSustained), "S5-B2 discovers valid v4, v3, v5 short-only, sanitized and invalid profiles without trusting malformed data");
+    var shortOnlyEntry = savedEntries.Single(e => e.Profile?.SchemaVersion == 5);
+    Check(shortOnlyEntry.OperatorResult.Contains("5 ms", StringComparison.Ordinal) && shortOnlyEntry.OperatorResult.Contains("TEST_ONLY", StringComparison.Ordinal) && !shortOnlyEntry.OperatorResult.Contains("CUSTOM:", StringComparison.Ordinal), "existing v5 short-only profile retains its SHORT_RUN/test-only label while displaying milliseconds");
     var initialWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true, WindowsDiscovery = bindingDiscovery };
     var initialVm = new MainViewModel(worker: initialWorker, profileDirectory: savedProfilesRoot);
     var initialWindow = new MainWindow(initialVm, savedProfilesRoot);
@@ -3499,13 +3502,13 @@ try
     bindingWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for saved profile binding."));
     var bindingVm = new MainViewModel(worker: bindingWorker, automaticScanWorkflow: new GuiAutomaticScanWorkflow(bindingDiscovery), profileDirectory: savedProfilesRoot);
     bindingVm.AutomaticScanEngine = "V1_COMPATIBLE";
-    Check(bindingVm.SavedDeviceProfiles.Count == 4 && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 starts with one operator connection action and no JSON selection requirement");
+    Check(bindingVm.SavedDeviceProfiles.Count == 5 && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 starts with one operator connection action and no JSON selection requirement");
     bindingVm.SelectedSavedDeviceProfile = bindingVm.SavedDeviceProfiles.Single(e => e.Profile?.SchemaVersion == 4 && e.IsSustained && e.Profile.Privacy == "LOCAL_MACHINE");
     Check(bindingVm.SavedProfileHistoricalSummary.Contains("Primary:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("Fallback:", StringComparison.Ordinal) && bindingVm.SavedProfileHistoricalSummary.Contains("NOT_CERTIFIED", StringComparison.Ordinal) && bindingVm.CheckSavedProfileBindingCommand.CanExecute(null), "S5-B2 displays v4 historical Primary/Fallback and enables only the read-only binding check");
     var savedProfileWindow = new MainWindow(bindingVm, savedProfilesRoot);
     ((System.Windows.Controls.Expander)savedProfileWindow.FindName("SavedProfileDiagnosticsExpander")).IsExpanded = true;
     savedProfileWindow.UpdateLayout();
-    Check(savedProfileWindow.FindName("SavedDeviceProfileSelector") is System.Windows.Controls.ComboBox && bindingVm.SavedDeviceProfiles.Count == 4 && savedProfileWindow.FindName("CheckSavedProfileBindingButton") is System.Windows.Controls.Button checkButton && checkButton.IsEnabled && savedProfileWindow.FindName("RefreshSavedProfilesButton") is System.Windows.Controls.Button refreshButton && refreshButton.IsEnabled, "S5-B2 actual WPF controls expose profile binding and command CanExecute state");
+    Check(savedProfileWindow.FindName("SavedDeviceProfileSelector") is System.Windows.Controls.ComboBox && bindingVm.SavedDeviceProfiles.Count == 5 && savedProfileWindow.FindName("CheckSavedProfileBindingButton") is System.Windows.Controls.Button checkButton && checkButton.IsEnabled && savedProfileWindow.FindName("RefreshSavedProfilesButton") is System.Windows.Controls.Button refreshButton && refreshButton.IsEnabled, "S5-B2 actual WPF controls expose profile binding and command CanExecute state");
     savedProfileWindow.Close();
     bindingVm.CheckSavedProfileBindingCommand.Execute(null);
     Check(SpinWait.SpinUntil(() => !bindingVm.SavedProfileBindingChecking && bindingVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) && bindingVm.SavedProfileBindingStatus == KlidanAudioProbe.Gui.Core.Localization.Get("VmBindingExactFound") && bindingWorker.WindowsDiscoveryCalls == 0, "S5-B2 checks a fresh workflow discovery without invoking audio operations");
@@ -4164,6 +4167,72 @@ if (Environment.GetEnvironmentVariable("KLIDAN_HISTORICAL_IMPORT_QA") == "1")
         Throws<InvalidDataException>(() => HistoricalAudioHostProfileImporter.ImportToLocalProfile(Request(scannerRoot: badScannerRoot)), "historical import rejects altered original scanner manifest SHA");
     }
     finally { Directory.Delete(badScannerRoot, true); }
+}
+if (Environment.GetEnvironmentVariable("KLIDAN_PROFILE_V5_ACCEPTANCE_PATH") is { Length: > 0 } acceptancePath)
+{
+    const string expectedProfileSha = "66243b6db32bbd8fe6e3a832f776268c1ec8a74db6e49926d9b5cfce7a22b1c2";
+    Check(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(acceptancePath))) == expectedProfileSha, "operator Profile v5 SHA matches the accepted evidence");
+    var acceptanceProfile = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(acceptancePath));
+    var acceptanceDirectory = Path.Combine(Path.GetTempPath(), $"profile-v5-acceptance-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(acceptanceDirectory);
+    var acceptanceCopyPath = Path.Combine(acceptanceDirectory, Path.GetFileName(acceptancePath));
+    File.Copy(acceptancePath, acceptanceCopyPath);
+    var acceptedEntry = DeviceConfigurationProfileStorage.DiscoverLocal(acceptanceDirectory).Single(entry => Path.GetFullPath(entry.Path).Equals(Path.GetFullPath(acceptanceCopyPath), StringComparison.OrdinalIgnoreCase));
+    Check(acceptedEntry.IsAvailable && acceptedEntry.Profile?.ProfileId == acceptanceProfile.ProfileId && acceptedEntry.Profile.HistoricalAudioHostBinding is not null,
+        "DiscoverLocal parses and indexes the hash-pinned historical DEVICE Profile v5");
+    var profileCaptureId = acceptanceProfile.EndpointBindings.Capture!.EndpointId!;
+    var profileRenderId = acceptanceProfile.EndpointBindings.Render!.EndpointId!;
+    WindowsEndpointDto AcceptedEndpoint(string id, string direction, string state = "ACTIVE", string? friendlyName = null) => windowsFixture.Endpoints[0] with { EndpointId = id, Direction = direction, DeviceState = state, FriendlyName = friendlyName ?? windowsFixture.Endpoints[0].FriendlyName };
+    WindowsEndpointDiscoveryDto AcceptedDiscovery(params WindowsEndpointDto[] endpoints) => new("REAL_WINDOWS_METADATA", "COMPLETE", 0, 0, [], endpoints);
+    var acceptanceDiscovery = AcceptedDiscovery(AcceptedEndpoint(profileCaptureId, "CAPTURE"), AcceptedEndpoint(profileRenderId, "RENDER"));
+    var acceptanceWorker = new GuiStateWorkerClient([]) { AdvertiseWindowsDiscovery = true, WindowsDiscovery = acceptanceDiscovery };
+    acceptanceWorker.SetState(new(WorkerConnectionState.ConnectedFake, "Connected for historical Profile v5 acceptance."));
+    var acceptanceVm = new MainViewModel(worker: acceptanceWorker, profileDirectory: acceptanceDirectory);
+    acceptanceVm.SelectedSavedDeviceProfile = acceptedEntry;
+    var expectedHistoricalSummary = string.Format(Localization.CurrentCulture, Localization.Get("VmV5HistoricalSavedProfileSummary"), "10", 480, 480, "PCM16", 48_000, 5, 5);
+    var expectedOperatorResult = string.Format(Localization.CurrentCulture, Localization.Get("VmV5HistoricalDeviceOperatorResult"), "10", 480, 480, 5, 5);
+    Check(acceptanceVm.SavedProfileHistoricalSummary == expectedHistoricalSummary && acceptedEntry.OperatorResult == expectedOperatorResult,
+        "historical DEVICE v5 UI presents qualified 10 ms C480/R480 PCM16 point, R5, AudioHost and bounded minimum scope");
+    acceptanceVm.RefreshSavedProfilesCommand.Execute(null);
+    Check(acceptanceVm.SavedDeviceProfiles.Any(entry => Path.GetFullPath(entry.Path).Equals(Path.GetFullPath(acceptanceCopyPath), StringComparison.OrdinalIgnoreCase)) &&
+        acceptanceVm.SelectedSavedDeviceProfile?.Profile?.ProfileId == acceptanceProfile.ProfileId, "RefreshSavedProfiles reloads the same selected Profile v5 without changing its data");
+    var acceptedExact = DeviceProfileBindingRevalidation.Evaluate(acceptanceProfile, AcceptedDiscovery(AcceptedEndpoint(profileCaptureId, "CAPTURE"), AcceptedEndpoint(profileRenderId, "RENDER")), "acceptance-exact", acceptancePath);
+    Check(acceptedExact.Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery && acceptedExact.RequiresFurtherVerification && acceptedExact.Limitations.Any(reason => reason.Contains("SUSTAINED_STABILITY", StringComparison.Ordinal)),
+        "exact Profile v5 endpoint IDs revalidate binding only and still require fresh stability verification");
+    Check(DeviceProfileBindingRevalidation.Evaluate(acceptanceProfile, AcceptedDiscovery(AcceptedEndpoint(profileRenderId, "RENDER")), "acceptance-missing", acceptancePath).Overall == DeviceProfileBindingAssessment.CaptureMissing &&
+        DeviceProfileBindingRevalidation.Evaluate(acceptanceProfile, AcceptedDiscovery(AcceptedEndpoint("changed-capture-id", "CAPTURE", friendlyName: acceptanceProfile.EndpointBindings.Capture.FriendlyName), AcceptedEndpoint(profileRenderId, "RENDER")), "acceptance-changed", acceptancePath).Overall == DeviceProfileBindingAssessment.CaptureMissing &&
+        DeviceProfileBindingRevalidation.Evaluate(acceptanceProfile, AcceptedDiscovery(AcceptedEndpoint(profileCaptureId, "CAPTURE", "DISABLED"), AcceptedEndpoint(profileRenderId, "RENDER")), "acceptance-disabled", acceptancePath).Overall == DeviceProfileBindingAssessment.EndpointDisabledOrUnplugged,
+        "Profile v5 binding revalidation rejects missing, changed-ID and disabled endpoints");
+    var staleState = new DeviceProfileBindingRevalidationState();
+    _ = staleState.Evaluate(acceptanceProfile, AcceptedDiscovery(AcceptedEndpoint(profileCaptureId, "CAPTURE"), AcceptedEndpoint(profileRenderId, "RENDER")), "acceptance-generation", acceptancePath);
+    var staleResult = staleState.Invalidate(DeviceProfileBindingInvalidationReason.DiscoverySnapshotStale);
+    Check(staleResult.Overall == DeviceProfileBindingAssessment.BindingInvalidated && !staleResult.IsCurrent && staleResult.Reasons.Any(reason => reason.Contains("DISCOVERY_SNAPSHOT_STALE", StringComparison.Ordinal)),
+        "Profile v5 binding result is invalidated when its discovery snapshot becomes stale");
+    var acceptanceWindow = new MainWindow(acceptanceVm, acceptanceDirectory) { Width = 1280, Height = 900, ShowActivated = false };
+    try
+    {
+        acceptanceWindow.Show();
+        ((System.Windows.Controls.Expander)acceptanceWindow.FindName("SavedProfileDiagnosticsExpander")).IsExpanded = true;
+        ((System.Windows.Controls.Expander)acceptanceWindow.FindName("SavedProfileDiagnosticsExpander")).BringIntoView();
+        acceptanceWindow.UpdateLayout();
+        Check(((System.Windows.Controls.Button)acceptanceWindow.FindName("CheckSavedProfileBindingButton")).ActualWidth > 0 && ((System.Windows.Controls.Button)acceptanceWindow.FindName("CheckSavedProfileBindingButton")).ActualHeight > 0,
+            "historical profile binding controls measure within the rendered WPF view");
+        CaptureUiScreenshot(acceptanceWindow, "B5B.21L-historical-profile-v5.png");
+        ((System.Windows.Controls.Button)acceptanceWindow.FindName("RefreshSavedProfilesButton")).Command.Execute(null);
+        acceptanceVm.CheckSavedProfileBindingCommand.Execute(null);
+        Check(PumpUntil(() => !acceptanceVm.SavedProfileBindingChecking && acceptanceVm.HasSavedProfileBindingAssessment, TimeSpan.FromSeconds(3)) &&
+            acceptanceVm.SavedProfileOperatorStatus == Localization.Get("VmBindingExactFound") && acceptanceVm.SavedProfileOperatorLimitation == Localization.Get("VmV5HistoricalBindingLimitation") &&
+            acceptanceVm.SavedProfileOperatorHistory == expectedHistoricalSummary && !acceptanceVm.SavedProfileOperatorHistory.Contains("SHORT_RUN", StringComparison.Ordinal) &&
+            acceptanceVm.SavedProfileBindingTechnicalDetails.Contains("100000 × 100 ns", StringComparison.Ordinal) && acceptanceWorker.RealInitializeCalls == 0 && acceptanceWorker.RealStreamCalls == 0 && acceptanceWorker.DuplexCalls == 0,
+            $"WPF refresh and explicit exact-pair check preserve historical LOAD_CLEAN context, exact geometry and perform no audio/apply operation [checking={acceptanceVm.SavedProfileBindingChecking}; assessment={acceptanceVm.HasSavedProfileBindingAssessment}; status={acceptanceVm.SavedProfileOperatorStatus}; limitation={acceptanceVm.SavedProfileOperatorLimitation}; details={acceptanceVm.SavedProfileBindingTechnicalDetails}; initialize={acceptanceWorker.RealInitializeCalls}; stream={acceptanceWorker.RealStreamCalls}; duplex={acceptanceWorker.DuplexCalls}]");
+        acceptanceWindow.UpdateLayout();
+        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
+        CaptureUiScreenshot(acceptanceWindow, "B5B.21L-historical-profile-v5-exact-binding.png");
+    }
+    finally { acceptanceWindow.Close(); }
+    Check(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(acceptancePath))) == expectedProfileSha,
+        "GUI discovery and binding revalidation do not rewrite the operator Profile v5");
+    Directory.Delete(acceptanceDirectory, true);
 }
 Console.WriteLine($"All GUI Core checks passed ({checks}).");
 }

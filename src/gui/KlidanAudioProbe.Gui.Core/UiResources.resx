@@ -1060,6 +1060,13 @@ Fallback: {1}
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
   <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>V4 short-run qualification · {0} · {1} · {2} Hz · {3} channels · repeatability {4}/{5}. Long-term AudioHost stability and physical KLIDAN QA are not established.</value></data>
+  <data name="VmV5HistoricalDeviceOperatorResult" xml:space="preserve"><value>DEVICE Profile v5 · {0} ms · C{1}/R{2} · PCM16 · 48 kHz · R5 {3}/{4} CLEAN · AudioHost LOAD_CLEAN</value></data>
+  <data name="VmV5HistoricalDeviceProfileStatus" xml:space="preserve"><value>DEVICE Profile v5 · AudioHost LOAD_CLEAN</value></data>
+  <data name="VmV5QualifiedSavedProfileSummary" xml:space="preserve"><value>Qualified operating point: {0} ms · Capture/Render {1}/{2} frames · {3}, {4} Hz · R5 {5}/{6} · AudioHost LOAD_CLEAN. Minimum scope is not recorded in this profile.</value></data>
+  <data name="VmV5HistoricalSavedProfileSummary" xml:space="preserve"><value>Qualified point: {0} ms · Capture/Render {1}/{2} frames · {3}, {4} Hz · R5 {5}/{6} CLEAN · AudioHost LOAD_CLEAN. Minimum is proven only in the consented 3–10 ms range; the global device minimum is not proven.</value></data>
+  <data name="VmV5HistoricalBindingExplanation" xml:space="preserve"><value>Exact endpoint IDs matched a fresh discovery. Historical AudioHost LOAD_CLEAN remains evidence from its recorded run; this check does not establish current stream stability or revalidate current Exclusive readiness.</value></data>
+  <data name="VmV5HistoricalBindingLimitation" xml:space="preserve"><value>Exact Capture/Render IDs match current discovery. Historical AudioHost LOAD_CLEAN is not a current stream-stability check; Exclusive readiness must be revalidated for current operation.</value></data>
+  <data name="VmV5HistoricalGeometryDetails" xml:space="preserve"><value>Historical exact buffer geometry</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Only exact endpoint IDs matched in the fresh list. Stability, Exclusive period, driver/firmware, AudioHost, and physical RTL were not revalidated.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>This check does not authorize applying Primary/Fallback or turn historical results into fresh measurements.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>No technical data.</value></data>

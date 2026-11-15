@@ -1060,6 +1060,13 @@ Fallback: {1}
 {1}</value></data>
   <data name="VmSavedProfileEvidenceCaveat" xml:space="preserve"><value>AudioHost: NOT_CERTIFIED · Physical RTL: NOT_MEASURED</value></data>
   <data name="VmV5SavedProfileSummary" xml:space="preserve"><value>Краткосрочная проверка V4 · {0} · {1} · {2} Гц · каналов {3} · повторяемость {4}/{5}. Длительная стабильность AudioHost и физическая проверка KLIDAN не подтверждены.</value></data>
+  <data name="VmV5HistoricalDeviceOperatorResult" xml:space="preserve"><value>DEVICE Profile v5 · {0} мс · C{1}/R{2} · PCM16 · 48 кГц · R5 {3}/{4} CLEAN · AudioHost LOAD_CLEAN</value></data>
+  <data name="VmV5HistoricalDeviceProfileStatus" xml:space="preserve"><value>DEVICE Profile v5 · AudioHost LOAD_CLEAN</value></data>
+  <data name="VmV5QualifiedSavedProfileSummary" xml:space="preserve"><value>Квалифицированная рабочая точка: {0} мс · Capture/Render {1}/{2} кадров · {3}, {4} Гц · R5 {5}/{6} · AudioHost LOAD_CLEAN. Область доказательства минимальности в профиле не указана.</value></data>
+  <data name="VmV5HistoricalSavedProfileSummary" xml:space="preserve"><value>Квалифицированная точка: {0} мс · Capture/Render {1}/{2} кадров · {3}, {4} Гц · R5 {5}/{6} CLEAN · AudioHost LOAD_CLEAN. Минимум доказан только в согласованном диапазоне 3–10 мс; глобальный минимум устройства не доказан.</value></data>
+  <data name="VmV5HistoricalBindingExplanation" xml:space="preserve"><value>Точные endpoint IDs совпали при свежем обнаружении. Historical AudioHost LOAD_CLEAN остаётся доказательством исходного запуска; эта проверка не подтверждает текущую стабильность потока и не повторяет проверку Exclusive readiness.</value></data>
+  <data name="VmV5HistoricalBindingLimitation" xml:space="preserve"><value>Точные Capture/Render IDs совпали с текущим обнаружением. Исторический AudioHost LOAD_CLEAN не подтверждает текущую стабильность потока; готовность Exclusive нужно перепроверить перед текущей работой.</value></data>
+  <data name="VmV5HistoricalGeometryDetails" xml:space="preserve"><value>Точная историческая геометрия буфера</value></data>
   <data name="VmSavedProfileExactBindingExplanation" xml:space="preserve"><value>Совпали только точные endpoint IDs в свежем списке. Стабильность, Exclusive-период, драйвер/firmware, AudioHost и физический RTL повторно не подтверждены.</value></data>
   <data name="VmSavedProfileBindingNoRecommendation" xml:space="preserve"><value>Проверка не разрешает применение Primary/Fallback и не превращает исторические результаты в свежие измерения.</value></data>
   <data name="VmSavedProfileTechnicalDetailsMissing" xml:space="preserve"><value>Технических данных нет.</value></data>

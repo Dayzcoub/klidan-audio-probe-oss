@@ -853,8 +853,10 @@ public static class DeviceConfigurationProfileStorage
         public string TechnicalTimestamp => MeasurementTimestampUtc?.ToString("O", CultureInfo.InvariantCulture) ?? Profile?.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture) ?? "UNKNOWN";
         public string OperatorResult => Profile?.SchemaVersion == 4 && Profile.SustainedSelection is { } sustained
             ? $"v4 · Primary {sustained.Preferred?.Period ?? "NONE"} · {sustained.Preferred?.Mmcss ?? "—"} · {sustained.Preferred?.DurationSeconds.ToString() ?? "—"} с · {sustained.Confidence}"
-            : Profile?.SchemaVersion == 5 && Profile.StableShortSelection is { } stable ? $"v5 · {stable.CaptureFormat.Period} · 5/5 · {(stable.ProfileKind == "TEST_ONLY" ? "TEST_ONLY" : "SHORT_RUN") }"
-            : Profile?.SchemaVersion == 3 ? "v3 · Short Duplex profile" : Profile is not null ? $"v{Profile.SchemaVersion} · Legacy profile" : "Профиль недоступен";
+            : Profile is { SchemaVersion: 5, StableShortSelection: { ProfileKind: "DEVICE" } stable, AudioHostQualification: { Result: "LOAD_CLEAN", Provenance: "REAL_AUDIOHOST" } } qualified
+                ? string.Format(Localization.CurrentCulture, Localization.Get("VmV5HistoricalDeviceOperatorResult"), ((qualified.HistoricalAudioHostBinding?.Period100ns ?? stable.ActualCapturePeriod100ns) / 10_000d).ToString("0.###", Localization.CurrentCulture), stable.ActualCaptureFrames, stable.ActualRenderFrames, stable.RepeatabilityCompleted, stable.RepeatabilityRequested)
+                : Profile?.SchemaVersion == 5 && Profile.StableShortSelection is { } shortRun ? $"v5 · {(shortRun.ActualCapturePeriod100ns / 10_000d).ToString("0.###", Localization.CurrentCulture)} ms · 5/5 · {(shortRun.ProfileKind == "TEST_ONLY" ? "TEST_ONLY" : "SHORT_RUN") }"
+                : Profile?.SchemaVersion == 3 ? "v3 · Short Duplex profile" : Profile is not null ? $"v{Profile.SchemaVersion} · Legacy profile" : "Профиль недоступен";
         public string HistoricalSelection => Profile?.SchemaVersion == 4 && Profile.SustainedSelection is { } sustained
             ? $"Primary: {sustained.Preferred?.Period ?? "NONE"} · Fallback: {sustained.Fallback?.Period ?? "NONE"} · {sustained.Confidence}"
             : Profile?.SchemaVersion == 5 && Profile.StableShortSelection is { } stable ? $"Selected candidate: {stable.SelectedCandidateIndex} · Repeatability: 5/5 · {stable.SearchQualification}"
@@ -890,7 +892,8 @@ public static class DeviceConfigurationProfileStorage
                 }
                 totalBytes += length;
                 var profile = DeviceConfigurationProfileJson.Parse(File.ReadAllBytes(path));
-                entries.Add(new(path, profile, OperatorName(profile), "AVAILABLE", profile.SchemaVersion == 4 ? "Длительный профиль" : profile.SchemaVersion == 5 ? "Краткосрочная повторяемость 5/5" : "Предыдущие измерения"));
+                var status = profile.SchemaVersion == 4 ? "Длительный профиль" : profile.SchemaVersion == 5 && profile.AudioHostQualification is { Result: "LOAD_CLEAN", Provenance: "REAL_AUDIOHOST" } ? Localization.Get("VmV5HistoricalDeviceProfileStatus") : profile.SchemaVersion == 5 ? "Краткосрочная повторяемость 5/5" : "Предыдущие измерения";
+                entries.Add(new(path, profile, OperatorName(profile), "AVAILABLE", status));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
             {

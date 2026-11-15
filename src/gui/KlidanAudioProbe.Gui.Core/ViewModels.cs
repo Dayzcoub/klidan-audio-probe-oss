@@ -1220,17 +1220,32 @@ public sealed class MainViewModel : ViewModel
                 return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileEvidenceSummary"), primary, fallback, Localization.Get("VmSavedProfileEvidenceCaveat"));
             }
             if (profile.SchemaVersion == 5 && profile.StableShortSelection is { ProfileKind: "DEVICE" } shortRun)
+            {
+                if (profile.HistoricalAudioHostBinding is { AudioHostResult: "LOAD_CLEAN" } historical)
+                    return string.Format(Localization.CurrentCulture, Localization.Get("VmV5HistoricalSavedProfileSummary"),
+                        (historical.Period100ns / 10_000d).ToString("0.###", Localization.CurrentCulture), historical.CaptureFrames, historical.RenderFrames,
+                        historical.Encoding, historical.SampleRateHz, historical.RepeatResults.Count(result => result == "CLEAN"), historical.RepeatResults.Count);
+                if (profile.AudioHostQualification is { Result: "LOAD_CLEAN", Provenance: "REAL_AUDIOHOST" })
+                    return string.Format(Localization.CurrentCulture, Localization.Get("VmV5QualifiedSavedProfileSummary"),
+                        (shortRun.ActualCapturePeriod100ns / 10_000d).ToString("0.###", Localization.CurrentCulture), shortRun.ActualCaptureFrames, shortRun.ActualRenderFrames,
+                        shortRun.CaptureFormat.Encoding, shortRun.CaptureFormat.SampleRate, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
                 return string.Format(Localization.CurrentCulture, Localization.Get("VmV5SavedProfileSummary"), shortRun.CaptureFormat.Period, shortRun.CaptureFormat.Encoding,
                     shortRun.CaptureFormat.SampleRate, shortRun.CaptureFormat.Channels, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
+            }
             return string.Format(Localization.CurrentCulture, Localization.Get("VmSavedProfileShortHistory"), profile.SchemaVersion, Localization.Get("VmSavedProfileEvidenceCaveat"));
         }
     }
     public string SavedProfileBindingExplanation => _savedProfileBindingResult?.Overall == DeviceProfileBindingAssessment.ExactBindingsPresentInDiscovery
-        ? Localization.Get("VmSavedProfileExactBindingExplanation")
+        ? (SelectedSavedDeviceProfile?.Profile?.HistoricalAudioHostBinding is not null ? Localization.Get("VmV5HistoricalBindingExplanation") : Localization.Get("VmSavedProfileExactBindingExplanation"))
         : Localization.Get("VmSavedProfileBindingNoRecommendation");
     public string SavedProfileBindingTechnicalDetails => _savedProfileBindingResult is { } result
-        ? $"{Localization.Get("VmOverallLabel")}: {result.Overall}\n{Localization.Get("VmCaptureLabel")}: {result.Capture}\n{Localization.Get("VmRenderLabel")}: {result.Render}\n{Localization.Get("VmProfileLabel")}: {result.SourceProfileId:D}\n{Localization.Get("VmScanSessionLabel")}: {result.SourceScanSessionId ?? "UNKNOWN"}\n{Localization.Get("VmGenerationLabel")}: {result.DiscoveryGeneration ?? "UNKNOWN"}\n{Localization.Get("VmExactIdsLabel")}: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\n{Localization.Get("VmReasonsLabel")}: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\n{Localization.Get("VmLimitationsLabel")}: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\n{Localization.Get("VmFurtherVerificationRequiredLabel")}: {result.RequiresFurtherVerification}"
+        ? $"{Localization.Get("VmOverallLabel")}: {result.Overall}\n{Localization.Get("VmCaptureLabel")}: {result.Capture}\n{Localization.Get("VmRenderLabel")}: {result.Render}\n{Localization.Get("VmProfileLabel")}: {result.SourceProfileId:D}\n{Localization.Get("VmScanSessionLabel")}: {result.SourceScanSessionId ?? "UNKNOWN"}\n{Localization.Get("VmGenerationLabel")}: {result.DiscoveryGeneration ?? "UNKNOWN"}\n{Localization.Get("VmExactIdsLabel")}: {(result.ExactEndpointIdentities.Count == 0 ? "NONE" : string.Join("; ", result.ExactEndpointIdentities))}\n{Localization.Get("VmReasonsLabel")}: {(result.Reasons.Count == 0 ? "NONE" : string.Join("; ", result.Reasons))}\n{Localization.Get("VmLimitationsLabel")}: {(result.Limitations.Count == 0 ? "NONE" : string.Join("; ", result.Limitations))}\n{Localization.Get("VmFurtherVerificationRequiredLabel")}: {result.RequiresFurtherVerification}{HistoricalProfileTechnicalDetails(SelectedSavedDeviceProfile?.Profile)}"
         : Localization.Get("VmSavedProfileTechnicalDetailsMissing");
+    private string HistoricalProfileTechnicalDetails(DeviceConfigurationProfile? profile)
+    {
+        if (profile?.HistoricalAudioHostBinding is not { } evidence) return string.Empty;
+        return $"\n{Localization.Get("VmV5HistoricalGeometryDetails")}: Capture {evidence.CaptureFrames} frames / {evidence.Period100ns} × 100 ns; Render {evidence.RenderFrames} frames / {evidence.Period100ns} × 100 ns\nScanner Run ID: {evidence.OriginalRunId} · AudioHost qualification Run ID: {evidence.QualificationRunId} · Runner Run ID: {evidence.RunnerRunId}\nWorker session cleanup: {evidence.SessionCleanup} · R5 cleanup: {string.Join(", ", evidence.RepeatCleanup.Distinct())}\nSource SHA-256: scanner manifest {evidence.ScannerManifestSha256} · scanner result {evidence.ScannerQualificationSha256} · AudioHost summary {evidence.RunnerSummarySha256}";
+    }
     public IReadOnlyList<string> HistoricalWorkerEndpointNames => LastWorkerEndpointSnapshot.Select(e => string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalWorkerEndpoint"), e.Name, DirectionDisplayLabel(e.Direction), e.ChannelCount)).ToArray();
     public string WorkerRestartExplanation => _workerAttempted && (WorkerState.State is WorkerConnectionState.Disconnected or WorkerConnectionState.Failed or WorkerConnectionState.Incompatible) ? Localization.Get("VmWorkerRestartRequired") : string.Empty;
     public int WorkerRenderChannel { get => _workerRenderChannel; set { if (value >= 1 && value <= WorkerChannelCount && Set(ref _workerRenderChannel, value)) RefreshWorkerCommands(); } }
@@ -3678,7 +3693,8 @@ public sealed class MainViewModel : ViewModel
                 _savedProfileBindingResult = _savedProfileBindingState.Evaluate(v4Matches[0].Profile!, discovery, generation, v4Matches[0].Path);
                 _savedProfileOperatorStatus = Localization.Get("VmBindingExactFound");
                 _savedProfileOperatorHistory = HistoricalOperatorText(v4Matches[0].Profile!);
-                _savedProfileOperatorLimitation = Localization.Get("VmBindingExactIdsOnlyLimitation");
+                _savedProfileOperatorLimitation = v4Matches[0].Profile!.HistoricalAudioHostBinding is not null
+                    ? Localization.Get("VmV5HistoricalBindingLimitation") : Localization.Get("VmBindingExactIdsOnlyLimitation");
             }
             else if (v4Matches.Length > 1)
             {
@@ -3728,8 +3744,18 @@ public sealed class MainViewModel : ViewModel
     private static string HistoricalOperatorText(DeviceConfigurationProfile profile)
     {
         if (profile.SchemaVersion == 5 && profile.StableShortSelection is { ProfileKind: "DEVICE" } shortRun)
+        {
+            if (profile.HistoricalAudioHostBinding is { AudioHostResult: "LOAD_CLEAN" } historical)
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmV5HistoricalSavedProfileSummary"),
+                    (historical.Period100ns / 10_000d).ToString("0.###", Localization.CurrentCulture), historical.CaptureFrames, historical.RenderFrames,
+                    historical.Encoding, historical.SampleRateHz, historical.RepeatResults.Count(result => result == "CLEAN"), historical.RepeatResults.Count);
+            if (profile.AudioHostQualification is { Result: "LOAD_CLEAN", Provenance: "REAL_AUDIOHOST" })
+                return string.Format(Localization.CurrentCulture, Localization.Get("VmV5QualifiedSavedProfileSummary"),
+                    (shortRun.ActualCapturePeriod100ns / 10_000d).ToString("0.###", Localization.CurrentCulture), shortRun.ActualCaptureFrames, shortRun.ActualRenderFrames,
+                    shortRun.CaptureFormat.Encoding, shortRun.CaptureFormat.SampleRate, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
             return string.Format(Localization.CurrentCulture, Localization.Get("VmV5SavedProfileSummary"), shortRun.CaptureFormat.Period, shortRun.CaptureFormat.Encoding,
                 shortRun.CaptureFormat.SampleRate, shortRun.CaptureFormat.Channels, shortRun.RepeatabilityCompleted, shortRun.RepeatabilityRequested);
+        }
         if (profile.SchemaVersion != 4 || profile.SustainedSelection is not { } sustained) return Localization.Get("VmHistoricalOperatorSectionMissing");
         var primary = sustained.Preferred is { } p ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorPrimary"), p.Period, p.Mmcss, p.DurationSeconds, p.Confidence) : Localization.Get("VmHistoricalOperatorPrimaryNone");
         var fallback = sustained.Fallback is { } f ? string.Format(Localization.CurrentCulture, Localization.Get("VmHistoricalOperatorFallback"), f.Period, f.DurationSeconds) : Localization.Get("VmHistoricalOperatorFallbackNone");
